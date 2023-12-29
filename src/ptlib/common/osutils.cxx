@@ -1653,7 +1653,7 @@ void PTimer::Stop(bool wait)
        completion it cannot then be called again. Note, the bitwise OR is
        intentional! We don't want McCarthy breaking things. */
     list->m_timersMutex.Wait();
-    PAssert((list->m_timers.erase(m_handle) == 1) | !m_running.exchange(false), PLogicError);
+    P_DISABLE_GCC_WARNING("-Wbitwise-instead-of-logical", PAssert((list->m_timers.erase(m_handle) == 1) | !m_running.exchange(false), PLogicError));
     list->m_timersMutex.Signal();
 
     if (wait) {
