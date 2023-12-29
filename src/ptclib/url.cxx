@@ -24,7 +24,7 @@
  * Contributor(s): ______________________________________.
  */
 
-#ifdef __GNUC__
+#ifdef P_USE_PRAGMA
 #pragma implementation "url.h"
 #endif
 

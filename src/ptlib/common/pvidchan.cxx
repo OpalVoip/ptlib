@@ -27,7 +27,7 @@
  * Contributor(s): Derek Smithies (derek@indranet.co.nz)
  */
 
-#ifdef __GNUC__
+#ifdef P_USE_PRAGMA
 #pragma implementation "video.h"
 #endif
 

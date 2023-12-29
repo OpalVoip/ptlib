@@ -27,7 +27,7 @@
  * Contributor(s): ______________________________________.
  */
 
-#ifdef __GNUC__
+#ifdef P_USE_PRAGMA
 #pragma implementation "pvidfile.h"
 #endif
 
@@ -41,6 +41,7 @@
 #include <ptlib/vconvert.h>
 
 #if P_IMAGEMAGICK==7
+  #define MAGICKCORE_HDRI_ENABLE 0
   #include <MagickWand/MagickWand.h>
 #elif P_IMAGEMAGICK
   #include <wand/MagickWand.h>

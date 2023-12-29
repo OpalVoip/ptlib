@@ -25,7 +25,7 @@
 
 #define _PVIDEOIO1394DC
 
-#ifdef __GNUC__
+#ifdef P_USE_PRAGMA
 #pragma interface
 #endif
 

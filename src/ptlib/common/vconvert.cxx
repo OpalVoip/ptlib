@@ -32,7 +32,7 @@
 
 #include <ptlib/video.h>
 
-#ifdef __GNUC__
+#ifdef P_USE_PRAGMA
 #pragma implementation "vconvert.h"
 #endif
 

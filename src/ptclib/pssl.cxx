@@ -76,7 +76,7 @@
  * [including the GNU Public Licence.]
  */
 
-#ifdef __GNUC__
+#ifdef P_USE_PRAGMA
 #pragma implementation "pssl.h"
 #endif
 

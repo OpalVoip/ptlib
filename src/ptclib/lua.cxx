@@ -25,7 +25,7 @@
  *                 Robert Jongbloed
  */
 
-#ifdef __GNUC__
+#ifdef P_USE_PRAGMA
 #pragma implementation "lua.h"
 #endif
 

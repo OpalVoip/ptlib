@@ -9,7 +9,7 @@
  *
  */
 
-#ifdef __GNUC__
+#ifdef P_USE_PRAGMA
 #pragma implementation "svcproc.h"
 #pragma implementation "config.h"
 #pragma implementation "args.h"

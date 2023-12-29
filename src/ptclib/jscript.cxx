@@ -24,7 +24,7 @@
  * Contributor(s): Craig Southeren
  */
 
-#ifdef __GNUC__
+#ifdef P_USE_PRAGMA
 #pragma implementation "jscript.h"
 #endif
 
