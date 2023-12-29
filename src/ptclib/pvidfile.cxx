@@ -41,7 +41,9 @@
 #include <ptlib/vconvert.h>
 
 #if P_IMAGEMAGICK==7
-  #define MAGICKCORE_HDRI_ENABLE 0
+  #ifndef MAGICKCORE_HDRI_ENABLE
+    #define MAGICKCORE_HDRI_ENABLE 1
+  #endif
   #include <MagickWand/MagickWand.h>
 #elif P_IMAGEMAGICK
   #include <wand/MagickWand.h>
