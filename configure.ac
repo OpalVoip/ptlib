@@ -1623,34 +1623,34 @@ PTLIB_MODULE_OPTION(
 
 
 dnl ########################################################################
-dnl look for expat XML parser
+dnl look for Expat XML parser
 
-dnl MSWIN_DISPLAY    expat,Expat XML (local build)
-dnl MSWIN_CHECK_FILE expat,lib\expat.h,P_EXPAT_BUILD=1
-dnl MSWIN_DIR_SYMBOL expat,EXPAT_BUILD_DIR
-dnl MSWIN_FIND_FILE  expat,P_EXPAT_LIBRARY_W32_DEBUG,expat.lib,Debug
-dnl MSWIN_FIND_FILE  expat,P_EXPAT_LIBRARY_W32_RELEASE,expat.lib,Release
-dnl MSWIN_FIND_FILE  expat,P_EXPAT_LIBRARY_W32_DEBUG,libexpat.lib,win32/bin/Debug
-dnl MSWIN_FIND_FILE  expat,P_EXPAT_LIBRARY_W32_RELEASE,libexpat.lib,win32/bin/Release
-dnl MSWIN_FIND_FILE  expat,P_EXPAT_LIBRARY_W32_DEBUG,libexpatMT.lib,win32/bin/Debug
-dnl MSWIN_FIND_FILE  expat,P_EXPAT_LIBRARY_W32_RELEASE,libexpatMT.lib,win32/bin/Release
-dnl MSWIN_FIND_FILE  expat,P_EXPAT_LIBRARY_W64_DEBUG,libexpatMT.lib,win32/bin64/Debug
-dnl MSWIN_FIND_FILE  expat,P_EXPAT_LIBRARY_W64_RELEASE,libexpatMT.lib,win32/bin64/Release
-dnl MSWIN_FIND_FILE  expat,P_EXPAT_LIBRARY_WM5_DEBUG,expat.lib,wm5/Debug
-dnl MSWIN_FIND_FILE  expat,P_EXPAT_LIBRARY_WM5_RELEASE,expat.lib,wm5/Release
-dnl MSWIN_FIND_FILE  expat,P_EXPAT_LIBRARY_WM6_DEBUG,expat.lib,wm6/Debug
-dnl MSWIN_FIND_FILE  expat,P_EXPAT_LIBRARY_WM6_RELEASE,expat.lib,wm6/Release
-dnl MSWIN_FIND_FILE  expat,P_EXPAT_LIBRARY_W64_DEBUG,expat.lib,x64/Debug
-dnl MSWIN_FIND_FILE  expat,P_EXPAT_LIBRARY_W64_RELEASE,expat.lib,x64/Release
-dnl MSWIN_CHECK_DIR  expat,%EXPATDIR%\expat
-dnl MSWIN_CHECK_DIR  expat,..\expat\
-dnl MSWIN_CHECK_DIR  expat,..\external\expat\
-dnl MSWIN_CHECK_DIR  expat,..\..\external\expat\
-dnl MSWIN_CHECK_DIR  expat,..\Expat\expat\
-dnl MSWIN_CHECK_DIR  expat,..\external\Expat\expat\
-dnl MSWIN_CHECK_DIR  expat,..\..\external\Expat\expat\
-dnl MSWIN_CHECK_DIR  expat,c:\Expat\expat\
-dnl MSWIN_CHECK_DIR  expat,\libs\Expat\expat\
+dnl MSWIN_DISPLAY    expatlocal,Expat XML (local build)
+dnl MSWIN_CHECK_FILE expatlocal,lib\expat.h,P_EXPAT_BUILD=1
+dnl MSWIN_DIR_SYMBOL expatlocal,EXPAT_BUILD_DIR
+dnl MSWIN_FIND_FILE  expatlocal,P_EXPAT_LIBRARY_W32_DEBUG,expat.lib,Debug
+dnl MSWIN_FIND_FILE  expatlocal,P_EXPAT_LIBRARY_W32_RELEASE,expat.lib,Release
+dnl MSWIN_FIND_FILE  expatlocal,P_EXPAT_LIBRARY_W32_DEBUG,libexpat.lib,win32/bin/Debug
+dnl MSWIN_FIND_FILE  expatlocal,P_EXPAT_LIBRARY_W32_RELEASE,libexpat.lib,win32/bin/Release
+dnl MSWIN_FIND_FILE  expatlocal,P_EXPAT_LIBRARY_W32_DEBUG,libexpatMT.lib,win32/bin/Debug
+dnl MSWIN_FIND_FILE  expatlocal,P_EXPAT_LIBRARY_W32_RELEASE,libexpatMT.lib,win32/bin/Release
+dnl MSWIN_FIND_FILE  expatlocal,P_EXPAT_LIBRARY_W64_DEBUG,libexpatMT.lib,win32/bin64/Debug
+dnl MSWIN_FIND_FILE  expatlocal,P_EXPAT_LIBRARY_W64_RELEASE,libexpatMT.lib,win32/bin64/Release
+dnl MSWIN_FIND_FILE  expatlocal,P_EXPAT_LIBRARY_WM5_DEBUG,expat.lib,wm5/Debug
+dnl MSWIN_FIND_FILE  expatlocal,P_EXPAT_LIBRARY_WM5_RELEASE,expat.lib,wm5/Release
+dnl MSWIN_FIND_FILE  expatlocal,P_EXPAT_LIBRARY_WM6_DEBUG,expat.lib,wm6/Debug
+dnl MSWIN_FIND_FILE  expatlocal,P_EXPAT_LIBRARY_WM6_RELEASE,expat.lib,wm6/Release
+dnl MSWIN_FIND_FILE  expatlocal,P_EXPAT_LIBRARY_W64_DEBUG,expat.lib,x64/Debug
+dnl MSWIN_FIND_FILE  expatlocal,P_EXPAT_LIBRARY_W64_RELEASE,expat.lib,x64/Release
+dnl MSWIN_CHECK_DIR  expatlocal,%EXPATDIR%\expat
+dnl MSWIN_CHECK_DIR  expatlocal,..\expat\
+dnl MSWIN_CHECK_DIR  expatlocal,..\external\expat\
+dnl MSWIN_CHECK_DIR  expatlocal,..\..\external\expat\
+dnl MSWIN_CHECK_DIR  expatlocal,..\Expat\expat\
+dnl MSWIN_CHECK_DIR  expatlocal,..\external\Expat\expat\
+dnl MSWIN_CHECK_DIR  expatlocal,..\..\external\Expat\expat\
+dnl MSWIN_CHECK_DIR  expatlocal,c:\Expat\expat\
+dnl MSWIN_CHECK_DIR  expatlocal,\libs\Expat\expat\
 
 dnl MSWIN_DISPLAY    expat32,Expat XML (32 bit)
 dnl MSWIN_CHECK_FILE expat32,Source\lib\expat.h,P_EXPAT_WIN32=1
@@ -1672,6 +1672,27 @@ dnl MSWIN_CHECK_DIR  expat64,..\..\external\expat\
 dnl MSWIN_CHECK_DIR  expat64,%ProgramFiles%\Expat 2.*
 dnl MSWIN_CHECK_DIR  expat64,%ProgramW6432%\Expat 2.*
 
+dnl MSWIN_DISPLAY    expatvc32,Expat XML (vcpkg 32 bit)
+dnl MSWIN_CHECK_FILE expatvc32,include\expat.h,P_EXPAT_VCPKG32=1
+dnl MSWIN_CHECK_DIR  expatvc32,..\external\vcpkg\installed\x86-windows\
+dnl MSWIN_CHECK_DIR  expatvc32,..\..\external\vcpkg\installed\x86-windows\
+dnl MSWIN_CHECK_DIR  expatvc32,%ProgramFiles%\vcpkg\installed\x86-windows\
+dnl MSWIN_CHECK_DIR  expatvc32,%ProgramW6432%\vcpkg\installed\x86-windows\
+
+dnl MSWIN_DISPLAY    expatvc64,Expat XML (vcpkg 64 bit)
+dnl MSWIN_CHECK_FILE expatvc64,include\expat.h,P_EXPAT_VCPKG64=1
+dnl MSWIN_CHECK_DIR  expatvc64,..\external\vcpkg\installed\x64-windows\
+dnl MSWIN_CHECK_DIR  expatvc64,..\..\external\vcpkg\installed\x64-windows\
+dnl MSWIN_CHECK_DIR  expatvc64,%ProgramFiles%\vcpkg\installed\x64-windows\
+dnl MSWIN_CHECK_DIR  expatvc64,%ProgramW6432%\vcpkg\installed\x64-windows\
+
+dnl MSWIN_DISPLAY    expat,Expat XML
+dnl MSWIN_IF_FEATURE expat,expatlocal
+dnl MSWIN_IF_FEATURE expat,expat32
+dnl MSWIN_IF_FEATURE expat,expat64
+dnl MSWIN_IF_FEATURE expat,expatvc32
+dnl MSWIN_IF_FEATURE expat,expatvc64
+
 PTLIB_MODULE_OPTION(
    [EXPAT],
    [expat],
@@ -1688,23 +1709,25 @@ dnl ########################################################################
 dnl look for Lua library
 dnl MSWIN_DISPLAY    lua32,Lua interpreter (32 bit)
 dnl MSWIN_CHECK_FILE lua32,include\lua.h,P_LUA_WIN32=1
+dnl MSWIN_FIND_FILE  lua32,P_LUA_LIBRARY32,liblua53.a,lib
 dnl MSWIN_DIR_SYMBOL lua32,LUA_DIR_WIN32
 dnl MSWIN_CHECK_DIR  lua32,%LUA32DIR%
 dnl MSWIN_CHECK_DIR  lua32,..\Lua-win32\
 dnl MSWIN_CHECK_DIR  lua32,..\external\Lua-win32\
 dnl MSWIN_CHECK_DIR  lua32,..\..\external\Lua-win32\
-dnl MSWIN_CHECK_DIR  lua32,c:\Expat\Lua-win32\
-dnl MSWIN_CHECK_DIR  lua32,\libs\Expat\Lua-win32\
+dnl MSWIN_CHECK_DIR  lua32,c:\external\Lua-win32\
+dnl MSWIN_CHECK_DIR  lua32,\libs\external\Lua-win32\
 
 dnl MSWIN_DISPLAY    lua64,Lua interpreter (64 bit)
 dnl MSWIN_CHECK_FILE lua64,include\lua.h,P_LUA_WIN64=1
+dnl MSWIN_FIND_FILE  lua64,P_LUA_LIBRARY64,liblua53.a,lib
 dnl MSWIN_DIR_SYMBOL lua64,LUA_DIR_WIN64
 dnl MSWIN_CHECK_DIR  lua64,%LUA64DIR%
 dnl MSWIN_CHECK_DIR  lua64,..\Lua-win64\
 dnl MSWIN_CHECK_DIR  lua64,..\external\Lua-win64\
 dnl MSWIN_CHECK_DIR  lua64,..\..\external\Lua-win64\
-dnl MSWIN_CHECK_DIR  lua64,c:\Expat\Lua-win64\
-dnl MSWIN_CHECK_DIR  lua64,\libs\Expat\Lua-win64\
+dnl MSWIN_CHECK_DIR  lua64,c:\external\Lua-win64\
+dnl MSWIN_CHECK_DIR  lua64,\libs\external\Lua-win64\
 
 
 AC_LANG_PUSH(C)
@@ -2023,7 +2046,6 @@ dnl Jabber
 dnl MSWIN_DISPLAY    jabber,Jabber
 dnl MSWIN_DEFINE     jabber,P_JABBER
 dnl MSWIN_IF_FEATURE jabber,expat
-dnl MSWIN_IF_FEATURE jabber,expat32
 
 PTLIB_SIMPLE_OPTION([jabber], [JABBER], [Jabber support], [HAS_EXPAT])
 
@@ -2032,7 +2054,6 @@ dnl VXML
 dnl MSWIN_DISPLAY    vxml,VXML Support
 dnl MSWIN_DEFINE     vxml,P_VXML
 dnl MSWIN_IF_FEATURE vxml,http&scripts&expat
-dnl MSWIN_IF_FEATURE vxml,http&scripts&expat32
 
 dnl MSWIN_DISPLAY    vxmlvideo,VXML (video) Support
 dnl MSWIN_DEFINE     vxmlvideo,P_VXML_VIDEO
@@ -2046,7 +2067,6 @@ dnl XMLRPC
 dnl MSWIN_DISPLAY    xmlrpc,XMLRPC Support
 dnl MSWIN_DEFINE     xmlrpc,P_XMLRPC
 dnl MSWIN_IF_FEATURE xmlrpc,http&expat
-dnl MSWIN_IF_FEATURE xmlrpc,http&expat32
 
 PTLIB_SIMPLE_OPTION([xmlrpc], [XMLRPC], [XMLRPC support], [HAS_EXPAT], [HAS_HTTP])
 
@@ -2055,7 +2075,6 @@ dnl SOAP
 dnl MSWIN_DISPLAY    soap,SOAP Support
 dnl MSWIN_DEFINE     soap,P_SOAP
 dnl MSWIN_IF_FEATURE soap,http&expat
-dnl MSWIN_IF_FEATURE soap,http&expat32
 
 PTLIB_SIMPLE_OPTION([soap], [SOAP], [SOAP support], [HAS_EXPAT], [HAS_HTTP])
 
