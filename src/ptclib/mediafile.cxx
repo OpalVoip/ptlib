@@ -880,7 +880,7 @@ public:
           m_type = Audio();
           m_rate = m_codecContext->sample_rate;
           m_frames = m_stream->nb_frames;
-          m_channels = m_codecContext->channels;
+          m_channels = m_codecContext->ch_layout.nb_channels;
           if (m_codecInfo->id == AV_CODEC_ID_PCM_S16LE) {
             m_format = PSOUND_PCM16;
             m_size = 2 * m_channels;
@@ -965,8 +965,7 @@ public:
               }
             }
 
-            m_stream->codecpar->channels = m_channels;
-            m_stream->codecpar->channel_layout = av_get_default_channel_layout(m_channels);
+            av_channel_layout_default(&m_stream->codecpar->ch_layout, m_channels);
             break;
 
           case AVMEDIA_TYPE_VIDEO:
@@ -1086,10 +1085,8 @@ public:
       bool WriteNative(const void * data, PINDEX & size, unsigned & frames)
       {
         AVPacket packet;
-        av_init_packet(&packet);
+        av_packet_from_data(&packet, (uint8_t *)data, size);
         packet.stream_index = m_index;
-        packet.data = (BYTE *)data;
-        packet.size = size;
         packet.pts = packet.dts = frames;
 
         if (CHECK_ERROR_TRK(av_write_frame, (m_owner->m_formatContext, &packet)))
@@ -1132,24 +1129,17 @@ public:
       bool CreateResampler(AVSampleFormat  inFormat, int  inRate, int  inChannels,
                            AVSampleFormat outFormat, int outRate, int outChannels)
       {
-          m_swrContext = swr_alloc_set_opts(NULL,
-                                            av_get_default_channel_layout(outChannels),
-                                            outFormat,
-                                            outRate,
-                                            av_get_default_channel_layout(inChannels),
-                                            inFormat,
-                                            inRate,
-                                            0, NULL);
-          if (m_swrContext == NULL) {
-            PTRACE(2, m_owner, "Could not allocate audio resampler for " << m_owner->m_filePath);
-            return false;
-          }
+        AVChannelLayout out_layout, in_layout;
+        av_channel_layout_default(&out_layout, outChannels);
+        av_channel_layout_default(&in_layout, inChannels);
+        if (CHECK_ERROR_TRK(swr_alloc_set_opts2, (&m_swrContext, &out_layout, outFormat, outRate, &in_layout, inFormat, inRate, 0, NULL)))
+          return false;
 
-          if (CHECK_ERROR_TRK(swr_init, (m_swrContext)))
-            return false;
+        if (CHECK_ERROR_TRK(swr_init, (m_swrContext)))
+          return false;
 
-          PTRACE(4, m_owner, "Created resampler: " << inChannels << 'x' << inRate << "->" << outChannels << 'x' << outRate);
-          return true;
+        PTRACE(4, m_owner, "Created resampler: " << inChannels << 'x' << inRate << "->" << outChannels << 'x' << outRate);
+        return true;
       }
 
 
@@ -1183,7 +1173,7 @@ public:
           if (!OpenCodec())
             return false;
 
-          if (!CreateResampler(m_codecContext->sample_fmt, m_codecContext->sample_rate, m_codecContext->channels,
+          if (!CreateResampler(m_codecContext->sample_fmt, m_codecContext->sample_rate, m_codecContext->ch_layout.nb_channels,
                                AV_SAMPLE_FMT_S16, m_pcmSampleRate, m_pcmChannels))
             return false;
         }
@@ -1214,7 +1204,7 @@ public:
           return false;
 
         AVPacket packet;
-        av_init_packet(&packet);
+        av_new_packet(&packet, 0);
 
         for (;;) {
           int result = avcodec_receive_packet(m_codecContext, &packet);
@@ -1272,20 +1262,19 @@ public:
             return false;
 
           if (!CreateResampler(AV_SAMPLE_FMT_S16, m_pcmSampleRate, m_pcmChannels,
-                               m_codecContext->sample_fmt, m_codecContext->sample_rate, m_codecContext->channels))
+                               m_codecContext->sample_fmt, m_codecContext->sample_rate, m_codecContext->ch_layout.nb_channels))
             return false;
 
-          if ((m_fifo = av_audio_fifo_alloc(m_codecContext->sample_fmt, m_codecContext->channels, 1)) == NULL)
+          if ((m_fifo = av_audio_fifo_alloc(m_codecContext->sample_fmt, m_codecContext->ch_layout.nb_channels, 1)) == NULL)
             return false;
 
-          if (CHECK_ERROR_TRK(av_audio_fifo_realloc, (m_fifo, m_codecContext->frame_size*m_codecContext->channels*3)))
+          if (CHECK_ERROR_TRK(av_audio_fifo_realloc, (m_fifo, m_codecContext->frame_size*m_codecContext->ch_layout.nb_channels*3)))
             return false;
 
           m_frame->format = m_codecContext->sample_fmt;
           m_frame->sample_rate = m_codecContext->sample_rate;
-          m_frame->channels = m_codecContext->channels;
-          m_frame->channel_layout = m_codecContext->channel_layout;
-          m_frame->nb_samples = m_codecContext->frame_size*m_codecContext->channels;
+          m_frame->ch_layout = m_codecContext->ch_layout;
+          m_frame->nb_samples = m_codecContext->frame_size*m_codecContext->ch_layout.nb_channels;
           if (CHECK_ERROR_TRK(av_frame_get_buffer, (m_frame, 0)))
               return false;
         }
@@ -1293,7 +1282,7 @@ public:
         int suppliedSamples = length/m_pcmChannels/2;
         int ouputSampleCount = (int)av_rescale_rnd(suppliedSamples, m_codecContext->sample_rate, m_pcmSampleRate, AV_ROUND_UP);
 
-        if (m_swrFrame == NULL || m_swrFrame->nb_samples < ouputSampleCount*m_codecContext->channels) {
+        if (m_swrFrame == NULL || m_swrFrame->nb_samples < ouputSampleCount*m_codecContext->ch_layout.nb_channels) {
           av_frame_free(&m_swrFrame);
           if ((m_swrFrame = av_frame_alloc()) == NULL) {
             PTRACE(2, m_owner, "Could not allocate frame for " << m_owner->m_filePath);
@@ -1301,8 +1290,8 @@ public:
           }
           m_swrFrame->format = m_codecContext->sample_fmt;
           m_swrFrame->sample_rate = m_codecContext->sample_rate;
-          m_swrFrame->channel_layout = m_codecContext->channel_layout;
-          m_swrFrame->nb_samples = ouputSampleCount*m_codecContext->channels;
+          m_swrFrame->ch_layout = m_codecContext->ch_layout;
+          m_swrFrame->nb_samples = ouputSampleCount*m_codecContext->ch_layout.nb_channels;
           if (CHECK_ERROR_TRK(av_frame_get_buffer, (m_swrFrame, 0)))
               return false;
         }
@@ -1463,7 +1452,7 @@ public:
         if (sampleTime < 0)
           m_frame->pkt_dts = AV_NOPTS_VALUE;
         else {
-          m_frame->pkt_duration = av_rescale_q((sampleTime-m_videoTimestamp).GetNanoSeconds(), s_NanosecondScale, m_codecContext->time_base);
+          m_frame->duration = av_rescale_q((sampleTime-m_videoTimestamp).GetNanoSeconds(), s_NanosecondScale, m_codecContext->time_base);
           m_videoTimestamp = sampleTime;
           m_frame->pkt_dts = m_frame->pts = av_rescale_q(m_videoTimestamp.GetNanoSeconds(), s_NanosecondScale, m_codecContext->time_base);
         }
@@ -1482,7 +1471,7 @@ public:
     {
       for (;;) {
         AVPacket packet;
-        av_init_packet(&packet);
+        av_new_packet(&packet, 0);
 
         int result = av_read_frame(m_formatContext, &packet);
         if (result == AVERROR_EOF)
