@@ -483,8 +483,7 @@ case "$target_os" in
       AR="libtool"
       ARFLAGS="-static -o"
       RANLIB=
-      CPPFLAGS="-stdlib=libc++ $CPPFLAGS"
-      LDFLAGS="${LDFLAGS} -stdlib=libc++ -framework AudioToolbox -framework CoreAudio -framework SystemConfiguration -framework Foundation"
+      LDFLAGS="${LDFLAGS} -framework AudioToolbox -framework CoreAudio -framework SystemConfiguration -framework Foundation"
       LIBS="-lobjc $LIBS"
    ;;
 
