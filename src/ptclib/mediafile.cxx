@@ -1408,6 +1408,10 @@ public:
           return false;
 
         if (m_codecOpened) {
+          if (m_frame->width  == (int)frameInfo.GetFrameWidth() &&
+              m_frame->height == (int)frameInfo.GetFrameHeight() &&
+              m_frame->format == GetPixelFormatFromColourFormat(frameInfo.GetColourFormat()))
+            return true;
           PTRACE(2, m_owner, "Cannot configure video once writing commenced.");
           return false;
         }
@@ -1597,6 +1601,7 @@ public:
       }
 
       avformat_free_context(m_formatContext);
+      m_formatContext = NULL;
       return true;
     }
 
