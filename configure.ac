@@ -156,6 +156,12 @@ case "$target_os" in
       if test -d /opt/local/lib; then
         LIBS="-L/opt/local/lib $LIBS"
       fi
+      if test -d /opt/homebrew/include; then
+        CPPFLAGS="$CPPFLAGS -I/opt/homebrew/include"
+      fi
+      if test -d /opt/homebrew/lib; then
+        LIBS="-L/opt/homebrew/lib $LIBS"
+      fi
    ;;
 
    iPhone* )

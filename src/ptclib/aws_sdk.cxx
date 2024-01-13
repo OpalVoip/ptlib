@@ -202,13 +202,13 @@ void PAwsClientBase::SetAccessKey(const PString & accessKeyId, const PString & s
 
 PString PAwsClientBase::GetAccessKeyId() const
 {
-  return m_credentials ? m_credentials->GetAWSAccessKeyId() : PString::Empty();
+  return m_credentials ? PString(m_credentials->GetAWSAccessKeyId().c_str()) : PString::Empty();
 }
 
 
 PString PAwsClientBase::GetSecretAccessKey() const
 {
-  return m_credentials ? m_credentials->GetAWSSecretKey() : PString::Empty();
+  return m_credentials ? PString(m_credentials->GetAWSSecretKey().c_str()) : PString::Empty();
 }
 
 
