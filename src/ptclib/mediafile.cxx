@@ -880,7 +880,12 @@ public:
           m_type = Audio();
           m_rate = m_codecContext->sample_rate;
           m_frames = m_stream->nb_frames;
+          m_frames = m_stream->nb_frames;
+        #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(60, 0, 0)
+          m_channels = m_codecContext->channels;
+        #else
           m_channels = m_codecContext->ch_layout.nb_channels;
+        #endif
           if (m_codecInfo->id == AV_CODEC_ID_PCM_S16LE) {
             m_format = PSOUND_PCM16;
             m_size = 2 * m_channels;
@@ -965,7 +970,12 @@ public:
               }
             }
 
+          #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(60, 0, 0)
+            m_stream->codecpar->channels = m_channels;
+            m_stream->codecpar->channel_layout = av_get_default_channel_layout(m_channels);
+          #else
             av_channel_layout_default(&m_stream->codecpar->ch_layout, m_channels);
+          #endif
             break;
 
           case AVMEDIA_TYPE_VIDEO:
@@ -1129,11 +1139,26 @@ public:
       bool CreateResampler(AVSampleFormat  inFormat, int  inRate, int  inChannels,
                            AVSampleFormat outFormat, int outRate, int outChannels)
       {
+      #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(60, 0, 0)
+        m_swrContext = swr_alloc_set_opts(NULL,
+                                          av_get_default_channel_layout(outChannels),
+                                          outFormat,
+                                          outRate,
+                                          av_get_default_channel_layout(inChannels),
+                                          inFormat,
+                                          inRate,
+                                          0, NULL);
+        if (m_swrContext == NULL) {
+          PTRACE(2, m_owner, "Could not allocate audio resampler for " << m_owner->m_filePath);
+          return false;
+        }
+      #else
         AVChannelLayout out_layout, in_layout;
         av_channel_layout_default(&out_layout, outChannels);
         av_channel_layout_default(&in_layout, inChannels);
         if (CHECK_ERROR_TRK(swr_alloc_set_opts2, (&m_swrContext, &out_layout, outFormat, outRate, &in_layout, inFormat, inRate, 0, NULL)))
           return false;
+      #endif
 
         if (CHECK_ERROR_TRK(swr_init, (m_swrContext)))
           return false;
@@ -1173,8 +1198,16 @@ public:
           if (!OpenCodec())
             return false;
 
-          if (!CreateResampler(m_codecContext->sample_fmt, m_codecContext->sample_rate, m_codecContext->ch_layout.nb_channels,
-                               AV_SAMPLE_FMT_S16, m_pcmSampleRate, m_pcmChannels))
+          if (!CreateResampler(m_codecContext->sample_fmt,
+                               m_codecContext->sample_rate,
+                             #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(60, 0, 0)
+                               m_codecContext->channels,
+                             #else
+                               m_codecContext->ch_layout.nb_channels,
+                             #endif
+                               AV_SAMPLE_FMT_S16,
+                               m_pcmSampleRate,
+                               m_pcmChannels))
             return false;
         }
 
@@ -1253,6 +1286,12 @@ public:
         if (!m_owner->CheckModeAndTrackType(false, Audio(), m_type))
           return false;
 
+      #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(60, 0, 0)
+        int channels = m_codecContext->channels;
+      #else
+        int channels = m_codecContext->ch_layout.nb_channels;
+      #endif
+
         if (!m_codecOpened) {
           if (m_pcmSampleRate == 0 || m_pcmChannels == 0)
             ConfigureAudio(2, 48000);
@@ -1262,19 +1301,24 @@ public:
             return false;
 
           if (!CreateResampler(AV_SAMPLE_FMT_S16, m_pcmSampleRate, m_pcmChannels,
-                               m_codecContext->sample_fmt, m_codecContext->sample_rate, m_codecContext->ch_layout.nb_channels))
+                               m_codecContext->sample_fmt, m_codecContext->sample_rate, channels))
             return false;
 
-          if ((m_fifo = av_audio_fifo_alloc(m_codecContext->sample_fmt, m_codecContext->ch_layout.nb_channels, 1)) == NULL)
+          if ((m_fifo = av_audio_fifo_alloc(m_codecContext->sample_fmt, channels, 1)) == NULL)
             return false;
 
-          if (CHECK_ERROR_TRK(av_audio_fifo_realloc, (m_fifo, m_codecContext->frame_size*m_codecContext->ch_layout.nb_channels*3)))
+          if (CHECK_ERROR_TRK(av_audio_fifo_realloc, (m_fifo, m_codecContext->frame_size*channels*3)))
             return false;
 
           m_frame->format = m_codecContext->sample_fmt;
           m_frame->sample_rate = m_codecContext->sample_rate;
+        #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(60, 0, 0)
+          m_frame->channels = channels;
+          m_frame->channel_layout = m_codecContext->channel_layout;
+        #else
           m_frame->ch_layout = m_codecContext->ch_layout;
-          m_frame->nb_samples = m_codecContext->frame_size*m_codecContext->ch_layout.nb_channels;
+        #endif
+          m_frame->nb_samples = m_codecContext->frame_size*channels;
           if (CHECK_ERROR_TRK(av_frame_get_buffer, (m_frame, 0)))
               return false;
         }
@@ -1282,7 +1326,7 @@ public:
         int suppliedSamples = length/m_pcmChannels/2;
         int ouputSampleCount = (int)av_rescale_rnd(suppliedSamples, m_codecContext->sample_rate, m_pcmSampleRate, AV_ROUND_UP);
 
-        if (m_swrFrame == NULL || m_swrFrame->nb_samples < ouputSampleCount*m_codecContext->ch_layout.nb_channels) {
+        if (m_swrFrame == NULL || m_swrFrame->nb_samples < ouputSampleCount*channels) {
           av_frame_free(&m_swrFrame);
           if ((m_swrFrame = av_frame_alloc()) == NULL) {
             PTRACE(2, m_owner, "Could not allocate frame for " << m_owner->m_filePath);
@@ -1290,8 +1334,13 @@ public:
           }
           m_swrFrame->format = m_codecContext->sample_fmt;
           m_swrFrame->sample_rate = m_codecContext->sample_rate;
+        #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(60, 0, 0)
+          m_swrFrame->channels = channels;
+          m_swrFrame->channel_layout = m_codecContext->channel_layout;
+        #else
           m_swrFrame->ch_layout = m_codecContext->ch_layout;
-          m_swrFrame->nb_samples = ouputSampleCount*m_codecContext->ch_layout.nb_channels;
+        #endif
+          m_swrFrame->nb_samples = ouputSampleCount*channels;
           if (CHECK_ERROR_TRK(av_frame_get_buffer, (m_swrFrame, 0)))
               return false;
         }
@@ -1456,7 +1505,12 @@ public:
         if (sampleTime < 0)
           m_frame->pkt_dts = AV_NOPTS_VALUE;
         else {
-          m_frame->duration = av_rescale_q((sampleTime-m_videoTimestamp).GetNanoSeconds(), s_NanosecondScale, m_codecContext->time_base);
+          #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(60, 0, 0)
+            m_frame->pkt_duration
+          #else
+            m_frame->duration
+          #endif
+                          = av_rescale_q((sampleTime-m_videoTimestamp).GetNanoSeconds(), s_NanosecondScale, m_codecContext->time_base);
           m_videoTimestamp = sampleTime;
           m_frame->pkt_dts = m_frame->pts = av_rescale_q(m_videoTimestamp.GetNanoSeconds(), s_NanosecondScale, m_codecContext->time_base);
         }
