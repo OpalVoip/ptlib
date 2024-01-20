@@ -499,8 +499,12 @@ class PSoundChannel : public PIndirectChannel
 
     /**Set the internal buffers for the sound channel I/O. 
 
-       Note that with Linux OSS, the size is always rounded up to the nearest
-       power of two, so 20000 => 32768. 
+       Note that with some Linux OS drivers, the size is always rounded up to
+       the nearest power of two, so 20000 => 32768.
+
+       Another special case is for emulated sound devices, e.g. writing to a
+       WAV file. Setting the size parameter to 1 will disable the "pacing"
+       feature where reads/writes are delayed in real time.
 
        @return
        true if the sound device is valid for playing/recording.

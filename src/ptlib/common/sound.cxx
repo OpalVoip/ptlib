@@ -933,7 +933,8 @@ PBoolean PSoundChannelEmulation::Write(const void * data, PINDEX size)
   }
 
   // Pacing delay outside of mutex
-  m_Pacing.Delay(1000LL*GetLastWriteCount()/m_sampleRate/m_bytesPerSample);
+  if (m_bufferSize > 1)
+    m_Pacing.Delay(1000LL*GetLastWriteCount()/m_sampleRate/m_bytesPerSample);
   return true;
 }
 
@@ -945,7 +946,8 @@ PBoolean PSoundChannelEmulation::Read(void * data, PINDEX size)
       PINDEX count = GetLastReadCount();
       if (m_muted)
         memset(data, 0, count);
-      m_Pacing.Delay(1000LL*count/m_sampleRate/m_bytesPerSample);
+      if (m_bufferSize > 1)
+        m_Pacing.Delay(1000LL*count/m_sampleRate/m_bytesPerSample);
       return true;
     }
 
@@ -1140,7 +1142,8 @@ PBoolean PSoundChannelNull::Write(const void *, PINDEX len)
     return false;
 
   SetLastWriteCount(len);
-  m_Pacing.Delay(1000*len/m_sampleRate/m_bytesPerSample);
+  if (m_bufferSize > 1)
+    m_Pacing.Delay(1000*len/m_sampleRate/m_bytesPerSample);
   return true;
 }
 
@@ -1151,7 +1154,8 @@ PBoolean PSoundChannelNull::Read(void * buf, PINDEX len)
 
   memset(buf, 0, len);
   SetLastReadCount(len);
-  m_Pacing.Delay(1000*len/m_sampleRate/m_bytesPerSample);
+  if (m_bufferSize > 1)
+    m_Pacing.Delay(1000*len/m_sampleRate/m_bytesPerSample);
   return true;
 }
 
