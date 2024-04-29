@@ -83,7 +83,7 @@ extern "C" {\
     public: \
       cls() : ancestor(manuf, name, major, minor, status, build) { } \
     private: \
-      virtual void Main(); \
+      virtual void Main() override; \
   };
 
 class PExternalThread;
@@ -143,21 +143,21 @@ class PProcess : public PThread
      */
     Comparison Compare(
       const PObject & obj   ///< Other process to compare against.
-    ) const;
+    ) const override;
 
     /**This will print out performance indicators for the process.
        Includes CPU, Memory, Threads & High water marks for various resources.
       */
     virtual void PrintOn(
       ostream & strm
-    ) const;
+    ) const override;
   //@}
 
   /**@name Overrides from class PThread */
   //@{
     /**Terminate the process. Usually only used in abnormal abort situation.
      */
-    virtual void Terminate();
+    virtual void Terminate() override;
   //@}
 
   /**@name Process information functions */
@@ -777,7 +777,7 @@ class PProcess : public PThread
   //@}
 
     ///< Dummy Main() as libraries do not have one.
-    virtual void Main() { }
+    virtual void Main() override { }
 };
 
 

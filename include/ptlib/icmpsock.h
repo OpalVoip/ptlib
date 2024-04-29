@@ -128,9 +128,9 @@ class PICMPSocket : public PIPDatagramSocket
   //@}
 
   protected:
-    const char * GetProtocolName() const;
-    virtual PBoolean OpenSocket();
-    virtual PBoolean OpenSocket(int ipAdressFamily);
+    const char * GetProtocolName() const override;
+    virtual PBoolean OpenSocket() override;
+    virtual PBoolean OpenSocket(int ipAdressFamily) override;
 
 
 // Include platform dependent part of class

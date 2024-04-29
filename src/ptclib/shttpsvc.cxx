@@ -24,7 +24,7 @@
  * Contributor(s): ______________________________________.
  */
 
-#ifdef __GNUC__
+#ifdef P_USE_PRAGMA
 #pragma implementation "shttpsvc.h"
 #endif
 
@@ -43,7 +43,7 @@ class HTTP_PSSLChannel : public PSSLChannel
   public:
     HTTP_PSSLChannel(PSecureHTTPServiceProcess * svc, PSSLContext * context = NULL);
 
-    virtual int BioRead(char * out, int outl);
+    virtual int BioRead(char * out, int outl) override;
 
   protected:
     PSecureHTTPServiceProcess * m_serviceProcess;

@@ -422,10 +422,10 @@ class PSTUNUDPSocket : public PNATUDPSocket
       PNatMethod::Component component
     );
 
-    virtual const char * GetNatName() const;
+    virtual const char * GetNatName() const override;
 
     bool OpenSTUN(PSTUNClient & client);
-    virtual void GetCandidateInfo(PNatCandidate & candidate);
+    virtual void GetCandidateInfo(PNatCandidate & candidate) override;
 
     bool BaseWriteTo(const void * buf, PINDEX len, const PIPSocketAddressAndPort & ap)
     { Slice slice((void *)buf, len); return PUDPSocket::InternalWriteTo(&slice, 1, ap); }
@@ -440,7 +440,7 @@ class PSTUNUDPSocket : public PNATUDPSocket
     PIPSocketAddressAndPort m_serverReflexiveAddress;
     PIPSocketAddressAndPort m_baseAddressAndPort;
 
-    bool InternalGetLocalAddress(PIPSocketAddressAndPort & addr);
+    bool InternalGetLocalAddress(PIPSocketAddressAndPort & addr) override;
 
   private:
     PNatMethod::NatTypes m_natType;
@@ -501,7 +501,7 @@ class PSTUNMessage : public PBYTEArray
     PSTUNMessage(const BYTE * data, PINDEX size, const PIPSocketAddressAndPort & srcAddr);
 
 #if PTRACING
-    void PrintOn(ostream & strm) const;
+    void PrintOn(ostream & strm) const override;
 #endif
 
     bool IsValid() const;
@@ -584,7 +584,7 @@ class PSTUNClient : public PNatMethod, public PSTUN
     /**Get the NAT Method Name
      */
     static const char * MethodName();
-    virtual PCaselessString GetMethodName() const;
+    virtual PCaselessString GetMethodName() const override;
 
     /**Set the authentication credentials.
        Override of PNatMethod virtual.
@@ -593,7 +593,7 @@ class PSTUNClient : public PNatMethod, public PSTUN
       const PString & username, 
       const PString & password, 
       const PString & realm
-    );
+    ) override;
 
     /**Set the STUN server to use.
        The server string may be of the form host:port. If :port is absent
@@ -603,27 +603,27 @@ class PSTUNClient : public PNatMethod, public PSTUN
       */
     bool SetServer(
       const PString & server
-    );
+    ) override;
 
     /**Get the current server address name.
        Defaults to be "address:port" string form.
       */
-    virtual PString GetServer() const;
+    virtual PString GetServer() const override;
 
     virtual bool GetInterfaceAddress(
       PIPSocket::Address & internalAddress
-    ) const;
+    ) const override;
 
     virtual bool Open(
       const PIPSocket::Address & ifaceAddr
-    );
+    ) override;
 
     virtual bool IsAvailable(
       const PIPSocket::Address & binding,
       PObject * userData
-    );
+    ) override;
 
-    virtual void Close();
+    virtual void Close() override;
 
     /**Create a single socket.
        The STUN protocol is used to create a socket for which the external IP
@@ -643,7 +643,7 @@ class PSTUNClient : public PNatMethod, public PSTUN
       WORD localPort = 0,
       PObject * context = NULL,
       Component component = eComponent_Unknown
-    );
+    ) override;
 
     /**Create a socket pair.
        The STUN protocol is used to create a pair of sockets with adjacent
@@ -663,12 +663,12 @@ class PSTUNClient : public PNatMethod, public PSTUN
       PUDPSocket * & socket2,
       const PIPSocket::Address & binding = PIPSocket::GetDefaultIpAny(),
       PObject * context = NULL
-    );
+    ) override;
 
   protected:
-    virtual bool InternalGetServerAddress(PIPSocketAddressAndPort & externalAddressAndPort) const;
-    virtual PNATUDPSocket * InternalCreateSocket(Component component, PObject * context);
-    virtual void InternalUpdate(bool externalAddressOnly);
+    virtual bool InternalGetServerAddress(PIPSocketAddressAndPort & externalAddressAndPort) const override;
+    virtual PNATUDPSocket * InternalCreateSocket(Component component, PObject * context) override;
+    virtual void InternalUpdate(bool externalAddressOnly) override;
     bool InternalSetServer(const PString & server, const PIPSocketAddressAndPort & addr PTRACE_PARAM(, const char * source));
 
     PSTUNUDPSocket * m_socket;

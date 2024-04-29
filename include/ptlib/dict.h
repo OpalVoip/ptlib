@@ -68,7 +68,7 @@ class PKey : public PObject
   /**@name Overrides from class PObject */
   //@{
     /// Create a duplicate of the PKey.
-    virtual PObject * Clone() const { return new PKey(this->m_key); }
+    virtual PObject * Clone() const override { return new PKey(this->m_key); }
 
     /* Get the relative rank of the ordinal index. This is a simpel comparison
        of the objects PINDEX values.
@@ -79,7 +79,7 @@ class PKey : public PObject
        object and <code>GreaterThan</code> for \p obj logically
        greater than the object.
      */
-    virtual Comparison Compare(const PObject & obj) const
+    virtual Comparison Compare(const PObject & obj) const override
     {
       return Compare2(this->m_key, dynamic_cast<const my_type &>(obj).m_key);
     }
@@ -90,7 +90,7 @@ class PKey : public PObject
        @return
        hash table bucket number.
      */
-    virtual PINDEX HashFunction() const
+    virtual PINDEX HashFunction() const override
     {
 #if PINDEX_SIGNED
       return std::abs((PINDEX)this->m_key)%23;
@@ -105,7 +105,7 @@ class PKey : public PObject
        @return
        stream that the index was output to.
      */
-    virtual void PrintOn(ostream & strm) const { strm << this->m_key; }
+    virtual void PrintOn(ostream & strm) const override { strm << this->m_key; }
   //@}
 
   /**@name New functions for class */
@@ -191,9 +191,9 @@ class PHashTableInfo : public PBaseArray<PHashTableList>
       : ParentClass(initialSize), deleteKeys(true) { }
     PHashTableInfo(PHashTableList const * buffer, PINDEX length, PBoolean dynamic = true)
       : ParentClass(buffer, length, dynamic), deleteKeys(true) { }
-    virtual PObject * Clone() const { return PNEW PHashTableInfo(*this, GetSize()); }
+    virtual PObject * Clone() const override { return PNEW PHashTableInfo(*this, GetSize()); }
     virtual ~PHashTableInfo() { Destruct(); }
-    virtual void DestroyContents();
+    virtual void DestroyContents() override;
 
     void AppendElement(PObject * key, PObject * data PTRACE_PARAM(, PHashTable * owner));
     PObject * RemoveElement(const PObject & key);
@@ -245,7 +245,7 @@ class PHashTable : public PCollection
      */
     virtual Comparison Compare(
       const PObject & obj   ///< Other PHashTable to compare against.
-    ) const;
+    ) const override;
   //@}
 
 
@@ -260,7 +260,7 @@ class PHashTable : public PCollection
      */
     virtual PBoolean SetSize(
       PINDEX newSize  ///< New size for the hash table, this is ignored.
-    );
+    ) override;
   //@}
 
 
@@ -353,7 +353,7 @@ class PAbstractSet : public PHashTable
      */
     virtual PINDEX Append(
       PObject * obj   ///< New object to place into the collection.
-    );
+    ) override;
 
     /**Add a new object to the collection. If the objects value is already in
        the set then the object is \b not included. If the
@@ -370,7 +370,7 @@ class PAbstractSet : public PHashTable
     virtual PINDEX Insert(
       const PObject & before,   ///< Object value to insert before.
       PObject * obj             ///< New object to place into the collection.
-    );
+    ) override;
 
     /**Add a new object to the collection. If the objects value is already in
        the set then the object is \b not included. If the
@@ -387,7 +387,7 @@ class PAbstractSet : public PHashTable
     virtual PINDEX InsertAt(
       PINDEX index,   ///< Index position in collection to place the object.
       PObject * obj   ///< New object to place into the collection.
-    );
+    ) override;
 
     /**Remove the object from the collection. If the <code>AllowDeleteObjects</code> option
        is set then the object is also deleted.
@@ -401,7 +401,7 @@ class PAbstractSet : public PHashTable
      */
     virtual PBoolean Remove(
       const PObject * obj   ///< Existing object to remove from the collection.
-    );
+    ) override;
 
     /**Remove an object at the specified index. If the <code>AllowDeleteObjects</code>
        option is set then the object is also deleted.
@@ -416,7 +416,7 @@ class PAbstractSet : public PHashTable
      */
     virtual PObject * RemoveAt(
       PINDEX index   ///< Index position in collection to place the object.
-    );
+    ) override;
 
     /**This function is the same as PHashTable::AbstractGetKeyAt().
 
@@ -430,7 +430,7 @@ class PAbstractSet : public PHashTable
      */
     virtual PObject * GetAt(
       PINDEX index  ///< Index position in the collection of the object.
-    ) const;
+    ) const override;
 
     /**Add a new object to the collection. If the objects value is already in
        the set then the object is \b not included. If the
@@ -447,7 +447,7 @@ class PAbstractSet : public PHashTable
     virtual PBoolean SetAt(
       PINDEX index,   ///< Index position in collection to set.
       PObject * val   ///< New value to place into the collection.
-    );
+    ) override;
 
     /**Search the collection for the specific instance of the object. The
        object pointers are compared, not the values. The hash table is used
@@ -462,7 +462,7 @@ class PAbstractSet : public PHashTable
      */
     virtual PINDEX GetObjectsIndex(
       const PObject * obj   ///< Object to find.
-    ) const;
+    ) const override;
 
     /**Search the collection for the specified value of the object. The object
        values are compared, not the pointers.  So the objects in the
@@ -474,7 +474,7 @@ class PAbstractSet : public PHashTable
      */
     virtual PINDEX GetValuesIndex(
       const PObject & obj   ///< Object to find equal value.
-    ) const;
+    ) const override;
 
     /**Calculate union of sets.
        Returns true if any new elements were added.
@@ -528,7 +528,7 @@ template <class T> class PSet : public PAbstractSet
     /**Make a complete duplicate of the set. Note that all objects in the
        array are also cloned, so this will make a complete copy of the set.
      */
-    virtual PObject * Clone() const
+    virtual PObject * Clone() const override
       { return PNEW PSet(0, this); }
   //@}
 
@@ -754,7 +754,7 @@ template <class T> class PSet : public PAbstractSet
   public: \
     cls(PBoolean initialDeleteObjects = initDelObj) \
       : BaseClass(initialDeleteObjects) { } \
-    virtual PObject * Clone() const \
+    virtual PObject * Clone() const override \
       { return PNEW cls(0, this); } \
 
 
@@ -790,7 +790,7 @@ class PAbstractDictionary : public PHashTable
      */
     virtual void PrintOn(
       ostream &strm   ///< Stream to print the object into.
-    ) const;
+    ) const override;
   //@}
 
   /**@name Overrides from class PCollection */
@@ -806,7 +806,7 @@ class PAbstractDictionary : public PHashTable
     virtual PINDEX Insert(
       const PObject & key,   ///< Object value to use as the key.
       PObject * obj          ///< New object to place into the collection.
-    );
+    ) override;
 
     /**Insert a new object at the specified index. This function only applies
        to derived classes whose key is PINDEX based.
@@ -817,7 +817,7 @@ class PAbstractDictionary : public PHashTable
     virtual PINDEX InsertAt(
       PINDEX index,   ///< Index position in collection to place the object.
       PObject * obj   ///< New object to place into the collection.
-    );
+    ) override;
 
     /**Remove an object at the specified index.  This function only applies
        to derived classes whose key is PINDEX based. The returned pointer is
@@ -830,7 +830,7 @@ class PAbstractDictionary : public PHashTable
      */
     virtual PObject * RemoveAt(
       PINDEX index   ///< Index position in collection to place the object.
-    );
+    ) override;
 
     /**Set the object at the specified index to the new value. This function
        only applies to derived classes whose key is PINDEX based. This will
@@ -843,7 +843,7 @@ class PAbstractDictionary : public PHashTable
     virtual PBoolean SetAt(
       PINDEX index,   ///< Index position in collection to set.
       PObject * val   ///< New value to place into the collection.
-    );
+    ) override;
 
     /**Get the object at the specified index position. If the index was not in
        the collection then NULL is returned.
@@ -853,7 +853,7 @@ class PAbstractDictionary : public PHashTable
      */
     virtual PObject * GetAt(
       PINDEX index  ///< Index position in the collection of the object.
-    ) const;
+    ) const override;
 
     /**Search the collection for the specific instance of the object. The
        object pointers are compared, not the values. The hash table is used
@@ -868,7 +868,7 @@ class PAbstractDictionary : public PHashTable
      */
     virtual PINDEX GetObjectsIndex(
       const PObject * obj  ///< Object to find.
-    ) const;
+    ) const override;
 
     /**Search the collection for the specified value of the object. The object
        values are compared, not the pointers.  So the objects in the
@@ -880,7 +880,7 @@ class PAbstractDictionary : public PHashTable
      */
     virtual PINDEX GetValuesIndex(
       const PObject & obj  ///< Object to find value of.
-    ) const;
+    ) const override;
   //@}
 
 
@@ -956,7 +956,7 @@ class PAbstractDictionary : public PHashTable
      */
     virtual PINDEX Append(
       PObject * obj   ///< New object to place into the collection.
-    );
+    ) override;
 
     /**Remove the object from the collection. If the <code>AllowDeleteObjects</code> option
        is set then the object is also deleted.
@@ -970,7 +970,7 @@ class PAbstractDictionary : public PHashTable
      */
     virtual PBoolean Remove(
       const PObject * obj   ///< Existing object to remove from the collection.
-    );
+    ) override;
 
 };
 
@@ -1009,7 +1009,7 @@ template <class K, class D> class PDictionary : public PAbstractDictionary
        the array are also cloned, so this will make a complete copy of the
        dictionary.
      */
-    virtual PObject * Clone() const
+    virtual PObject * Clone() const override
       { return PNEW PDictionary(0, this); }
   //@}
 
@@ -1337,7 +1337,7 @@ template <class K> class POrdinalDictionary : public PDictionary<K, POrdinalKey>
        the array are also cloned, so this will make a complete copy of the
        dictionary.
      */
-    virtual PObject * Clone() const
+    virtual PObject * Clone() const override
       { return PNEW POrdinalDictionary(0, this); }
   //@}
 
@@ -1476,7 +1476,7 @@ template <class K> class POrdinalDictionary : public PDictionary<K, POrdinalKey>
   public: \
     cls() \
       : cls##_PTemplate() { } \
-    virtual PObject * Clone() const \
+    virtual PObject * Clone() const override \
       { return PNEW cls(0, this); } \
 
 

@@ -164,7 +164,7 @@ class PSmartPointer : public PObject
      */
     virtual Comparison Compare(
       const PObject & obj   ///< Other smart pointer to compare against.
-    ) const;
+    ) const override;
   //@}
 
   /**@name Pointer access functions */

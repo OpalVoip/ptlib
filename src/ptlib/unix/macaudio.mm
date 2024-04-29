@@ -602,7 +602,7 @@ public:
   }
   
   
-  virtual bool Open(const Params & params)
+  virtual bool Open(const Params & params) override
   {
     Close();
     
@@ -615,19 +615,19 @@ public:
   }
   
   
-  virtual PString GetName() const
+  virtual PString GetName() const override
   {
     return m_deviceName;
   }
   
   
-  virtual PBoolean IsOpen() const
+  virtual PBoolean IsOpen() const override
   {
     return os_handle > 0;
   }
   
   
-  virtual PBoolean Close()
+  virtual PBoolean Close() override
   {
     PTRACE_IF(4, IsOpen(), "Closing \"" << GetName() << '"');
 
@@ -655,7 +655,7 @@ public:
   }
   
   
-  virtual PBoolean Abort()
+  virtual PBoolean Abort() override
   {
     if (!IsOpen())
       return false;
@@ -670,7 +670,7 @@ public:
   }
   
   
-  virtual PBoolean Write(const void * buf, PINDEX len)
+  virtual PBoolean Write(const void * buf, PINDEX len) override
   {
     SetLastWriteCount(0);
     
@@ -702,13 +702,13 @@ public:
   }
   
   
-  virtual PBoolean HasPlayCompleted()
+  virtual PBoolean HasPlayCompleted() override
   {
     return m_queue.GetLength() == 0;
   }
   
   
-  virtual PBoolean WaitForPlayCompletion()
+  virtual PBoolean WaitForPlayCompletion() override
   {
     while (!HasPlayCompleted()) {
       PThread::Sleep(m_bufferSize*1000/GetSampleRate());
@@ -719,7 +719,7 @@ public:
   }
   
   
-  virtual PBoolean Read(void * buf, PINDEX len)
+  virtual PBoolean Read(void * buf, PINDEX len) override
   {
     SetLastReadCount(0);
     
@@ -758,7 +758,7 @@ public:
   }
   
   
-  virtual PBoolean StartRecording()
+  virtual PBoolean StartRecording() override
   {
     if (!IsOpen() || !PAssert(m_activeDirection == Recorder, "Trying to start recording from player"))
       return false;
@@ -791,7 +791,7 @@ public:
   }
   
   
-  virtual PBoolean SetFormat(unsigned numChannels, unsigned sampleRate, unsigned bitsPerSample)
+  virtual PBoolean SetFormat(unsigned numChannels, unsigned sampleRate, unsigned bitsPerSample) override
   {
     if (numChannels == GetChannels()&&
         sampleRate == GetSampleRate() &&
@@ -826,25 +826,25 @@ public:
   }
   
   
-  virtual unsigned GetChannels() const
+  virtual unsigned GetChannels() const override
   {
     return m_dataFormat.mChannelsPerFrame;
   }
   
   
-  virtual unsigned GetSampleRate() const
+  virtual unsigned GetSampleRate() const override
   {
     return m_dataFormat.mSampleRate;
   }
   
   
-  virtual unsigned GetSampleSize() const
+  virtual unsigned GetSampleSize() const override
   {
     return m_dataFormat.mBitsPerChannel;
   }
   
   
-  virtual PBoolean SetBuffers(PINDEX size, PINDEX count)
+  virtual PBoolean SetBuffers(PINDEX size, PINDEX count) override
   {
     if (count == m_bufferCount && size == m_bufferSize)
       return true;
@@ -865,7 +865,7 @@ public:
   }
   
   
-  virtual PBoolean GetBuffers(PINDEX & size, PINDEX & count)
+  virtual PBoolean GetBuffers(PINDEX & size, PINDEX & count) override
   {
     size = m_bufferSize;
     count = m_bufferCount;
@@ -873,7 +873,7 @@ public:
   }
   
   
-  virtual PBoolean SetVolume(unsigned newVolume)
+  virtual PBoolean SetVolume(unsigned newVolume) override
   {
     if (!IsOpen() || m_activeDirection != Player)
       return false;
@@ -891,7 +891,7 @@ public:
   }
   
   
-  virtual PBoolean GetVolume(unsigned & oldVolume)
+  virtual PBoolean GetVolume(unsigned & oldVolume) override
   {
     oldVolume = 0;
     
@@ -917,14 +917,14 @@ public:
   }
   
   
-  virtual bool SetMute(bool newMute)
+  virtual bool SetMute(bool newMute) override
   {
     m_muted = newMute;
     return true;
   }
   
   
-  virtual bool GetMute(bool & oldMute)
+  virtual bool GetMute(bool & oldMute) override
   {
     oldMute = m_muted;
     return true;

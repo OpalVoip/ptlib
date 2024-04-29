@@ -225,11 +225,11 @@ class PXMLRPCArrayBase : public PXMLRPCVariableBase {
     PXMLRPCArrayBase & operator=(const PXMLRPCArrayBase &);
 
   public:
-    virtual void PrintOn(ostream & strm) const;
-    virtual void Copy(const PXMLRPCVariableBase & other);
-    virtual PBoolean IsArray() const;
-    virtual PINDEX GetSize() const;
-    virtual PBoolean SetSize(PINDEX);
+    virtual void PrintOn(ostream & strm) const override;
+    virtual void Copy(const PXMLRPCVariableBase & other) override;
+    virtual PBoolean IsArray() const override;
+    virtual PINDEX GetSize() const override;
+    virtual PBoolean SetSize(PINDEX) override;
 
   protected:
     PContainer & m_array;
@@ -243,9 +243,9 @@ class PXMLRPCArrayObjectsBase : public PXMLRPCArrayBase {
     PXMLRPCArrayObjectsBase & operator=(const PXMLRPCArrayObjectsBase &);
 
   public:
-    virtual PString ToString(PINDEX i) const;
-    virtual void FromString(PINDEX i, const PString & str);
-    virtual PBoolean SetSize(PINDEX);
+    virtual PString ToString(PINDEX i) const override;
+    virtual void FromString(PINDEX i, const PString & str) override;
+    virtual PBoolean SetSize(PINDEX) override;
 
     virtual PObject * CreateObject() const = 0;
 
@@ -262,7 +262,7 @@ class PXMLRPCStructBase : public PObject, PNonCopyable
     PXMLRPCStructBase & operator=(const PXMLRPCStructBase &);
 
   public:
-    void PrintOn(ostream & strm) const;
+    void PrintOn(ostream & strm) const override;
 
     PINDEX GetNumVariables() const { return variablesByOrder.GetSize(); }
     PXMLRPCVariableBase & GetVariable(PINDEX idx) const { return variablesByOrder[idx]; }

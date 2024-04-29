@@ -27,7 +27,7 @@
  * Contributor(s): ______________________________________.
  */
 
-#ifdef __GNUC__
+#ifdef P_USE_PRAGMA
 #pragma implementation "pvidfile.h"
 #endif
 
@@ -41,6 +41,9 @@
 #include <ptlib/vconvert.h>
 
 #if P_IMAGEMAGICK==7
+  #ifndef MAGICKCORE_HDRI_ENABLE
+    #define MAGICKCORE_HDRI_ENABLE 1
+  #endif
   #include <MagickWand/MagickWand.h>
 #elif P_IMAGEMAGICK
   #include <wand/MagickWand.h>
@@ -332,40 +335,40 @@ class PStillImageVideoFile : public PVideoFile
       Close();
     }
 
-    virtual bool Close()
+    virtual bool Close() override
     { 
       m_pixelData.SetSize(0);
       return true;
     }
 
-    virtual PBoolean IsOpen() const
+    virtual PBoolean IsOpen() const override
     { 
       return !m_pixelData.IsEmpty();
     }
 
-    virtual off_t GetLength() const
+    virtual off_t GetLength() const override
     {
       return 1;
     }
 
 
-    virtual off_t GetPosition() const
+    virtual off_t GetPosition() const override
     {
       return 0;
     }
 
 
-    virtual bool SetPosition(off_t pos, PFile::FilePositionOrigin)
+    virtual bool SetPosition(off_t pos, PFile::FilePositionOrigin) override
     {
       return pos == 0;
     }
 
-    virtual PBoolean WriteFrame(const void *)
+    virtual PBoolean WriteFrame(const void *) override
     {
       return false;
     }
 
-    virtual PBoolean ReadFrame(void * frame)
+    virtual PBoolean ReadFrame(void * frame) override
     {
       if (!IsOpen())
         return false;
@@ -401,7 +404,7 @@ class PImageMagickFile : public PStillImageVideoFile
       MagickWand * operator->() const { return m_wand; }
     };
 
-    virtual bool InternalOpen(OpenMode mode, OpenOptions, PFileInfo::Permissions)
+    virtual bool InternalOpen(OpenMode mode, OpenOptions, PFileInfo::Permissions) override
     {
       if (mode != PFile::ReadOnly) {
         SetErrorValues(Miscellaneous, EINVAL);

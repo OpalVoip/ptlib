@@ -31,7 +31,7 @@
 #ifndef PTLIB_PTLIB_H
 #define PTLIB_PTLIB_H
 
-#ifdef __GNUC__
+#ifdef P_USE_PRAGMA
 #pragma interface
 #endif
 

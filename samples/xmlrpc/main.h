@@ -18,7 +18,7 @@ class XMLRPCApp : public PProcess
 
   public:
     XMLRPCApp();
-    void Main();
+    virtual void Main() override;
 };
 
 

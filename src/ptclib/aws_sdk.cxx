@@ -38,6 +38,7 @@ P_PUSH_MSVC_WARNINGS(26495)
 #include <aws/core/utils/logging/LogLevel.h>
 #include <aws/core/utils/logging/FormattedLogSystem.h>
 #include <aws/core/client/ClientConfiguration.h>
+#include <aws/core/auth/AWSCredentials.h>
 P_POP_MSVC_WARNINGS()
 
 
@@ -151,28 +152,29 @@ bool PAwsClientBase::SetProfile(const PString & profile)
   PString profileToUse = profile.empty() ? env.GetString("PTLIB_AWS_PROFILE", env.GetString("AWS_PROFILE")) : profile;
   if (profile.empty() || (profile == "default")) {
     PTRACE(4, "Default client config");
-    m_clientConfig = std::make_shared<Aws::Client::ClientConfiguration>();
+    m_clientConfig = std::make_unique<Aws::Client::ClientConfiguration>();
   }
   else {
     PTRACE(4, "Client config for \"" << profile << '"');
-    m_clientConfig = std::make_shared<Aws::Client::ClientConfiguration>(profile.c_str());
+    m_clientConfig = std::make_unique<Aws::Client::ClientConfiguration>(profile.c_str());
   }
 
   if (m_clientConfig->profileName.empty())
     return false;
 
-  m_accessKeyId = env.GetString("PTLIB_AWS_ACCESS_KEY_ID", env.GetString("AWS_ACCESS_KEY_ID"));
-  m_secretAccessKey = env.GetString("PTLIB_AWS_SECRET_ACCESS_KEY", env.GetString("AWS_SECRET_ACCESS_KEY"));
+  if (!m_credentials)
+    SetAccessKey(env.GetString("PTLIB_AWS_ACCESS_KEY_ID", env.GetString("AWS_ACCESS_KEY_ID")),
+                 env.GetString("PTLIB_AWS_SECRET_ACCESS_KEY", env.GetString("AWS_SECRET_ACCESS_KEY")));
 
-  if (m_accessKeyId.empty() || m_secretAccessKey.empty()) {
+  if (!m_credentials) {
     PConfig cfg(PProcess::Current().GetHomeDirectory() + ".aws/credentials", m_clientConfig->profileName.c_str());
-    m_accessKeyId = cfg.GetString("aws_access_key_id");
-    m_secretAccessKey = cfg.GetString("aws_secret_access_key");
+    SetAccessKey(cfg.GetString("aws_access_key_id"), cfg.GetString("aws_secret_access_key"));
   }
 
   PTRACE(4, "Client config: "
          "profile=\"" << m_clientConfig->profileName << "\" "
          "region=\"" << m_clientConfig->region << "\" "
+         "access-keys=\"" << (m_credentials ? "set" : "absent") << "\" "
          "proxy=" << m_clientConfig->proxyUserName << '@' << m_clientConfig->proxyHost << ':' << m_clientConfig->proxyPort);
   return true;
 }
@@ -192,8 +194,21 @@ PString PAwsClientBase::GetRegion() const
 
 void PAwsClientBase::SetAccessKey(const PString & accessKeyId, const PString & secretAccessKey)
 {
-  m_accessKeyId = accessKeyId;
-  m_secretAccessKey = secretAccessKey;
+  if (accessKeyId.empty() || secretAccessKey.empty())
+    m_credentials.reset();
+  else
+    m_credentials = std::make_unique<Aws::Auth::AWSCredentials>(accessKeyId.c_str(), secretAccessKey.c_str());
+}
+
+PString PAwsClientBase::GetAccessKeyId() const
+{
+  return m_credentials ? PString(m_credentials->GetAWSAccessKeyId().c_str()) : PString::Empty();
+}
+
+
+PString PAwsClientBase::GetSecretAccessKey() const
+{
+  return m_credentials ? PString(m_credentials->GetAWSSecretKey().c_str()) : PString::Empty();
 }
 
 

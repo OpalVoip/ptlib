@@ -193,7 +193,7 @@ public:
   }
 
 
-  void Main()
+  virtual void Main() override
   {
     PArgList & args = GetArguments();
     args.Parse("h-help.       print this help message.\n"

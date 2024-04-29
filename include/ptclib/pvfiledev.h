@@ -63,7 +63,7 @@ class PVideoInputDevice_VideoFile : public PVideoInputEmulatedDevice
     /**Get a list of all of the drivers available.
       */
     static PStringArray GetInputDeviceNames();
-    virtual PStringArray GetDeviceNames() const;
+    virtual PStringArray GetDeviceNames() const override;
 
 
     /**Open the device given the device name.
@@ -71,19 +71,19 @@ class PVideoInputDevice_VideoFile : public PVideoInputEmulatedDevice
     PBoolean Open(
       const PString & deviceName,   /// Device name to open
       PBoolean startImmediate = true    /// Immediately start device
-    );
+    ) override;
 
     /**Determine of the device is currently open.
       */
-    PBoolean IsOpen() ;
+    PBoolean IsOpen() override;
 
     /**Close the device.
       */
-    PBoolean Close();
+    PBoolean Close() override;
 
    
 protected:
-  virtual bool InternalReadFrameData(BYTE * frame);
+  virtual bool InternalReadFrameData(BYTE * frame) override;
 
    PVideoFile    * m_file;
    PDECLARE_READ_WRITE_MUTEX(m_mutex);
@@ -112,7 +112,7 @@ class PVideoOutputDevice_VideoFile : public PVideoOutputDevice
       */
     static PStringArray GetOutputDeviceNames();
 
-    virtual PStringArray GetDeviceNames() const
+    virtual PStringArray GetDeviceNames() const override
       { return GetOutputDeviceNames(); }
 
     /**Open the device given the device name.
@@ -120,23 +120,23 @@ class PVideoOutputDevice_VideoFile : public PVideoOutputDevice
     virtual PBoolean Open(
       const PString & deviceName,   /// Device name to open
       PBoolean startImmediate = true    /// Immediately start device
-    );
+    ) override;
 
     /**Start the video device I/O.
       */
-    PBoolean Start();
+    PBoolean Start() override;
 
     /**Stop the video device I/O capture.
       */
-    PBoolean Stop();
+    PBoolean Stop() override;
 
     /**Close the device.
       */
-    virtual PBoolean Close();
+    virtual PBoolean Close() override;
 
     /**Determine if the device is currently open.
       */
-    virtual PBoolean IsOpen();
+    virtual PBoolean IsOpen() override;
 
     /**Set the colour format to be used.
 
@@ -145,11 +145,11 @@ class PVideoOutputDevice_VideoFile : public PVideoOutputDevice
     */
     virtual PBoolean SetColourFormat(
       const PString & colourFormat   // New colour format for device.
-    );
+    ) override;
     
     /**Set a section of the output frame buffer.
       */
-    virtual PBoolean SetFrameData(const FrameData & frameData);
+    virtual PBoolean SetFrameData(const FrameData & frameData) override;
 
   protected:  
    PVideoFile * m_file;

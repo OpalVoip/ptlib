@@ -62,7 +62,7 @@ class PHTTPField : public PObject
      */
     virtual Comparison Compare(
       const PObject & obj
-    ) const;
+    ) const override;
 
     /** Get the identifier name of the field.
 
@@ -254,12 +254,12 @@ class PHTTPDividerField : public PHTTPField
   public:
     PHTTPDividerField();
 
-    virtual PHTTPField * NewField() const;
-    virtual void GetHTMLTag(PHTML & html) const;
-    virtual PString GetValue(PBoolean dflt = false) const;
-    virtual void SetValue(const PString & newValue);
-    virtual void SaveToConfig(PConfig & cfg) const;
-    virtual void SaveToJSON(PJSON::Base & json) const;
+    virtual PHTTPField * NewField() const override;
+    virtual void GetHTMLTag(PHTML & html) const override;
+    virtual PString GetValue(PBoolean dflt = false) const override;
+    virtual void SetValue(const PString & newValue) override;
+    virtual void SaveToConfig(PConfig & cfg) const override;
+    virtual void SaveToJSON(PJSON::Base & json) const override;
 };
 
 
@@ -276,57 +276,57 @@ class PHTTPCompositeField : public PHTTPField
 
     virtual void SetName(
       const PString & name   // New name for field
-    );
+    ) override;
 
     virtual const PHTTPField * LocateName(
       const PString & name    // Full field name to locate
-    ) const;
+    ) const override;
 
-    virtual PHTTPField * NewField() const;
+    virtual PHTTPField * NewField() const override;
 
-    virtual void ExpandFieldNames(PString & text, PINDEX start, PINDEX & finish) const;
+    virtual void ExpandFieldNames(PString & text, PINDEX start, PINDEX & finish) const override;
 
     virtual void GetHTMLTag(
       PHTML & html    // HTML to receive the field info.
-    ) const;
+    ) const override;
 
     virtual PString GetHTMLInput(
       const PString & input // Source HTML text for input tag.
-    ) const;
+    ) const override;
 
     virtual void GetHTMLHeading(
       PHTML & html    // HTML to receive the field info.
-    ) const;
+    ) const override;
 
-    virtual PString GetValue(PBoolean dflt = false) const;
+    virtual PString GetValue(PBoolean dflt = false) const override;
 
     virtual void SetValue(
       const PString & newValue   // New value for the field.
-    );
+    ) override;
 
     virtual bool LoadFromConfig(
       PConfig & cfg   // Configuration for value transfer.
-    );
+    ) override;
     virtual void SaveToConfig(
       PConfig & cfg   // Configuration for value transfer.
-    ) const;
+    ) const override;
 
     virtual void LoadFromJSON(
       const PJSON::Base & json   // JSON for value transfer.
-    );
+    ) override;
     virtual void SaveToJSON(
       PJSON::Base & json   // JSON for value transfer.
-    ) const;
+    ) const override;
 
-    virtual void GetAllNames(PStringArray & names) const;
+    virtual void GetAllNames(PStringArray & names) const override;
     virtual void SetAllValues(
       const PStringToString & data   // New value for the field.
-    );
+    ) override;
 
     virtual PBoolean ValidateAll(
       const PStringToString & data, // Proposed new value for the field.
       PStringStream & msg     // Stream to take error HTML if value not valid.
-    ) const;
+    ) const override;
 
 
     /** Get the number of sub-fields in the composite field. Note that this is
@@ -361,9 +361,9 @@ class PHTTPSubForm : public PHTTPCompositeField
       PINDEX secondaryField = P_MAX_INDEX   // Seconary field next to hotlink
     );
 
-  PHTTPField * NewField() const;
-  void GetHTMLTag(PHTML & html) const;
-  void GetHTMLHeading(PHTML & html) const;
+  PHTTPField * NewField() const override;
+  void GetHTMLTag(PHTML & html) const override;
+  void GetHTMLHeading(PHTML & html) const override;
 
   protected:
     PString m_subFormName;
@@ -385,34 +385,34 @@ class PHTTPFieldArray : public PHTTPCompositeField
     ~PHTTPFieldArray();
 
 
-    virtual PHTTPField * NewField() const;
+    virtual PHTTPField * NewField() const override;
 
-    virtual void ExpandFieldNames(PString & text, PINDEX start, PINDEX & finish) const;
+    virtual void ExpandFieldNames(PString & text, PINDEX start, PINDEX & finish) const override;
 
     virtual void GetHTMLTag(
       PHTML & html    // HTML to receive the field info.
-    ) const;
+    ) const override;
 
     virtual bool LoadFromConfig(
       PConfig & cfg   // Configuration for value transfer.
-    );
+    ) override;
     virtual void SaveToConfig(
       PConfig & cfg   // Configuration for value transfer.
-    ) const;
+    ) const override;
 
     virtual void LoadFromJSON(
       const PJSON::Base & json   // JSON for value transfer.
-    );
+    ) override;
     virtual void SaveToJSON(
       PJSON::Base & json   // JSON for value transfer.
-    ) const;
+    ) const override;
 
 
     virtual void SetAllValues(
       const PStringToString & data   // New value for the field.
-    );
+    ) override;
 
-    virtual PINDEX GetSize() const;
+    virtual PINDEX GetSize() const override;
     void SetSize(PINDEX newSize);
 
     PStringArray GetStrings(
@@ -459,17 +459,17 @@ class PHTTPStringField : public PHTTPField
       int columns = 0
     );
 
-    virtual PHTTPField * NewField() const;
+    virtual PHTTPField * NewField() const override;
 
     virtual void GetHTMLTag(
       PHTML & html    ///< HTML to receive the field info.
-    ) const;
+    ) const override;
 
-    virtual PString GetValue(PBoolean dflt = false) const;
+    virtual PString GetValue(PBoolean dflt = false) const override;
 
     virtual void SetValue(
       const PString & newVal
-    );
+    ) override;
 
 
   protected:
@@ -499,17 +499,17 @@ class PHTTPPasswordField : public PHTTPStringField
       const char * help = NULL
     );
 
-    virtual PHTTPField * NewField() const;
+    virtual PHTTPField * NewField() const override;
 
     virtual void GetHTMLTag(
       PHTML & html    ///< HTML to receive the field info.
-    ) const;
+    ) const override;
 
-    virtual PString GetValue(PBoolean dflt = false) const;
+    virtual PString GetValue(PBoolean dflt = false) const override;
 
     virtual void SetValue(
       const PString & newVal
-    );
+    ) override;
 
     static PString Decrypt(const PString & pword);
 	static PString Encrypt(const PString & clear);
@@ -526,16 +526,16 @@ class PHTTPDateField : public PHTTPStringField
       PTime::TimeFormat fmt = PTime::ShortDate
     );
 
-    virtual PHTTPField * NewField() const;
+    virtual PHTTPField * NewField() const override;
 
     virtual void SetValue(
       const PString & newValue
-    );
+    ) override;
 
     virtual PBoolean Validated(
       const PString & newValue,
       PStringStream & msg
-    ) const;
+    ) const override;
 
   protected:
     PTime::TimeFormat m_format;
@@ -562,36 +562,36 @@ class PHTTPIntegerField : public PHTTPField
       const char * help = NULL
     );
 
-    virtual PHTTPField * NewField() const;
+    virtual PHTTPField * NewField() const override;
 
     virtual void GetHTMLTag(
       PHTML & html    ///< HTML to receive the field info.
-    ) const;
+    ) const override;
 
-    virtual PString GetValue(PBoolean dflt = false) const;
+    virtual PString GetValue(PBoolean dflt = false) const override;
 
     virtual void SetValue(
       const PString & newVal
-    );
+    ) override;
 
     virtual bool LoadFromConfig(
       PConfig & cfg   ///< Configuration for value transfer.
-    );
+    ) override;
     virtual void SaveToConfig(
       PConfig & cfg   ///< Configuration for value transfer.
-    ) const;
+    ) const override;
 
     virtual void LoadFromJSON(
       const PJSON::Base & json   // JSON for value transfer.
-    );
+    ) override;
     virtual void SaveToJSON(
       PJSON::Base & json   // JSON for value transfer.
-    ) const;
+    ) const override;
 
     virtual PBoolean Validated(
       const PString & newVal,
       PStringStream & msg
-    ) const;
+    ) const override;
 
 
   protected:
@@ -617,35 +617,35 @@ class PHTTPBooleanField : public PHTTPField
       const char * help = NULL
     );
 
-    virtual PHTTPField * NewField() const;
+    virtual PHTTPField * NewField() const override;
 
     virtual void GetHTMLTag(
       PHTML & html    ///< HTML to receive the field info.
-    ) const;
+    ) const override;
 
     virtual PString GetHTMLInput(
       const PString & input
-    ) const;
+    ) const override;
 
-    virtual PString GetValue(PBoolean dflt = false) const;
+    virtual PString GetValue(PBoolean dflt = false) const override;
 
     virtual void SetValue(
       const PString & newVal
-    );
+    ) override;
 
     virtual bool LoadFromConfig(
       PConfig & cfg   ///< Configuration for value transfer.
-    );
+    ) override;
     virtual void SaveToConfig(
       PConfig & cfg   ///< Configuration for value transfer.
-    ) const;
+    ) const override;
 
     virtual void LoadFromJSON(
       const PJSON::Base & json   // JSON for value transfer.
-    );
+    ) override;
     virtual void SaveToJSON(
       PJSON::Base & json   // JSON for value transfer.
-    ) const;
+    ) const override;
 
 
   protected:
@@ -718,21 +718,21 @@ class PHTTPRadioField : public PHTTPField
       const char * help = NULL
     );
 
-    virtual PHTTPField * NewField() const;
+    virtual PHTTPField * NewField() const override;
 
     virtual void GetHTMLTag(
       PHTML & html    ///< HTML to receive the field info.
-    ) const;
+    ) const override;
 
     virtual PString GetHTMLInput(
       const PString & input
-    ) const;
+    ) const override;
 
-    virtual PString GetValue(PBoolean dflt = false) const;
+    virtual PString GetValue(PBoolean dflt = false) const override;
 
     virtual void SetValue(
       const PString & newVal
-    );
+    ) override;
 
 
   protected:
@@ -780,17 +780,17 @@ class PHTTPSelectField : public PHTTPField
       bool enumeration = false
     );
 
-    virtual PHTTPField * NewField() const;
+    virtual PHTTPField * NewField() const override;
 
     virtual void GetHTMLTag(
       PHTML & html    ///< HTML to receive the field info.
-    ) const;
+    ) const override;
 
-    virtual PString GetValue(PBoolean dflt = false) const;
+    virtual PString GetValue(PBoolean dflt = false) const override;
 
     virtual void SetValue(
       const PString & newVal
-    );
+    ) override;
 
   protected:
     void Construct(PINDEX initVal, bool enumeration);
@@ -836,7 +836,7 @@ class PHTTPEnumField : public PHTTPSelectField
       const char * help = NULL
     ) : PHTTPSelectField(name, title, count, valueStrings, initVal, help, true) { }
 
-    virtual PHTTPField * NewField() const { return new PHTTPEnumField(m_baseName, m_title, m_values, (Enumeration)m_initialValue, m_help); }
+    virtual PHTTPField * NewField() const override { return new PHTTPEnumField(m_baseName, m_title, m_values, (Enumeration)m_initialValue, m_help); }
 };
 
 
@@ -868,12 +868,12 @@ class PHTTPForm : public PHTTPString
     virtual void OnLoadedText(
       PHTTPRequest & request,    ///< Information on this request.
       PString & text             ///< Data used in reply.
-    );
+    ) override;
     virtual PBoolean Post(
       PHTTPRequest & request,       ///< Information on this request.
       const PStringToString & data, ///< Variables in the POST data.
       PHTML & replyMessage          ///< Reply message for post.
-    );
+    ) override;
 
 
     PHTTPField * Add(
@@ -940,12 +940,12 @@ class PHTTPConfig : public PHTTPForm
     virtual void OnLoadedText(
       PHTTPRequest & request,    ///< Information on this request.
       PString & text             ///< Data used in reply.
-    );
+    ) override;
     virtual PBoolean Post(
       PHTTPRequest & request,       ///< Information on this request.
       const PStringToString & data, ///< Variables in the POST data.
       PHTML & replyMessage          ///< Reply message for post.
-    );
+    ) override;
 
 
     /** Load all of the values for the resource from the configuration.
@@ -1096,12 +1096,12 @@ class PHTTPConfigSectionList : public PHTTPString
     virtual void OnLoadedText(
       PHTTPRequest & request,    ///< Information on this request.
       PString & text             ///< Data used in reply.
-    );
+    ) override;
     virtual PBoolean Post(
       PHTTPRequest & request,       ///< Information on this request.
       const PStringToString & data, ///< Variables in the POST data.
       PHTML & replyMessage          ///< Reply message for post.
-    );
+    ) override;
 
   protected:
     PString m_sectionPrefix;

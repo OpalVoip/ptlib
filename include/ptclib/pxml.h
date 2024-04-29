@@ -110,8 +110,8 @@ class PXML : public PXMLBase
     PXML(const PXML & xml);
     ~PXML();
 
-    void ReadFrom(istream & strm);
-    void PrintOn(ostream & strm) const;
+    void ReadFrom(istream & strm) override;
+    void PrintOn(ostream & strm) const override;
     PString AsString() const;
 
     bool IsDirty() const;
@@ -131,7 +131,7 @@ class PXML : public PXMLBase
     bool SaveFile(const PFilePath & fn);
     bool SaveFile(const PFilePath & fn, Options options);
     virtual bool OnSaveProgress(unsigned /*percent*/) const { return true; }
-    virtual bool OutputProgress() const;
+    virtual bool OutputProgress() const override;
 
     virtual PINDEX GetObjectCount() const;
 
@@ -139,7 +139,7 @@ class PXML : public PXMLBase
 
     virtual PBoolean IsNoIndentElement(
       const PString & elementName
-    ) const;
+    ) const override;
 
 
     virtual PXMLElement * CreateElement(const PCaselessString & name, const char * data = NULL);
@@ -338,7 +338,7 @@ class PXMLObject : public PObject
     void GetFilePosition(unsigned & col, unsigned & line) const { col = m_column; line = m_lineNumber; }
     void SetFilePosition(unsigned   col, unsigned   line)       { m_column = col; m_lineNumber = line; }
 
-    virtual PXMLObject * Clone() const = 0;
+    virtual PXMLObject * Clone() const override = 0;
 
 #if PTRACING
     struct PrintTraceClass
@@ -374,21 +374,21 @@ class PXMLData : public PXMLObject
     PXMLData(const PString & data);
     PXMLData(const char * data, int len);
 
-    PBoolean IsElement() const    { return false; }
+    PBoolean IsElement() const override { return false; }
 
     void SetString(const PString & str, bool dirty = true);
 
     const PString & GetString() const { return m_value; }
 
-    void Output(ostream & strm, const PXMLBase & xml, int indent) const;
+    void Output(ostream & strm, const PXMLBase & xml, int indent) const override;
 
-    PXMLObject * Clone() const;
+    PXMLObject * Clone() const override;
 
   protected:
     PString m_value;
 
 #if PTRACING
-    virtual void InternalPrintTrace(ostream & strm) const;
+    virtual void InternalPrintTrace(ostream & strm) const override;
 #endif
 };
 
@@ -403,12 +403,12 @@ class PXMLElement : public PXMLObject
   public:
     PXMLElement(const char * name = NULL, const char * data = NULL);
 
-    virtual PINDEX GetObjectCount() const;
+    virtual PINDEX GetObjectCount() const override;
 
-    PBoolean IsElement() const { return true; }
+    PBoolean IsElement() const override { return true; }
 
-    void PrintOn(ostream & strm) const;
-    void Output(ostream & strm, const PXMLBase & xml, int indent) const;
+    void PrintOn(ostream & strm) const override;
+    void Output(ostream & strm, const PXMLBase & xml, int indent) const override;
 
     const PCaselessString & GetName() const
       { return m_name; }
@@ -466,7 +466,7 @@ class PXMLElement : public PXMLObject
     virtual PXMLData * AddData(const PString & data);
     virtual void EndData() { }
 
-    PXMLObject * Clone() const;
+    PXMLObject * Clone() const override;
 
     void AddNamespace(const PString & prefix, const PString & uri);
     void RemoveNamespace(const PString & prefix);
@@ -485,7 +485,7 @@ class PXMLElement : public PXMLObject
     PArray<PXMLObject> m_subObjects;
 
 #if PTRACING
-    virtual void InternalPrintTrace(ostream & strm) const;
+    virtual void InternalPrintTrace(ostream & strm) const override;
 #endif
 };
 
@@ -507,7 +507,7 @@ class PXMLRootElement : public PXMLElement
     { }
 
     virtual PObject * Clone();
-    virtual PXMLElement * CreateElement(const PCaselessString & name, const char * data = NULL);
+    virtual PXMLElement * CreateElement(const PCaselessString & name, const char * data = NULL) override;
 
   protected:
     PXML & m_document;
@@ -574,14 +574,14 @@ class PXMLParser : public PXMLBase, public PXMLParserBase
       off_t progressTotal
     );
 
-    virtual void StartDocTypeDecl(const char * docType, const char * sysid, const char * pubid, int hasInternalSubSet);
-    virtual void XmlDecl(const char * version, const char * encoding, int standAlone);
-    virtual void StartNamespaceDeclHandler(const char * prefix, const char * uri);
-    virtual void StartElement(const char * name, const char **attrs);
-    virtual void EndElement(const char * name);
-    virtual void AddCharacterData(const char * data, int len);
+    virtual void StartDocTypeDecl(const char * docType, const char * sysid, const char * pubid, int hasInternalSubSet) override;
+    virtual void XmlDecl(const char * version, const char * encoding, int standAlone) override;
+    virtual void StartNamespaceDeclHandler(const char * prefix, const char * uri) override;
+    virtual void StartElement(const char * name, const char **attrs) override;
+    virtual void EndElement(const char * name) override;
+    virtual void AddCharacterData(const char * data, int len) override;
 
-    virtual bool Progress();
+    virtual bool Progress() override;
 
     PXML & GetDocument() const { return m_document; }
 
@@ -602,7 +602,7 @@ class PXMLStreamParser : public PXMLParser
   public:
     PXMLStreamParser(PXML & doc, Options options = NoOptions);
 
-    virtual void EndElement(const char * name);
+    virtual void EndElement(const char * name) override;
     virtual PXMLElement * Read(PChannel * channel);
 
   protected:

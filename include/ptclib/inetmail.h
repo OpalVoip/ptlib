@@ -156,7 +156,7 @@ class PSMTPClient : public PSMTP
        @return
        true if the channel was closed and the QUIT accepted by the server.
      */
-    virtual PBoolean Close();
+    virtual PBoolean Close() override;
 
 
   // New functions for class.
@@ -200,7 +200,7 @@ class PSMTPClient : public PSMTP
 
 
   protected:
-    PBoolean OnOpen();
+    PBoolean OnOpen() override;
 
     bool            m_haveHello;
     PStringToString m_extensions;
@@ -324,7 +324,7 @@ class PSMTPServer : public PSMTP
 
 
   protected:
-    PBoolean OnOpen();
+    PBoolean OnOpen() override;
 
     virtual void OnHELO(
       const PCaselessString & remoteHost  ///< Name of remote host.
@@ -512,7 +512,7 @@ class PPOP3 : public PInternetProtocol
      */
     virtual PINDEX ParseResponse(
       const PString & line ///< Input response line to be parsed
-    );
+    ) override;
 
   // Member variables
     static const PString & okResponse();
@@ -572,7 +572,7 @@ class PPOP3Client : public PPOP3
        @return
        true if the channel was closed and the QUIT accepted by the server.
      */
-    virtual PBoolean Close();
+    virtual PBoolean Close() override;
 
 
   // New functions for class.
@@ -652,7 +652,7 @@ class PPOP3Client : public PPOP3
 
 
   protected:
-    PBoolean OnOpen();
+    PBoolean OnOpen() override;
 
   // Member variables
     PBoolean loggedIn;
@@ -737,7 +737,7 @@ class PPOP3Server : public PPOP3
     
 
   protected:
-    PBoolean OnOpen();
+    PBoolean OnOpen() override;
 
     virtual void OnUSER(
       const PString & name  ///< Name of user.
@@ -859,7 +859,7 @@ class PRFC822Channel : public PIndirectChannel
        This assures that all mime fields etc are closed off before closing
        the underliying channel.
       */
-    PBoolean Close();
+    PBoolean Close() override;
 
     /** Low level write to the channel.
 
@@ -872,7 +872,7 @@ class PRFC822Channel : public PIndirectChannel
     virtual PBoolean Write(
       const void * buf, ///< Pointer to a block of memory to write.
       PINDEX len        ///< Number of bytes to write.
-    );
+    ) override;
 
 
     /**Begin a new message.
@@ -1020,7 +1020,7 @@ class PRFC822Channel : public PIndirectChannel
 
 
   protected:
-    PBoolean OnOpen();
+    PBoolean OnOpen() override;
 
     bool        writeHeaders;
     PMIMEInfo   headers;

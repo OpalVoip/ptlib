@@ -68,7 +68,7 @@ class PServiceProcess : public PProcess
        
        Default behaviour is to wait until m_exitMain is signalled.
      */
-    virtual void Main();
+    virtual void Main() override;
 
   /**@name Callback functions */
   //@{
@@ -144,10 +144,10 @@ class PServiceProcess : public PProcess
     /* Internal initialisation function called directly from
        <code>main()</code>. The user should never call this function.
      */
-    virtual int InternalMain(void * arg = NULL);
+    virtual int InternalMain(void * arg = NULL) override;
 
 
-    virtual bool IsServiceProcess() const;
+    virtual bool IsServiceProcess() const override;
 
 
   protected:

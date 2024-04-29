@@ -87,7 +87,7 @@ class PURL : public PObject
      */
     virtual Comparison Compare(
       const PObject & obj   ///< Object to compare against.
-    ) const;
+    ) const override;
 
     /**This function yields a hash value required by the <code>PDictionary</code>
        class. A descendent class that is required to be the key of a dictionary
@@ -100,20 +100,20 @@ class PURL : public PObject
        @return
        hash function value for class instance.
      */
-    virtual PINDEX HashFunction() const;
+    virtual PINDEX HashFunction() const override;
 
     /**Output the contents of the URL to the stream as a string.
      */
     virtual void PrintOn(
       ostream &strm   ///< Stream to print the object into.
-    ) const;
+    ) const override;
 
     /**Input the contents of the URL from the stream. The input is a URL in
        string form.
      */
     virtual void ReadFrom(
       istream &strm   ///< Stream to read the objects contents from.
-    );
+    ) override;
   //@}
  
   /**@name New functions for class. */
@@ -165,6 +165,8 @@ class PURL : public PObject
       PathTranslation,
       /// Translate the query variable field for a URL.
       QueryTranslation,
+      /// Translate the fragment variable field for a URL.
+      FragmentTranslation,
       /// Translate the parameter variables field for a URL.
       ParameterTranslation,
       /// Translate the quoted parameter variables field for a URL.

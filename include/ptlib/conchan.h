@@ -117,13 +117,13 @@ class PConsoleChannel : public PChannel
 
        @return the name of the channel.
      */
-    virtual PString GetName() const;
+    virtual PString GetName() const override;
 
     /** Close the channel, shutting down the link to the data source.
 
        @return true if the channel successfully closed.
      */
-    virtual PBoolean Close();
+    virtual PBoolean Close() override;
 
     /** Read a single 8 bit byte from the channel. If one was not available
        within the read timeout period, or an I/O error occurred, then the
@@ -132,7 +132,7 @@ class PConsoleChannel : public PChannel
        @return
        byte read or -1 if no character could be read.
      */
-    virtual int ReadChar();
+    virtual int ReadChar() override;
 
     /**Set local echo mode.
        For some classes of channel, e.g. PConsoleChannel, data read by this
@@ -143,7 +143,7 @@ class PConsoleChannel : public PChannel
       */
     virtual bool SetLocalEcho(
       bool localEcho
-    );
+    ) override;
 
     /**Set line buffered mode.
        For some classes of channel, e.g. PConsoleChannel, data read by this

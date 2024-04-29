@@ -130,7 +130,7 @@ class PChannel : public PObject, public std::iostream
      */
     virtual Comparison Compare(
       const PObject & obj   ///< Other PString to compare against.
-    ) const;
+    ) const override;
 
     /**Calculate a hash value for use in sets and dictionaries.
     
@@ -145,7 +145,7 @@ class PChannel : public PObject, public std::iostream
        @return
        hash value for string.
      */
-    virtual PINDEX HashFunction() const;
+    virtual PINDEX HashFunction() const override;
   //@}
 
   /**@name Information functions */
@@ -778,9 +778,9 @@ class PNullChannel : public PChannel
   public:
     PNullChannel();
 
-    virtual PString GetName() const { return "null"; }
-    virtual PBoolean Read(void *, PINDEX);
-    virtual PBoolean Write(const void *, PINDEX);
+    virtual PString GetName() const override { return "null"; }
+    virtual PBoolean Read(void *, PINDEX) override;
+    virtual PBoolean Write(const void *, PINDEX) override;
 };
 
 

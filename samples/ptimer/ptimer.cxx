@@ -80,7 +80,7 @@ public:
 
   ~DelayThread();
 
-  void Main();
+  virtual void Main() override;
 
 protected:
   PINDEX delay;
@@ -103,7 +103,7 @@ class TimerOnThread : public PThread
 public:
   TimerOnThread(PTimer & _timer);
 
-  void Main();
+  virtual void Main() override;
 
 protected:
 
@@ -124,7 +124,7 @@ public:
   {
   }
 
-  void Main();
+  virtual void Main() override;
 
 protected:
 };
@@ -145,7 +145,7 @@ public:
     iteration = 0; keepGoing = true;
   }
 
-  void Main();
+  virtual void Main() override;
 
   PINDEX GetIteration()
   {
@@ -177,7 +177,7 @@ class PTimerTest : public PProcess
 
 public:
   PTimerTest();
-  virtual void Main();
+  virtual void Main() override;
 
   unsigned Delay()
   {

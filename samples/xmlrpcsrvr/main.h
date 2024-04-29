@@ -20,7 +20,7 @@ class Xmlrpcsrvr : public PHTTPServiceProcess
 
   public:
     Xmlrpcsrvr();
-    void Main();
+    virtual void Main() override;
     PBoolean OnStart();
     void OnStop();
     void OnConfigChanged();

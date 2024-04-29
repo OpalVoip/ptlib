@@ -73,12 +73,12 @@ class PRemoteConnection : public PObject, PNonCopyable
      */
     virtual Comparison Compare(
       const PObject & obj     ///< Another connection instance.
-    ) const;
+    ) const override;
 
     /** Get has value for the connection
         @return Hash value of the connection name string.
       */
-    virtual PINDEX HashFunction() const;
+    virtual PINDEX HashFunction() const override;
   //@}
 
   /**@name Dial/Hangup functions */

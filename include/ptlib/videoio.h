@@ -97,7 +97,7 @@ class PVideoFrameInfo : public PObject
      */
     virtual Comparison Compare(
       const PObject & obj   // Object to compare against.
-    ) const;
+    ) const override;
 
     /** Output the contents of the object to the stream. The exact output is
        dependent on the exact semantics of the descendent class. This is
@@ -107,7 +107,7 @@ class PVideoFrameInfo : public PObject
      */
     virtual void PrintOn(
       ostream & strm   // Stream to print the object into.
-    ) const;
+    ) const override;
 
     /**Set the frame size to be used.
 
@@ -299,7 +299,7 @@ class PVideoControlInfo : public PObject
       , m_current(reset)
     { }
 
-    virtual void PrintOn(ostream & strm) const;
+    virtual void PrintOn(ostream & strm) const override;
 
     bool IsValid() const   { return m_type != EndTypes; }
 
@@ -334,7 +334,7 @@ class PVideoInteractionInfo : public PObject
     );
 
     PVideoInteractionInfo();
-    virtual void PrintOn(ostream & strm) const;
+    virtual void PrintOn(ostream & strm) const override;
     static PString AsString(const Type & type);
 
     Type m_type;
@@ -392,7 +392,7 @@ class PVideoDevice : public PVideoFrameInfo
      */
     virtual void PrintOn(
       ostream & strm   // Stream to print the object into.
-    ) const;
+    ) const override;
 
     P_DECLARE_STREAMABLE_ENUM(VideoFormat,
       PAL,
@@ -604,7 +604,7 @@ class PVideoDevice : public PVideoFrameInfo
     virtual PBoolean SetFrameSize(
       unsigned width,   ///< New width of frame
       unsigned height   ///< New height of frame
-    );
+    ) override;
 
     /**Get the frame size being used.
        If a converter exists, the destination frame size of the converter
@@ -614,14 +614,14 @@ class PVideoDevice : public PVideoFrameInfo
     virtual PBoolean GetFrameSize(
       unsigned & width,
       unsigned & height
-    ) const;
+    ) const override;
 
     /**Get the colour format being used.
        If a converter exists, the destination colour format of the converter
        is returned, not the underlying physical device. If you wish the
        physical device colout format use PVideoFrameInfo::GetColourFormat().
       */
-    virtual PString GetColourFormat() const;
+    virtual PString GetColourFormat() const override;
 
     /**Get the maximum frame size in bytes.
        This gets the maximum of the physical device or the converted frame
@@ -782,19 +782,19 @@ class PVideoOutputDevice : public PVideoDevice
 
     /**Close the device.
       */
-    virtual PBoolean Close() { return true; }
+    virtual PBoolean Close() override { return true; }
 
     /**Start the video device I/O display.
       */
-    virtual PBoolean Start() { return true; }
+    virtual PBoolean Start() override { return true; }
 
     /**Stop the video device I/O display.
       */
-    virtual PBoolean Stop() { return true; }
+    virtual PBoolean Stop() override { return true; }
 
     /** Is the device a camera, and obtain video
      */
-    virtual PBoolean CanCaptureVideo() const;
+    virtual PBoolean CanCaptureVideo() const override;
 
     struct FrameData
     {
@@ -897,7 +897,7 @@ class PVideoOutputDeviceRGB : public PVideoOutputDevice
     */
     virtual PBoolean SetColourFormat(
       const PString & colourFormat // New colour format for device.
-    );
+    ) override;
 
     /**Set the frame size to be used.
 
@@ -910,18 +910,18 @@ class PVideoOutputDeviceRGB : public PVideoOutputDevice
     virtual PBoolean SetFrameSize(
       unsigned width,   ///< New width of frame
       unsigned height   ///< New height of frame
-    );
+    ) override;
 
     /**Get the maximum frame size in bytes.
 
        Note a particular device may be able to provide variable length
        frames (eg motion JPEG) so will be the maximum size of all frames.
       */
-    virtual PINDEX GetMaxFrameBytes();
+    virtual PINDEX GetMaxFrameBytes() override;
 
     /**Set a section of the output frame buffer.
       */
-    virtual PBoolean SetFrameData(const FrameData & frameData);
+    virtual PBoolean SetFrameData(const FrameData & frameData) override;
 
     /**Indicate frame may be displayed.
       */
@@ -1015,7 +1015,7 @@ class PVideoInputDevice : public PVideoDevice
       PCLASSINFO(Capabilities, PObject);
     public:
       Capabilities();
-      virtual void PrintOn(ostream & strm) const;
+      virtual void PrintOn(ostream & strm) const override;
 
       unsigned                         m_channels;
       bool                             m_brightness;
@@ -1060,14 +1060,14 @@ class PVideoInputDevice : public PVideoDevice
     virtual PBoolean Open(
       const PString & deviceName,   ///< Device name to open
       PBoolean startImmediate = true    ///< Immediately start device
-    ) = 0;
+    ) override = 0;
 
     virtual PBoolean Close(
-    ) { return true; }
+    ) override { return true; }
 
     /** Is the device a camera, and obtain video
      */
-    virtual PBoolean CanCaptureVideo() const;
+    virtual PBoolean CanCaptureVideo() const override;
  
     /**Determine if the video device I/O capture is in progress.
       */
@@ -1083,7 +1083,7 @@ class PVideoInputDevice : public PVideoDevice
     virtual PBoolean SetNearestFrameSize(
       unsigned width,   ///< New width of frame
       unsigned height   ///< New height of frame
-    );
+    ) override;
 
     /**Grab a frame.
        If \p wait is false, and no frame is available, then the function
@@ -1196,47 +1196,47 @@ class PVideoInputDeviceIndirect : public PVideoInputDevice
     virtual void SetActualDevice(PVideoInputDevice * actualDevice, bool autoDelete = true);
     virtual PVideoInputDevice * GetActualDevice() const;
 
-    virtual Comparison Compare(const PObject & obj) const;
-    virtual void PrintOn(ostream & strm) const;
-    virtual PBoolean SetFrameSize(unsigned width, unsigned height);
-    virtual PBoolean SetFrameSar(unsigned width, unsigned height);
-    virtual PBoolean SetFrameRate(unsigned rate);
-    virtual PBoolean SetColourFormat(const PString & colourFormat);
-    virtual void SetResizeMode(ResizeMode mode);
-    virtual PINDEX CalculateFrameBytes() const;
-    virtual bool Parse(const PString & str);
-    virtual PString GetDeviceName() const;
-    virtual PStringArray GetDeviceNames() const;
-    virtual PBoolean OpenFull(const OpenArgs & args, PBoolean startImmediate = true);
-    virtual PBoolean Open(const PString & deviceName, PBoolean startImmediate = true);
-    virtual PBoolean IsOpen();
-    virtual PBoolean Close();
-    virtual PBoolean Start();
-    virtual PBoolean Stop();
-    virtual PBoolean SetVideoFormat(VideoFormat videoFormat);
-    virtual int GetNumChannels();
-    virtual PStringArray GetChannelNames();
-    virtual PBoolean SetChannel(int channelNumber);
-    virtual int GetChannel() const;
-    virtual PBoolean SetVFlipState(PBoolean newVFlipState);
-    virtual PBoolean GetFrameSizeLimits(unsigned & minWidth, unsigned & minHeight, unsigned & maxWidth, unsigned & maxHeight);
-    virtual PBoolean SetNearestFrameSize(unsigned width, unsigned height);
-    virtual bool SetFrameInfoConverter(const PVideoFrameInfo & info);
-    virtual PBoolean SetColourFormatConverter(const PString & colourFormat);
-    virtual PBoolean SetFrameSizeConverter(unsigned width, unsigned height, ResizeMode resizeMode = eMaxResizeMode);
-    virtual int GetLastError() const;
-    virtual bool GetAttributes(Attributes & attributes);
-    virtual bool SetAttributes(const Attributes & attributes);
-    virtual PBoolean SetVideoChannelFormat(int channelNumber, VideoFormat videoFormat);
-    virtual bool GetDeviceCapabilities(Capabilities * capabilities) const;
-    virtual PBoolean IsCapturing();
-    virtual bool FlowControl(const void * flowData);
-    virtual bool SetCaptureMode(unsigned mode);
-    virtual int GetCaptureMode() const;
-    virtual bool SetControl(PVideoControlInfo::Types type, int value, ControlMode mode);
+    virtual Comparison Compare(const PObject & obj) const override;
+    virtual void PrintOn(ostream & strm) const override;
+    virtual PBoolean SetFrameSize(unsigned width, unsigned height) override;
+    virtual PBoolean SetFrameSar(unsigned width, unsigned height) override;
+    virtual PBoolean SetFrameRate(unsigned rate) override;
+    virtual PBoolean SetColourFormat(const PString & colourFormat) override;
+    virtual void SetResizeMode(ResizeMode mode) override;
+    virtual PINDEX CalculateFrameBytes() const override;
+    virtual bool Parse(const PString & str) override;
+    virtual PString GetDeviceName() const override;
+    virtual PStringArray GetDeviceNames() const override;
+    virtual PBoolean OpenFull(const OpenArgs & args, PBoolean startImmediate = true) override;
+    virtual PBoolean Open(const PString & deviceName, PBoolean startImmediate = true) override;
+    virtual PBoolean IsOpen() override;
+    virtual PBoolean Close() override;
+    virtual PBoolean Start() override;
+    virtual PBoolean Stop() override;
+    virtual PBoolean SetVideoFormat(VideoFormat videoFormat) override;
+    virtual int GetNumChannels() override;
+    virtual PStringArray GetChannelNames() override;
+    virtual PBoolean SetChannel(int channelNumber) override;
+    virtual int GetChannel() const override;
+    virtual PBoolean SetVFlipState(PBoolean newVFlipState) override;
+    virtual PBoolean GetFrameSizeLimits(unsigned & minWidth, unsigned & minHeight, unsigned & maxWidth, unsigned & maxHeight) override;
+    virtual PBoolean SetNearestFrameSize(unsigned width, unsigned height) override;
+    virtual bool SetFrameInfoConverter(const PVideoFrameInfo & info) override;
+    virtual PBoolean SetColourFormatConverter(const PString & colourFormat) override;
+    virtual PBoolean SetFrameSizeConverter(unsigned width, unsigned height, ResizeMode resizeMode = eMaxResizeMode) override;
+    virtual int GetLastError() const override;
+    virtual bool GetAttributes(Attributes & attributes) override;
+    virtual bool SetAttributes(const Attributes & attributes) override;
+    virtual PBoolean SetVideoChannelFormat(int channelNumber, VideoFormat videoFormat) override;
+    virtual bool GetDeviceCapabilities(Capabilities * capabilities) const override;
+    virtual PBoolean IsCapturing() override;
+    virtual bool FlowControl(const void * flowData) override;
+    virtual bool SetCaptureMode(unsigned mode) override;
+    virtual int GetCaptureMode() const override;
+    virtual bool SetControl(PVideoControlInfo::Types type, int value, ControlMode mode) override;
 
   protected:
-    virtual bool InternalGetFrameData(BYTE * buffer, PINDEX & bytesReturned, bool & keyFrame, bool wait);
+    virtual bool InternalGetFrameData(BYTE * buffer, PINDEX & bytesReturned, bool & keyFrame, bool wait) override;
     PDECLARE_MUTEX(     m_actualDeviceMutex);
     PVideoInputDevice * m_actualDevice;
     bool                m_autoDeleteActualDevice;
@@ -1252,15 +1252,15 @@ class PVideoInputEmulatedDevice : public PVideoInputDevice
 
     /**Start the video device I/O.
       */
-    PBoolean Start();
+    PBoolean Start() override;
 
     /**Stop the video device I/O capture.
       */
-    PBoolean Stop();
+    PBoolean Stop() override;
 
     /**Determine if the video device I/O capture is in progress.
       */
-    PBoolean IsCapturing();
+    PBoolean IsCapturing() override;
 
     /**Set the colour format to be used.
 
@@ -1269,7 +1269,7 @@ class PVideoInputEmulatedDevice : public PVideoInputDevice
     */
     virtual PBoolean SetColourFormat(
       const PString & colourFormat   // New colour format for device.
-    );
+    ) override;
     
     enum {
       Channel_PlayAndClose,
@@ -1288,11 +1288,11 @@ class PVideoInputEmulatedDevice : public PVideoInputDevice
 
        Default behaviour returns 4.
     */
-    virtual int GetNumChannels();
+    virtual int GetNumChannels() override;
 
     /**Get the names of video channels available on the device.
     */
-    virtual PStringArray GetChannelNames();
+    virtual PStringArray GetChannelNames() override;
 
     /**Get the minimum & maximum size of a frame on the device.
 
@@ -1304,7 +1304,7 @@ class PVideoInputEmulatedDevice : public PVideoInputDevice
       unsigned & minHeight,  /// Variable to receive minimum height
       unsigned & maxWidth,   /// Variable to receive maximum width
       unsigned & maxHeight   /// Variable to receive maximum height
-    ) ;
+    ) override;
 
     /**Set the video frame rate to be used on the device.
 
@@ -1313,7 +1313,7 @@ class PVideoInputEmulatedDevice : public PVideoInputDevice
     */
     virtual PBoolean SetFrameRate(
       unsigned rate  /// Frames per second
-    );
+    ) override;
          
     /**Set the frame size to be used.
 
@@ -1323,10 +1323,10 @@ class PVideoInputEmulatedDevice : public PVideoInputDevice
     virtual PBoolean SetFrameSize(
       unsigned width,   /// New width of frame
       unsigned height   /// New height of frame
-    );
+    ) override;
 
   protected:
-    virtual bool InternalGetFrameData(BYTE * buffer, PINDEX & bytesReturned, bool & keyFrame, bool wait);
+    virtual bool InternalGetFrameData(BYTE * buffer, PINDEX & bytesReturned, bool & keyFrame, bool wait) override;
     virtual bool InternalReadFrameData(BYTE * frame) = 0;
 
     PAdaptiveDelay m_pacing;

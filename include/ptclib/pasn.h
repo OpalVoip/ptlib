@@ -135,7 +135,7 @@ class PASNObject : public PObject
     */
     virtual void PrintOn(
       ostream & strm    ///< stream to print on
-    ) const;
+    ) const override;
 
     /** Virtual function used to encode the object into ASN format */
     virtual void Encode(
@@ -148,7 +148,7 @@ class PASNObject : public PObject
     virtual WORD GetEncodedLength();
 
     /** Virtual function used to duplicate objects */
-    virtual PObject * Clone() const;
+    virtual PObject * Clone() const override;
 
     /** Encode an ASN length value */
     static void EncodeASNLength (
@@ -255,15 +255,15 @@ class PASNInteger : public PASNObject
     PASNInteger(PASNInt val);
     PASNInteger(const PBYTEArray & buffer, PINDEX & ptr);
 
-    void PrintOn(ostream & strm) const;
-    void Encode(PBYTEArray & buffer);
-    WORD GetEncodedLength();
-    PObject * Clone() const;
+    void PrintOn(ostream & strm) const override;
+    void Encode(PBYTEArray & buffer) override;
+    WORD GetEncodedLength() override;
+    PObject * Clone() const override;
 
-    PASNInt GetInteger() const;
-    PString GetString () const;
-    ASNType GetType() const;
-    PString GetTypeAsString() const;
+    PASNInt GetInteger() const override;
+    PString GetString () const override;
+    ASNType GetType() const override;
+    PString GetTypeAsString() const override;
 
   private:
     PASNInt value;
@@ -283,17 +283,17 @@ class PASNString : public PASNObject
     PASNString(const PBYTEArray & buffer,               PASNObject::ASNType = String);
     PASNString(const PBYTEArray & buffer, PINDEX & ptr, PASNObject::ASNType = String);
 
-    void PrintOn(ostream & strm) const;
+    void PrintOn(ostream & strm) const override;
 
-    void Encode(PBYTEArray & buffer)
+    void Encode(PBYTEArray & buffer) override
       { Encode(buffer, String); }
 
-    WORD GetEncodedLength();
-    PObject * Clone() const;
+    WORD GetEncodedLength() override;
+    PObject * Clone() const override;
 
-    PString GetString() const;
-    ASNType GetType() const;
-    PString GetTypeAsString() const;
+    PString GetString() const override;
+    ASNType GetType() const override;
+    PString GetTypeAsString() const override;
 
   protected:
     PBoolean Decode(const PBYTEArray & buffer, PINDEX & i, PASNObject::ASNType type);
@@ -323,20 +323,20 @@ class PASNIPAddress : public PASNString
     PASNIPAddress(const PBYTEArray & buffer, PINDEX & ptr)
       : PASNString(buffer, ptr, IPAddress) { }
 
-    PASNObject::ASNType GetType() const
+    PASNObject::ASNType GetType() const override
       { return IPAddress; }
 
-    void Encode(PBYTEArray & buffer)
+    void Encode(PBYTEArray & buffer) override
       { PASNString::Encode(buffer, IPAddress); }
 
-    PString GetString() const;
+    PString GetString() const override;
 
-    PString GetTypeAsString() const;
+    PString GetTypeAsString() const override;
 
-    PObject * Clone() const
+    PObject * Clone() const override
       { return PNEW PASNIPAddress(*this); }
 
-    PIPSocket::Address GetIPAddress () const;
+    PIPSocket::Address GetIPAddress () const override;
 };
 
 
@@ -353,10 +353,10 @@ class PASNUnsignedInteger : public PASNObject
 
     PASNUnsignedInteger(const PBYTEArray & buffer, PINDEX & ptr);
 
-    void PrintOn(ostream & strm) const;
-    WORD GetEncodedLength();
-    PString GetString () const;
-    PASNUnsigned GetUnsigned() const;
+    void PrintOn(ostream & strm) const override;
+    WORD GetEncodedLength() override;
+    PString GetString () const override;
+    PASNUnsigned GetUnsigned() const override;
 
   protected:
     PASNUnsignedInteger()
@@ -384,16 +384,16 @@ class PASNTimeTicks : public PASNUnsignedInteger
     PASNTimeTicks(const PBYTEArray & buffer, PINDEX & ptr)
       { PASNUnsignedInteger::Decode(buffer, ptr, TimeTicks); }
 
-    void Encode(PBYTEArray & buffer)
+    void Encode(PBYTEArray & buffer) override
       { PASNUnsignedInteger::Encode(buffer, TimeTicks); }
 
-    PObject * Clone() const
+    PObject * Clone() const override
       { return PNEW PASNTimeTicks(*this); }
 
-    PASNObject::ASNType GetType() const
+    PASNObject::ASNType GetType() const override
       { return TimeTicks; }
 
-    PString GetTypeAsString() const;
+    PString GetTypeAsString() const override;
 };
 
 
@@ -411,16 +411,16 @@ class PASNCounter : public PASNUnsignedInteger
     PASNCounter(const PBYTEArray & buffer, PINDEX & ptr)
       {  PASNUnsignedInteger::Decode(buffer, ptr, Counter); }
 
-    void Encode(PBYTEArray & buffer)
+    void Encode(PBYTEArray & buffer) override
       { PASNUnsignedInteger::Encode(buffer, Counter); }
 
-    PObject * Clone() const
+    PObject * Clone() const override
       { return PNEW PASNCounter(*this); }
 
-    PASNObject::ASNType GetType() const
+    PASNObject::ASNType GetType() const override
       { return Counter; }
 
-    PString GetTypeAsString() const;
+    PString GetTypeAsString() const override;
 };
 
 
@@ -441,16 +441,16 @@ class PASNGauge : public PASNUnsignedInteger
     PBoolean Decode(const PBYTEArray & buffer, PINDEX & i)
       { return PASNUnsignedInteger::Decode(buffer, i, Gauge); }
 
-    void Encode(PBYTEArray & buffer)
+    void Encode(PBYTEArray & buffer) override
       { PASNUnsignedInteger::Encode(buffer, Gauge); }
 
-    PObject * Clone() const
+    PObject * Clone() const override
       { return PNEW PASNGauge(*this); }
 
-    PASNObject::ASNType GetType() const
+    PASNObject::ASNType GetType() const override
       { return Gauge; }
 
-    PString GetTypeAsString() const;
+    PString GetTypeAsString() const override;
 };
 
 
@@ -468,14 +468,14 @@ class PASNObjectID : public PASNObject
     PASNObjectID(const PBYTEArray & buffer);
     PASNObjectID(const PBYTEArray & buffer, PINDEX & ptr);
 
-    void PrintOn(ostream & strm) const;
-    void Encode(PBYTEArray & buffer);
-    WORD GetEncodedLength();
-    PObject * Clone() const;
+    void PrintOn(ostream & strm) const override;
+    void Encode(PBYTEArray & buffer) override;
+    WORD GetEncodedLength() override;
+    PObject * Clone() const override;
 
-    ASNType GetType() const;
-    PString GetString () const;
-    PString GetTypeAsString() const;
+    ASNType GetType() const override;
+    PString GetString () const override;
+    PString GetTypeAsString() const override;
 
   protected:
     PBoolean Decode(const PBYTEArray & buffer, PINDEX & i);
@@ -496,16 +496,16 @@ class PASNNull : public PASNObject
     PASNNull();
     PASNNull(const PBYTEArray & buffer, PINDEX & ptr);
 
-    void PrintOn(ostream & strm) const;
+    void PrintOn(ostream & strm) const override;
 
-    void Encode(PBYTEArray & buffer);
-    WORD GetEncodedLength();
+    void Encode(PBYTEArray & buffer) override;
+    WORD GetEncodedLength() override;
 
-    PObject * Clone() const;
+    PObject * Clone() const override;
 
-    ASNType GetType() const;
-    PString GetString () const;
-    PString GetTypeAsString() const;
+    ASNType GetType() const override;
+    PString GetString () const override;
+    PString GetTypeAsString() const override;
 };
 
 
@@ -525,7 +525,7 @@ class PASNSequence : public PASNObject
     void Append(PASNObject * obj);
     PINDEX GetSize() const;
     PASNObject & operator [] (PINDEX idx) const;
-    const PASNSequence & GetSequence() const;
+    const PASNSequence & GetSequence() const override;
 
     void AppendInteger (PASNInt value);
     void AppendString  (const PString & str);
@@ -537,12 +537,12 @@ class PASNSequence : public PASNObject
 //    PASNInt GetInteger (PINDEX idx) const;
 //    PString GetString  (PINDEX idx) const;
 
-    void PrintOn(ostream & strm) const;
-    void Encode(PBYTEArray & buffer);
+    void PrintOn(ostream & strm) const override;
+    void Encode(PBYTEArray & buffer) override;
     PBoolean Decode(const PBYTEArray & buffer, PINDEX & i);
-    WORD GetEncodedLength();
-    ASNType GetType() const;
-    PString GetTypeAsString() const;
+    WORD GetEncodedLength() override;
+    ASNType GetType() const override;
+    PString GetTypeAsString() const override;
 
     PBoolean Encode(PBYTEArray & buffer, PINDEX maxLen) ;
 

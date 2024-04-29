@@ -113,7 +113,7 @@ class PIPSocket : public PSocket
         //@}
 
         /// Compare two adresses for absolute (in)equality.
-        Comparison Compare(const PObject & obj) const;
+        Comparison Compare(const PObject & obj) const override;
         bool operator==(const Address & addr) const { return Compare(addr) == EqualTo; }
         bool operator!=(const Address & addr) const { return Compare(addr) != EqualTo; }
 #if P_HAS_IPV6
@@ -328,12 +328,12 @@ class PIPSocket : public PSocket
           return m_address.IsValid() && m_port != 0;
         }
 
-        virtual void PrintOn(ostream & strm) const
+        virtual void PrintOn(ostream & strm) const override
         {
           strm << AsString();
         }
 
-        virtual Comparison Compare(const PObject & obj) const;
+        virtual Comparison Compare(const PObject & obj) const override;
 
         bool MatchWildcard(
           const AddressAndPort & wild
@@ -352,7 +352,7 @@ class PIPSocket : public PSocket
      */
     virtual void PrintOn(
       ostream &strm   ///< Stream to print the object into.
-    ) const;
+    ) const override;
     //@}
 
     //**@name Overrides from class PChannel */
@@ -364,7 +364,7 @@ class PIPSocket : public PSocket
        @return
        The name of the channel.
      */
-    virtual PString GetName() const;
+    virtual PString GetName() const override;
 
     /**Set the default IP address familly.
        Needed as lot of IPv6 stack are not able to receive IPv4 packets in IPv6 sockets
@@ -471,7 +471,7 @@ class PIPSocket : public PSocket
      */
     virtual PBoolean Connect(
       const PString & address   ///< Address of remote machine to connect to.
-    );
+    ) override;
     virtual PBoolean Connect(
       const Address & addr      ///< Address of remote machine to connect to.
     );
@@ -508,7 +508,7 @@ class PIPSocket : public PSocket
       unsigned queueSize = 5,  ///< Number of pending accepts that may be queued.
       WORD port = 0,           ///< Port number to use for the connection.
       Reusability reuse = AddressIsExclusive ///< Can/Cant listen more than once.
-    ) { return InternalListen(GetDefaultIpAny(), queueSize, port, reuse); }
+    ) override { return InternalListen(GetDefaultIpAny(), queueSize, port, reuse); }
 
     virtual PBoolean Listen(
       const Address & bind,     ///< Local interface address to bind to.
@@ -664,7 +664,7 @@ class PIPSocket : public PSocket
         long GetMetric() const { return metric; }
 
         ///< Print the route table entry
-        void PrintOn(ostream & strm) const;
+        void PrintOn(ostream & strm) const override;
 
       protected:
         Address network;
@@ -727,7 +727,7 @@ class PIPSocket : public PSocket
         /// Print to specified stream.
         virtual void PrintOn(
           ostream &strm   // Stream to print the object into.
-        ) const;
+        ) const override;
 
         /** Get the name of the interface.
             Note the name will havebeen sanitised of certain possible

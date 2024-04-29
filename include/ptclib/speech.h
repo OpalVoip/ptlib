@@ -135,10 +135,18 @@ class PSpeechRecognition : public PObject
     virtual bool SetLanguage(const PString & language) = 0;
     virtual PString GetLanguage() const = 0;
 
-    virtual bool SetVocabulary(
+    virtual bool CreateVocabulary(
       const PString & name,
       const PStringArray & words
-    ) = 0;
+    );
+    virtual bool DeleteVocabulary(
+      const PString & name,
+      const PStringArray & words
+    );
+    virtual bool ActivateVocabulary(
+      const PStringSet & names,
+      const PStringSet & languages = PStringSet()
+    );
 
     struct Transcript : PObject
     {
@@ -148,15 +156,15 @@ class PSpeechRecognition : public PObject
       float         m_confidence;  // 0.0 to 1.0
 
       Transcript(bool final, const PTimeInterval & when, const PString & content, float confidence);
-      virtual Comparison Compare(const PObject & other) const;
-      virtual void PrintOn(ostream & strm) const;
+      virtual Comparison Compare(const PObject & other) const override;
+      virtual void PrintOn(ostream & strm) const override;
     };
     typedef PNotifierTemplate<Transcript> Notifier;
     #define PDECLARE_SpeechRecognitionNotifier(cls, fn) PDECLARE_NOTIFIER2(PSpeechRecognition, cls, fn, PSpeechRecognition::Transcript)
     virtual void SetNotifier(const Notifier & notifier) { m_notifier = notifier; }
     const Notifier & GetNotifier() const { return m_notifier; }
 
-    virtual bool Open(const Notifier & notifier, const PString & vocabulary = PString::Empty()) = 0;
+    virtual bool Open(const Notifier & notifier) = 0;
     virtual bool IsOpen() const = 0;
     virtual bool Close() = 0;
 

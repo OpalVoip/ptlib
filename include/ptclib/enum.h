@@ -47,8 +47,8 @@ class NAPTRRecord : public PObject
 {
   PCLASSINFO(NAPTRRecord, PObject);
   public:
-    Comparison Compare(const PObject & obj) const;
-    void PrintOn(ostream & strm) const;
+    Comparison Compare(const PObject & obj) const override;
+    void PrintOn(ostream & strm) const override;
 
     WORD order;
     WORD preference;
@@ -58,9 +58,16 @@ class NAPTRRecord : public PObject
     PString replacement;
 };
 
-PDECLARE_SORTED_LIST(NAPTRRecordList, PDNS::NAPTRRecord)
+class NAPTRRecordList : public PSortedList<PDNS::NAPTRRecord>
+{
   public:
-    void PrintOn(ostream & strm) const;
+    NAPTRRecordList()
+      : currentPos(0)
+      , lastOrder(0)
+      , orderLocked(false)
+    { }
+
+    void PrintOn(ostream & strm) const override;
 
     NAPTRRecord * GetFirst(const char * service = NULL);
     NAPTRRecord * GetNext(const char * service = NULL);
@@ -73,7 +80,7 @@ PDECLARE_SORTED_LIST(NAPTRRecordList, PDNS::NAPTRRecord)
   protected:
     PINDEX     currentPos;
     int        lastOrder;
-    PBoolean       orderLocked;
+    bool       orderLocked;
 };
 
 inline PBoolean GetRecords(const PString & domain, NAPTRRecordList & recordList)

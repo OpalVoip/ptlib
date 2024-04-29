@@ -38,7 +38,7 @@ class LDAPTest : public PProcess
 
   public:
     LDAPTest();
-    virtual void Main();
+    virtual void Main() override;
     void Usage();
     void Add(PArgList & args, PLDAPSession & ldap);
     void Delete(PArgList & args, PLDAPSession & ldap);

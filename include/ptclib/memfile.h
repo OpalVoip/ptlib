@@ -69,7 +69,7 @@ class PMemoryFile : public PFile
      */
     Comparison Compare(
       const PObject & obj   ///< Other file to compare against.
-    ) const;
+    ) const override;
   //@}
 
 
@@ -79,7 +79,7 @@ class PMemoryFile : public PFile
 
        @return true if the channel successfully closed.
      */
-    virtual PBoolean Close();
+    virtual PBoolean Close() override;
 
     /**Low level read from the memory file channel. The read timeout is
        ignored.  The GetLastReadCount() function returns the actual number
@@ -95,7 +95,7 @@ class PMemoryFile : public PFile
     virtual PBoolean Read(
       void * buf,   ///< Pointer to a block of memory to receive the read bytes.
       PINDEX len    ///< Maximum number of bytes to read into the buffer.
-    );
+    ) override;
 
     /**Low level write to the memory file channel. The write timeout is
        ignored. The GetLastWriteCount() function returns the actual number
@@ -109,7 +109,7 @@ class PMemoryFile : public PFile
     virtual PBoolean Write(
       const void * buf, ///< Pointer to a block of memory to write.
       PINDEX len        ///< Number of bytes to write.
-    );
+    ) override;
   //@}
 
 
@@ -121,7 +121,7 @@ class PMemoryFile : public PFile
        @return
        length of file in bytes.
      */
-    virtual off_t GetLength() const;
+    virtual off_t GetLength() const override;
       
     /**Set the size of the file, padding with 0 bytes if it would require
        expanding the file, or truncating it if being made shorter.
@@ -131,7 +131,7 @@ class PMemoryFile : public PFile
      */
     virtual PBoolean SetLength(
       off_t len   ///< New length of file.
-    );
+    ) override;
 
     /**Set the current active position in the file for the next read or write
        operation. The <code>pos</code> variable is a signed number which is
@@ -146,7 +146,7 @@ class PMemoryFile : public PFile
     virtual PBoolean SetPosition(
       off_t pos,                         ///< New position to set.
       FilePositionOrigin origin = Start  ///< Origin for position change.
-    );
+    ) override;
 
     /**Get the current active position in the file for the next read or write
        operation.
@@ -154,7 +154,7 @@ class PMemoryFile : public PFile
        @return
        current file position relative to start of file.
      */
-    virtual off_t GetPosition() const;
+    virtual off_t GetPosition() const override;
   //@}
 
 
@@ -167,7 +167,7 @@ class PMemoryFile : public PFile
 
 
   protected:
-    virtual bool InternalOpen(OpenMode mode, OpenOptions opts, PFileInfo::Permissions permissions);
+    virtual bool InternalOpen(OpenMode mode, OpenOptions opts, PFileInfo::Permissions permissions) override;
 
     PBYTEArray m_data;
     off_t      m_position;

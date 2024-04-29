@@ -8,7 +8,7 @@ class TextDataTest : public PProcess
   PCLASSINFO(TextDataTest, PProcess);
  public:
    TextDataTest();
-   void Main();
+   virtual void Main() override;
    void ReadTest(const PString & arg);
    void WriteTestFixed(const PString & arg);
    void WriteTestVariable(const PArgList & args);

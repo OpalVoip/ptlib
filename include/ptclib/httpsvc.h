@@ -85,10 +85,10 @@ class PHTTPServiceProcess : public PServiceProcess, public PHTTPListener
     PHTTPServiceProcess(const Info & inf);
     ~PHTTPServiceProcess();
 
-    PBoolean OnStart();
-    void OnStop();
-    PBoolean OnPause();
-    void OnContinue();
+    PBoolean OnStart() override;
+    void OnStop() override;
+    PBoolean OnPause() override;
+    void OnContinue() override;
     const char * GetServiceDependencies() const;
 
     virtual void OnConfigChanged() = 0;
@@ -194,7 +194,7 @@ class PHTTPServiceProcess : public PServiceProcess, public PHTTPListener
 
     void BeginRestartSystem();
     void EndRestartSystem();
-    virtual void OnHTTPEnded(PHTTPServer & server);
+    virtual void OnHTTPEnded(PHTTPServer & server) override;
 
     atomic<PThread *> m_restartThread;
 
@@ -224,23 +224,23 @@ class PConfigPage : public PHTTPConfig
       const PHTTPAuthority & auth
     );
 
-    void OnLoadedText(PHTTPRequest &, PString & text);
+    void OnLoadedText(PHTTPRequest &, PString & text) override;
 
     virtual PBoolean OnPOST(
       PHTTPServer & server,
       const PHTTPConnectionInfo & connectInfo
-    );
+    ) override;
 
     virtual PBoolean Post(
       PHTTPRequest & request,       ///< Information on this request.
       const PStringToString & data, ///< Variables in the POST data.
       PHTML & replyMessage          ///< Reply message for post.
-    );
+    ) override;
 
   protected:
     virtual PBoolean GetExpirationDate(
       PTime & when          ///< Time that the resource expires
-    );
+    ) override;
 
     PHTTPServiceProcess & process;
 };
@@ -264,23 +264,23 @@ class PConfigSectionsPage : public PHTTPConfigSectionList
       PHTML & heading
     );
 
-    void OnLoadedText(PHTTPRequest &, PString & text);
+    void OnLoadedText(PHTTPRequest &, PString & text) override;
 
     virtual PBoolean OnPOST(
       PHTTPServer & server,
       const PHTTPConnectionInfo & connectInfo
-    );
+    ) override;
 
     virtual PBoolean Post(
       PHTTPRequest & request,       ///< Information on this request.
       const PStringToString & data, ///< Variables in the POST data.
       PHTML & replyMessage          ///< Reply message for post.
-    );
+    ) override;
 
   protected:
     virtual PBoolean GetExpirationDate(
       PTime & when          ///< Time that the resource expires
-    );
+    ) override;
 
     PHTTPServiceProcess & process;
 };
@@ -299,14 +299,14 @@ class PRegisterPage : public PConfigPage
 
     PString LoadText(
       PHTTPRequest & request        ///< Information on this request.
-    );
-    void OnLoadedText(PHTTPRequest & request, PString & text);
+    ) override;
+    void OnLoadedText(PHTTPRequest & request, PString & text) override;
 
     virtual PBoolean Post(
       PHTTPRequest & request,       ///< Information on this request.
       const PStringToString & data, ///< Variables in the POST data.
       PHTML & replyMessage          ///< Reply message for post.
-    );
+    ) override;
 
     virtual void AddFields(
       const PString & prefix        ///< Prefix on field names
@@ -367,7 +367,7 @@ class PServiceMacro : public PObject
   public:
     PServiceMacro(const char * name, PBoolean isBlock);
     PServiceMacro(const PCaselessString & name, PBoolean isBlock);
-    Comparison Compare(const PObject & obj) const;
+    Comparison Compare(const PObject & obj) const override;
     virtual PString Translate(
       PHTTPRequest & request,
       const PString & args,
@@ -427,12 +427,12 @@ class PServiceHTTPString : public PHTTPString
     PServiceHTTPString(const PURL & url, const PString & string, const PString & contentType, const PHTTPAuthority & auth)
       : PHTTPString(url, string, contentType, auth) { }
 
-    PString LoadText(PHTTPRequest &);
+    PString LoadText(PHTTPRequest &) override;
 
   protected:
     virtual PBoolean GetExpirationDate(
       PTime & when          ///< Time that the resource expires
-    );
+    ) override;
 };
 
 
@@ -451,12 +451,12 @@ class PServiceHTTPFile : public PHTTPFile
     PServiceHTTPFile(const PString & filename, const PFilePath & file, const PHTTPAuthority & auth, PBoolean needSig = false)
       : PHTTPFile(filename, file, auth) { needSignature = needSig; }
 
-    void OnLoadedText(PHTTPRequest &, PString & text);
+    void OnLoadedText(PHTTPRequest &, PString & text) override;
 
   protected:
     virtual PBoolean GetExpirationDate(
       PTime & when          ///< Time that the resource expires
-    );
+    ) override;
 
     PBoolean needSignature;
 };
@@ -471,12 +471,12 @@ class PServiceHTTPDirectory : public PHTTPDirectory
     PServiceHTTPDirectory(const PURL & url, const PDirectory & dirname, const PHTTPAuthority & auth, PBoolean needSig = false)
       : PHTTPDirectory(url, dirname, auth) { needSignature = needSig; }
 
-    void OnLoadedText(PHTTPRequest &, PString & text);
+    void OnLoadedText(PHTTPRequest &, PString & text) override;
 
   protected:
     virtual PBoolean GetExpirationDate(
       PTime & when          ///< Time that the resource expires
-    );
+    ) override;
 
     PBoolean needSignature;
 };
@@ -490,13 +490,13 @@ class PHTTPServiceProcess::ClearLogPage : public PServiceHTTPString
 
     virtual PString LoadText(
       PHTTPRequest & request    // Information on this request.
-      );
+    ) override;
 
     virtual PBoolean Post(
       PHTTPRequest & request,
       const PStringToString &,
       PHTML & msg
-    );
+    ) override;
 
   protected:
     PHTTPServiceProcess & m_process;

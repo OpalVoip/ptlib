@@ -27,7 +27,7 @@
  * Contributor(s): ______________________________________.
  */
 
-#ifdef __GNUC__
+#ifdef P_USE_PRAGMA
 #pragma implementation "sockets.h"
 #pragma implementation "socket.h"
 #pragma implementation "ipsock.h"

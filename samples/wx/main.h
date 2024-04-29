@@ -43,7 +43,7 @@ class MyApp : public wxApp, public PProcess
   public:
     MyApp();
 
-    void Main(); // Dummy function
+    virtual void Main() override; // Dummy function
 
       // FUnction from wxWindows
     virtual bool OnInit();

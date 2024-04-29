@@ -121,7 +121,7 @@ class PAbstractList : public PCollection
      */
     virtual Comparison Compare(
       const PObject & obj   ///< Object being compared to
-    ) const;
+    ) const override;
 
   /**@name Overrides from class PContainer */
   //@{
@@ -134,7 +134,7 @@ class PAbstractList : public PCollection
      */
     virtual PBoolean SetSize(
       PINDEX newSize  ///< New size for the list, this is ignored.
-    );
+    ) override;
   //@}
 
   /**@name Overrides from class PCollection */
@@ -147,7 +147,7 @@ class PAbstractList : public PCollection
      */
     virtual PINDEX Append(
       PObject * obj   ///< New object to place into the collection.
-    );
+    ) override;
 
     /**Append a new object to the collection. This places a new link at the
        "tail" of the list.
@@ -174,7 +174,7 @@ class PAbstractList : public PCollection
     virtual PINDEX Insert(
       const PObject & before,   ///< Object value to insert before.
       PObject * obj             ///< New object to place into the collection.
-    );
+    ) override;
 
     /**Insert a new object at the specified ordinal index. If the index is
        greater than the number of objects in the collection then the
@@ -186,7 +186,7 @@ class PAbstractList : public PCollection
     P_DEPRECATED virtual PINDEX InsertAt(
       PINDEX index,   ///< Index position in collection to place the object.
       PObject * obj   ///< New object to place into the collection.
-    );
+    ) override;
 
     /**Remove the object from the collection. If the AllowDeleteObjects option
        is set then the object is also deleted.
@@ -196,7 +196,7 @@ class PAbstractList : public PCollection
      */
     virtual PBoolean Remove(
       const PObject * obj   ///< Existing object to remove from the collection.
-    );
+    ) override;
 
     /**Remove the head object from the list. If the AllowDeleteObjects option
        is set then the object is also deleted.
@@ -228,7 +228,7 @@ class PAbstractList : public PCollection
      */
     P_DEPRECATED virtual PObject * RemoveAt(
       PINDEX index   ///< Index position in collection to place the object.
-    );
+    ) override;
 
     /**Set the object at the specified ordinal position to the new value. This
        will overwrite the existing entry. 
@@ -244,7 +244,7 @@ class PAbstractList : public PCollection
     P_DEPRECATED virtual PBoolean SetAt(
       PINDEX index,   ///< Index position in collection to set.
       PObject * val   ///< New value to place into the collection.
-    );
+    ) override;
     
     /**Set the object at the specified ordinal position to the new value. This
        will overwrite the existing entry. If the AllowDeleteObjects option is
@@ -273,7 +273,7 @@ class PAbstractList : public PCollection
      */
     P_DEPRECATED virtual PObject * GetAt(
       PINDEX index  ///< Index position in the collection of the object.
-    ) const;
+    ) const override;
 
     /**Search the collection for the specific instance of the object. The
        object pointers are compared, not the values. A simple linear search
@@ -284,7 +284,7 @@ class PAbstractList : public PCollection
      */
     virtual PINDEX GetObjectsIndex(
       const PObject * obj  ///< Object to find.
-    ) const;
+    ) const override;
 
     /**Search the collection for the specified value of the object. The object
        values are compared, not the pointers.  So the objects in the
@@ -296,7 +296,7 @@ class PAbstractList : public PCollection
      */
     virtual PINDEX GetValuesIndex(
       const PObject & obj  ///< Object to find value of.
-    ) const;
+    ) const override;
   //@}
 
 
@@ -340,7 +340,7 @@ template <class T> class PList : public PAbstractList
     /**Make a complete duplicate of the list. Note that all objects in the
        array are also cloned, so this will make a complete copy of the list.
      */
-    virtual PObject * Clone() const
+    virtual PObject * Clone() const override
       { return PNEW PList(0, this); }
   //@}
 
@@ -479,7 +479,7 @@ template <class T> class PList : public PAbstractList
   public: \
     cls() \
       : PList<T>() { } \
-    virtual PObject * Clone() const \
+    virtual PObject * Clone() const override \
       { return PNEW cls(0, this); } \
 
 
@@ -517,7 +517,7 @@ template <class T> class PQueue : public PAbstractList
     /**Make a complete duplicate of the list. Note that all objects in the
        array are also cloned, so this will make a complete copy of the list.
      */
-    virtual PObject * Clone() const
+    virtual PObject * Clone() const override
       { return PNEW PQueue(0, this); }
   //@}
 
@@ -581,7 +581,7 @@ template <class T> class PQueue : public PAbstractList
   public: \
     cls() \
       : cls##_PTemplate() { } \
-    virtual PObject * Clone() const \
+    virtual PObject * Clone() const override \
       { return PNEW cls(0, this); } \
 
 
@@ -619,7 +619,7 @@ template <class T> class PStack : public PAbstractList
     /**Make a complete duplicate of the stack. Note that all objects in the
        array are also cloned, so this will make a complete copy of the stack.
      */
-    virtual PObject * Clone() const
+    virtual PObject * Clone() const override
       { return PNEW PStack(0, this); }
   //@}
 
@@ -697,7 +697,7 @@ template <class T> class PStack : public PAbstractList
   public: \
     cls() \
       : cls##_PTemplate() { } \
-    virtual PObject * Clone() const \
+    virtual PObject * Clone() const override \
       { return PNEW cls(0, this); } \
 
 
@@ -804,7 +804,7 @@ class PAbstractSortedList : public PCollection
        object and <code>GreaterThan</code> for <code>obj</code> logically
        greater than the object.
      */
-    virtual Comparison Compare(const PObject & obj) const;
+    virtual Comparison Compare(const PObject & obj) const override;
   //@}
 
   /**@name Overrides from class PContainer */
@@ -818,7 +818,7 @@ class PAbstractSortedList : public PCollection
      */
     virtual PBoolean SetSize(
       PINDEX newSize  // New size for the sorted list, this is ignored.
-    );
+    ) override;
   //@}
 
   /**@name Overrides from class PCollection */
@@ -831,7 +831,7 @@ class PAbstractSortedList : public PCollection
      */
     virtual PINDEX Append(
       PObject * obj   // New object to place into the collection.
-    );
+    ) override;
 
     /**Add a new object to the collection.
     
@@ -845,7 +845,7 @@ class PAbstractSortedList : public PCollection
     virtual PINDEX Insert(
       const PObject & before,   // Object value to insert before.
       PObject * obj             // New object to place into the collection.
-    );
+    ) override;
 
     /**Add a new object to the collection.
     
@@ -859,7 +859,7 @@ class PAbstractSortedList : public PCollection
     virtual PINDEX InsertAt(
       PINDEX index,   // Index position in collection to place the object.
       PObject * obj   // New object to place into the collection.
-    );
+    ) override;
 
     /**Remove the object from the collection. If the AllowDeleteObjects option
        is set then the object is also deleted.
@@ -873,7 +873,7 @@ class PAbstractSortedList : public PCollection
      */
     virtual PBoolean Remove(
       const PObject * obj   // Existing object to remove from the collection.
-    );
+    ) override;
 
     /**Remove the object at the specified ordinal index from the collection.
        If the AllowDeleteObjects option is set then the object is also deleted.
@@ -886,7 +886,7 @@ class PAbstractSortedList : public PCollection
      */
     virtual PObject * RemoveAt(
       PINDEX index   // Index position in collection to place the object.
-    );
+    ) override;
 
     /**Remove all of the elements in the collection. This operates by
        continually calling <code>RemoveAt()</code> until there are no objects left.
@@ -894,7 +894,7 @@ class PAbstractSortedList : public PCollection
        The objects are removed from the last, at index
        <code>(GetSize()-1)</code> toward the first at index zero.
      */
-    virtual void RemoveAll();
+    virtual void RemoveAll() override;
 
     /**This method simply returns false as the list order is mantained by the 
        class. Kept to mimic <code>PAbstractList</code> interface.
@@ -905,7 +905,7 @@ class PAbstractSortedList : public PCollection
     virtual PBoolean SetAt(
       PINDEX index,   // Index position in collection to set.
       PObject * val   // New value to place into the collection.
-    );
+    ) override;
 
     /**Get the object at the specified ordinal position. If the index was
        greater than the size of the collection then NULL is returned.
@@ -915,7 +915,7 @@ class PAbstractSortedList : public PCollection
      */
     virtual PObject * GetAt(
       PINDEX index  // Index position in the collection of the object.
-    ) const;
+    ) const override;
 
     /**Search the collection for the specific instance of the object. The
        object pointers are compared, not the values. A binary search is
@@ -930,7 +930,7 @@ class PAbstractSortedList : public PCollection
      */
     virtual PINDEX GetObjectsIndex(
       const PObject * obj
-    ) const;
+    ) const override;
 
     /**Search the collection for the specified value of the object. The object
        values are compared, not the pointers.  So the objects in the
@@ -942,7 +942,7 @@ class PAbstractSortedList : public PCollection
      */
     virtual PINDEX GetValuesIndex(
       const PObject & obj
-    ) const;
+    ) const override;
   //@}
 
   protected:
@@ -988,7 +988,7 @@ template <class T> class PSortedList : public PAbstractSortedList
     /**Make a complete duplicate of the list. Note that all objects in the
        array are also cloned, so this will make a complete copy of the list.
      */
-    virtual PObject * Clone() const
+    virtual PObject * Clone() const override
       { return PNEW PSortedList(0, this); }
   //@}
 
@@ -1150,7 +1150,7 @@ template <class T> class PSortedList : public PAbstractSortedList
   public: \
     cls() \
       : PSortedList<T>() { } \
-    virtual PObject * Clone() const \
+    virtual PObject * Clone() const override \
       { return PNEW cls(0, this); } \
 
 

@@ -38,7 +38,7 @@ void Test1()
   }
 #ifdef P_HAS_WCHAR
   {
-    wchar_t widestr[] = L"Hellò world";
+    wchar_t widestr[] = L"Hellï¿½ world";
     PString pstring(widestr, sizeof(widestr)/2-1);
     cout << pstring << endl;
     PWCharArray wide = pstring.AsWide();
@@ -61,7 +61,7 @@ void Test1()
   }
 
   {
-    wchar_t widestr[] = L"Hellò world";
+    wchar_t widestr[] = L"Hellï¿½ world";
     PString pstring(widestr, sizeof(widestr)/2-1);
     cout << pstring.Ellipsis(6) << endl;
     cout << pstring.Ellipsis(9, 4) << endl;
@@ -216,7 +216,7 @@ class StringTest : public PProcess
 {
   PCLASSINFO(StringTest, PProcess)
   public:
-    void Main();
+    virtual void Main() override;
 };
 
 PCREATE_PROCESS(StringTest);

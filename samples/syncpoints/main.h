@@ -65,7 +65,7 @@ class SyncPoints : public PProcess
     ~SyncPoints();
 
     /**Program execution starts here */
-    void Main();
+    virtual void Main() override;
 
     /**When all the elements have been processed, it calls this */
     void ListFinished();
@@ -109,7 +109,7 @@ class Runner : public PThread
   Runner(SyncPoints & app, Runner * nextThread, PINDEX id);
 
   /**Where the work in this thread happens; */
-  virtual void Main();
+  virtual void Main() override;
 
   /**Where the other thread calls to activate us */
   void RunNow();

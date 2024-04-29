@@ -35,7 +35,7 @@ class VidTest : public PProcess
 
   public:
     VidTest();
-    virtual void Main();
+    virtual void Main() override;
 
  protected:
    PDECLARE_NOTIFIER(PThread, VidTest, GrabAndDisplay);

@@ -24,7 +24,7 @@
  * Contributor(s): Robert Jongbloed
  */
 
-#ifdef __GNUC__
+#ifdef P_USE_PRAGMA
 #pragma implementation "vartype.h"
 #endif
 

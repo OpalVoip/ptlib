@@ -63,7 +63,7 @@ namespace XMPP
 
     virtual Comparison Compare(
       const PObject & obj   ///< Object to compare against.
-      ) const;
+    ) const override;
 
     JID& operator=(
       const PString & jid  ///< New JID to assign.
@@ -71,7 +71,7 @@ namespace XMPP
 
     operator const PString&() const;
 
-    virtual PObject * Clone() const { return new JID(m_JID); }
+    virtual PObject * Clone() const override { return new JID(m_JID); }
 
     PString   GetUser() const         { return m_User; }
     PString   GetServer() const       { return m_Server; }
@@ -83,7 +83,7 @@ namespace XMPP
     virtual void SetResource(const PString& resource);
 
     virtual PBoolean IsBare() const       { return m_Resource.IsEmpty(); }
-    virtual void PrintOn(ostream & strm) const;
+    virtual void PrintOn(ostream & strm) const override;
 
   protected:
     virtual void ParseJID(const PString& jid);
@@ -110,16 +110,16 @@ namespace XMPP
 
     virtual Comparison Compare(
       const PObject & obj   ///< Object to compare against.
-      ) const;
+    ) const override;
 
     BareJID& operator=(
       const PString & jid  ///< New JID to assign.
       );
 
-    virtual PObject * Clone() const { return new BareJID(m_JID); }
-    virtual PString GetResource() const { return PString::Empty(); }
-    virtual void SetResource(const PString&) { }
-    virtual PBoolean IsBare() const { return true; }
+    virtual PObject * Clone() const override { return new BareJID(m_JID); }
+    virtual PString GetResource() const override { return PString::Empty(); }
+    virtual void SetResource(const PString&) override { }
+    virtual PBoolean IsBare() const override { return true; }
   };
 
   /** This interface is the base class of each XMPP transport class
@@ -133,7 +133,7 @@ namespace XMPP
 
   public:
     virtual PBoolean Open() = 0;
-    virtual PBoolean Close() = 0;
+    virtual PBoolean Close() override = 0;
   };
 
 
@@ -148,14 +148,14 @@ namespace XMPP
     Stream(Transport * transport = 0);
     ~Stream();
 
-    virtual bool        OnOpen()            { m_OpenHandlers(*this, 0); return true; }
+    virtual bool        OnOpen() override            { m_OpenHandlers(*this, 0); return true; }
     PNotifierList&      OpenHandlers()      { return m_OpenHandlers; }
 
-    virtual PBoolean        Close();
+    virtual PBoolean        Close() override;
     virtual void        OnClose()           { m_CloseHandlers(*this, 0); }
     PNotifierList&      CloseHandlers()     { return m_CloseHandlers; }
 
-    virtual PBoolean        Write(const void * buf, PINDEX len);
+    virtual PBoolean        Write(const void * buf, PINDEX len) override;
     virtual PBoolean        Write(const PString& data);
 //    virtual PBoolean        Write(const PXMLElement & pdu);
     virtual PBoolean        Write(const PXML & pdu);
@@ -200,7 +200,7 @@ namespace XMPP
     virtual PBoolean        Write(const PXML & pdu);
     virtual void        OnElement(PXMLElement& pdu);
 
-    virtual void        Main();
+    virtual void        Main() override;
 
   protected:
     PDECLARE_NOTIFIER(Stream, BaseStreamHandler, OnOpen);
@@ -278,7 +278,7 @@ namespace XMPP
     */
     Message(PXMLElement & pdu);
 
-    virtual PBoolean IsValid() const;
+    virtual PBoolean IsValid() const override;
 
     virtual MessageType GetType(PString * typeName = 0) const;
     virtual PString     GetLanguage() const;
@@ -347,7 +347,7 @@ namespace XMPP
     */
     Presence(PXMLElement & pdu);
 
-    virtual PBoolean IsValid() const;
+    virtual PBoolean IsValid() const override;
 
     virtual PresenceType GetType(PString * typeName = 0) const;
     virtual ShowType     GetShow(PString * showName = 0) const;
@@ -391,7 +391,7 @@ namespace XMPP
     IQ(PXMLElement & pdu);
     ~IQ();
 
-    virtual PBoolean IsValid() const;
+    virtual PBoolean IsValid() const override;
 
     /** This method signals that the message was taken care of
     If the stream handler, after firing all the notifiers finds

@@ -24,7 +24,7 @@
  * Contributor(s): Craig Southeren
  */
 
-#ifdef __GNUC__
+#ifdef P_USE_PRAGMA
 #pragma implementation "jscript.h"
 #endif
 
@@ -57,13 +57,11 @@ For Windows the following commands was used to build V8:
 * Set up the environment in CMD:
 
 set DEPOT_TOOLS_WIN_TOOLCHAIN=0
-set vs2019_install="C:\Program Files (x86)\Microsoft Visual Studio\2019\Community"
 PATH=C:\tools\depot_tools;%PATH%
 
 * Or for PowerShell:
 
 $env:DEPOT_TOOLS_WIN_TOOLCHAIN=0
-$env:vs2019_install="C:\Program Files (x86)\Microsoft Visual Studio\2019\Community"
 $env:PATH="C:\tools\depot_tools;$env:PATH"
 
 * Get the source to somewhere e.g. if PTLib is in C:\Work\ptlib then
@@ -76,60 +74,33 @@ fetch v8
 cd v8
 gclient sync
 
-* The V8 system changes rapidly, and often has API breakages. It is advisable to
-  checkout the last known working branch:
+* Now (as of time of writing) apply the following patched:
 
-git checkout branch-heads/10.5
+In ./build/config/win/BUILD.gn b/config/win/BUILD.gn, find and replace:
 
-more information on versions is available at https://v8.dev/docs/version-numbers
-
-* Now apply the following patch:
-
-diff --git a/build/config/win/BUILD.gn b/config/win/BUILD.gn
-index 1e76a54cc..cc92f23bf 100644
---- a/build/config/win/BUILD.gn
-+++ b/build/config/win/BUILD.gn
-@@ -490,7 +490,7 @@ config("default_crt") {
-       configs = [ ":dynamic_crt" ]
-     } else {
-       # Desktop Windows: static CRT.
 -      configs = [ ":static_crt" ]
 +      configs = [ ":dynamic_crt" ]
-     }
-   }
- }
 
-* Set up the build directories you need:
+In ./v8/third_party/icu/source/i18n/fmtable.cpp, find and replace:
 
-python tools/dev/v8gen.py x64.release
-python tools/dev/v8gen.py x64.debug
-python tools/dev/v8gen.py ia32.release
-python tools/dev/v8gen.py ia32.debug
+-     return *((const Measure*)a) == ((const Measure*)b);
++     return *((const Measure*)a) == *b;
 
-* In each of the release builds chosen, go to it's subdirectory
-  (e.g. out.gn/x64-release), and add to the existing args.gn file:
+* To set up the build directories you execute:
 
-v8_use_external_startup_data = false
-is_component_build = false
-v8_enable_sandbox = false
-v8_monolithic = true
-is_clang = false
+python3 tools/dev/v8gen.py x64.release  -- is_clang=false v8_monolithic=true is_component_build=false v8_use_external_startup_data=false v8_enable_sandbox=false
+python3 tools/dev/v8gen.py x64.debug    -- is_clang=false v8_monolithic=true is_component_build=false v8_use_external_startup_data=false v8_enable_sandbox=false enable_iterator_debugging=true
 
-* Do the same in the debug directories (if required) using:
-v8_enable_slow_dchecks = false
-v8_use_external_startup_data = false
-enable_iterator_debugging = true
-is_component_build = false
-v8_enable_sandbox = false
-v8_monolithic = true
-is_clang = false
+And if you need 32 bit:
 
-note v8_enable_slow_dchecks may already be in the args.gn.
+python3 tools/dev/v8gen.py ia32.release -- is_clang=false v8_monolithic=true is_component_build=false v8_use_external_startup_data=false v8_enable_sandbox=false
+python3 tools/dev/v8gen.py ia32.debug   -- is_clang=false v8_monolithic=true is_component_build=false v8_use_external_startup_data=false v8_enable_sandbox=false enable_iterator_debugging=true
 
-* Then build each directory as a separate command e.g.
+* Then build each directory:
 
 ninja -C out.gn/x64.release v8_monolith
 ninja -C out.gn/x64.debug v8_monolith
+etc
 
 Finally, reconfigure PTLib and rebuild.
 */
@@ -146,7 +117,7 @@ Finally, reconfigure PTLib and rebuild.
 #define V8_IMMINENT_DEPRECATION_WARNINGS 1
 #define V8_COMPRESS_POINTERS 1
 #pragma warning(push)
-#pragma warning(disable:4996)
+#pragma warning(disable:4996 4458)
 #include <v8.h>
 #pragma warning(pop)
 
@@ -163,7 +134,7 @@ Finally, reconfigure PTLib and rebuild.
 
 
 #ifdef _MSC_VER
-  #if _MSC_VER >= 1932 // Visual Studio 2022 version 17.2+
+  #if _MSC_VER >= 1932 && _MSC_VER < 1938 // Visual Studio 2022 version 17.2+
     #pragma comment(linker, "/alternatename:__imp___std_init_once_complete=__imp_InitOnceComplete")
     #pragma comment(linker, "/alternatename:__imp___std_init_once_begin_initialize=__imp_InitOnceBeginInitialize")
   #endif

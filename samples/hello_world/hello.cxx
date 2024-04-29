@@ -11,7 +11,7 @@ class Hello : public PProcess
 {
   PCLASSINFO(Hello, PProcess)
   public:
-    void Main();
+    virtual void Main() override;
 };
 
 PCREATE_PROCESS(Hello)

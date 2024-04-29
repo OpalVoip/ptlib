@@ -24,7 +24,7 @@
  * Contributor(s): Mark Cooke (mpc@star.sr.bham.ac.uk)
  */
 
-#ifdef __GNUC__
+#ifdef P_USE_PRAGMA
 #pragma implementation "videoio.h"
 #endif 
 

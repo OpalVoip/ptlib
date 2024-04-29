@@ -49,7 +49,7 @@ class P_WXWINDOWS_DEVICE_CLASS : public PVideoOutputDeviceRGB, public wxFrame
 
     /**Get a list of all of the devices available.
     */
-    virtual PStringArray GetDeviceNames() const;
+    virtual PStringArray GetDeviceNames() const override;
     static PStringArray GetOutputDeviceNames();
   
     /**Open the device given the device name.
@@ -57,18 +57,18 @@ class P_WXWINDOWS_DEVICE_CLASS : public PVideoOutputDeviceRGB, public wxFrame
     virtual PBoolean Open(
       const PString & deviceName,   ///< Device name to open
       PBoolean /*startImmediate*/ = true    ///< Immediately start device
-    );
+    ) override;
   
     /**Synonymous with the destructor.
     */
-    virtual PBoolean Close();
+    virtual PBoolean Close() override;
 
     /**Stop the video device I/O display.
     */
-    virtual PBoolean Stop();
+    virtual PBoolean Stop() override;
 
     /**Indicate if this video rendering class is open.*/
-    virtual PBoolean IsOpen();
+    virtual PBoolean IsOpen() override;
   
     /**Set the colour format to be used.
        Note that this function does not do any conversion. If it returns true
@@ -82,7 +82,7 @@ class P_WXWINDOWS_DEVICE_CLASS : public PVideoOutputDeviceRGB, public wxFrame
     */
     virtual PBoolean SetColourFormat(
       const PString & colourFormat ///< New colour format for device.
-    );
+    ) override;
 
     /**Set the frame size to be used.
 
@@ -95,11 +95,11 @@ class P_WXWINDOWS_DEVICE_CLASS : public PVideoOutputDeviceRGB, public wxFrame
     virtual PBoolean SetFrameSize(
       unsigned width,   ///< New width of frame
       unsigned height   ///< New height of frame
-    );
+    ) override;
 
     /**Set a section of the output frame buffer.
       */
-    virtual PBoolean FrameComplete();
+    virtual PBoolean FrameComplete() override;
 
   protected:
     void InternalOpen();

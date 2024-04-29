@@ -35,7 +35,7 @@ class MyProcess : public PProcess
 {
     PCLASSINFO(MyProcess, PProcess)
   public:
-    void Main();
+    virtual void Main() override;
 #if P_V8
     PDECLARE_ScriptFunctionNotifier(MyProcess, TestFunction);
 #endif

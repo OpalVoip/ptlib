@@ -115,7 +115,7 @@ class PSemaphore : public PSync
     /**If the semaphore count is > 0, decrement the semaphore and return. If
        if is = 0 then wait (block).
      */
-    virtual void Wait();
+    virtual void Wait() override;
 
     /**If the semaphore count is > 0, decrement the semaphore and return. If
        if is = 0 then wait (block) for the specified amount of time.
@@ -125,13 +125,13 @@ class PSemaphore : public PSync
      */
     virtual PBoolean Wait(
       const PTimeInterval & timeout // Amount of time to wait for semaphore.
-    );
+    ) override;
 
     /**If there are waiting (blocked) threads then unblock the first one that
        was blocked. If no waiting threads and the count is less than the
        maximum then increment the semaphore.
      */
-    virtual void Signal();
+    virtual void Signal() override;
 
     /** Reset the semaphore to the specified inital and maximum values.
         Note that the behaviour is undetermined if something is waiting on the

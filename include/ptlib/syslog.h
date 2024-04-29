@@ -182,7 +182,7 @@ class PSystemLogToNowhere : public PSystemLogTarget
 {
     PCLASSINFO(PSystemLogToNowhere, PSystemLogTarget);
   public:
-    virtual void Output(PSystemLog::Level, const char *)
+    virtual void Output(PSystemLog::Level, const char *) override
     {
     }
 };
@@ -201,7 +201,7 @@ class PSystemLogToStderr : public PSystemLogTarget
     virtual void Output(
       PSystemLog::Level level,  ///< Level of this message
       const char * msg          ///< Message to be logged
-    );
+    ) override;
   //@}
 };
 
@@ -225,7 +225,7 @@ class PSystemLogToTrace : public PSystemLogTarget
     virtual void Output(
       PSystemLog::Level level,  ///< Level of this message
       const char * msg          ///< Message to be logged
-    );
+    ) override;
   //@}
 };
 #endif
@@ -251,7 +251,7 @@ class PSystemLogToFile : public PSystemLogTarget
     virtual void Output(
       PSystemLog::Level level,  ///< Level of this message
       const char * msg          ///< Message to be logged
-    );
+    ) override;
   //@}
 
   /**@name Miscellaneous functions */
@@ -337,7 +337,7 @@ class PSystemLogToNetwork : public PSystemLogTarget
     virtual void Output(
       PSystemLog::Level level,  ///< Level of this message
       const char * msg          ///< Message to be logged
-    );
+    ) override;
   //@}
 
     const PIPSocket::AddressAndPort & GetServer() const { return m_server; }
@@ -394,7 +394,7 @@ class PSystemLogToSyslog : public PSystemLogTarget
     virtual void Output(
       PSystemLog::Level level,  ///< Level of this message
       const char * msg          ///< Message to be logged
-    );
+    ) override;
   //@}
 
   protected:

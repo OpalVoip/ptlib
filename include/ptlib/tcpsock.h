@@ -86,7 +86,7 @@ class PTCPSocket : public PIPSocket
        @return
        pointer to new copy of the class instance.
      */
-    virtual PObject * Clone() const;
+    virtual PObject * Clone() const override;
   //@}
 
   /**@name Overrides from class PChannel. */
@@ -108,7 +108,7 @@ class PTCPSocket : public PIPSocket
     virtual PBoolean Write(
       const void * buf, ///< Pointer to a block of memory to write.
       PINDEX len        ///< Number of bytes to write.
-    );
+    ) override;
   //@}
 
   /**@name Overrides from class PSocket. */
@@ -129,7 +129,7 @@ class PTCPSocket : public PIPSocket
      */
     virtual PBoolean Accept(
       PSocket & socket          ///< Listening socket making the connection.
-    );
+    ) override;
   //@}
 
   /**@name New functions for class. */
@@ -165,16 +165,16 @@ class PTCPSocket : public PIPSocket
 
   protected:
     // Open an IPv4 socket (for backward compatibility)
-    virtual PBoolean OpenSocket();
+    virtual PBoolean OpenSocket() override;
 
     // Open an IPv4 or IPv6 socket
     virtual PBoolean OpenSocket(
       int ipAdressFamily
-    );
+    ) override;
 
-    virtual bool InternalListen(const Address & bind, unsigned queueSize, WORD port, Reusability reuse);
+    virtual bool InternalListen(const Address & bind, unsigned queueSize, WORD port, Reusability reuse) override;
 
-    virtual const char * GetProtocolName() const;
+    virtual const char * GetProtocolName() const override;
 
 
 // Include platform dependent part of class

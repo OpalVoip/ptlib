@@ -24,7 +24,7 @@
  * Contributor(s): ______________________________________.
  */
 
-#ifdef __GNUC__
+#ifdef P_USE_PRAGMA
 #pragma implementation "url.h"
 #endif
 
@@ -250,6 +250,10 @@ PString PURL::TranslateString(const PString & str, TranslationType type)
 
       return str.ToLiteral();
 
+    case FragmentTranslation :
+      safeChars += ";/?:@&=+$,"; // Section 4.1
+      break;
+
     default :
       break;    // Section 3.4, no reserved characters may be used
   }
@@ -257,7 +261,7 @@ PString PURL::TranslateString(const PString & str, TranslationType type)
   for (PINDEX pos = 0; (pos = xlat.FindSpan(safeChars, pos)) != P_MAX_INDEX; ++pos) {
     char buf[10];
     sprintf(buf, "%%%02X", (BYTE)xlat[pos]);
-    xlat.Splice(buf, pos, 1);
+    xlat.Splice(buf, pos++, 1);
   }
 
   return xlat;
@@ -599,7 +603,7 @@ bool PURL::LegacyParse(const char * cstr, const PURLLegacyScheme & schemeInfo)
 
   // chop off any trailing fragment
   if (schemeInfo.hasFragments && (pos = str.Find('#', start)) < end) {
-    m_fragment = UntranslateString(str(pos+1, end), PathTranslation);
+    m_fragment = UntranslateString(str(pos+1, end), FragmentTranslation);
     end = pos-1;
   }
 
@@ -732,11 +736,10 @@ PString PURL::LegacyAsString(PURL::UrlFormat fmt, const PURLLegacyScheme * schem
     str << TranslateString(m_contents, PathTranslation);
 
   if (fmt == FullURL || fmt == RelativeOnly) {
-    if (!m_fragment.IsEmpty())
-      str << "#" << TranslateString(m_fragment, PathTranslation);
-
     OutputVars(str, m_paramVars, ';', ';', '=', ParameterTranslation);
     OutputVars(str, m_queryVars, '?', '&', '=', QueryTranslation);
+    if (!m_fragment.IsEmpty())
+      str << "#" << TranslateString(m_fragment, FragmentTranslation);
   }
 
   return str;
@@ -1037,7 +1040,7 @@ class PURL_CalltoScheme : public PURLScheme
 {
     PCLASSINFO(PURL_CalltoScheme, PURLScheme);
   public:
-    virtual bool Parse(const char * cstr, PURL & url) const
+    virtual bool Parse(const char * cstr, PURL & url) const override
     {
       const PConstCaselessString str(cstr);
 
@@ -1109,7 +1112,7 @@ class PURL_CalltoScheme : public PURLScheme
       return true;
     }
 
-    virtual PString AsString(PURL::UrlFormat fmt, const PURL & url) const
+    virtual PString AsString(PURL::UrlFormat fmt, const PURL & url) const override
     {
       if (fmt == PURL::LocationOnly)
         return PString::Empty();
@@ -1132,7 +1135,7 @@ class PURL_TelScheme : public PURLScheme
 {
     PCLASSINFO(PURL_TelScheme, PURLScheme);
   public:
-    virtual PBoolean Parse(const char * cstr, PURL & url) const
+    virtual PBoolean Parse(const char * cstr, PURL & url) const override
     {
       const PConstCaselessString str(cstr);
 
@@ -1165,7 +1168,7 @@ class PURL_TelScheme : public PURLScheme
       return url.GetUserName() != "+";
     }
 
-    virtual PString AsString(PURL::UrlFormat fmt, const PURL & url) const
+    virtual PString AsString(PURL::UrlFormat fmt, const PURL & url) const override
     {
       if (fmt == PURL::LocationOnly)
         return PString::Empty();
@@ -1188,13 +1191,13 @@ class PURL_URNScheme : public PURLScheme
 {
     PCLASSINFO(PURL_URNScheme, PURLScheme);
   public:
-    virtual bool Parse(const char * cstr, PURL & url) const
+    virtual bool Parse(const char * cstr, PURL & url) const override
     {
       url.SetContents(cstr);
       return true;
     }
 
-    virtual PString AsString(PURL::UrlFormat fmt, const PURL& url) const
+    virtual PString AsString(PURL::UrlFormat fmt, const PURL& url) const override
     {
       switch (fmt) {
         case PURL::FullURL :
@@ -1218,7 +1221,7 @@ class PURL_DataScheme : public PURLScheme
 {
     PCLASSINFO(PURL_DataScheme, PURLScheme);
   public:
-    virtual bool Parse(const char * cstr, PURL & url) const
+    virtual bool Parse(const char * cstr, PURL & url) const override
     {
       const PConstCaselessString str(cstr);
 
@@ -1239,7 +1242,7 @@ class PURL_DataScheme : public PURLScheme
       return true;
     }
 
-    virtual PString AsString(PURL::UrlFormat fmt, const PURL & purl) const
+    virtual PString AsString(PURL::UrlFormat fmt, const PURL & purl) const override
     {
       if (fmt == PURL::LocationOnly)
         return PString::Empty();
@@ -1272,7 +1275,7 @@ class PURL_DataScheme : public PURLScheme
       if (base64)
         strm << ";base64";
 
-      strm << ',' << PURL::TranslateString(purl.GetContents(), PURL::ParameterTranslation);
+      strm << ',' << PURL::TranslateString(purl.GetContents(), PURL::FragmentTranslation);
 
       return strm;
     }
@@ -1287,7 +1290,7 @@ class PURL_FileLoader : public PURLLoader
 {
     PCLASSINFO(PURL_FileLoader, PURLLoader);
   public:
-    virtual bool Load(PString & str, const PURL & url, const PURL::LoadParams &) const
+    virtual bool Load(PString & str, const PURL & url, const PURL::LoadParams &) const override
     {
       PFile file;
       if (!file.Open(url.AsFilePath(), PFile::ReadOnly))
@@ -1296,7 +1299,7 @@ class PURL_FileLoader : public PURLLoader
       return true;
     }
 
-    virtual bool Load(PBYTEArray & data, const PURL & url, const PURL::LoadParams &) const
+    virtual bool Load(PBYTEArray & data, const PURL & url, const PURL::LoadParams &) const override
     {
       PFile file;
       if (!file.Open(url.AsFilePath(), PFile::ReadOnly))
@@ -1316,7 +1319,7 @@ class PURL_DataLoader : public PURLLoader
 {
     PCLASSINFO(PURL_FileLoader, PURLLoader);
   public:
-    virtual bool Load(PString & str, const PURL & url, const PURL::LoadParams & params) const
+    virtual bool Load(PString & str, const PURL & url, const PURL::LoadParams & params) const override
     {
       if (!params.m_requiredContentType.IsEmpty()) {
         PCaselessString actualContentType = url.GetParamVars()("type");
@@ -1328,7 +1331,7 @@ class PURL_DataLoader : public PURLLoader
       return true;
     }
 
-    virtual bool Load(PBYTEArray & data, const PURL & url, const PURL::LoadParams & params) const
+    virtual bool Load(PBYTEArray & data, const PURL & url, const PURL::LoadParams & params) const override
     {
       if (!params.m_requiredContentType.IsEmpty()) {
         PCaselessString actualContentType = url.GetParamVars()("type");

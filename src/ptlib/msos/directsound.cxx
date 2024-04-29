@@ -427,6 +427,13 @@ PBoolean PSoundChannelDirectSound::Close () // public
 }
 
 
+PBoolean PSoundChannelDirectSound::IsOpen() const
+{
+  return (m_activeDirection == Player)
+            ? (m_playbackBuffer != NULL && m_playbackDevice != NULL)
+            : (m_captureBuffer  != NULL && m_captureDevice  != NULL);
+}
+
 PString PSoundChannelDirectSound::GetName() const
 {
   return PConstString("DirectSound") + PPluginServiceDescriptor::SeparatorChar + m_deviceName;

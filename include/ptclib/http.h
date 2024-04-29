@@ -146,7 +146,7 @@ class PHTTPSpace : public PContainer
     } * root;
 
   private:
-    PBoolean SetSize(PINDEX) { return false; }
+    PBoolean SetSize(PINDEX) override { return false; }
 };
 
 #ifdef TRACE
@@ -326,7 +326,7 @@ protected:
      */
     virtual PINDEX ParseResponse(
       const PString & line    ///< Input response line to be parsed
-    );
+    ) override;
 };
 
 
@@ -401,7 +401,7 @@ class PHTTPClientAuthentication : public PObject
 
     virtual Comparison Compare(
       const PObject & other
-    ) const;
+    ) const override;
 
     virtual PBoolean Parse(
       const PString & auth,
@@ -467,16 +467,16 @@ class PHTTPClientBasicAuthentication : public PHTTPClientAuthentication
 
     virtual Comparison Compare(
       const PObject & other
-    ) const;
+    ) const override;
 
     virtual PBoolean Parse(
       const PString & auth,
       PBoolean proxy
-    );
+    ) override;
 
     virtual PBoolean Authorise(
       AuthObject & pdu
-    ) const;
+    ) const override;
 };
 
 ///////////////////////////////////////////////////////////////////////
@@ -493,19 +493,19 @@ class PHTTPClientDigestAuthentication : public PHTTPClientAuthentication
 
     virtual Comparison Compare(
       const PObject & other
-    ) const;
+    ) const override;
 
     virtual PBoolean Parse(
       const PString & auth,
       PBoolean proxy
-    );
+    ) override;
 
     virtual PBoolean Authorise(
       AuthObject & pdu
-    ) const;
+    ) const override;
 
-    virtual PString GetAuthRealm() const         { return authRealm; }
-    virtual void SetAuthRealm(const PString & r) { authRealm = r; }
+    virtual PString GetAuthRealm() const override         { return authRealm; }
+    virtual void SetAuthRealm(const PString & r) override { authRealm = r; }
 
     enum Algorithm {
       Algorithm_MD5,
@@ -842,6 +842,16 @@ class PHTTPClient : public PHTTP, public PSSLCertificateInfo
       */
     const Proxies & GetProxies() const { return m_proxies; }
 
+    /**Set cookies for connections.
+      */
+    void SetCookies(
+      const PHTTPCookies & cookies ///< Cookies
+    ) { m_cookies = cookies; }
+
+    /**Get proxy for connections.
+      */
+    const PHTTPCookies & GetCookies() const { return m_cookies; }
+
 /** Set authentication paramaters to be use for retreiving documents
     */
     void SetAuthenticationInfo(
@@ -873,10 +883,11 @@ class PHTTPClient : public PHTTP, public PSSLCertificateInfo
     virtual bool HandleAuthorisation(bool isProxy, PMIMEInfo & replyMIME);
 
   protected:
-    PString  m_userAgentName;
-    bool     m_persist;
-    unsigned m_maxRedirects;
-    Proxies  m_proxies;
+    PString      m_userAgentName;
+    bool         m_persist;
+    unsigned     m_maxRedirects;
+    Proxies      m_proxies;
+    PHTTPCookies m_cookies;
     struct {
       PString  m_userName;
       PString  m_password;
@@ -1013,7 +1024,7 @@ class PWebSocket : public PIndirectChannel, public PSSLCertificateInfo
     virtual PBoolean Read(
       void * buf,   ///< Pointer to a block of memory to receive the read bytes.
       PINDEX len    ///< Maximum number of bytes to read into the buffer.
-    );
+    ) override;
 
     /** Low level write to the channel.
         This function will always write a single WebSocket "frame".
@@ -1029,7 +1040,7 @@ class PWebSocket : public PIndirectChannel, public PSSLCertificateInfo
     virtual PBoolean Write(
       const void * buf, ///< Pointer to a block of memory to write.
       PINDEX len        ///< Number of bytes to write.
-    );
+    ) override;
 
 
     /** Connect to the WebSocket.
@@ -1786,7 +1797,7 @@ class PHTTPSimpleAuth : public PHTTPAuthority
        @return
        pointer to new copy of the class instance.
      */
-    virtual PObject * Clone() const;
+    virtual PObject * Clone() const override;
 
 
   // Overrides from class PHTTPAuthority.
@@ -1798,7 +1809,7 @@ class PHTTPSimpleAuth : public PHTTPAuthority
      */
     virtual PString GetRealm(
       const PHTTPRequest & request   ///< Request information.
-    ) const;
+    ) const override;
 
     /** Validate the user and password provided by the remote HTTP client for
        the realm specified by the class instance.
@@ -1809,7 +1820,7 @@ class PHTTPSimpleAuth : public PHTTPAuthority
     virtual PBoolean Validate(
       const PHTTPRequest & request,  ///< Request information.
       const PString & authInfo       ///< Authority information string.
-    ) const;
+    ) const override;
 
     /** Determine if the authorisation is to be applied. This could be used to
        distinguish between net requiring authorisation and requiring autorisation
@@ -1820,7 +1831,7 @@ class PHTTPSimpleAuth : public PHTTPAuthority
        @return
        true if the authorisation in the realm is to be applied.
      */
-    virtual PBoolean IsActive() const;
+    virtual PBoolean IsActive() const override;
 
     /** Get the realm or name space for the user authorisation name and
        password as required by the basic authorisation system of HTTP/1.0.
@@ -1881,7 +1892,7 @@ class PHTTPMultiSimpAuth : public PHTTPAuthority
        @return
        pointer to new copy of the class instance.
      */
-    virtual PObject * Clone() const;
+    virtual PObject * Clone() const override;
 
 
   // Overrides from class PHTTPAuthority.
@@ -1893,7 +1904,7 @@ class PHTTPMultiSimpAuth : public PHTTPAuthority
      */
     virtual PString GetRealm(
       const PHTTPRequest & request   ///< Request information.
-    ) const;
+    ) const override;
 
     /** Validate the user and password provided by the remote HTTP client for
        the realm specified by the class instance.
@@ -1904,7 +1915,7 @@ class PHTTPMultiSimpAuth : public PHTTPAuthority
     virtual PBoolean Validate(
       const PHTTPRequest & request,  ///< Request information.
       const PString & authInfo       ///< Authority information string.
-    ) const;
+    ) const override;
 
     /** Determine if the authirisation is to be applied. This could be used to
        distinguish between net requiring authorisation and requiring autorisation
@@ -1915,7 +1926,7 @@ class PHTTPMultiSimpAuth : public PHTTPAuthority
        @return
        true if the authorisation in the realm is to be applied.
      */
-    virtual PBoolean IsActive() const;
+    virtual PBoolean IsActive() const override;
 
     /** Get the user name allocated to this simple authorisation.
 
@@ -2353,7 +2364,7 @@ class PHTTPString : public PHTTPResource
      */
     virtual PBoolean LoadHeaders(
       PHTTPRequest & request    // Information on this request.
-    );
+    ) override;
 
     /** Get a block of text data (eg HTML) that the resource contains.
 
@@ -2365,7 +2376,7 @@ class PHTTPString : public PHTTPResource
      */
     virtual PString LoadText(
       PHTTPRequest & request    // Information on this request.
-    );
+    ) override;
 
   // New functions for class.
     /** Get the string for this resource.
@@ -2444,7 +2455,7 @@ class PHTTPFile : public PHTTPResource
     virtual PHTTPRequest * CreateRequest(
       PHTTPServer & server,                   ///< socket used for request
       const PHTTPConnectionInfo & connectInfo  ///< HTTP connection information
-    );
+    ) override;
 
     /** Get the headers for block of data (eg HTML) that the resource contains.
        This will fill in all the fields of the <CODE>outMIME</CODE> parameter
@@ -2455,7 +2466,7 @@ class PHTTPFile : public PHTTPResource
      */
     virtual PBoolean LoadHeaders(
       PHTTPRequest & request    // Information on this request.
-    );
+    ) override;
 
     /** Get a block of data that the resource contains.
 
@@ -2465,7 +2476,7 @@ class PHTTPFile : public PHTTPResource
     virtual PBoolean LoadData(
       PHTTPRequest & request,    // Information on this request.
       PCharArray & data          // Data used in reply.
-    );
+    ) override;
 
     /** Get a block of text data (eg HTML) that the resource contains.
 
@@ -2477,7 +2488,7 @@ class PHTTPFile : public PHTTPResource
      */
     virtual PString LoadText(
       PHTTPRequest & request    // Information on this request.
-    );
+    ) override;
 
 
   protected:
@@ -2567,7 +2578,7 @@ class PHTTPTailFile : public PHTTPFile
      */
     virtual PBoolean LoadHeaders(
       PHTTPRequest & request    // Information on this request.
-    );
+    ) override;
 
     /** Get a block of data that the resource contains.
 
@@ -2577,7 +2588,7 @@ class PHTTPTailFile : public PHTTPFile
     virtual PBoolean LoadData(
       PHTTPRequest & request,    // Information on this request.
       PCharArray & data          // Data used in reply.
-    );
+    ) override;
 };
 
 
@@ -2622,7 +2633,7 @@ class PHTTPDirectory : public PHTTPFile
     virtual PHTTPRequest * CreateRequest(
       PHTTPServer & server,                   ///< socket used for request
       const PHTTPConnectionInfo & connectInfo  ///< HTTP connection information
-    );
+    ) override;
 
     /** Get the headers for block of data (eg HTML) that the resource contains.
        This will fill in all the fields of the <CODE>outMIME</CODE> parameter
@@ -2633,7 +2644,7 @@ class PHTTPDirectory : public PHTTPFile
      */
     virtual PBoolean LoadHeaders(
       PHTTPRequest & request    ///< Information on this request.
-    );
+    ) override;
 
     /** Get a block of text data (eg HTML) that the resource contains.
 
@@ -2645,7 +2656,7 @@ class PHTTPDirectory : public PHTTPFile
      */
     virtual PString LoadText(
       PHTTPRequest & request    ///< Information on this request.
-    );
+    ) override;
 
     /** Enable or disable access control using .access files. A directory tree containing
        a _access file will require authorisation to allow access. This file has 
@@ -2666,7 +2677,7 @@ class PHTTPDirectory : public PHTTPFile
       PHTTPServer & server,               // Server to send response to.
       const PHTTPRequest & request,       // Information on this request.
       const PHTTPConnectionInfo & conInfo // Information on the connection
-    );
+    ) override;
 
     PBoolean FindAuthorisations(const PDirectory & dir, PString & realm, PStringToString & authorisations);
 

@@ -34,7 +34,7 @@ class AudioTest : public PProcess
   public:
     AudioTest();
 
-    void Main();
+    virtual void Main() override;
 
   private:
     PDECLARE_NOTIFIER(PCLI::Arguments, AudioTest, RecordVolume);

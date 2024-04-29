@@ -274,15 +274,15 @@ class PMediaFile : public PSmartObject
         explicit SoundChannel(const Ptr & mediaFile = Ptr(), unsigned track = 0);
         ~SoundChannel();
 
-        virtual bool Open(const Params & params);
-        virtual PString GetName() const;
-        virtual PBoolean Close();
-        virtual PBoolean IsOpen() const;
+        virtual bool Open(const Params & params) override;
+        virtual PString GetName() const override;
+        virtual PBoolean Close() override;
+        virtual PBoolean IsOpen() const override;
 
       protected:
-        virtual bool RawWrite(const void * buf, PINDEX len);
-        virtual bool RawRead(void * buf, PINDEX len);
-        virtual bool Rewind();
+        virtual bool RawWrite(const void * buf, PINDEX len) override;
+        virtual bool RawRead(void * buf, PINDEX len) override;
+        virtual bool Rewind() override;
 
         Ptr      m_mediaFile;
         unsigned m_track;
@@ -296,13 +296,13 @@ class PMediaFile : public PSmartObject
         explicit VideoInputDevice(const Ptr & mediaFile = Ptr(), unsigned track = 0);
         ~VideoInputDevice();
 
-        virtual PStringArray GetDeviceNames() const;
-        virtual PBoolean Open(const PString & deviceName, PBoolean startImmediate = true);
-        virtual PBoolean IsOpen();
-        virtual PBoolean Close();
+        virtual PStringArray GetDeviceNames() const override;
+        virtual PBoolean Open(const PString & deviceName, PBoolean startImmediate = true) override;
+        virtual PBoolean IsOpen() override;
+        virtual PBoolean Close() override;
 
       protected:
-        virtual bool InternalReadFrameData(BYTE * frame);
+        virtual bool InternalReadFrameData(BYTE * frame) override;
 
         Ptr            m_mediaFile;
         unsigned       m_track;
@@ -338,7 +338,7 @@ class PVideoOutputDevice_MediaFile : public PVideoOutputDevice
       */
     static PStringArray GetOutputDeviceNames();
 
-    virtual PStringArray GetDeviceNames() const
+    virtual PStringArray GetDeviceNames() const override
       { return GetOutputDeviceNames(); }
 
     /**Open the device given the device name.
@@ -346,23 +346,23 @@ class PVideoOutputDevice_MediaFile : public PVideoOutputDevice
     virtual PBoolean Open(
       const PString & deviceName,   /// Device name to open
       PBoolean startImmediate = true    /// Immediately start device
-    );
+    ) override;
 
     /**Start the video device I/O.
       */
-    PBoolean Start();
+    PBoolean Start() override;
 
     /**Stop the video device I/O capture.
       */
-    PBoolean Stop();
+    PBoolean Stop() override;
 
     /**Close the device.
       */
-    virtual PBoolean Close();
+    virtual PBoolean Close() override;
 
     /**Determine if the device is currently open.
       */
-    virtual PBoolean IsOpen();
+    virtual PBoolean IsOpen() override;
 
     /**Set the colour format to be used.
 
@@ -371,11 +371,11 @@ class PVideoOutputDevice_MediaFile : public PVideoOutputDevice
     */
     virtual PBoolean SetColourFormat(
       const PString & colourFormat   // New colour format for device.
-    );
+    ) override;
     
     /**Set a section of the output frame buffer.
       */
-    virtual PBoolean SetFrameData(const FrameData & frameData);
+    virtual PBoolean SetFrameData(const FrameData & frameData) override;
 
   protected:  
    PMediaFile * m_file;

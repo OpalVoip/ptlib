@@ -77,11 +77,11 @@ class PExternalThread : public PThread
                 " unique-id=" << GetUniqueIdentifier());
     }
 
-    virtual void Main()
+    virtual void Main() override
     {
     }
 
-    virtual void Terminate()
+    virtual void Terminate() override
     {
       PTRACE(2, "Cannot terminate external thread " << this << ","
                 " thread-id=" << GetThreadId() << ","
@@ -108,7 +108,7 @@ class PSimpleThread : public PThread
         WaitForTermination();
     }
 
-    void Main();
+    void Main() override;
 
   protected:
     PNotifier callback;
@@ -1022,7 +1022,7 @@ ostream & PTraceInfo::InternalEnd(ostream & paramStream)
     message.Replace("\n", "\\n", true);
   }
 
-  if (message.GetLength() > m_maxLength)
+  if (context->m_level > 0 && message.GetLength() > m_maxLength)
     message.Splice("...", m_maxLength - 4, P_MAX_INDEX);
 
   if (outputJSON)
@@ -1650,10 +1650,11 @@ void PTimer::Stop(bool wait)
   unsigned retry = 0;
   do {
     /* Take out of timer list first, so when callback is waited for it's
-       completion it cannot then be called again. Note, the bitwise OR is
-       intentional! We don't want McCarthy breaking things. */
+       completion it cannot then be called again. Note, we can't use the
+       || operator! We don't want McCarthy breaking things. */
     list->m_timersMutex.Wait();
-    PAssert((list->m_timers.erase(m_handle) == 1) | !m_running.exchange(false), PLogicError);
+    bool notRunning = !m_running.exchange(false);
+    PAssert(list->m_timers.erase(m_handle) == 1 || notRunning, PLogicError);
     list->m_timersMutex.Signal();
 
     if (wait) {

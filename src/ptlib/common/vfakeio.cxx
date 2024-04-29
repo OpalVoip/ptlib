@@ -1317,33 +1317,33 @@ class PVideoInputDevice_FakeVideo : public PVideoInputDevice
     PBoolean Open(
       const PString & deviceName,   /// Device name to open
       PBoolean startImmediate = true    /// Immediately start device
-    );
+    ) override;
 
     /**Determine of the device is currently open.
       */
-    PBoolean IsOpen();
+    PBoolean IsOpen() override;
 
     /**Close the device.
       */
-    PBoolean Close();
+    PBoolean Close() override;
 
     /**Start the video device I/O.
       */
-    PBoolean Start();
+    PBoolean Start() override;
 
     /**Stop the video device I/O capture.
       */
-    PBoolean Stop();
+    PBoolean Stop() override;
 
     /**Determine if the video device I/O capture is in progress.
       */
-    PBoolean IsCapturing();
+    PBoolean IsCapturing() override;
 
     /**Get a list of all of the drivers available.
       */
     static PStringArray GetInputDeviceNames();
 
-    virtual PStringArray GetDeviceNames() const
+    virtual PStringArray GetDeviceNames() const override
     {
       return GetInputDeviceNames();
     }
@@ -1353,7 +1353,7 @@ class PVideoInputDevice_FakeVideo : public PVideoInputDevice
        Note a particular device may be able to provide variable length
        frames (eg motion JPEG) so will be the maximum size of all frames.
       */
-    virtual PINDEX GetMaxFrameBytes();
+    virtual PINDEX GetMaxFrameBytes() override;
 
     /**A test image that contains area of low and high resolution.
        The picture changes every second*/
@@ -1392,13 +1392,13 @@ class PVideoInputDevice_FakeVideo : public PVideoInputDevice
 
     /**Get the number of video channels available on the device.
     */
-    virtual int GetNumChannels();
+    virtual int GetNumChannels() override;
 
     /**Get the names of video channels available on the device.
 
        Default behaviour returns 'A', 'B' up to GetNumChannels().
     */
-    virtual PStringArray GetChannelNames();
+    virtual PStringArray GetChannelNames() override;
 
     /**Set the colour format to be used.
 
@@ -1407,7 +1407,7 @@ class PVideoInputDevice_FakeVideo : public PVideoInputDevice
     */
     virtual PBoolean SetColourFormat(
       const PString & colourFormat   // New colour format for device.
-    );
+    ) override;
 
     /**Set the video frame rate to be used on the device.
 
@@ -1416,7 +1416,7 @@ class PVideoInputDevice_FakeVideo : public PVideoInputDevice
     */
     virtual PBoolean SetFrameRate(
       unsigned rate  /// Frames per second
-    );
+    ) override;
 
     /**Get the minimum & maximum size of a frame on the device.
 
@@ -1428,7 +1428,7 @@ class PVideoInputDevice_FakeVideo : public PVideoInputDevice
       unsigned & minHeight,  /// Variable to receive minimum height
       unsigned & maxWidth,   /// Variable to receive maximum width
       unsigned & maxHeight   /// Variable to receive maximum height
-    );
+    ) override;
 
     /**Set the frame size to be used.
 
@@ -1438,11 +1438,11 @@ class PVideoInputDevice_FakeVideo : public PVideoInputDevice
     virtual PBoolean SetFrameSize(
       unsigned width,   /// New width of frame
       unsigned height   /// New height of frame
-    );
+    ) override;
 
 
   protected:
-    virtual bool InternalGetFrameData(BYTE * buffer, PINDEX & bytesReturned, bool & keyFrame, bool wait);
+    virtual bool InternalGetFrameData(BYTE * buffer, PINDEX & bytesReturned, bool & keyFrame, bool wait) override;
 
     bool m_open;
 
@@ -2106,7 +2106,7 @@ class PVideoOutputDevice_NULLOutput : public PVideoOutputDevice
       */
     static PStringArray GetOutputDeviceNames();
 
-    virtual PStringArray GetDeviceNames() const
+    virtual PStringArray GetDeviceNames() const override
       { return GetOutputDeviceNames(); }
 
     /**Open the device given the device name.
@@ -2114,27 +2114,27 @@ class PVideoOutputDevice_NULLOutput : public PVideoOutputDevice
     virtual PBoolean Open(
       const PString & deviceName,   /// Device name to open
       PBoolean startImmediate = true    /// Immediately start device
-    );
+    ) override;
 
     /**Start the video device I/O.
       */
-    PBoolean Start();
+    PBoolean Start() override;
 
     /**Stop the video device I/O capture.
       */
-    PBoolean Stop();
+    PBoolean Stop() override;
 
     /**Close the device.
       */
-    virtual PBoolean Close();
+    virtual PBoolean Close() override;
 
     /**Determine if the device is currently open.
       */
-    virtual PBoolean IsOpen();
+    virtual PBoolean IsOpen() override;
 
     /**Set a section of the output frame buffer.
       */
-    virtual PBoolean SetFrameData(const FrameData & frameData);
+    virtual PBoolean SetFrameData(const FrameData & frameData) override;
 
     /**Indicate frame may be displayed.
       */
@@ -2142,7 +2142,7 @@ class PVideoOutputDevice_NULLOutput : public PVideoOutputDevice
 
 	/**Decide whether to disable Decode
 	  */
-	virtual PBoolean DisableDecode();
+	virtual PBoolean DisableDecode() override;
 
 };
 

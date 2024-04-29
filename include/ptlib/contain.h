@@ -341,14 +341,14 @@ class PContainer : public PObject
     cls & operator=(const cls & c) \
       { AssignContents(c); return *this; } \
     virtual ~cls() { Destruct(); } \
-    virtual PBoolean MakeUnique() \
+    virtual PBoolean MakeUnique() override \
       { if(par::MakeUnique())return true; CloneContents(this);return false; } \
   protected: \
     cls(int dummy, const cls * c) : par(dummy, c) { CloneContents(c); } \
-    virtual void DestroyContents(); \
+    virtual void DestroyContents() override; \
     void CloneContents(const cls * c); \
     void CopyContents(const cls & c); \
-    virtual void AssignContents(const PContainer & c) \
+    virtual void AssignContents(const PContainer & c) override \
       { par::AssignContents(c); CopyContents((const cls &)c); }
 
 
@@ -417,7 +417,7 @@ class PCollection : public PContainer
      */
     virtual void PrintOn(
       ostream &strm   ///< Output stream to print the collection.
-    ) const;
+    ) const override;
   //@}
 
   /**@name Common functions for collections */

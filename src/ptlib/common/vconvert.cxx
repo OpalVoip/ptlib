@@ -32,7 +32,7 @@
 
 #include <ptlib/video.h>
 
-#ifdef __GNUC__
+#ifdef P_USE_PRAGMA
 #pragma implementation "vconvert.h"
 #endif
 
@@ -157,14 +157,14 @@ class PStandardColourConverter : public PColourConverter
       sws_freeContext(m_swsContext); // NULL is OK
     }
 
-    virtual PBoolean SetSrcFrameSize(unsigned width, unsigned height)
+    virtual PBoolean SetSrcFrameSize(unsigned width, unsigned height) override
     {
       sws_freeContext(m_swsContext);
       m_swsContext = NULL;
       return PColourConverter::SetSrcFrameSize(width, height);
     }
 
-    virtual PBoolean SetDstFrameSize(unsigned width, unsigned height)
+    virtual PBoolean SetDstFrameSize(unsigned width, unsigned height) override
     {
       sws_freeContext(m_swsContext);
       m_swsContext = NULL;

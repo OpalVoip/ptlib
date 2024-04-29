@@ -74,11 +74,11 @@ class PSNMP_PDUs : public PASN_Choice
     operator const PSNMP_Trap_PDU &() const;
 #endif
 
-    virtual PBoolean Decode(PASN_Stream & strm);
-    virtual void Encode(PASN_Stream & strm) const;
+    virtual PBoolean Decode(PASN_Stream & strm) override;
+    virtual void Encode(PASN_Stream & strm) const override;
 
-    PBoolean CreateObject();
-    PObject * Clone() const;
+    PBoolean CreateObject() override;
+    PObject * Clone() const override;
 };
 
 
@@ -97,14 +97,14 @@ class PSNMP_VarBind : public PASN_Sequence
     PRFC1155_ObjectName m_name;
     PRFC1155_ObjectSyntax m_value;
 
-    PINDEX GetDataLength() const;
-    PBoolean Decode(PASN_Stream & strm);
-    void Encode(PASN_Stream & strm) const;
+    PINDEX GetDataLength() const override;
+    PBoolean Decode(PASN_Stream & strm) override;
+    void Encode(PASN_Stream & strm) const override;
 #ifndef PASN_NOPRINTON
-    void PrintOn(ostream & strm) const;
+    void PrintOn(ostream & strm) const override;
 #endif
-    Comparison Compare(const PObject & obj) const;
-    PObject * Clone() const;
+    Comparison Compare(const PObject & obj) const override;
+    PObject * Clone() const override;
 };
 
 
@@ -122,9 +122,9 @@ class PSNMP_VarBindList : public PASN_Array
   public:
     PSNMP_VarBindList(unsigned tag = UniversalSequence, TagClass tagClass = UniversalTagClass);
 
-    PASN_Object * CreateObject() const;
+    PASN_Object * CreateObject() const override;
     PSNMP_VarBind & operator[](PINDEX i) const;
-    PObject * Clone() const;
+    PObject * Clone() const override;
 };
 
 
@@ -145,14 +145,14 @@ class PSNMP_PDU : public PASN_Sequence
     PASN_Integer m_error_index;
     PSNMP_VarBindList m_variable_bindings;
 
-    PINDEX GetDataLength() const;
-    PBoolean Decode(PASN_Stream & strm);
-    void Encode(PASN_Stream & strm) const;
+    PINDEX GetDataLength() const override;
+    PBoolean Decode(PASN_Stream & strm) override;
+    void Encode(PASN_Stream & strm) const override;
 #ifndef PASN_NOPRINTON
-    void PrintOn(ostream & strm) const;
+    void PrintOn(ostream & strm) const override;
 #endif
-    Comparison Compare(const PObject & obj) const;
-    PObject * Clone() const;
+    Comparison Compare(const PObject & obj) const override;
+    PObject * Clone() const override;
 };
 
 
@@ -175,14 +175,14 @@ class PSNMP_Trap_PDU : public PASN_Sequence
     PRFC1155_TimeTicks m_time_stamp;
     PSNMP_VarBindList m_variable_bindings;
 
-    PINDEX GetDataLength() const;
-    PBoolean Decode(PASN_Stream & strm);
-    void Encode(PASN_Stream & strm) const;
+    PINDEX GetDataLength() const override;
+    PBoolean Decode(PASN_Stream & strm) override;
+    void Encode(PASN_Stream & strm) const override;
 #ifndef PASN_NOPRINTON
-    void PrintOn(ostream & strm) const;
+    void PrintOn(ostream & strm) const override;
 #endif
-    Comparison Compare(const PObject & obj) const;
-    PObject * Clone() const;
+    Comparison Compare(const PObject & obj) const override;
+    PObject * Clone() const override;
 };
 
 
@@ -198,7 +198,7 @@ class PSNMP_GetRequest_PDU : public PSNMP_PDU
   public:
     PSNMP_GetRequest_PDU(unsigned tag = 0, TagClass tagClass = ContextSpecificTagClass);
 
-    PObject * Clone() const;
+    PObject * Clone() const override;
 };
 
 
@@ -214,7 +214,7 @@ class PSNMP_GetNextRequest_PDU : public PSNMP_PDU
   public:
     PSNMP_GetNextRequest_PDU(unsigned tag = 1, TagClass tagClass = ContextSpecificTagClass);
 
-    PObject * Clone() const;
+    PObject * Clone() const override;
 };
 
 
@@ -230,7 +230,7 @@ class PSNMP_GetResponse_PDU : public PSNMP_PDU
   public:
     PSNMP_GetResponse_PDU(unsigned tag = 2, TagClass tagClass = ContextSpecificTagClass);
 
-    PObject * Clone() const;
+    PObject * Clone() const override;
 };
 
 
@@ -246,7 +246,7 @@ class PSNMP_SetRequest_PDU : public PSNMP_PDU
   public:
     PSNMP_SetRequest_PDU(unsigned tag = 3, TagClass tagClass = ContextSpecificTagClass);
 
-    PObject * Clone() const;
+    PObject * Clone() const override;
 };
 
 
@@ -267,14 +267,14 @@ class PSNMP_Message : public PASN_Sequence
     PSNMP_PDUs m_pdu;
     PASN_OctetString m_data;
 
-    PINDEX GetDataLength() const;
-    PBoolean Decode(PASN_Stream & strm);
-    void Encode(PASN_Stream & strm) const;
+    PINDEX GetDataLength() const override;
+    PBoolean Decode(PASN_Stream & strm) override;
+    void Encode(PASN_Stream & strm) const override;
 #ifndef PASN_NOPRINTON
-    void PrintOn(ostream & strm) const;
+    void PrintOn(ostream & strm) const override;
 #endif
-    Comparison Compare(const PObject & obj) const;
-    PObject * Clone() const;
+    Comparison Compare(const PObject & obj) const override;
+    PObject * Clone() const override;
 };
 
 

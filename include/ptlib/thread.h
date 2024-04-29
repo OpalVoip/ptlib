@@ -135,7 +135,7 @@ class PThread : public PObject, PProfiling::HighWaterMark<PThread>, PNonCopyable
       */
     void PrintOn(
       ostream & strm    ///< Stream to output text representation
-    ) const;
+    ) const override;
   //@}
 
   /**@name Control functions */
@@ -563,7 +563,7 @@ class PThreadMain : public PThread
         WaitForTermination();
     }
 
-    virtual void Main()
+    virtual void Main() override
     {
       (*m_function)();
     }
@@ -607,7 +607,7 @@ class PThreadFunctor : public PThread
         WaitForTermination();
     }
 
-    virtual void Main()
+    virtual void Main() override
     {
       m_funct(*this);
     }
@@ -654,7 +654,7 @@ class PThread1Arg : public PThread
         WaitForTermination();
     }
 
-    virtual void Main()
+    virtual void Main() override
     {
       (*m_function)(m_arg1);
     }
@@ -703,7 +703,7 @@ class PThread2Arg : public PThread
         WaitForTermination();
     }
 
-    virtual void Main()
+    virtual void Main() override
     {
       (*m_function)(m_arg1, m_arg2);
     }
@@ -754,7 +754,7 @@ class PThread3Arg : public PThread
         WaitForTermination();
     }
 
-    virtual void Main()
+    virtual void Main() override
     {
       (*m_function)(m_arg1, m_arg2, m_arg3);
     }
@@ -810,7 +810,7 @@ class PThreadObj : public PThread
         WaitForTermination();
     }
 
-    void Main()
+    void Main() override
     {
       (m_object.*m_function)();
     }
@@ -867,7 +867,7 @@ class PThreadObj1Arg : public PThread
         WaitForTermination();
     }
 
-    void Main()
+    void Main() override
     {
       (m_object.*m_function)(m_arg1);
     }
@@ -910,7 +910,7 @@ class PThreadObj2Arg : public PThread
         WaitForTermination();
     }
 
-    void Main()
+    void Main() override
     {
       (m_object.*m_function)(m_arg1, m_arg2);
     }

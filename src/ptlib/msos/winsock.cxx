@@ -1137,12 +1137,6 @@ bool PIPSocket::SetQoS(const QoS & qos)
     new_tos = DSCP[qos.m_type];
   }
 
-  // On Win7 and later IP_TOS succeeds, but does not actually do anything. Useless!
-  if (PProcess::IsOSVersion(6, 1, 0)) {
-    PTRACE(3, "Setting TOS field of IP header does not work in Windows 7 and later.");
-    return false;
-  }
-
   if (!SetOption(IP_TOS, new_tos, IPPROTO_IP)) {
     PTRACE(2, "Could not set TOS field in IP header: " << GetErrorText());
     return false;
@@ -1150,14 +1144,14 @@ bool PIPSocket::SetQoS(const QoS & qos)
 
   int actual_tos;
   if (!GetOption(IP_TOS, actual_tos, IPPROTO_IP)) {
-    PTRACE(1, "Could not get TOS field in IP header: " << GetErrorText());
+    PTRACE(2, "Could not get TOS field in IP header: " << GetErrorText());
     return false;
   }
 
   if (new_tos == actual_tos)
     return true;
 
-  PTRACE(2, "Setting TOS field of IP header appeared successful, but was not really set.");
+  PTRACE(4, "Setting TOS field of IP header appeared successful, but was not really set.");
   return false;
 }
 

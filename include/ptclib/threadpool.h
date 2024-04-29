@@ -154,7 +154,7 @@ class PThreadPoolBase : public PObject
     {
       protected:
         WorkerThreadBase(PThreadPoolBase & pool, Priority priority, const char * threadName);
-        virtual void Main();
+        virtual void Main() override;
 
       public:
         virtual bool Work() = 0;
@@ -611,7 +611,7 @@ class PSafeWorkNoArg : public PSafeWork
       , m_function(function)
     { }
 
-    virtual void CallFunction(PSafeObject & obj)
+    virtual void CallFunction(PSafeObject & obj) override
     {
       (dynamic_cast<PtrClass&>(obj).*(this->m_function))();
     }
@@ -645,7 +645,7 @@ class PSafeWorkArg1 : public PSafeWork
       , m_arg1(arg1)
     { }
 
-    virtual void CallFunction(PSafeObject & obj)
+    virtual void CallFunction(PSafeObject & obj) override
     {
       (dynamic_cast<PtrClass&>(obj).*(this->m_function))(m_arg1);
     }
@@ -683,7 +683,7 @@ class PSafeWorkArg2 : public PSafeWork
       , m_arg2(arg2)
     { }
 
-    virtual void CallFunction(PSafeObject & obj)
+    virtual void CallFunction(PSafeObject & obj) override
     {
       (dynamic_cast<PtrClass&>(obj).*(this->m_function))(m_arg1, m_arg2);
     }

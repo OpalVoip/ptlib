@@ -78,7 +78,7 @@ class PSyncPointAck : public PSyncPoint
        The <code>waitTime</code> parameter is used as a maximum amount of time
        to wait for the achnowledgement to be returned from the other thread.
      */
-    virtual void Signal();
+    virtual void Signal() override;
     void Signal(const PTimeInterval & waitTime);
 
     /** This indicates that the thread that was blocked in a Wait() on this
@@ -113,7 +113,7 @@ class PCondMutex : public PMutex
        was blocked. If no waiting threads and the count is less than the
        maximum then increment the semaphore.
      */
-    virtual void Signal();
+    virtual void Signal() override;
 
     /** This is the condition that must be met for the WaitCondition() function
        to acquire the mutex.
@@ -169,7 +169,7 @@ class PIntCondMutex : public PCondMutex
     /** Print the object on the stream. This will be of the form
        #"(value < target)"#.
      */
-    void PrintOn(ostream & strm) const;
+    void PrintOn(ostream & strm) const override;
   //@}
 
   /**@name Condition access functions */
@@ -179,7 +179,7 @@ class PIntCondMutex : public PCondMutex
 
        @return true if condition is met.
      */
-    virtual PBoolean Condition();
+    virtual PBoolean Condition() override;
 
     /**Get the current value of the condition variable.
       @return Current condition variable value.
@@ -314,7 +314,7 @@ class PReadWriteMutex : public PObject, public PMutexExcessiveLockInfo, PProfili
     void EndWrite(const PDebugLocation & location) { InternalEndWrite(&location); }
   //@}
 
-    virtual void PrintOn(ostream &strm) const;
+    virtual void PrintOn(ostream &strm) const override;
 
   protected:
     void InternalStartRead(const PDebugLocation * location);

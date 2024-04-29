@@ -66,8 +66,8 @@ class PXMLRPCServerResource : public PHTTPResource
     );
 
     // overrides from PHTTPResource
-    PBoolean LoadHeaders(PHTTPRequest & request);
-    PBoolean OnPOSTData(PHTTPRequest & request, const PStringToString & data);
+    PBoolean LoadHeaders(PHTTPRequest & request) override;
+    PBoolean OnPOSTData(PHTTPRequest & request, const PStringToString & data) override;
 
     // new functions
     virtual void OnXMLRPCRequest(const PString & body, PString & reply);

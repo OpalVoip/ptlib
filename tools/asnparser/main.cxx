@@ -210,7 +210,7 @@ class App : public PProcess
     PCLASSINFO(App, PProcess);
   public:
     App();
-    void Main();
+    virtual void Main() override;
     PBoolean SetClassHeaderFile(PArgList & args);
     PBoolean SetClassHeader(PArgList & args);
     void OutputAdditionalHeaders(ostream & hdr, const PString & className);
@@ -1184,7 +1184,7 @@ void TypeBase::EndGenerateCplusplus(ostream & hdr, ostream & cxx)
   GenerateOperators(hdr, cxx, *this);
 
   // Output header file declaration of class
-  hdr << "    PObject * Clone() const;\n"
+  hdr << "    PObject * Clone() const override;\n"
          "};\n"
          "\n"
          "\n";
@@ -1986,7 +1986,7 @@ void SequenceType::GenerateCplusplus(ostream & hdr, ostream & cxx)
          "    PBoolean Decode(PASN_Stream & strm);\n"
          "    void Encode(PASN_Stream & strm) const;\n"
          "#ifndef PASN_NOPRINTON\n"
-         "    void PrintOn(ostream & strm) const;\n"
+         "    void PrintOn(ostream & strm) const override;\n"
          "#endif\n";
 
   if (xml_output)
@@ -1999,7 +1999,7 @@ void SequenceType::GenerateCplusplus(ostream & hdr, ostream & cxx)
 
 
   if (numFields > 0)
-    hdr << "    Comparison Compare(const PObject & obj) const;\n";
+    hdr << "    Comparison Compare(const PObject & obj) const override;\n";
 
   cxx << "\n"
          "{\n";

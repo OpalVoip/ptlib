@@ -141,7 +141,7 @@ class PSimpleTimer : public PTimeInterval
   //@}
 
   protected:
-    virtual void InternalSet(int64_t t);
+    virtual void InternalSet(int64_t t) override;
     PTimeInterval m_startTick;
 };
 
@@ -222,7 +222,7 @@ class PTimer : public PTimeInterval
      */
     virtual void PrintOn(
       ostream & strm    ///< I/O stream to output the time interval.
-    ) const;
+    ) const override;
   //@}
 
   /**@name Control functions */
@@ -388,8 +388,8 @@ class PTimer : public PTimeInterval
 
 
   private:
-    virtual int64_t InternalGet() const;
-    virtual void InternalSet(int64_t t);
+    virtual int64_t InternalGet() const override;
+    virtual void InternalSet(int64_t t) override;
     void InternalStart(bool once, int64_t resetTime);
 
     // Member variables
@@ -456,7 +456,7 @@ class PPoolTimer : public PTimer
       m_stopped = true;
     }
 
-    virtual void OnTimeout()
+    virtual void OnTimeout() override
     {
       if (m_stopped)
         return;
@@ -575,7 +575,7 @@ class PPoolTimerArg3: public PPoolTimer<Base_T, Pool_T>
     {
     }
 
-    virtual Work_T * CreateWork() { return new Work_T(m_arg1, m_arg2, m_arg3); }
+    virtual Work_T * CreateWork() override { return new Work_T(m_arg1, m_arg2, m_arg3); }
 
     PTIMER_OPERATORS(PPoolTimerArg3);
 };

@@ -34,7 +34,7 @@ class StunClient : public PProcess
 
   public:
     StunClient();
-    virtual void Main();
+    virtual void Main() override;
 };
 
 

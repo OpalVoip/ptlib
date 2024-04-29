@@ -82,7 +82,7 @@ public:
   }
 
 
-  virtual bool SetOptions(const PStringOptions & options)
+  virtual bool SetOptions(const PStringOptions & options) override
   {
     PString engineStr = options.Get(DefaultVoiceEngine);
     if (!engineStr.empty()) {
@@ -97,7 +97,7 @@ public:
   }
 
 
-  virtual PStringArray GetVoiceList()
+  virtual PStringArray GetVoiceList() override
   {
     PStringArray voices;
     if (m_voices.empty()) {
@@ -160,7 +160,7 @@ public:
   }
 
 
-  virtual bool InternalSetVoice(PStringOptions & voice)
+  virtual bool InternalSetVoice(PStringOptions & voice) override
   {
     if (voice == m_voice)
       return ValidateEngine(voice);
@@ -214,7 +214,7 @@ public:
   }
 
 
-  virtual bool SetSampleRate(unsigned rate)
+  virtual bool SetSampleRate(unsigned rate) override
   {
     if (rate != 8000 && rate != 16000)
       return false;
@@ -224,37 +224,37 @@ public:
   }
 
 
-  virtual unsigned GetSampleRate() const
+  virtual unsigned GetSampleRate() const override
   {
     return m_sampleRate8k ? 8000 : 16000;
   }
 
 
-  virtual bool SetChannels(unsigned channels)
+  virtual bool SetChannels(unsigned channels) override
   {
     return channels == 1;
   }
 
 
-  virtual unsigned GetChannels() const
+  virtual unsigned GetChannels() const override
   {
     return 1;
   }
 
 
-  bool SetVolume(unsigned)
+  bool SetVolume(unsigned) override
   {
     return false;
   }
 
 
-  unsigned GetVolume() const
+  unsigned GetVolume() const override
   {
     return 100;
   }
 
 
-  bool OpenFile(const PFilePath & fn)
+  bool OpenFile(const PFilePath & fn) override
   {
     if (m_file.Open(fn, PFile::WriteOnly))
       return true;
@@ -264,20 +264,20 @@ public:
   }
 
 
-  bool OpenChannel(PChannel * channel)
+  bool OpenChannel(PChannel * channel) override
   {
     Close();
     return m_channel = channel;
   }
 
 
-  bool IsOpen() const
+  bool IsOpen() const override
   {
     return m_channel != NULL || m_file.IsOpen();
   }
 
 
-  bool Close()
+  bool Close() override
   {
     m_file.Close();
     m_channel = NULL;
@@ -285,7 +285,7 @@ public:
   }
 
 
-  bool Speak(const PString & text, TextType hint)
+  bool Speak(const PString & text, TextType hint) override
   {
     if (!IsOpen() || !SetVoice(PString::Empty()))
       return false;
@@ -367,7 +367,9 @@ class PSpeechRecognition_AWS : public PSpeechRecognition, PAwsClient<Aws::Transc
 
   unsigned m_sampleRate;
   Aws::TranscribeService::Model::LanguageCode m_language;
-  PStringSet m_vocabularies;
+  PStringSet m_createdVocabularies;
+  PStringSet m_activeVocabularies;
+  PStringSet m_activeLanguages;
 
   PWebSocket m_webSocket;
   PThread  * m_eventThread;
@@ -599,12 +601,12 @@ class PSpeechRecognition_AWS : public PSpeechRecognition, PAwsClient<Aws::Transc
 
   void DeleteVocabulary(const PString & name)
   {
-    if (name.empty() || !m_vocabularies.Contains(name))
+    if (name.empty() || !m_createdVocabularies.Contains(name))
       return;
 
     GetClient()->DeleteVocabulary(Aws::TranscribeService::Model::DeleteVocabularyRequest()
                                     .WithVocabularyName(name.c_str()));
-    m_vocabularies -= name;
+    m_createdVocabularies -= name;
   }
 
 
@@ -620,19 +622,19 @@ public:
   {
     Close();
 
-    while (!m_vocabularies.empty())
-      DeleteVocabulary(*m_vocabularies.begin());
+    while (!m_createdVocabularies.empty())
+      DeleteVocabulary(*m_createdVocabularies.begin());
   }
 
 
-  virtual bool SetOptions(const PStringOptions & options)
+  virtual bool SetOptions(const PStringOptions & options) override
   {
     m_webSocket.SetProxies(options);
     return PAwsClient<Aws::TranscribeService::TranscribeServiceClient>::SetOptions(options) && PSpeechRecognition::SetOptions(options);
   }
 
 
-  virtual bool SetSampleRate(unsigned rate)
+  virtual bool SetSampleRate(unsigned rate) override
   {
     PWaitAndSignal lock(m_openMutex);
     if (IsOpen())
@@ -643,25 +645,25 @@ public:
   }
 
 
-  virtual unsigned GetSampleRate() const
+  virtual unsigned GetSampleRate() const override
   {
     return m_sampleRate;
   }
 
 
-  virtual bool SetChannels(unsigned channels)
+  virtual bool SetChannels(unsigned channels) override
   {
     return channels == 1;
   }
 
 
-  virtual unsigned GetChannels() const
+  virtual unsigned GetChannels() const override
   {
     return 1;
   }
 
 
-  virtual bool SetLanguage(const PString & language)
+  virtual bool SetLanguage(const PString & language) override
   {
     PWaitAndSignal lock(m_openMutex);
     if (IsOpen())
@@ -676,13 +678,13 @@ public:
   }
 
 
-  virtual PString GetLanguage() const
+  virtual PString GetLanguage() const override
   {
     return Aws::TranscribeService::Model::LanguageCodeMapper::GetNameForLanguageCode(m_language);
   }
 
 
-  virtual bool SetVocabulary(const PString & name, const PStringArray & words)
+  virtual bool CreateVocabulary(const PString & name, const PStringArray & words) override
   {
     DeleteVocabulary(name);
 
@@ -698,7 +700,7 @@ public:
                                                   .WithLanguageCode(m_language)
                                                   .WithPhrases(phrases));
     if (outcome.IsSuccess()) {
-      m_vocabularies += name;
+      m_createdVocabularies += name;
       return true;
     }
 
@@ -707,7 +709,15 @@ public:
   }
 
 
-  virtual bool Open(const Notifier & notifier, const PString & vocabulary)
+  virtual bool ActivateVocabulary(const PStringSet & names, const PStringSet & languages) override
+  {
+    m_activeVocabularies = names;
+    m_activeLanguages = languages;
+    return true;
+  }
+
+
+  virtual bool Open(const Notifier & notifier) override
   {
     PWaitAndSignal lock(m_openMutex);
     Close();
@@ -717,12 +727,26 @@ public:
     m_notifier = notifier;
 
     HeaderMap headers;
-    headers["language-code"] = GetLanguage();
     headers["media-encoding"] = "pcm";
     headers["sample-rate"] = GetSampleRate();
 
-    if (!vocabulary.empty())
-      headers["vocabulary-name"] = vocabulary;
+    if (m_activeVocabularies.empty())
+      headers["language-code"] = GetLanguage();
+    else {
+      if (m_activeVocabularies.size() > 1)
+        headers["vocabulary-names"] = PSTRSTRM(setfill(',') << m_activeVocabularies);
+      else
+        headers["vocabulary-name"] = *m_activeVocabularies.begin();
+
+      if (m_activeLanguages.empty())
+        headers["language-code"] = GetLanguage();
+      else if (m_activeLanguages.size() == 1)
+        headers["language-code"] = *m_activeLanguages.begin();
+      else {
+        headers["identify-language"] = "true";
+        headers["language-options"] = PSTRSTRM(setfill(',') << m_activeLanguages);
+      }
+    }
 
     PURL url = SignURL("wss://transcribestreaming:8443/stream-transcription-websocket", "transcribe", headers);
 
@@ -736,13 +760,13 @@ public:
   }
 
 
-  virtual bool IsOpen() const
+  virtual bool IsOpen() const override
   {
     return m_webSocket.IsOpen();
   }
 
 
-  virtual bool Close()
+  virtual bool Close() override
   {
     PWaitAndSignal lock(m_openMutex);
     if (!IsOpen())
@@ -756,7 +780,7 @@ public:
   }
 
 
-  virtual bool Listen(const PFilePath & fn)
+  virtual bool Listen(const PFilePath & fn) override
   {
     if (!PAssert(!fn.empty(), PInvalidParameter))
       return false;
@@ -781,7 +805,7 @@ public:
   }
 
 
-  virtual bool Listen(const int16_t * samples, size_t sampleCount)
+  virtual bool Listen(const int16_t * samples, size_t sampleCount) override
   {
     PWaitAndSignal lock(m_openMutex);
     return m_webSocket.IsOpen() && WriteAudioEvent(samples, sampleCount);

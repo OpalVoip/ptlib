@@ -34,7 +34,7 @@ class TimingTest : public PProcess
 {
   PCLASSINFO(TimingTest, PProcess)
   public:
-    void Main();
+    virtual void Main() override;
 };
 
 PCREATE_PROCESS(TimingTest);

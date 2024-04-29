@@ -47,7 +47,7 @@ class MyProcess : public PProcess
     unsigned m_recogisedTextCount;
     MyProcess() : m_interrupted(false), m_recogisedTextCount(0) { }
 
-    virtual void Main();
+    virtual void Main() override;
     virtual bool OnInterrupt(bool) { m_interrupted = true; return true; }
 
     void Play(const PArgList & args);
@@ -156,16 +156,19 @@ void MyProcess::Recognise(const PArgList & args)
     return;
   }
 
-  PString vocaulary;
   if (args.GetCount() > 0) {
-    vocaulary = "TestVocab";
-    if (!sr->SetVocabulary(vocaulary, args.GetParameters())) {
-      cerr << "COuld not set vocabulary!\n";
+    PString vocabulary = "TestVocab";
+    if (!sr->CreateVocabulary(vocabulary, args.GetParameters())) {
+      cerr << "Could not create vocabulary!\n";
+      return;
+    }
+    if (!sr->ActivateVocabulary(vocabulary)) {
+      cerr << "Could not activate vocabulary!\n";
       return;
     }
   }
 
-  if (!sr->Open(PCREATE_NOTIFIER(OnRecognition), vocaulary)) {
+  if (!sr->Open(PCREATE_NOTIFIER(OnRecognition))) {
     cerr << "Could not open speech recognition!\n";
     return;
   }

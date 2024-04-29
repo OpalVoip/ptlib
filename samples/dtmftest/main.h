@@ -35,7 +35,7 @@ class DtmfTest : public PProcess
 
   public:
     DtmfTest();
-    virtual void Main();
+    virtual void Main() override;
 
  protected:
 

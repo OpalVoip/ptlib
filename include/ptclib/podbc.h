@@ -184,9 +184,9 @@ class PODBC  : public PObject
         Field(Row & row, PINDEX column);
 
         // Call backs from PVarType
-        virtual void OnGetValue();
-        virtual void OnValueChanged();
-        virtual void InternalCopy(const PVarType & other);
+        virtual void OnGetValue() override;
+        virtual void OnValueChanged() override;
+        virtual void InternalCopy(const PVarType & other) override;
 
         Row   & m_row;       /// Back Reference to the Row
         PINDEX  m_column;    /// Column number

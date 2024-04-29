@@ -145,7 +145,7 @@ class PSerialChannel : public PChannel
 
        @return the name of the channel.
      */
-    virtual PString GetName() const = 0;
+    virtual PString GetName() const override = 0;
 
     /**Open a serial channal.
        The channel is opened it on the specified port and with the specified

@@ -66,8 +66,8 @@ class PCommaSeparatedVariableFormat : public PTextDataFormat
     PCommaSeparatedVariableFormat(const PStringArray & headings);
 
   protected:
-    virtual int ReadField(PChannel & channel, PVarType & field, bool autoDetect);
-    virtual bool WriteField(PChannel & channel, const PVarType & field, bool endOfLine);
+    virtual int ReadField(PChannel & channel, PVarType & field, bool autoDetect) override;
+    virtual bool WriteField(PChannel & channel, const PVarType & field, bool endOfLine) override;
 };
 
 
@@ -79,8 +79,8 @@ class PTabDelimitedFormat : public PTextDataFormat
     PTabDelimitedFormat(const PStringArray & headings);
 
   protected:
-    virtual int ReadField(PChannel & channel, PVarType & field, bool autoDetect);
-    virtual bool WriteField(PChannel & channel, const PVarType & field, bool endOfLine);
+    virtual int ReadField(PChannel & channel, PVarType & field, bool autoDetect) override;
+    virtual bool WriteField(PChannel & channel, const PVarType & field, bool endOfLine) override;
 };
 
 
@@ -151,7 +151,7 @@ class PTextDataFile : public PTextFile
     bool WriteObject(const PVarData::Object & obj);
 
 protected:
-    virtual bool InternalOpen(OpenMode mode, OpenOptions opts, PFileInfo::Permissions permissions);
+    virtual bool InternalOpen(OpenMode mode, OpenOptions opts, PFileInfo::Permissions permissions) override;
 
     PTextDataFormatPtr m_format;
     bool m_formatting;
@@ -160,13 +160,13 @@ protected:
     PMutex m_writeMutex;
 
   private:
-    virtual PBoolean Read(void * buf, PINDEX len);
-    virtual int ReadChar();
-    virtual PBoolean ReadBlock(void * buf,PINDEX len);
-    virtual PString ReadString(PINDEX len);
-    virtual PBoolean Write(const void * buf, PINDEX len);
-    PBoolean WriteChar(int c);
-    virtual PBoolean WriteString(const PString & str);
+    virtual PBoolean Read(void * buf, PINDEX len) override;
+    virtual int ReadChar() override;
+    virtual PBoolean ReadBlock(void * buf,PINDEX len) override;
+    virtual PString ReadString(PINDEX len) override;
+    virtual PBoolean Write(const void * buf, PINDEX len) override;
+    PBoolean WriteChar(int c) override;
+    virtual PBoolean WriteString(const PString & str) override;
 };
 
 

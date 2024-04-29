@@ -92,7 +92,7 @@ class PVideoChannel : public PChannel
        is non NULL. If either pointer is non NULL, then a device is ready
        to be written to, which indicates this channel is open.
     */
-     PBoolean IsOpen() const;
+     PBoolean IsOpen() const override;
     
     /**Get all of the names for video devices/drivers that are available on
        this platform. Note that a named device may not necessarily do both
@@ -128,7 +128,7 @@ class PVideoChannel : public PChannel
      */
     virtual PINDEX  GetGrabHeight();
 
-    virtual PBoolean Read(void * buf, PINDEX  len);
+    virtual PBoolean Read(void * buf, PINDEX  len) override;
       // Low level read from the video channel. This function will block until the
       // requested number of characters were read.
   
@@ -136,8 +136,10 @@ class PVideoChannel : public PChannel
     /**Low level write to the channel, which is data to be rendered to the 
        local video display device.
        */
-    PBoolean Write(const void * buf,  //Pointer to the image data to be rendered
-               PINDEX      len);
+    PBoolean Write(
+      const void * buf,  //Pointer to the image data to be rendered
+      PINDEX      len
+    ) override;
 
     /** Low level write to the video channel with marker. .
      */
@@ -246,7 +248,7 @@ class PVideoChannel : public PChannel
      /**Flow Control information
        Pass data to the channel for flowControl determination.
       */
-    virtual bool FlowControl(const void * flowData);
+    virtual bool FlowControl(const void * flowData) override;
 
  protected:
 

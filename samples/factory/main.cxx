@@ -14,7 +14,7 @@ class Factory : public PProcess
   public:
     Factory()
     : PProcess() { }
-    void Main();
+    virtual void Main() override;
 };
 
 PCREATE_PROCESS(Factory)

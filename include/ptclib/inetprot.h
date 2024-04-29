@@ -87,7 +87,7 @@ class PInternetProtocol : public PIndirectChannel
     virtual PBoolean Read(
       void * buf,   ///< Pointer to a block of memory to receive the read bytes.
       PINDEX len    ///< Maximum number of bytes to read into the buffer.
-    );
+    ) override;
 
     /** Read a single 8 bit byte from the channel. If one was not available
        within the read timeout period, or an I/O error occurred, then the
@@ -96,7 +96,7 @@ class PInternetProtocol : public PIndirectChannel
        @return
        byte read or -1 if no character could be read.
      */
-    virtual int ReadChar();
+    virtual int ReadChar() override;
 
     /** Low level write to the channel.
 
@@ -116,7 +116,7 @@ class PInternetProtocol : public PIndirectChannel
     virtual PBoolean Write(
       const void * buf, ///< Pointer to a block of memory to write.
       PINDEX len        ///< Number of bytes to write.
-    );
+    ) override;
 
      /** Set the maximum timeout between characters within a line. Default
         value is 10 seconds.

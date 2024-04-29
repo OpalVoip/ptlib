@@ -54,7 +54,7 @@ class ReporterThread : public PThread
   void Terminate();
   
   /**Do the work of reporting */
-  void Main();
+  virtual void Main() override;
 
  protected:
   /**Link to the LauncherThread, which we use for reporting with */
@@ -79,7 +79,7 @@ class DelayThreadTermination : public PThread
   DelayThreadTermination(DelayThread &_delayThread);
 
   /**Do the work of terminating the DelayThread instance */
-  void Main();
+  virtual void Main() override;
 
  protected:
   
@@ -104,7 +104,7 @@ class DelayWorkerThread : public PThread
   DelayWorkerThread(DelayThread &_delayThread, PInt64 _iteration);
 
   /**Do the work of advising the SafeTest about this */
-  void Main();
+  virtual void Main() override;
 
  protected:
   
@@ -131,7 +131,7 @@ class OnDelayThreadEnd : public PThread
   OnDelayThreadEnd(SafeTest &_safeTest, const PString & _delayThreadId);
 
   /**Do the work of advising the SafeTest about this */
-  void Main();
+  virtual void Main() override;
 
  protected:
   
@@ -170,7 +170,7 @@ public:
   PString GetId() { return id; }
 
   /**Pretty print the id of this class */
-  virtual void PrintOn(ostream & strm) const;
+  virtual void PrintOn(ostream & strm) const override;
 
 #ifdef DOC_PLUS_PLUS
   /**This method is where the delay is done */
@@ -222,7 +222,7 @@ public:
     { }
 
   /**Do the work of listening for user commands from the command line */
-  void Main();
+  virtual void Main() override;
     
  protected:
   /**Reference to the class that holds the key data on everything */
@@ -247,7 +247,7 @@ public:
   ~LauncherThread();
 
   /**Where all the work is done */
-  void Main();
+  virtual void Main() override;
     
   /**Access function, which is callled by the UserInterfaceThread.  It
    reports the number of DelayThread instances that have been
@@ -306,7 +306,7 @@ class SafeTest : public PProcess
 
   /**Where execution first starts in this program, and it does all the
      command line processing */
-    virtual void Main();
+    virtual void Main() override;
 
     /**Report the user specified delay, which is used in DelayThread
        instances. Units are in milliseconds */

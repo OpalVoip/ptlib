@@ -24,7 +24,7 @@
  * Contributor(s): ______________________________________.
  */
 
-#ifdef __GNUC__
+#ifdef P_USE_PRAGMA
 #pragma implementation "mediafile.h"
 #endif
 
@@ -439,13 +439,13 @@ public:
   }
 
 
-  bool IsSupported(const PString & type) const
+  bool IsSupported(const PString & type) const override
   {
     return type == Audio();
   }
 
 
-  bool OpenForReading(const PFilePath & filePath)
+  bool OpenForReading(const PFilePath & filePath) override
   {
     if (!m_wavFile.Open(filePath, PFile::ReadOnly))
       return SetErrorText(m_wavFile.GetErrorText());
@@ -456,7 +456,7 @@ public:
   }
 
 
-  bool OpenForWriting(const PFilePath & filePath)
+  bool OpenForWriting(const PFilePath & filePath) override
   {
     if (!m_wavFile.Open(filePath, PFile::WriteOnly))
       return SetErrorText(m_wavFile.GetErrorText());
@@ -467,19 +467,19 @@ public:
   }
 
 
-  bool IsOpen() const
+  bool IsOpen() const override
   {
     return m_wavFile.IsOpen();
   }
 
 
-  bool Close()
+  bool Close() override
   {
     return m_wavFile.Close();
   }
 
 
-  bool GetDefaultTrackInfo(const PCaselessString & type, TrackInfo & info) const
+  bool GetDefaultTrackInfo(const PCaselessString & type, TrackInfo & info) const override
   {
     if (type != Audio())
       return false;
@@ -489,13 +489,13 @@ public:
   }
 
 
-  unsigned GetTrackCount() const
+  unsigned GetTrackCount() const override
   {
     return 1;
   }
 
 
-  bool GetTracks(TracksInfo & tracks)
+  bool GetTracks(TracksInfo & tracks) override
   {
     if (!m_wavFile.IsOpen())
       return SetErrorText("Cannot get tracks info when WAV file not open");
@@ -511,7 +511,7 @@ public:
   }
 
 
-  bool SetTracks(const TracksInfo & tracks)
+  bool SetTracks(const TracksInfo & tracks) override
   {
     if (!m_wavFile.IsOpen())
       return SetErrorText("Cannot Set tracks info when WAV file not open");
@@ -538,7 +538,7 @@ public:
   }
 
 
-  bool ReadNative(unsigned track, void * data, PINDEX & size, unsigned & frames)
+  bool ReadNative(unsigned track, void * data, PINDEX & size, unsigned & frames) override
   {
     if (!CheckOpenTrackAndMode(track, true))
       return false;
@@ -553,7 +553,7 @@ public:
   }
 
 
-  bool WriteNative(unsigned track, const void * data, PINDEX & size, unsigned & frames)
+  bool WriteNative(unsigned track, const void * data, PINDEX & size, unsigned & frames) override
   {
     if (!CheckOpenTrackAndMode(track, false))
       return false;
@@ -571,13 +571,13 @@ public:
   }
 
 
-  bool ConfigureAudio(unsigned track, unsigned channels, unsigned sampleRate)
+  bool ConfigureAudio(unsigned track, unsigned channels, unsigned sampleRate) override
   {
     return CheckOpenAndTrack(track) && m_wavFile.SetSampleRate(sampleRate) && m_wavFile.SetChannels(channels);
   }
 
 
-  bool ReadAudio(unsigned track, void * pcm, PINDEX size, PINDEX & length)
+  bool ReadAudio(unsigned track, void * pcm, PINDEX size, PINDEX & length) override
   {
     if (!CheckOpenTrackAndMode(track, true))
       return false;
@@ -590,7 +590,7 @@ public:
   }
 
 
-  bool WriteAudio(unsigned track, const void * pcm, PINDEX length, PINDEX & written)
+  bool WriteAudio(unsigned track, const void * pcm, PINDEX length, PINDEX & written) override
   {
     if (!CheckOpenTrackAndMode(track, false))
       return false;
@@ -604,19 +604,19 @@ public:
 
 
 #if P_VIDEO
-  bool ConfigureVideo(unsigned, const PVideoFrameInfo &)
+  bool ConfigureVideo(unsigned, const PVideoFrameInfo &) override
   {
     return false;
   }
 
 
-  bool ReadVideo(unsigned, void *, PTimeInterval *)
+  bool ReadVideo(unsigned, void *, PTimeInterval *) override
   {
     return false;
   }
 
 
-  bool WriteVideo(unsigned, const void *, const PTimeInterval &)
+  bool WriteVideo(unsigned, const void *, const PTimeInterval &) override
   {
     return false;
   }
@@ -880,7 +880,12 @@ public:
           m_type = Audio();
           m_rate = m_codecContext->sample_rate;
           m_frames = m_stream->nb_frames;
+          m_frames = m_stream->nb_frames;
+        #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(60, 0, 0)
           m_channels = m_codecContext->channels;
+        #else
+          m_channels = m_codecContext->ch_layout.nb_channels;
+        #endif
           if (m_codecInfo->id == AV_CODEC_ID_PCM_S16LE) {
             m_format = PSOUND_PCM16;
             m_size = 2 * m_channels;
@@ -965,8 +970,12 @@ public:
               }
             }
 
+          #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(60, 0, 0)
             m_stream->codecpar->channels = m_channels;
             m_stream->codecpar->channel_layout = av_get_default_channel_layout(m_channels);
+          #else
+            av_channel_layout_default(&m_stream->codecpar->ch_layout, m_channels);
+          #endif
             break;
 
           case AVMEDIA_TYPE_VIDEO:
@@ -1086,10 +1095,8 @@ public:
       bool WriteNative(const void * data, PINDEX & size, unsigned & frames)
       {
         AVPacket packet;
-        av_init_packet(&packet);
+        av_packet_from_data(&packet, (uint8_t *)data, size);
         packet.stream_index = m_index;
-        packet.data = (BYTE *)data;
-        packet.size = size;
         packet.pts = packet.dts = frames;
 
         if (CHECK_ERROR_TRK(av_write_frame, (m_owner->m_formatContext, &packet)))
@@ -1132,24 +1139,32 @@ public:
       bool CreateResampler(AVSampleFormat  inFormat, int  inRate, int  inChannels,
                            AVSampleFormat outFormat, int outRate, int outChannels)
       {
-          m_swrContext = swr_alloc_set_opts(NULL,
-                                            av_get_default_channel_layout(outChannels),
-                                            outFormat,
-                                            outRate,
-                                            av_get_default_channel_layout(inChannels),
-                                            inFormat,
-                                            inRate,
-                                            0, NULL);
-          if (m_swrContext == NULL) {
-            PTRACE(2, m_owner, "Could not allocate audio resampler for " << m_owner->m_filePath);
-            return false;
-          }
+      #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(60, 0, 0)
+        m_swrContext = swr_alloc_set_opts(NULL,
+                                          av_get_default_channel_layout(outChannels),
+                                          outFormat,
+                                          outRate,
+                                          av_get_default_channel_layout(inChannels),
+                                          inFormat,
+                                          inRate,
+                                          0, NULL);
+        if (m_swrContext == NULL) {
+          PTRACE(2, m_owner, "Could not allocate audio resampler for " << m_owner->m_filePath);
+          return false;
+        }
+      #else
+        AVChannelLayout out_layout, in_layout;
+        av_channel_layout_default(&out_layout, outChannels);
+        av_channel_layout_default(&in_layout, inChannels);
+        if (CHECK_ERROR_TRK(swr_alloc_set_opts2, (&m_swrContext, &out_layout, outFormat, outRate, &in_layout, inFormat, inRate, 0, NULL)))
+          return false;
+      #endif
 
-          if (CHECK_ERROR_TRK(swr_init, (m_swrContext)))
-            return false;
+        if (CHECK_ERROR_TRK(swr_init, (m_swrContext)))
+          return false;
 
-          PTRACE(4, m_owner, "Created resampler: " << inChannels << 'x' << inRate << "->" << outChannels << 'x' << outRate);
-          return true;
+        PTRACE(4, m_owner, "Created resampler: " << inChannels << 'x' << inRate << "->" << outChannels << 'x' << outRate);
+        return true;
       }
 
 
@@ -1183,8 +1198,16 @@ public:
           if (!OpenCodec())
             return false;
 
-          if (!CreateResampler(m_codecContext->sample_fmt, m_codecContext->sample_rate, m_codecContext->channels,
-                               AV_SAMPLE_FMT_S16, m_pcmSampleRate, m_pcmChannels))
+          if (!CreateResampler(m_codecContext->sample_fmt,
+                               m_codecContext->sample_rate,
+                             #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(60, 0, 0)
+                               m_codecContext->channels,
+                             #else
+                               m_codecContext->ch_layout.nb_channels,
+                             #endif
+                               AV_SAMPLE_FMT_S16,
+                               m_pcmSampleRate,
+                               m_pcmChannels))
             return false;
         }
 
@@ -1214,7 +1237,7 @@ public:
           return false;
 
         AVPacket packet;
-        av_init_packet(&packet);
+        av_new_packet(&packet, 0);
 
         for (;;) {
           int result = avcodec_receive_packet(m_codecContext, &packet);
@@ -1263,6 +1286,12 @@ public:
         if (!m_owner->CheckModeAndTrackType(false, Audio(), m_type))
           return false;
 
+      #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(60, 0, 0)
+        int channels = m_codecContext->channels;
+      #else
+        int channels = m_codecContext->ch_layout.nb_channels;
+      #endif
+
         if (!m_codecOpened) {
           if (m_pcmSampleRate == 0 || m_pcmChannels == 0)
             ConfigureAudio(2, 48000);
@@ -1272,20 +1301,24 @@ public:
             return false;
 
           if (!CreateResampler(AV_SAMPLE_FMT_S16, m_pcmSampleRate, m_pcmChannels,
-                               m_codecContext->sample_fmt, m_codecContext->sample_rate, m_codecContext->channels))
+                               m_codecContext->sample_fmt, m_codecContext->sample_rate, channels))
             return false;
 
-          if ((m_fifo = av_audio_fifo_alloc(m_codecContext->sample_fmt, m_codecContext->channels, 1)) == NULL)
+          if ((m_fifo = av_audio_fifo_alloc(m_codecContext->sample_fmt, channels, 1)) == NULL)
             return false;
 
-          if (CHECK_ERROR_TRK(av_audio_fifo_realloc, (m_fifo, m_codecContext->frame_size*m_codecContext->channels*3)))
+          if (CHECK_ERROR_TRK(av_audio_fifo_realloc, (m_fifo, m_codecContext->frame_size*channels*3)))
             return false;
 
           m_frame->format = m_codecContext->sample_fmt;
           m_frame->sample_rate = m_codecContext->sample_rate;
-          m_frame->channels = m_codecContext->channels;
+        #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(60, 0, 0)
+          m_frame->channels = channels;
           m_frame->channel_layout = m_codecContext->channel_layout;
-          m_frame->nb_samples = m_codecContext->frame_size*m_codecContext->channels;
+        #else
+          m_frame->ch_layout = m_codecContext->ch_layout;
+        #endif
+          m_frame->nb_samples = m_codecContext->frame_size*channels;
           if (CHECK_ERROR_TRK(av_frame_get_buffer, (m_frame, 0)))
               return false;
         }
@@ -1293,7 +1326,7 @@ public:
         int suppliedSamples = length/m_pcmChannels/2;
         int ouputSampleCount = (int)av_rescale_rnd(suppliedSamples, m_codecContext->sample_rate, m_pcmSampleRate, AV_ROUND_UP);
 
-        if (m_swrFrame == NULL || m_swrFrame->nb_samples < ouputSampleCount*m_codecContext->channels) {
+        if (m_swrFrame == NULL || m_swrFrame->nb_samples < ouputSampleCount*channels) {
           av_frame_free(&m_swrFrame);
           if ((m_swrFrame = av_frame_alloc()) == NULL) {
             PTRACE(2, m_owner, "Could not allocate frame for " << m_owner->m_filePath);
@@ -1301,8 +1334,13 @@ public:
           }
           m_swrFrame->format = m_codecContext->sample_fmt;
           m_swrFrame->sample_rate = m_codecContext->sample_rate;
+        #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(60, 0, 0)
+          m_swrFrame->channels = channels;
           m_swrFrame->channel_layout = m_codecContext->channel_layout;
-          m_swrFrame->nb_samples = ouputSampleCount*m_codecContext->channels;
+        #else
+          m_swrFrame->ch_layout = m_codecContext->ch_layout;
+        #endif
+          m_swrFrame->nb_samples = ouputSampleCount*channels;
           if (CHECK_ERROR_TRK(av_frame_get_buffer, (m_swrFrame, 0)))
               return false;
         }
@@ -1419,6 +1457,10 @@ public:
           return false;
 
         if (m_codecOpened) {
+          if (m_frame->width  == (int)frameInfo.GetFrameWidth() &&
+              m_frame->height == (int)frameInfo.GetFrameHeight() &&
+              m_frame->format == GetPixelFormatFromColourFormat(frameInfo.GetColourFormat()))
+            return true;
           PTRACE(2, m_owner, "Cannot configure video once writing commenced.");
           return false;
         }
@@ -1463,7 +1505,12 @@ public:
         if (sampleTime < 0)
           m_frame->pkt_dts = AV_NOPTS_VALUE;
         else {
-          m_frame->pkt_duration = av_rescale_q((sampleTime-m_videoTimestamp).GetNanoSeconds(), s_NanosecondScale, m_codecContext->time_base);
+          #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(60, 0, 0)
+            m_frame->pkt_duration
+          #else
+            m_frame->duration
+          #endif
+                          = av_rescale_q((sampleTime-m_videoTimestamp).GetNanoSeconds(), s_NanosecondScale, m_codecContext->time_base);
           m_videoTimestamp = sampleTime;
           m_frame->pkt_dts = m_frame->pts = av_rescale_q(m_videoTimestamp.GetNanoSeconds(), s_NanosecondScale, m_codecContext->time_base);
         }
@@ -1482,7 +1529,7 @@ public:
     {
       for (;;) {
         AVPacket packet;
-        av_init_packet(&packet);
+        av_new_packet(&packet, 0);
 
         int result = av_read_frame(m_formatContext, &packet);
         if (result == AVERROR_EOF)
@@ -1531,13 +1578,13 @@ public:
     }
 
 
-    bool IsSupported(const PString & type) const
+    bool IsSupported(const PString & type) const override
     {
       return type == Audio() || type == Video();
     }
 
 
-    bool OpenForReading(const PFilePath & filePath)
+    bool OpenForReading(const PFilePath & filePath) override
     {
       m_reading = true;
       m_filePath = filePath;
@@ -1559,7 +1606,7 @@ public:
     }
 
 
-    bool OpenForWriting(const PFilePath & filePath)
+    bool OpenForWriting(const PFilePath & filePath) override
     {
       m_reading = false;
       m_filePath = filePath;
@@ -1580,13 +1627,13 @@ public:
     }
 
 
-    bool IsOpen() const
+    bool IsOpen() const override
     {
       return m_formatContext != NULL;
     }
 
 
-    bool Close()
+    bool Close() override
     {
       PWaitAndSignal mutex(m_mutex);
 
@@ -1608,11 +1655,12 @@ public:
       }
 
       avformat_free_context(m_formatContext);
+      m_formatContext = NULL;
       return true;
     }
 
 
-    bool GetDefaultTrackInfo(const PCaselessString & type, TrackInfo & info) const
+    bool GetDefaultTrackInfo(const PCaselessString & type, TrackInfo & info) const override
     {
       PWaitAndSignal mutex(m_mutex);
 
@@ -1642,13 +1690,13 @@ public:
     }
 
 
-    unsigned GetTrackCount() const
+    unsigned GetTrackCount() const override
     {
       return m_tracks.size();
     }
 
 
-    bool GetTracks(TracksInfo & tracks)
+    bool GetTracks(TracksInfo & tracks) override
     {
       if (m_formatContext == NULL) {
         PTRACE(2, "Cannot get track info as file not open");
@@ -1663,7 +1711,7 @@ public:
     }
 
 
-    bool SetTracks(const TracksInfo & tracks)
+    bool SetTracks(const TracksInfo & tracks) override
     {
       if (m_formatContext == NULL) {
         PTRACE(2, "Cannot set track info as file not open");
@@ -1690,35 +1738,35 @@ public:
     }
 
 
-    bool ReadNative(unsigned track, void * data, PINDEX & size, unsigned & frames)
+    bool ReadNative(unsigned track, void * data, PINDEX & size, unsigned & frames) override
     {
       PWaitAndSignal mutex(m_mutex);
       return CheckOpenTrackAndMode(track, true) && m_tracks[track].ReadNative(data, size, frames);
     }
 
 
-    bool WriteNative(unsigned track, const void * data, PINDEX & size, unsigned & frames)
+    bool WriteNative(unsigned track, const void * data, PINDEX & size, unsigned & frames) override
     {
       PWaitAndSignal mutex(m_mutex);
       return CheckOpenTrackAndMode(track, false) && WriteHeader() && m_tracks[track].WriteNative(data, size, frames);
     }
 
 
-    bool ConfigureAudio(unsigned track, unsigned channels, unsigned sampleRate)
+    bool ConfigureAudio(unsigned track, unsigned channels, unsigned sampleRate) override
     {
       PWaitAndSignal mutex(m_mutex);
       return CheckOpenAndTrack(track) && m_tracks[track].ConfigureAudio(channels, sampleRate);
     }
 
 
-    bool ReadAudio(unsigned track, void * pcm, PINDEX size, PINDEX & length)
+    bool ReadAudio(unsigned track, void * pcm, PINDEX size, PINDEX & length) override
     {
       PWaitAndSignal mutex(m_mutex);
       return CheckOpenAndTrack(track) && m_tracks[track].ReadAudio(pcm, size, length);
     }
 
 
-    bool WriteAudio(unsigned track, const void * pcm, PINDEX length, PINDEX & written)
+    bool WriteAudio(unsigned track, const void * pcm, PINDEX length, PINDEX & written) override
     {
       PWaitAndSignal mutex(m_mutex);
       return CheckOpenAndTrack(track) && WriteHeader() && m_tracks[track].WriteAudio(pcm, length, written);
@@ -1726,7 +1774,7 @@ public:
 
 
 #if P_VIDEO
-    bool ConfigureVideo(unsigned track, const PVideoFrameInfo & frameInfo)
+    bool ConfigureVideo(unsigned track, const PVideoFrameInfo & frameInfo) override
     {
       PWaitAndSignal mutex(m_mutex);
       return CheckOpenAndTrack(track) &&
@@ -1734,14 +1782,14 @@ public:
     }
 
 
-    bool ReadVideo(unsigned track, void * data, PTimeInterval * sampleTime)
+    bool ReadVideo(unsigned track, void * data, PTimeInterval * sampleTime) override
     {
       PWaitAndSignal mutex(m_mutex);
       return CheckOpenAndTrack(track) && m_tracks[track].ReadVideo(data, sampleTime);
     }
 
 
-    bool WriteVideo(unsigned track, const void * data, const PTimeInterval & sampleTime)
+    bool WriteVideo(unsigned track, const void * data, const PTimeInterval & sampleTime) override
     {
       PWaitAndSignal mutex(m_mutex);
       return CheckOpenAndTrack(track) && WriteHeader() && m_tracks[track].WriteVideo(data, sampleTime);
@@ -2581,7 +2629,7 @@ public:
     return names;
   }
 
-  virtual PStringArray GetDeviceNames() const
+  virtual PStringArray GetDeviceNames() const override
   {
     return PVideoInputDevice_MediaFile::GetInputDeviceNames();
   }

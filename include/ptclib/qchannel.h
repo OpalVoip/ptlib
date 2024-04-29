@@ -72,7 +72,7 @@ class PQueueChannel : public PChannel
 
        @return the name of the channel.
      */
-    virtual PString GetName() const { return "Queue"; }
+    virtual PString GetName() const override { return "Queue"; }
 
     /**Low level read from the file channel. The read timeout is ignored for
        file I/O. The GetLastReadCount() function returns the actual number
@@ -88,7 +88,7 @@ class PQueueChannel : public PChannel
     virtual PBoolean Read(
       void * buf,   ///< Pointer to a block of memory to receive the read bytes.
       PINDEX len    ///< Maximum number of bytes to read into the buffer.
-    );
+    ) override;
 
     /**Low level write to the file channel. The write timeout is ignored for
        file I/O. The GetLastWriteCount() function returns the actual number
@@ -102,12 +102,12 @@ class PQueueChannel : public PChannel
     virtual PBoolean Write(
       const void * buf, ///< Pointer to a block of memory to write.
       PINDEX len        ///< Number of bytes to write.
-    );
+    ) override;
 
     /** Close the file channel.
         @return true if close was OK.
       */
-    virtual PBoolean Close();
+    virtual PBoolean Close() override;
   //@}
 
 

@@ -235,9 +235,9 @@ class PVarType : public PObject
 
   /**@name Overrides from PObject */
   //@{
-    virtual void PrintOn(ostream & strm) const;
-    virtual void ReadFrom(istream & strm);
-    virtual PObject * Clone() const;
+    virtual void PrintOn(ostream & strm) const override;
+    virtual void ReadFrom(istream & strm) override;
+    virtual PObject * Clone() const override;
   //@}
 
   /**@name member variable access */
@@ -376,12 +376,12 @@ class PRefVar : public PVarType
     }
 
   protected:
-    virtual void OnGetValue()
+    virtual void OnGetValue() override
     {
       *reinterpret_cast<TYPE*>(&this->m_) = this->m_value;
     }
 
-    virtual void OnValueChanged()
+    virtual void OnValueChanged() override
     {
       this->m_value = *reinterpret_cast<TYPE*>(&this->m_);
     }
@@ -401,8 +401,8 @@ class PRefVar <PGloballyUniqueID> : public PVarType
     PRefVar & operator=(const PGloballyUniqueID & value) { PVarType::operator=(value); return *this; }
 
   protected:
-    virtual void OnGetValue()     { memcpy(this->m_.guid, this->m_value, sizeof(this->m_.guid));              }
-    virtual void OnValueChanged() { memcpy(this->m_value.GetPointer(), this->m_.guid, sizeof(this->m_.guid)); }
+    virtual void OnGetValue() override     { memcpy(this->m_.guid, this->m_value, sizeof(this->m_.guid));              }
+    virtual void OnValueChanged() override { memcpy(this->m_value.GetPointer(), this->m_.guid, sizeof(this->m_.guid)); }
 
   protected:
     PGloballyUniqueID & m_value;
@@ -419,8 +419,8 @@ class PRefVar <PTime> : public PVarType
     PRefVar & operator=(const PTime & value) { PVarType::operator=(value); return *this; }
 
   protected:
-    virtual void OnGetValue()     { this->m_.time.microseconds = this->m_value.GetTimestamp(); }
-    virtual void OnValueChanged() { this->m_value.SetTimestamp(0, this->m_.time.microseconds); }
+    virtual void OnGetValue() override     { this->m_.time.microseconds = this->m_value.GetTimestamp(); }
+    virtual void OnValueChanged() override { this->m_value.SetTimestamp(0, this->m_.time.microseconds); }
 
   protected:
     PTime & m_value;
@@ -437,8 +437,8 @@ class PRefVar <PString> : public PVarType
     PRefVar & operator=(const PString & value) { SetString(value, false); return *this; }
 
   protected:
-    virtual void OnGetValue()     { SetString(m_value, false); }
-    virtual void OnValueChanged() { m_value = m_.staticString; }
+    virtual void OnGetValue() override     { SetString(m_value, false); }
+    virtual void OnValueChanged() override { m_value = m_.staticString; }
 
   protected:
     PString & m_value;
@@ -455,8 +455,8 @@ class PRefVar <PBYTEArray> : public PVarType
     PRefVar & operator=(const PBYTEArray & value) { SetStaticBinary(value); return *this; }
 
   protected:
-    virtual void OnGetValue()     { SetStaticBinary(m_value); }
-    virtual void OnValueChanged() { m_value = PBYTEArray((const BYTE *)m_.staticBinary.data, m_.staticBinary.size); }
+    virtual void OnGetValue() override     { SetStaticBinary(m_value); }
+    virtual void OnValueChanged() override { m_value = PBYTEArray((const BYTE *)m_.staticBinary.data, m_.staticBinary.size); }
 
 protected:
   PBYTEArray & m_value;

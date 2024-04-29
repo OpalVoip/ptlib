@@ -58,6 +58,7 @@ void VxmlTest::Main()
                   "S-sr: Speech recognition method\n"
                   "c-cache: Text to speech cache directory\n"
                   "-clear-cache. Clear the cache on execution\n"
+                  "d-record-dir: Record directory\n"
                   "r-property: Set default property value: name=value\n"
 #if P_VXML_VIDEO
                   "V-video. Enabled video support\n"
@@ -119,6 +120,7 @@ void VxmlTest::Main()
   cli.SetCommand("9", PCREATE_NOTIFIER(SimulateInput), "Simulate input 9 for VXML instance (1..n)", "[ <n> ]");
   cli.SetCommand("set", PCREATE_NOTIFIER(SetVar), "Set variable for VXML instance (1..n)", "<var> <value> [ <n> ]");
   cli.SetCommand("get", PCREATE_NOTIFIER(GetVar), "Get variable for VXML instance (1..n)", "<var> [ <n> ]");
+  cli.SetCommand("transfer\nxf", PCREATE_NOTIFIER(TransferStatus), "Set transfer status (1..n)", "<status> [ <n> ]");
   cli.SetCommand("disconnect", PCREATE_NOTIFIER(Disconnect), "Disconnect VXML instance (1..n)", "[ <n> ]");
   cli.Start(false);
   m_tests.clear();
@@ -194,6 +196,53 @@ void VxmlTest::GetVar(PCLI::Arguments & args, P_INT_PTR)
     args.WriteError("No such instance");
   else
     args.GetContext() << m_tests[num - 1]->GetVar(args[0]) << endl;
+}
+
+
+void VxmlTest::TransferStatus(PCLI::Arguments & args, P_INT_PTR)
+{
+  if (args.GetCount() < 1) {
+    args.WriteUsage();
+    return;
+  }
+
+  unsigned num;
+  if (args.GetCount() == 1)
+    num = 1;
+  else if ((num = args[1].AsUnsigned()) == 0) {
+    args.WriteError("Invalid instance number");
+    return;
+  }
+
+  if (num > m_tests.size()) {
+    args.WriteError("No such instance");
+    return;
+  }
+
+  PVXMLSession::TransferStatus status;
+  PString transferError;
+
+  PCaselessString arg = args[0];
+  if (PConstCaselessString("success").starts_with(arg))
+    status = PVXMLSession::TransferSuccessful;
+  else if (PConstCaselessString("busy").starts_with(arg))
+    status = PVXMLSession::TransferBusy;
+  else if (PConstCaselessString("congestion").starts_with(arg))
+    status = PVXMLSession::TransferCongestion;
+  else if (PConstCaselessString("noanswer").starts_with(arg))
+    status = PVXMLSession::TransferNoAnswer;
+  else if (PConstCaselessString("unknown").starts_with(arg))
+    status = PVXMLSession::TransferUnknown;
+  else if (PConstCaselessString("failed").starts_with(arg)) {
+    status = PVXMLSession::TransferFailed;
+    transferError = "custom.123";
+  }
+  else {
+    args.WriteError("Invalid status");
+    return;
+  }
+
+  m_tests[num - 1]->SetTransferStatus(status, transferError);
 }
 
 
@@ -383,6 +432,9 @@ bool TestInstance::Initialise(unsigned instance, const PArgList & args)
   if (args.HasOption("clear-cache"))
     PDirectory::RemoveTree(GetCache().GetDirectory());
 
+  if (args.HasOption("record-dir"))
+    SetRecordDirectory(args.GetOptionString("record-dir"));
+
   if (!Open(VXML_PCM16, audioParams.m_sampleRate, audioParams.m_channels)) {
     cerr << "Instance " << m_instance << " error: cannot open VXML device in PCM mode" << endl;
     return false;
@@ -412,6 +464,13 @@ void TestInstance::OnEndDialog()
 void TestInstance::OnEndSession()
 {
   cout << "VXML Session ended." << endl;
+}
+
+
+PVXMLSession::TransferStatus TestInstance::OnTransfer(const PString & destination, TransferType type)
+{
+  cout << "VXML Session " << type << " to " << destination << endl;
+  return TransferInProgress;
 }
 
 

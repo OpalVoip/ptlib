@@ -129,7 +129,7 @@ PDECLARE_CLASS(PXConfigWriteThread, PThread)
   public:
     PXConfigWriteThread(PSyncPointAck & stop);
     ~PXConfigWriteThread();
-    void Main();
+    virtual void Main() override;
   private:
     PSyncPointAck & stop;
 };

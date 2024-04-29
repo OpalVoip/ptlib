@@ -31,6 +31,6 @@
 // PTCPSocket
 
   public:
-    virtual PBoolean Read(void * buf, PINDEX len);
+    virtual PBoolean Read(void * buf, PINDEX len) override;
 
 // End Of File ////////////////////////////////////////////////////////////////

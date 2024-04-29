@@ -33,8 +33,8 @@ class ScatterTest : public PProcess
   PCLASSINFO(ScatterTest, PProcess)
 
   public:
-    ScatterTest();
-    virtual void Main();
+    ScatterTest() override;
+    virtual void Main() override;
 };
 
 

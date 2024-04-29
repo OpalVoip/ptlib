@@ -46,15 +46,17 @@ namespace Aws {
   namespace Client {
     struct ClientConfiguration;
   }
+  namespace Auth {
+    class AWSCredentials;
+  }
 };
 
 
 class PAwsClientBase
 {
 protected:
-  std::shared_ptr<Aws::Client::ClientConfiguration> m_clientConfig;
-  PString m_accessKeyId;
-  PString m_secretAccessKey;
+  std::unique_ptr<Aws::Client::ClientConfiguration> m_clientConfig;
+  std::unique_ptr<Aws::Auth::AWSCredentials> m_credentials;
 public:
   PAwsClientBase();
   ~PAwsClientBase();
@@ -65,8 +67,8 @@ public:
   PString GetRegion() const;
 
   void SetAccessKey(const PString & accessKeyId, const PString & secretAccessKey);
-  const PString & GetAccessKeyId() const { return m_accessKeyId; }
-  const PString & GetSecretAccessKey() const { return m_secretAccessKey; }
+  PString GetAccessKeyId() const;
+  PString GetSecretAccessKey() const;
 
   PHTTP::SelectProxyResult SetProxies(const PHTTP::Proxies & proxies);
 
@@ -92,8 +94,12 @@ private:
 public:
   std::shared_ptr<Client> GetClient()
   {
-    if (!m_client)
-      m_client = std::make_shared<Client>(*m_clientConfig);
+    if (!m_client) {
+      if (m_credentials)
+        m_client = std::make_shared<Client>(*m_credentials, *m_clientConfig);
+      else
+        m_client = std::make_shared<Client>(*m_clientConfig);
+    }
     return m_client;
   }
 

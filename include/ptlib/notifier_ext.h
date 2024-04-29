@@ -136,7 +136,7 @@ class PValidatedNotifierFunction : public PNotifierFunctionTemplate<ParamType>
       , m_targetID(notifierTarget->m_validatedNotifierId)
     { }
 
-    virtual void * GetTarget() const
+    virtual void * GetTarget() const override
     {
       return PValidatedNotifierTarget::Exists(this->m_targetID) ? this->m_target : NULL;
     }

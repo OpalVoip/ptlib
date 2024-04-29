@@ -49,7 +49,7 @@ class MyThread1 : public PThread
       Resume(); // start running this thread when it is created.
     }
 
-    void Main() {
+    virtual void Main() override {
       while (!shutdown.Wait(10)) { // 10ms delay
         printf("1 ");
         fflush(stdout);
@@ -82,7 +82,7 @@ class MyThread2 : public PThread
       exitFlag = false;
     }
 
-    void Main() {
+    virtual void Main() override {
       while (1) {
         // Check if we need to exit
         exitMutex.Wait();
@@ -139,7 +139,7 @@ class ThreadTest : public PProcess
 {
   PCLASSINFO(ThreadTest, PProcess)
   public:
-    void Main();
+    virtual void Main() override;
 };
 
 PCREATE_PROCESS(ThreadTest);

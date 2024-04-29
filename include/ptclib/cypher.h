@@ -312,7 +312,7 @@ class PMessageDigest : public PObject
     /// Result of digest/hash function
     class Result : public PBYTEArray {
       public:
-        virtual void PrintOn(ostream & strm) const;
+        virtual void PrintOn(ostream & strm) const override;
 
         bool ConstantTimeCompare(const Result & other) const;
 
@@ -465,9 +465,9 @@ class PMessageDigest5 : public PMessageDigest, public PMessageDigestStatics<PMes
     PMessageDigest5();
 
   protected:
-    virtual void InternalStart();
-    virtual void InternalProcess(const void * dataBlock, PINDEX length);
-    virtual void InternalCompleteDigest(Result & result);
+    virtual void InternalStart() override;
+    virtual void InternalProcess(const void * dataBlock, PINDEX length) override;
+    virtual void InternalCompleteDigest(Result & result) override;
 
   private:
     void Transform(const BYTE * block);
@@ -490,8 +490,8 @@ class PHMAC_MD5 : public PHMAC
     enum { BlockSize = 64 };
 
   protected:
-    virtual void InitKey(const void * key, PINDEX len);
-    virtual void InternalProcess(const void * data, PINDEX len, PHMAC::Result & result);
+    virtual void InitKey(const void * key, PINDEX len) override;
+    virtual void InternalProcess(const void * data, PINDEX len, PHMAC::Result & result) override;
 };
 
 
@@ -511,9 +511,9 @@ class PMessageDigestSHA : public PMessageDigest, PNonCopyable
     ~PMessageDigestSHA();
 
   protected:
-    virtual void InternalStart();
-    virtual void InternalProcess(const void * dataBlock, PINDEX length);
-    virtual void InternalCompleteDigest(Result & result);
+    virtual void InternalStart() override;
+    virtual void InternalProcess(const void * dataBlock, PINDEX length) override;
+    virtual void InternalCompleteDigest(Result & result) override;
     void Failed();
 
     Context * m_context;
@@ -577,7 +577,7 @@ class PHMAC_SHA : public PHMAC
     typedef struct evp_md_st const * Algorithm;
 
     explicit PHMAC_SHA(Algorithm algo);
-    virtual void InternalProcess(const void * data, PINDEX len, PHMAC::Result & result);
+    virtual void InternalProcess(const void * data, PINDEX len, PHMAC::Result & result) override;
 
     Algorithm m_algorithm;
 };
@@ -819,19 +819,19 @@ class PTEACypher : public PCypher
     /** Initialise the encoding/decoding sequence. */
     virtual void Initialise(
       PBoolean encoding   ///< Flag for encoding/decoding sequence about to start.
-    );
+    ) override;
 
     /** Encode an n bit block of memory according to the encryption algorithm. */
     virtual void EncodeBlock(
       const void * in,  ///< Pointer to clear n bit block.
       void * out        ///< Pointer to coded n bit block.
-    );
+    ) override;
 
     /** Decode an n bit block of memory according to the encryption algorithm. */
     virtual void DecodeBlock(
       const void * in,  ///< Pointer to coded n bit block.
       void * out        ///< Pointer to clear n bit block.
-    );
+    ) override;
 
   private:
     DWORD k0, k1, k2, k3;

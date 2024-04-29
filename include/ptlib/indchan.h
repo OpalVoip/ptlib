@@ -70,7 +70,7 @@ class PIndirectChannel : public PChannel
      */
     Comparison Compare(
       const PObject & obj   ///< Another indirect channel to compare against.
-    ) const;
+    ) const override;
   //@}
 
 
@@ -83,14 +83,14 @@ class PIndirectChannel : public PChannel
        @return
        string for the channel names.
      */
-    virtual PString GetName() const;
+    virtual PString GetName() const override;
 
     /**Get the OS specific handle for the PSoundChannel.
 
        @return
        integer value of the handle.
      */
-    virtual P_INT_PTR GetHandle() const;
+    virtual P_INT_PTR GetHandle() const override;
 
     /**Close the channel. This will detach itself from the read and write
        channels and delete both of them if they are auto delete.
@@ -98,7 +98,7 @@ class PIndirectChannel : public PChannel
        @return
        true if the channel is closed.
      */
-    virtual PBoolean Close();
+    virtual PBoolean Close() override;
 
     /**Determine if the channel is currently open and read and write operations
        can be executed on it. For example, in the <code>PFile</code> class it returns
@@ -107,7 +107,7 @@ class PIndirectChannel : public PChannel
        @return
        true if the channel is open.
      */
-    virtual PBoolean IsOpen() const;
+    virtual PBoolean IsOpen() const override;
 
     /**Low level read from the channel. This function may block until the
        requested number of characters were read or the read timeout was
@@ -127,7 +127,7 @@ class PIndirectChannel : public PChannel
     virtual PBoolean Read(
       void * buf,   ///< Pointer to a block of memory to receive the read bytes.
       PINDEX len    ///< Maximum number of bytes to read into the buffer.
-    );
+    ) override;
 
     /** Read a single character from the channel. If one was not available
        within the read timeout period, or an I/O error occurred, then the
@@ -140,7 +140,7 @@ class PIndirectChannel : public PChannel
        @return
        byte read or -1 if no character could be read.
      */
-    virtual int ReadChar();
+    virtual int ReadChar() override;
 
     /**Low level write to the channel. This function will block until the
        requested number of characters are written or the write timeout is
@@ -159,7 +159,7 @@ class PIndirectChannel : public PChannel
     virtual PBoolean Write(
       const void * buf, ///< Pointer to a block of memory to write.
       PINDEX len        ///< Number of bytes to write.
-    );
+    ) override;
 
     /**Close one or both of the data streams associated with a channel.
 
@@ -171,7 +171,7 @@ class PIndirectChannel : public PChannel
      */
     virtual PBoolean Shutdown(
       ShutdownValue option   ///< Flag for shut down of read, write or both.
-    );
+    ) override;
 
     /**Set local echo mode.
        For some classes of channel, e.g. PConsoleChannel, data read by this
@@ -182,7 +182,7 @@ class PIndirectChannel : public PChannel
       */
     virtual bool SetLocalEcho(
       bool localEcho
-    );
+    ) override;
 
 
     /**This function returns the eventual base channel for reading of a series
@@ -193,7 +193,7 @@ class PIndirectChannel : public PChannel
        @return
        Pointer to base I/O channel for the indirect channel.
      */
-    virtual PChannel * GetBaseReadChannel() const;
+    virtual PChannel * GetBaseReadChannel() const override;
 
     /**This function returns the eventual base channel for writing of a series
        of indirect channels provided by descendents of <code>PIndirectChannel</code>.
@@ -203,7 +203,7 @@ class PIndirectChannel : public PChannel
        @return
        Pointer to base I/O channel for the indirect channel.
      */
-    virtual PChannel * GetBaseWriteChannel() const;
+    virtual PChannel * GetBaseWriteChannel() const override;
 
     /** Close the base channel of channel indirection using PIndirectChannel.
        This function closes the eventual base channel for reading of a series
@@ -212,7 +212,7 @@ class PIndirectChannel : public PChannel
        @return
        Base channel was closed.
      */
-    virtual bool CloseBaseReadChannel();
+    virtual bool CloseBaseReadChannel() override;
 
     /** Close the base channel of channel indirection using PIndirectChannel.
        This function closes the eventual base channel for writing of a series
@@ -221,7 +221,7 @@ class PIndirectChannel : public PChannel
        @return
        Base channel was closed.
      */
-    virtual bool CloseBaseWriteChannel();
+    virtual bool CloseBaseWriteChannel() override;
 
     /** Get error message description.
         Return a string indicating the error message that may be displayed to
@@ -230,7 +230,7 @@ class PIndirectChannel : public PChannel
      */
     virtual PString GetErrorText(
       ErrorGroup group = NumErrorGroups   ///< Error group to get
-    ) const;
+    ) const override;
   //@}
 
   /**@name Channel establish functions */

@@ -307,7 +307,7 @@ class PMultiPartInfo : public PObject
       const PString & disposition = PString::Empty()
     );
 
-    virtual void PrintOn(ostream & strm) const;
+    virtual void PrintOn(ostream & strm) const override;
 
     /// Set the m_mime headers from fields
     void SetMIME();
@@ -341,7 +341,7 @@ class PMultiPartList : public PList<PMultiPartInfo>
     );
 
     PString AsString() const;
-    virtual void PrintOn(ostream & strm) const;
+    virtual void PrintOn(ostream & strm) const override;
 
     template <typename T> void Set(
       const T & data,

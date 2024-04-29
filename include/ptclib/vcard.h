@@ -49,10 +49,10 @@ class PvCard : public PObject
 
     virtual void PrintOn(
       ostream & strm
-    ) const;
+    ) const override;
     virtual void ReadFrom(
       istream & strm
-    );
+    ) override;
     bool Parse(
       const PString & str
     );
@@ -82,8 +82,8 @@ class PvCard : public PObject
         Token(const PString & str) : PCaselessString(str) { Validate(); }
         Token & operator=(const char * str) { PCaselessString::operator=(str); Validate(); return *this; }
         Token & operator=(const PString & str) { PCaselessString::operator=(str); Validate(); return *this; }
-        virtual void PrintOn(ostream & strm) const;
-        virtual void ReadFrom(istream & strm);
+        virtual void PrintOn(ostream & strm) const override;
+        virtual void ReadFrom(istream & strm) override;
       private:
         void Validate();
     };
@@ -92,8 +92,8 @@ class PvCard : public PObject
     {
       public:
         Separator(char c = '\0') : m_separator(c) { }
-        virtual void PrintOn(ostream & strm) const;
-        virtual void ReadFrom(istream & strm);
+        virtual void PrintOn(ostream & strm) const override;
+        virtual void ReadFrom(istream & strm) override;
         bool operator==(char c) const { return m_separator == c; }
         bool operator!=(char c) const { return m_separator != c; }
         char m_separator;
@@ -105,15 +105,15 @@ class PvCard : public PObject
       public:
         ParamValue(const char * str = NULL) : PString(str) { }
         ParamValue(const PString & str) : PString(str) { }
-        virtual void PrintOn(ostream & strm) const;
-        virtual void ReadFrom(istream & strm);
+        virtual void PrintOn(ostream & strm) const override;
+        virtual void ReadFrom(istream & strm) override;
     };
     /// Comma separated list of param-value's
     class ParamValues : public PArray<ParamValue>
     {
       public:
-        virtual void PrintOn(ostream & strm) const;
-        virtual void ReadFrom(istream & strm);
+        virtual void PrintOn(ostream & strm) const override;
+        virtual void ReadFrom(istream & strm) override;
     };
 
     typedef std::map<Token, ParamValues> ParamMap;
@@ -123,7 +123,7 @@ class PvCard : public PObject
       public:
         TypeValues() { }
         TypeValues(const ParamValues & values) : ParamValues(values) { }
-        virtual void PrintOn(ostream & strm) const;
+        virtual void PrintOn(ostream & strm) const override;
     };
 
     /// Representation of EBNF text-value
@@ -132,16 +132,16 @@ class PvCard : public PObject
       public:
         TextValue(const char * str = NULL) : PString(str) { }
         TextValue(const PString & str) : PString(str) { }
-        virtual void PrintOn(ostream & strm) const;
-        virtual void ReadFrom(istream & strm);
+        virtual void PrintOn(ostream & strm) const override;
+        virtual void ReadFrom(istream & strm) override;
     };
 
     /// Comma separated list of text-value's
     class TextValues : public PArray<TextValue>
     {
       public:
-        virtual void PrintOn(ostream & strm) const;
-        virtual void ReadFrom(istream & strm);
+        virtual void PrintOn(ostream & strm) const override;
+        virtual void ReadFrom(istream & strm) override;
     };
 
     class URIValue : public PURL
@@ -149,8 +149,8 @@ class PvCard : public PObject
       public:
         URIValue(const char * str = NULL) : PURL(str) { }
         URIValue(const PString & str) : PURL(str) { }
-        virtual void PrintOn(ostream & strm) const;
-        virtual void ReadFrom(istream & strm);
+        virtual void PrintOn(ostream & strm) const override;
+        virtual void ReadFrom(istream & strm) override;
     };
 
     /// Representation of EBNF img-inline-value/snd-inline-value
@@ -159,8 +159,8 @@ class PvCard : public PObject
       public:
         InlineValue(const char * str = NULL) : URIValue(str), m_params(NULL) { }
         InlineValue(const PString & str) : URIValue(str), m_params(NULL) { }
-        virtual void PrintOn(ostream & strm) const;
-        virtual void ReadFrom(istream & strm);
+        virtual void PrintOn(ostream & strm) const override;
+        virtual void ReadFrom(istream & strm) override;
         InlineValue & ReadFromParam(const ParamMap & params);
       private:
         const ParamMap * m_params;
@@ -213,8 +213,8 @@ class PvCard : public PObject
 
     struct Address : public MultiValue {
       Address(bool label = false) : m_label(label) { }
-      virtual void PrintOn(ostream & strm) const;
-      virtual void ReadFrom(istream & strm);
+      virtual void PrintOn(ostream & strm) const override;
+      virtual void ReadFrom(istream & strm) override;
 
       bool        m_label;
       TextValue   m_postOfficeBox;
@@ -234,7 +234,7 @@ class PvCard : public PObject
         : MultiValue(type)
         , m_number(number)
       { }
-      virtual void PrintOn(ostream & strm) const;
+      virtual void PrintOn(ostream & strm) const override;
 
       TextValue m_number;
     };
@@ -246,7 +246,7 @@ class PvCard : public PObject
         : MultiValue(type)
         , m_address(address)
       { }
-      virtual void PrintOn(ostream & strm) const;
+      virtual void PrintOn(ostream & strm) const override;
       TextValue   m_address;
     };
     PArray<EMail> m_emailAddresses;

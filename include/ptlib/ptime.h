@@ -123,7 +123,7 @@ class PTime : public PObject
        @return
        pointer to new time.
      */
-    PObject * Clone() const;
+    PObject * Clone() const override;
 
     /**Determine the relative rank of the specified times. This ranks the
        times as you would expect.
@@ -133,7 +133,7 @@ class PTime : public PObject
      */
     virtual Comparison Compare(
       const PObject & obj   ///< Other time to compare against.
-    ) const;
+    ) const override;
 
     /**Output the time to the stream.
        This uses the <code>AsString()</code> function with the default
@@ -143,7 +143,7 @@ class PTime : public PObject
      */
     virtual void PrintOn(
       ostream & strm    ///< Stream to output the time to.
-    ) const;
+    ) const override;
 
     /**Input the time from the specified stream. If a parse error occurs the
        time is set to the current time. The string may be in many different
@@ -163,7 +163,7 @@ class PTime : public PObject
      */
     virtual void ReadFrom(
       istream & strm    ///< Stream to input the time from.
-    );
+    ) override;
   //@}
 
   /**@name Access functions */

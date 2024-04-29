@@ -119,7 +119,7 @@ class PAbstractArray : public PContainer
      */
     virtual void PrintOn(
       ostream &strm   // Stream to print the object into.
-    ) const;
+    ) const override;
 
     /**Input the contents of the object from the stream. The exact input is
        dependent on the exact semantics of the descendent class. This is
@@ -129,7 +129,7 @@ class PAbstractArray : public PContainer
      */
     virtual void ReadFrom(
       istream &strm   // Stream to read the objects contents from.
-    );
+    ) override;
 
     /**Get the relative rank of the two arrays. The following algorithm is
        employed for the comparison:
@@ -152,7 +152,7 @@ class PAbstractArray : public PContainer
      */
     virtual Comparison Compare(
       const PObject & obj   ///< Other <code>PAbstractArray</code> to compare against.
-    ) const;
+    ) const override;
   //@}
 
   /**@name Overrides from class PContainer */
@@ -167,7 +167,7 @@ class PAbstractArray : public PContainer
      */
     virtual PBoolean SetSize(
       PINDEX newSize  ///< New size of the array in elements.
-    );
+    ) override;
   //@}
 
   /**@name New functions for class */
@@ -301,7 +301,7 @@ template <class T> class PBaseArray : public PAbstractArray
   //@{
     /** Clone the object.
      */
-    virtual PObject * Clone() const
+    virtual PObject * Clone() const override
     {
       return PNEW PBaseArray<T>(*this, GetSize());
     }
@@ -449,7 +449,7 @@ template <class T> class PBaseArray : public PAbstractArray
     virtual void PrintElementOn(
       ostream & stream,
       PINDEX index
-    ) const {
+    ) const override {
       stream << GetAt(index);
     }
 
@@ -585,12 +585,12 @@ class PCharArray : public PBaseArray<char>
     /// Print the array
     virtual void PrintOn(
       ostream & strm ///< Stream to output to.
-    ) const;
+    ) const override;
     /// Read the array
     virtual void ReadFrom(
       istream &strm   // Stream to read the objects contents from.
-    );
-    virtual PObject * Clone() const
+    ) override;
+    virtual PObject * Clone() const override
     {
       return PNEW PCharArray(*this, GetSize());
     }
@@ -629,6 +629,13 @@ class PBYTEArray : public PBaseArray<BYTE>
       PBoolean dynamic = true ///< Buffer is copied and dynamically allocated.
     ) : ParentClass(buffer, length, dynamic) { }
 
+    /**Construct a new dynamic array of unsigned chars.
+     */
+    PBYTEArray(
+      const std::string & str,  ///< String to copy to BYTE array
+      PBoolean dynamic = true   ///< Buffer is copied and dynamically allocated.
+    ) : ParentClass(reinterpret_cast<const BYTE *>(str.data()), str.length(), dynamic) { }
+
     PBYTEArray(PContainerReference & reference_)
       : ParentClass(reference_) { }
   //@}
@@ -638,12 +645,12 @@ class PBYTEArray : public PBaseArray<BYTE>
     /// Print the array
     virtual void PrintOn(
       ostream & strm ///< Stream to output to.
-    ) const;
+    ) const override;
     /// Read the array
     virtual void ReadFrom(
       istream &strm   ///< Stream to read the objects contents from.
-    );
-    virtual PObject * Clone() const
+    ) override;
+    virtual PObject * Clone() const override
     {
       return PNEW PBYTEArray(*this, GetSize());
     }
@@ -685,7 +692,7 @@ public:
     , m_compact(compact)
   { }
 
-  virtual void PrintOn(ostream & strm) const;
+  virtual void PrintOn(ostream & strm) const override;
 
 protected:
   bool m_compact;
@@ -774,13 +781,13 @@ class PArrayObjects : public PCollection
      */
     virtual Comparison Compare(
       const PObject & obj   ///< Other <code>PAbstractArray</code> to compare against.
-    ) const;
+    ) const override;
   //@}
 
   /**@name Overrides from class PContainer */
   //@{
     /// Get size of array
-    virtual PINDEX GetSize() const;
+    virtual PINDEX GetSize() const override;
 
     /**Set the size of the array in objects. A new array may be allocated to
        accomodate the new number of objects. If the array increases in size
@@ -792,7 +799,7 @@ class PArrayObjects : public PCollection
      */
     virtual PBoolean SetSize(
       PINDEX newSize  ///< New size of the array in objects.
-    );
+    ) override;
   //@}
 
   /**@name Overrides from class PCollection */
@@ -805,7 +812,7 @@ class PArrayObjects : public PCollection
      */
     virtual PINDEX Append(
       PObject * obj   ///< New object to place into the collection.
-    );
+    ) override;
 
     /**Insert a new object immediately before the specified object. If the
        object to insert before is not in the collection then the equivalent of
@@ -825,7 +832,7 @@ class PArrayObjects : public PCollection
     virtual PINDEX Insert(
       const PObject & before,   ///< Object value to insert before.
       PObject * obj             ///< New object to place into the collection.
-    );
+    ) override;
 
     /** Insert a new object at the specified ordinal index. If the index is
        greater than the number of objects in the collection then the
@@ -840,7 +847,7 @@ class PArrayObjects : public PCollection
     virtual PINDEX InsertAt(
       PINDEX index,   ///< Index position in collection to place the object.
       PObject * obj   ///< New object to place into the collection.
-    );
+    ) override;
 
     /**Remove the object from the collection. If the <code>AllowDeleteObjects</code> option
        is set then the object is also deleted.
@@ -852,7 +859,7 @@ class PArrayObjects : public PCollection
      */
     virtual PBoolean Remove(
       const PObject * obj   ///< Existing object to remove from the collection.
-    );
+    ) override;
 
     /**Remove the object at the specified ordinal index from the collection.
        If the <code>AllowDeleteObjects</code> option is set then the object is also deleted.
@@ -867,7 +874,7 @@ class PArrayObjects : public PCollection
      */
     virtual PObject * RemoveAt(
       PINDEX index   ///< Index position in collection of object to remove.
-    );
+    ) override;
 
     /**Set the object at the specified ordinal position to the new value. This
        will overwrite the existing entry. If the <code>AllowDeleteObjects</code> option is
@@ -879,7 +886,7 @@ class PArrayObjects : public PCollection
     virtual PBoolean SetAt(
       PINDEX index,   ///< Index position in collection to set.
       PObject * val   ///< New value to place into the collection.
-    );
+    ) override;
 
     /**Get the object at the specified ordinal position. If the index was
        greater than the size of the collection then NULL is returned.
@@ -889,7 +896,7 @@ class PArrayObjects : public PCollection
      */
     virtual PObject * GetAt(
       PINDEX index  ///< Index position in the collection of the object.
-    ) const;
+    ) const override;
 
     /**Search the collection for the specific instance of the object. The
        object pointers are compared, not the values. A simple linear search
@@ -900,7 +907,7 @@ class PArrayObjects : public PCollection
      */
     virtual PINDEX GetObjectsIndex(
       const PObject * obj  ///< Object to find.
-    ) const;
+    ) const override;
 
     /**Search the collection for the specified value of the object. The object
        values are compared, not the pointers.  So the objects in the
@@ -913,7 +920,7 @@ class PArrayObjects : public PCollection
      */
     virtual PINDEX GetValuesIndex(
       const PObject & obj   // Object to find equal of.
-    ) const;
+    ) const override;
 
     /**Remove all of the elements in the collection. This operates by
        continually calling <code>RemoveAt()</code> until there are no objects left.
@@ -921,7 +928,7 @@ class PArrayObjects : public PCollection
        The objects are removed from the last, at index
        (GetSize()-1) toward the first at index zero.
      */
-    virtual void RemoveAll();
+    virtual void RemoveAll() override;
   //@}
 
   protected:
@@ -959,7 +966,7 @@ template <class T> class PArray : public PArrayObjects
     /**Make a complete duplicate of the array. Note that all objects in the
        array are also cloned, so this will make a complete copy of the array.
      */
-    virtual PObject * Clone() const
+    virtual PObject * Clone() const override
       { return PNEW PArray(0, this); }
   //@}
 

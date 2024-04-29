@@ -24,7 +24,7 @@
  * Copyright 2003 Equivalence Pty. Ltd.
  */
 
-#ifdef __GNUC__
+#ifdef P_USE_PRAGMA
 #pragma implementation "pdns.h"
 #endif
 

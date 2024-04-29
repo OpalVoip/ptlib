@@ -107,7 +107,7 @@ public:
 PDECLARE_CLASS(MergeSym, PProcess)
   public:
     MergeSym();
-    void Main();
+    virtual void Main() override;
 };
 
 PCREATE_PROCESS(MergeSym);

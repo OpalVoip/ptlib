@@ -28,7 +28,7 @@
  */
 
   public:
-    PBoolean Close();
+    PBoolean Close() override;
 
   private:
 #ifndef P_VXWORKS

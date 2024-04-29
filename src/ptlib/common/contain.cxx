@@ -2374,6 +2374,9 @@ bool PString::IsTrue() const
 
 bool PString::IsTrue(const char * str)
 {
+  if (str == NULL || *str == '\0')
+    return false;
+
   return strcasecmp(str, "true") == 0 ||
          strcasecmp(str, "t") == 0 ||
          strcasecmp(str, "on") == 0 ||
@@ -2391,6 +2394,9 @@ bool PString::IsFalse() const
 
 bool PString::IsFalse(const char * str)
 {
+  if (str == NULL || *str == '\0')
+    return false;
+
   return strcasecmp(str, "false") == 0 ||
          strcasecmp(str, "f") == 0 ||
          strcasecmp(str, "off") == 0 ||

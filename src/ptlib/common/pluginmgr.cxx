@@ -58,8 +58,8 @@ class PluginLoaderStartup : public PProcessStartup
 {
   PCLASSINFO(PluginLoaderStartup, PProcessStartup);
   public:
-    void OnStartup();
-    void OnShutdown();
+    void OnStartup() override;
+    void OnShutdown() override;
 };
 
 

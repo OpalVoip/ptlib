@@ -69,7 +69,7 @@ class PTelnetSocket : public PTCPSocket
     PBoolean Read(
       void * buf,   ///< Pointer to a block of memory to receive the read bytes.
       PINDEX len    ///< Maximum number of bytes to read into the buffer.
-    );
+    ) override;
 
     /** Low level write to the channel. This function will block until the
        requested number of characters are written or the write timeout is
@@ -87,7 +87,7 @@ class PTelnetSocket : public PTCPSocket
     PBoolean Write(
       const void * buf, ///< Pointer to a block of memory to write.
       PINDEX len        ///< Number of bytes to write.
-    );
+    ) override;
 
     /**Set local echo mode.
        For some classes of channel, e.g. PConsoleChannel, data read by this
@@ -98,7 +98,7 @@ class PTelnetSocket : public PTCPSocket
       */
     virtual bool SetLocalEcho(
       bool localEcho
-    );
+    ) override;
 
 
     /** Connect a socket to a remote host on the specified port number. This is
@@ -114,7 +114,7 @@ class PTelnetSocket : public PTCPSocket
      */
     virtual PBoolean Connect(
       const PString & address   ///< Address of remote machine to connect to.
-    );
+    ) override;
 
 
     /** Open a socket to a remote host on the specified port number. This is an
@@ -133,7 +133,7 @@ class PTelnetSocket : public PTCPSocket
      */
     virtual PBoolean Accept(
       PSocket & socket          ///< Listening socket making the connection.
-    );
+    ) override;
 
 
     /** This is callback function called by the system whenever out of band data
@@ -145,7 +145,7 @@ class PTelnetSocket : public PTCPSocket
     virtual void OnOutOfBand(
       const void * buf,   ///< Data to be received as URGENT TCP data.
       PINDEX len          ///< Number of bytes pointed to by <CODE>buf</CODE>.
-    );
+    ) override;
 
 
   // New functions

@@ -172,7 +172,7 @@ class PASN_ConstrainedObject : public PASN_Object
     PBoolean ConstraintEncode(PPER_Stream & strm, unsigned value) const;
 
   protected:
-    virtual void SetConstraintBounds(ConstraintType type, int lower, unsigned upper);
+    virtual void SetConstraintBounds(ConstraintType type, int lower, unsigned upper) override;
     PASN_ConstrainedObject(unsigned tag, TagClass tagClass);
 
     ConstraintType constraint;
@@ -190,14 +190,14 @@ class PASN_Null : public PASN_Object
     PASN_Null(unsigned tag = UniversalNull,
               TagClass tagClass = UniversalTagClass);
 
-    virtual Comparison Compare(const PObject & obj) const;
-    virtual PObject * Clone() const;
-    virtual void PrintOn(ostream & strm) const;
+    virtual Comparison Compare(const PObject & obj) const override;
+    virtual PObject * Clone() const override;
+    virtual void PrintOn(ostream & strm) const override;
 
-    virtual PString GetTypeAsString() const;
-    virtual PINDEX GetDataLength() const;
-    virtual PBoolean Decode(PASN_Stream &);
-    virtual void Encode(PASN_Stream &) const;
+    virtual PString GetTypeAsString() const override;
+    virtual PINDEX GetDataLength() const override;
+    virtual PBoolean Decode(PASN_Stream &) override;
+    virtual void Encode(PASN_Stream &) const override;
 };
 
 
@@ -215,14 +215,14 @@ class PASN_Boolean : public PASN_Object
     PBoolean GetValue() const { return value; }
     void SetValue(PBoolean v) { value = v; }
 
-    virtual Comparison Compare(const PObject & obj) const;
-    virtual PObject * Clone() const;
-    virtual void PrintOn(ostream & strm) const;
+    virtual Comparison Compare(const PObject & obj) const override;
+    virtual PObject * Clone() const override;
+    virtual void PrintOn(ostream & strm) const override;
 
-    virtual PString GetTypeAsString() const;
-    virtual PINDEX GetDataLength() const;
-    virtual PBoolean Decode(PASN_Stream &);
-    virtual void Encode(PASN_Stream &) const;
+    virtual PString GetTypeAsString() const override;
+    virtual PINDEX GetDataLength() const override;
+    virtual PBoolean Decode(PASN_Stream &) override;
+    virtual void Encode(PASN_Stream &) const override;
 
   protected:
     PBoolean value;
@@ -243,15 +243,15 @@ class PASN_Integer : public PASN_ConstrainedObject
     unsigned GetValue() const { return value; }
     void SetValue(unsigned v) { operator=(v); }
 
-    virtual Comparison Compare(const PObject & obj) const;
-    virtual PObject * Clone() const;
-    virtual void PrintOn(ostream & strm) const;
+    virtual Comparison Compare(const PObject & obj) const override;
+    virtual PObject * Clone() const override;
+    virtual void PrintOn(ostream & strm) const override;
 
-    virtual void SetConstraintBounds(ConstraintType type, int lower, unsigned upper);
-    virtual PString GetTypeAsString() const;
-    virtual PINDEX GetDataLength() const;
-    virtual PBoolean Decode(PASN_Stream &);
-    virtual void Encode(PASN_Stream &) const;
+    virtual void SetConstraintBounds(ConstraintType type, int lower, unsigned upper) override;
+    virtual PString GetTypeAsString() const override;
+    virtual PINDEX GetDataLength() const override;
+    virtual PBoolean Decode(PASN_Stream &) override;
+    virtual void Encode(PASN_Stream &) const override;
 
 #ifdef P_INCLUDE_PER
     PBoolean DecodePER(PPER_Stream & strm);
@@ -296,14 +296,14 @@ class PASN_Enumeration : public PASN_Object
 
     unsigned GetMaximum() const { return maxEnumValue; }
 
-    virtual Comparison Compare(const PObject & obj) const;
-    virtual PObject * Clone() const;
-    virtual void PrintOn(ostream & strm) const;
+    virtual Comparison Compare(const PObject & obj) const override;
+    virtual PObject * Clone() const override;
+    virtual void PrintOn(ostream & strm) const override;
 
-    virtual PString GetTypeAsString() const;
-    virtual PINDEX GetDataLength() const;
-    virtual PBoolean Decode(PASN_Stream &);
-    virtual void Encode(PASN_Stream &) const;
+    virtual PString GetTypeAsString() const override;
+    virtual PINDEX GetDataLength() const override;
+    virtual PBoolean Decode(PASN_Stream &) override;
+    virtual void Encode(PASN_Stream &) const override;
 
 #ifdef P_INCLUDE_PER
     PBoolean DecodePER(PPER_Stream & strm);
@@ -338,14 +338,14 @@ class PASN_Real : public PASN_Object
     double GetValue() const { return value; }
     void SetValue(double v) { value = v; }
 
-    virtual Comparison Compare(const PObject & obj) const;
-    virtual PObject * Clone() const;
-    virtual void PrintOn(ostream & strm) const;
+    virtual Comparison Compare(const PObject & obj) const override;
+    virtual PObject * Clone() const override;
+    virtual void PrintOn(ostream & strm) const override;
 
-    virtual PString GetTypeAsString() const;
-    virtual PINDEX GetDataLength() const;
-    virtual PBoolean Decode(PASN_Stream &);
-    virtual void Encode(PASN_Stream &) const;
+    virtual PString GetTypeAsString() const override;
+    virtual PINDEX GetDataLength() const override;
+    virtual PBoolean Decode(PASN_Stream &) override;
+    virtual void Encode(PASN_Stream &) const override;
 
   protected:
     double value;
@@ -382,14 +382,14 @@ class PASN_ObjectId : public PASN_Object
     const PUnsignedArray & GetValue() const { return value; }
     PString AsString() const;
 
-    virtual Comparison Compare(const PObject & obj) const;
-    virtual PObject * Clone() const;
-    virtual void PrintOn(ostream & strm) const;
+    virtual Comparison Compare(const PObject & obj) const override;
+    virtual PObject * Clone() const override;
+    virtual void PrintOn(ostream & strm) const override;
 
-    virtual PString GetTypeAsString() const;
-    virtual PINDEX GetDataLength() const;
-    virtual PBoolean Decode(PASN_Stream &);
-    virtual void Encode(PASN_Stream &) const;
+    virtual PString GetTypeAsString() const override;
+    virtual PINDEX GetDataLength() const override;
+    virtual PBoolean Decode(PASN_Stream &) override;
+    virtual void Encode(PASN_Stream &) const override;
 
     PBoolean CommonDecode(PASN_Stream & strm, unsigned dataLen);
     void CommonEncode(PBYTEArray & eObjId) const;
@@ -427,15 +427,15 @@ class PASN_BitString : public PASN_ConstrainedObject
     void Clear(unsigned bit);
     void Invert(unsigned bit);
 
-    virtual Comparison Compare(const PObject & obj) const;
-    virtual PObject * Clone() const;
-    virtual void PrintOn(ostream & strm) const;
+    virtual Comparison Compare(const PObject & obj) const override;
+    virtual PObject * Clone() const override;
+    virtual void PrintOn(ostream & strm) const override;
 
-    virtual void SetConstraintBounds(ConstraintType type, int lower, unsigned upper);
-    virtual PString GetTypeAsString() const;
-    virtual PINDEX GetDataLength() const;
-    virtual PBoolean Decode(PASN_Stream &);
-    virtual void Encode(PASN_Stream &) const;
+    virtual void SetConstraintBounds(ConstraintType type, int lower, unsigned upper) override;
+    virtual PString GetTypeAsString() const override;
+    virtual PINDEX GetDataLength() const override;
+    virtual PBoolean Decode(PASN_Stream &) override;
+    virtual void Encode(PASN_Stream &) const override;
 
 #ifdef P_INCLUDE_BER
     PBoolean DecodeBER(PBER_Stream & strm, unsigned len);
@@ -486,15 +486,15 @@ class PASN_OctetString : public PASN_ConstrainedObject
     PINDEX GetSize() const { return value.GetSize(); }
     PBoolean SetSize(PINDEX newSize);
 
-    virtual Comparison Compare(const PObject & obj) const;
-    virtual PObject * Clone() const;
-    virtual void PrintOn(ostream & strm) const;
+    virtual Comparison Compare(const PObject & obj) const override;
+    virtual PObject * Clone() const override;
+    virtual void PrintOn(ostream & strm) const override;
 
-    virtual void SetConstraintBounds(ConstraintType type, int lower, unsigned upper);
-    virtual PString GetTypeAsString() const;
-    virtual PINDEX GetDataLength() const;
-    virtual PBoolean Decode(PASN_Stream &);
-    virtual void Encode(PASN_Stream &) const;
+    virtual void SetConstraintBounds(ConstraintType type, int lower, unsigned upper) override;
+    virtual PString GetTypeAsString() const override;
+    virtual PINDEX GetDataLength() const override;
+    virtual PBoolean Decode(PASN_Stream &) override;
+    virtual void Encode(PASN_Stream &) const override;
 
 #ifdef P_INCLUDE_PER
     PBoolean DecodePER(PPER_Stream & strm);
@@ -523,17 +523,17 @@ class PASN_ConstrainedString : public PASN_ConstrainedObject
     void SetValue(const PString & v) { operator=(v); }
     char operator[](PINDEX idx) const { return value[idx]; }
 
-    void SetCharacterSet(ConstraintType ctype, const char * charSet);
-    void SetCharacterSet(ConstraintType ctype, unsigned firstChar = 0, unsigned lastChar = 255);
+    void SetCharacterSet(ConstraintType ctype, const char * charSet) override;
+    void SetCharacterSet(ConstraintType ctype, unsigned firstChar = 0, unsigned lastChar = 255) override;
     void SetCharacterSet(const char * charSet, PINDEX size, ConstraintType ctype);
 
-    virtual Comparison Compare(const PObject & obj) const;
-    virtual void PrintOn(ostream & strm) const;
+    virtual Comparison Compare(const PObject & obj) const override;
+    virtual void PrintOn(ostream & strm) const override;
 
-    virtual void SetConstraintBounds(ConstraintType type, int lower, unsigned upper);
-    virtual PINDEX GetDataLength() const;
-    virtual PBoolean Decode(PASN_Stream &);
-    virtual void Encode(PASN_Stream &) const;
+    virtual void SetConstraintBounds(ConstraintType type, int lower, unsigned upper) override;
+    virtual PINDEX GetDataLength() const override;
+    virtual PBoolean Decode(PASN_Stream &) override;
+    virtual void Encode(PASN_Stream &) const override;
 
 #ifdef P_INCLUDE_BER
     PBoolean DecodeBER(PBER_Stream & strm, unsigned len);
@@ -567,8 +567,8 @@ class PASN_ConstrainedString : public PASN_ConstrainedObject
       PASN_##name##String(unsigned tag, TagClass tagClass); \
       PASN_##name##String & operator=(const char * str); \
       PASN_##name##String & operator=(const PString & str); \
-      virtual PObject * Clone() const; \
-      virtual PString GetTypeAsString() const; \
+      virtual PObject * Clone() const override; \
+      virtual PString GetTypeAsString() const override; \
   }
 
 DECLARE_STRING_CLASS(Numeric);
@@ -605,18 +605,18 @@ class PASN_BMPString : public PASN_ConstrainedObject
     void SetValueRaw(const PWCharArray & v) { SetValueRaw(v, v.GetSize()); }
     void SetValueRaw(const wchar_t * val, PINDEX len);
 
-    void SetCharacterSet(ConstraintType ctype, const char * charSet);
+    void SetCharacterSet(ConstraintType ctype, const char * charSet) override;
     void SetCharacterSet(ConstraintType ctype, const PWCharArray & charSet);
-    void SetCharacterSet(ConstraintType ctype, unsigned firstChar, unsigned lastChar);
+    void SetCharacterSet(ConstraintType ctype, unsigned firstChar, unsigned lastChar) override;
 
-    virtual Comparison Compare(const PObject & obj) const;
-    virtual PObject * Clone() const;
-    virtual void PrintOn(ostream & strm) const;
+    virtual Comparison Compare(const PObject & obj) const override;
+    virtual PObject * Clone() const override;
+    virtual void PrintOn(ostream & strm) const override;
 
-    virtual PString GetTypeAsString() const;
-    virtual PINDEX GetDataLength() const;
-    virtual PBoolean Decode(PASN_Stream &);
-    virtual void Encode(PASN_Stream &) const;
+    virtual PString GetTypeAsString() const override;
+    virtual PINDEX GetDataLength() const override;
+    virtual PBoolean Decode(PASN_Stream &) override;
+    virtual void Encode(PASN_Stream &) const override;
 
 #ifdef P_INCLUDE_BER
     PBoolean DecodeBER(PBER_Stream & strm, unsigned len);
@@ -684,7 +684,7 @@ class PASN_Choice : public PASN_Object
   public:
     ~PASN_Choice();
 
-    virtual void SetTag(unsigned newTag, TagClass tagClass = DefaultTagClass);
+    virtual void SetTag(unsigned newTag, TagClass tagClass = DefaultTagClass) override;
     PString GetTagName() const;
     PASN_Object & GetObject() const;
     PBoolean IsValid() const { return choice != NULL; }
@@ -745,14 +745,14 @@ class PASN_Choice : public PASN_Object
 
     virtual PBoolean CreateObject() = 0;
 
-    virtual Comparison Compare(const PObject & obj) const;
-    virtual void PrintOn(ostream & strm) const;
+    virtual Comparison Compare(const PObject & obj) const override;
+    virtual void PrintOn(ostream & strm) const override;
 
-    virtual PString GetTypeAsString() const;
-    virtual PINDEX GetDataLength() const;
-    virtual PBoolean IsPrimitive() const;
-    virtual PBoolean Decode(PASN_Stream &);
-    virtual void Encode(PASN_Stream &) const;
+    virtual PString GetTypeAsString() const override;
+    virtual PINDEX GetDataLength() const override;
+    virtual PBoolean IsPrimitive() const override;
+    virtual PBoolean Decode(PASN_Stream &) override;
+    virtual void Encode(PASN_Stream &) const override;
 
 #ifdef P_INCLUDE_PER
     virtual PBoolean DecodePER(PPER_Stream &);
@@ -807,15 +807,15 @@ class PASN_Sequence : public PASN_Object
     void IncludeOptionalField(PINDEX opt);
     void RemoveOptionalField(PINDEX opt);
 
-    virtual Comparison Compare(const PObject & obj) const;
-    virtual PObject * Clone() const;
-    virtual void PrintOn(ostream & strm) const;
+    virtual Comparison Compare(const PObject & obj) const override;
+    virtual PObject * Clone() const override;
+    virtual void PrintOn(ostream & strm) const override;
 
-    virtual PString GetTypeAsString() const;
-    virtual PINDEX GetDataLength() const;
-    virtual PBoolean IsPrimitive() const;
-    virtual PBoolean Decode(PASN_Stream &);
-    virtual void Encode(PASN_Stream &) const;
+    virtual PString GetTypeAsString() const override;
+    virtual PINDEX GetDataLength() const override;
+    virtual PBoolean IsPrimitive() const override;
+    virtual PBoolean Decode(PASN_Stream &) override;
+    virtual void Encode(PASN_Stream &) const override;
 
     PBoolean PreambleDecode(PASN_Stream & strm);
     void PreambleEncode(PASN_Stream & strm) const;
@@ -874,8 +874,8 @@ class PASN_Set : public PASN_Sequence
              TagClass tagClass = UniversalTagClass,
              unsigned nOpts = 0, PBoolean extend = false, unsigned nExtend = 0);
 
-    virtual PObject * Clone() const;
-    virtual PString GetTypeAsString() const;
+    virtual PObject * Clone() const override;
+    virtual PString GetTypeAsString() const override;
 };
 
 
@@ -892,15 +892,15 @@ class PASN_Array : public PASN_ConstrainedObject
     void RemoveAt(PINDEX i) { array.RemoveAt(i); }
     void RemoveAll() { array.RemoveAll(); }
 
-    virtual Comparison Compare(const PObject & obj) const;
-    virtual void PrintOn(ostream & strm) const;
+    virtual Comparison Compare(const PObject & obj) const override;
+    virtual void PrintOn(ostream & strm) const override;
 
-    virtual void SetConstraintBounds(ConstraintType type, int lower, unsigned upper);
-    virtual PString GetTypeAsString() const;
-    virtual PINDEX GetDataLength() const;
-    virtual PBoolean IsPrimitive() const;
-    virtual PBoolean Decode(PASN_Stream &);
-    virtual void Encode(PASN_Stream &) const;
+    virtual void SetConstraintBounds(ConstraintType type, int lower, unsigned upper) override;
+    virtual PString GetTypeAsString() const override;
+    virtual PINDEX GetDataLength() const override;
+    virtual PBoolean IsPrimitive() const override;
+    virtual PBoolean Decode(PASN_Stream &) override;
+    virtual void Encode(PASN_Stream &) const override;
 
     virtual PASN_Object * CreateObject() const = 0;
 
@@ -928,7 +928,7 @@ class PASN_Stream : public PBYTEArray
     PASN_Stream(const PBYTEArray & bytes);
     PASN_Stream(const BYTE * buf, PINDEX size);
 
-    void PrintOn(ostream & strm) const;
+    void PrintOn(ostream & strm) const override;
 
     PINDEX GetPosition() const { return byteOffset; }
     void SetPosition(PINDEX newPos);

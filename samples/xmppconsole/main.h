@@ -84,7 +84,7 @@ public:
     : PThread(1000, NoAutoDeleteThread),  frame(_frame)
     { Resume(); }
    
-  void Main();
+  virtual void Main() override;
      
  protected:
 
@@ -110,7 +110,7 @@ class XMPPConsole :public PProcess
 public:
   XMPPConsole();
 
-  void Main();
+  virtual void Main() override;
 
   PString GetPassword() { return password; }
   PString GetUserName() { return userName; }

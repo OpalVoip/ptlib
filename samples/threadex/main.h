@@ -46,7 +46,7 @@ public:
   
   ~DelayThread();
 
-  void Main();
+  virtual void Main() override;
     
  protected:
   PINDEX delay;
@@ -66,7 +66,7 @@ public:
     : PThread(10000, NoAutoDeleteThread)
     { }
 
-  void Main();
+  virtual void Main() override;
     
  protected:
 };
@@ -85,7 +85,7 @@ public:
     : PThread(10000, NoAutoDeleteThread)
     { iteration = 0; keepGoing = true; }
   
-  void Main();
+  virtual void Main() override;
     
   PINDEX GetIteration() { return iteration; }
 
@@ -110,7 +110,7 @@ class Threadex : public PProcess
 
   public:
     Threadex();
-    virtual void Main();
+    virtual void Main() override;
 
     PINDEX Delay()    { return delay; }
 

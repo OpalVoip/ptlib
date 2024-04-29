@@ -35,7 +35,7 @@ class AggTest : public PProcess
 
   public:
     AggTest();
-    virtual void Main();
+    virtual void Main() override;
 };
 
 

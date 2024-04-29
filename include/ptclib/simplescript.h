@@ -57,22 +57,22 @@ class PSimpleScript : public PScriptLanguage
     static PString LanguageName();
 
     /// Get the name of this scripting language
-    virtual PString GetLanguageName() const;
+    virtual PString GetLanguageName() const override;
 
     /// Indicate language has initialised successfully
-    virtual bool IsInitialised() const;
+    virtual bool IsInitialised() const override;
 
     /**Load a script from a file.
       */
     virtual bool LoadFile(
       const PFilePath & filename  ///< Name of script file to load
-    );
+    ) override;
 
     /** Load script text.
       */
     virtual bool LoadText(
       const PString & text  ///< Script text to load.
-    );
+    ) override;
 
     /**Run the script.
        If \p script is NULL or empty then the currently laoded script is
@@ -82,7 +82,7 @@ class PSimpleScript : public PScriptLanguage
       */
     virtual bool Run(
       const char * script = NULL
-    );
+    ) override;
 
     /**Create a composite structure.
        The exact semantics is language dependant.
@@ -94,13 +94,13 @@ class PSimpleScript : public PScriptLanguage
     virtual bool CreateComposite(
       const PString & name,       ///< Name of new composite structure
       unsigned sequenceSize = 0   ///< Size of sequence, 0 means object
-    );
+    ) override;
 
     /**Get the type of the variable.
       */
     virtual VarTypes GetVarType(
       const PString & name  ///< Name of variable
-    );
+    ) override;
 
     /**Get a variable in the script 
        See class description for how \p name is parsed.
@@ -108,7 +108,7 @@ class PSimpleScript : public PScriptLanguage
     virtual bool GetVar(
       const PString & name,  ///< Name of global
       PVarType & var
-    );
+    ) override;
 
     /**Set a variable in the script 
        See class description for how \p name is parsed.
@@ -116,7 +116,7 @@ class PSimpleScript : public PScriptLanguage
     virtual bool SetVar(
       const PString & name, ///< Name of global
       const PVarType & var
-    );
+    ) override;
 
     /**Release a variable name.
        Note the exact semantics is language dependant. It generally applies
@@ -125,7 +125,7 @@ class PSimpleScript : public PScriptLanguage
       */
     virtual bool ReleaseVariable(
       const PString & name    ///< Name of table to delete
-    );
+    ) override;
 
     /**Call a specific function in the script.
        The \p sigString indicates the types of the arguments and return values
@@ -157,11 +157,11 @@ class PSimpleScript : public PScriptLanguage
       const PString & name,           ///< Name of function to execute.
       const char * sigString = NULL,  ///< Signature of arguments following
       ...
-    );
+    ) override;
     virtual bool Call(
       const PString & name,       ///< Name of function to execute.
       Signature & signature ///< Signature of arguments following
-    );
+    ) override;
 
     /**Set a notifier as a script callable function.
        See class description for how \p name is parsed.
@@ -169,7 +169,7 @@ class PSimpleScript : public PScriptLanguage
     virtual bool SetFunction(
       const PString & name,         ///< Name of function script can call
       const FunctionNotifier & func ///< Notifier excuted
-    );
+    ) override;
   //@}
 
     const PStringToString & GetAllVariables() const { return m_variables; }

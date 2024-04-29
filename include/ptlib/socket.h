@@ -139,7 +139,7 @@ class PSocket : public PChannel
      */
     virtual PBoolean Shutdown(
       ShutdownValue option   ///< Flag for shutdown of read, write or both.
-    );
+    ) override;
   //@}
 
   /**@name Socket options functions */
@@ -473,7 +473,7 @@ class PSocket : public PChannel
   //@}
 
   protected:
-    virtual PBoolean ConvertOSError(P_INT_PTR libcReturnValue, ErrorGroup group = LastGeneralError);
+    virtual PBoolean ConvertOSError(P_INT_PTR libcReturnValue, ErrorGroup group = LastGeneralError) override;
 
     /*This function calls os_socket() with the correct parameters for the
        socket protocol type.
@@ -514,7 +514,7 @@ class PSocket : public PChannel
       socklen_t * size
     );
 
-    virtual int os_errno() const;
+    virtual int os_errno() const override;
 
 
   // Member variables

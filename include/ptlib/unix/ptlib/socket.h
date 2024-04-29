@@ -31,8 +31,8 @@
 // PSocket
 
   public:
-    virtual bool Read(void * ptr, PINDEX len);
-    virtual bool Write(const void * buf, PINDEX len);
+    virtual bool Read(void * ptr, PINDEX len) override;
+    virtual bool Write(const void * buf, PINDEX len) override;
     ~PSocket();
 
     static unsigned NoBufferRetryCount;

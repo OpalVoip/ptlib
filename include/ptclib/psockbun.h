@@ -179,7 +179,7 @@ class PInterfaceMonitor : public PProcessStartup
     bool HasInterfaceFilter() const { return m_interfaceFilter != NULL; }
 
   protected:
-    virtual void OnShutdown();
+    virtual void OnShutdown() override;
 
     void UpdateThreadMain();
 
@@ -406,23 +406,23 @@ class PMonitoredSocketChannel : public PChannel
 
   /**@name Overrides from class PSocket */
   //@{
-    virtual PString GetName() const;
-    virtual PBoolean IsOpen() const;
-    virtual PBoolean Close();
+    virtual PString GetName() const override;
+    virtual PBoolean IsOpen() const override;
+    virtual PBoolean Close() override;
 
     /** Override of PChannel functions to allow connectionless reads
      */
     virtual PBoolean Read(
       void * buffer,
       PINDEX length
-    );
+    ) override;
 
     /** Override of PChannel functions to allow connectionless writes
      */
     virtual PBoolean Write(
       const void * buffer,
       PINDEX length
-    );
+    ) override;
   //@}
 
   /**@name New functions for class */
@@ -539,7 +539,7 @@ class PMonitoredSocketBundle : public PMonitoredSockets
       bool includeLoopBack = false,  ///< Flag for if loopback is to included in list
       const PIPSocket::Address & destination = PIPSocket::GetDefaultIpAny()
                           ///< Optional destination for selecting specific interface
-    );
+    ) override;
 
     /** Open the socket(s) using the specified port. If port is zero then a
         system allocated port is used. In this case and when multiple
@@ -549,15 +549,15 @@ class PMonitoredSocketBundle : public PMonitoredSockets
      */
     virtual PBoolean Open(
       WORD port
-    );
+    ) override;
 
     /// Close all socket(s)
-    virtual PBoolean Close();
+    virtual PBoolean Close() override;
 
     /// Set the quality of service for sockets
     virtual bool SetQoS(
       const PIPSocket::QoS & qos
-    );
+    ) override;
 
     /// Get the local address for the given interface.
     virtual PBoolean GetAddress(
@@ -565,7 +565,7 @@ class PMonitoredSocketBundle : public PMonitoredSockets
       PIPSocket::Address & address, ///< Address of interface
       WORD & port,                  ///< Port listening on
       PBoolean usingNAT             ///< Require NAT address/port
-    ) const;
+    ) const override;
 
     /** Write to the remote address/port using the socket(s) available. If the
         iface parameter is empty, then the data is written to all socket(s).
@@ -574,7 +574,7 @@ class PMonitoredSocketBundle : public PMonitoredSockets
       */
     virtual void WriteToBundle(
       BundleParams & param ///< Info on data to write
-    );
+    ) override;
 
     /** Read fram a remote address/port using the socket(s) available. If the
         iface parameter is empty, then the first data received on any socket(s)
@@ -584,7 +584,7 @@ class PMonitoredSocketBundle : public PMonitoredSockets
       */
     virtual void ReadFromBundle(
       BundleParams & param ///< Info on data to read
-    );
+    ) override;
 
   protected:
     PDECLARE_InterfaceNotifier(PMonitoredSocketBundle, OnInterfaceChange);
@@ -626,7 +626,7 @@ class PSingleMonitoredSocket : public PMonitoredSockets
       bool includeLoopBack = false,  ///< Flag for if loopback is to included in list
       const PIPSocket::Address & destination = PIPSocket::GetDefaultIpAny()
                           ///< Optional destination for selecting specific interface
-    );
+    ) override;
 
     /** Open the socket(s) using the specified port. If port is zero then a
         system allocated port is used. In this case and when multiple
@@ -636,15 +636,15 @@ class PSingleMonitoredSocket : public PMonitoredSockets
      */
     virtual PBoolean Open(
       WORD port
-    );
+    ) override;
 
     /// Close all socket(s)
-    virtual PBoolean Close();
+    virtual PBoolean Close() override;
 
     /// Set the quality of service for sockets
     virtual bool SetQoS(
       const PIPSocket::QoS & qos
-    );
+    ) override;
 
     /// Get the local address for the given interface.
     virtual PBoolean GetAddress(
@@ -652,7 +652,7 @@ class PSingleMonitoredSocket : public PMonitoredSockets
       PIPSocket::Address & address, ///< Address of interface
       WORD & port,                  ///< Port listening on
       PBoolean usingNAT             ///< Require NAT address/port
-    ) const;
+    ) const override;
 
     /** Write to the remote address/port using the socket(s) available. If the
         iface parameter is empty, then the data is written to all socket(s).
@@ -661,7 +661,7 @@ class PSingleMonitoredSocket : public PMonitoredSockets
       */
     virtual void WriteToBundle(
       BundleParams & param ///< Info on data to write
-    );
+    ) override;
 
     /** Read fram a remote address/port using the socket(s) available. If the
         iface parameter is empty, then the first data received on any socket(s)
@@ -671,7 +671,7 @@ class PSingleMonitoredSocket : public PMonitoredSockets
       */
     virtual void ReadFromBundle(
       BundleParams & param ///< Info on data to read
-    );
+    ) override;
 
 
   protected:

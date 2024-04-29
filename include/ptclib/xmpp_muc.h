@@ -74,7 +74,7 @@ namespace XMPP
       Role          m_Role;
       Affiliation   m_Affiliation;
 
-      Comparison Compare(const PObject & obj) const;
+      Comparison Compare(const PObject & obj) const override;
     };
     PSORTED_LIST(Users, User);
 

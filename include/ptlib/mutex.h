@@ -129,7 +129,7 @@ class PTimedMutex : public PSync, public PMutexExcessiveLockInfo, PProfiling::Hi
 
     /**Block until the synchronisation object is available.
      */
-    virtual void Wait();
+    virtual void Wait() override;
 
     /**Block, for a time, until the synchronisation object is available.
 
@@ -138,18 +138,18 @@ class PTimedMutex : public PSync, public PMutexExcessiveLockInfo, PProfiling::Hi
      */
     virtual PBoolean Wait(
       const PTimeInterval & timeout // Amount of time to wait.
-    );
+    ) override;
 
     /**Signal that the synchronisation object is available.
      */
-    virtual void Signal();
+    virtual void Signal() override;
 
     /** Try to enter the critical section for exlusive access. Does not wait.
         @return true if cirical section entered, leave/Signal must be called.
       */
     PINLINE bool Try() { return Wait(0); }
 
-    virtual void PrintOn(ostream &strm) const;
+    virtual void PrintOn(ostream &strm) const override;
 
     static unsigned ExcessiveLockWaitTime;
     enum DeadlockStackWalkModes
@@ -297,14 +297,14 @@ class PCriticalSection : public PSync
   //@{
     /** Create a new PCriticalSection
       */
-    PObject * Clone() const
+    PObject * Clone() const override
     {
       return new PCriticalSection();
     }
 
     /** Enter the critical section by waiting for exclusive access.
      */
-    virtual void Wait();
+    virtual void Wait() override;
     inline void Enter() { Wait(); }
 
     /**Block, for a time, until the synchronisation object is available.
@@ -314,11 +314,11 @@ class PCriticalSection : public PSync
      */
     virtual PBoolean Wait(
       const PTimeInterval & timeout // Amount of time to wait.
-    );
+    ) override;
 
     /** Leave the critical section by unlocking the mutex
      */
-    virtual void Signal();
+    virtual void Signal() override;
     inline void Leave() { Signal(); }
 
     /** Try to enter the critical section for exlusive access. Does not wait.

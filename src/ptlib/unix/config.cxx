@@ -100,7 +100,7 @@ class PConfigCache : public PProcessStartup
     PConfigCache();
     ~PConfigCache();
 
-    virtual void OnShutdown();
+    virtual void OnShutdown() override;
 
     PConfig::Cached * GetEnvironmentCache();
     PConfig::Cached * GetFileCache(const PFilePath & filename);

@@ -7,7 +7,7 @@ class SortedListTest:public PProcess {
   PCLASSINFO(SortedListTest, PProcess);
 public:
   SortedListTest();
-  void Main();
+  virtual void Main() override;
 };
 
 
@@ -15,7 +15,7 @@ class DoSomeThing1:public PThread {
   PCLASSINFO(DoSomeThing1, PThread);
 public:
   DoSomeThing1(PINDEX _index);
-  void Main();
+  virtual void Main() override;
 private:
   PINDEX m_index;
   PSortedList<PString> list;
@@ -33,7 +33,7 @@ class DoSomeThing2:public PThread {
   PCLASSINFO(DoSomeThing2, PThread);
 public:
   DoSomeThing2(PINDEX _index);
-  void Main();
+  virtual void Main() override;
 private:
   PINDEX m_index;
   PSafeSortedList<PSafeString> list;

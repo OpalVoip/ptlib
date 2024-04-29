@@ -27,7 +27,7 @@ class PRFC1155_ObjectName : public PASN_ObjectId
   public:
     PRFC1155_ObjectName(unsigned tag = UniversalObjectId, TagClass tagClass = UniversalTagClass);
 
-    PObject * Clone() const;
+    PObject * Clone() const override;
 };
 
 
@@ -59,8 +59,8 @@ class PRFC1155_ObjectSyntax : public PASN_Choice
     operator const PRFC1155_ApplicationSyntax &() const;
 #endif
 
-    PBoolean CreateObject();
-    PObject * Clone() const;
+    PBoolean CreateObject() override;
+    PObject * Clone() const override;
 };
 
 
@@ -83,8 +83,8 @@ class PRFC1155_SimpleSyntax : public PASN_Choice
       e_empty = 5
     };
 
-    PBoolean CreateObject();
-    PObject * Clone() const;
+    PBoolean CreateObject() override;
+    PObject * Clone() const override;
 };
 
 
@@ -144,8 +144,8 @@ class PRFC1155_ApplicationSyntax : public PASN_Choice
     operator const PRFC1155_Opaque &() const;
 #endif
 
-    PBoolean CreateObject();
-    PObject * Clone() const;
+    PBoolean CreateObject() override;
+    PObject * Clone() const override;
 };
 
 
@@ -174,8 +174,8 @@ class PRFC1155_NetworkAddress : public PASN_Choice
     operator const PRFC1155_IpAddress &() const;
 #endif
 
-    PBoolean CreateObject();
-    PObject * Clone() const;
+    PBoolean CreateObject() override;
+    PObject * Clone() const override;
 };
 
 
@@ -198,7 +198,7 @@ class PRFC1155_IpAddress : public PASN_OctetString
     PRFC1155_IpAddress & operator=(const char * v);
     PRFC1155_IpAddress & operator=(const PString & v);
     PRFC1155_IpAddress & operator=(const PBYTEArray & v);
-    PObject * Clone() const;
+    PObject * Clone() const override;
 };
 
 
@@ -216,7 +216,7 @@ class PRFC1155_Counter : public PASN_Integer
 
     PRFC1155_Counter & operator=(int v);
     PRFC1155_Counter & operator=(unsigned v);
-    PObject * Clone() const;
+    PObject * Clone() const override;
 };
 
 
@@ -234,7 +234,7 @@ class PRFC1155_Gauge : public PASN_Integer
 
     PRFC1155_Gauge & operator=(int v);
     PRFC1155_Gauge & operator=(unsigned v);
-    PObject * Clone() const;
+    PObject * Clone() const override;
 };
 
 
@@ -252,7 +252,7 @@ class PRFC1155_TimeTicks : public PASN_Integer
 
     PRFC1155_TimeTicks & operator=(int v);
     PRFC1155_TimeTicks & operator=(unsigned v);
-    PObject * Clone() const;
+    PObject * Clone() const override;
 };
 
 
@@ -275,7 +275,7 @@ class PRFC1155_Opaque : public PASN_OctetString
     PRFC1155_Opaque & operator=(const char * v);
     PRFC1155_Opaque & operator=(const PString & v);
     PRFC1155_Opaque & operator=(const PBYTEArray & v);
-    PObject * Clone() const;
+    PObject * Clone() const override;
 };
 
 

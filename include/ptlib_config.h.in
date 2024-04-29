@@ -612,10 +612,16 @@
 #if defined(_MSC_VER) && defined(P_LUA)
   #if defined(P_64BIT)
     #define P_LUA_INCLUDE(inc) include_alias(<inc>, <@LUA_DIR_WIN64@/include/inc>)
-    #define P_LUA_LIBRARY "@LUA_DIR_WIN64@/liblua53.a"
+    #undef P_LUA_LIBRARY64
+    #ifdef P_LUA_LIBRARY64
+      #define P_LUA_LIBRARY P_LUA_LIBRARY64
+    #endif
   #else
     #define P_LUA_INCLUDE(inc) include_alias(<inc>, <@LUA_DIR_WIN32@/include/inc>)
-    #define P_LUA_LIBRARY "@LUA_DIR_WIN32@/liblua53.a"
+    #undef P_LUA_LIBRARY32
+    #ifdef P_LUA_LIBRARY32
+      #define P_LUA_LIBRARY P_LUA_LIBRARY32
+    #endif
   #endif
 
   #pragma P_LUA_INCLUDE(lua.hpp)
@@ -697,6 +703,8 @@
 
 #undef P_EXPAT
 #undef P_EXPAT_BUILD
+#undef P_EXPAT_VCPKG32
+#undef P_EXPAT_VCPKG64
 #undef P_EXPAT_WIN32
 #undef P_EXPAT_WIN64
 #undef P_EXPAT_LIBRARY_W32_DEBUG
@@ -706,6 +714,8 @@
 
 #if (defined(P_EXPAT_WIN64)                 &&  defined(P_64BIT)) || \
     (defined(P_EXPAT_WIN32)                 && !defined(P_64BIT)) || \
+    (defined(P_EXPAT_VCPKG64)               &&  defined(P_64BIT)) || \
+    (defined(P_EXPAT_VCPKG32)               && !defined(P_64BIT)) || \
     ((defined(P_EXPAT_LIBRARY_W64_DEBUG)                          || \
       defined(P_EXPAT_LIBRARY_W64_RELEASE)) &&  defined(P_64BIT)) || \
     ((defined(P_EXPAT_LIBRARY_W32_DEBUG)                          || \
@@ -719,11 +729,11 @@
     #pragma include_alias(<expat.h>, <@EXPAT_BUILD_DIR@/lib/expat.h>)
   #elif defined(P_EXPAT_WIN32)
     #pragma include_alias(<expat.h>, <@EXPAT_WIN32_DIR@/Source/lib/expat.h>)
-  #else
+  #elif defined(P_EXPAT_WIN64)
     #pragma include_alias(<expat.h>, <@EXPAT_WIN64_DIR@/include/expat.h>)
   #endif
 
-  #if defined(P_EXPAT_WIN32) || defined(P_EXPAT_WIN64)
+  #if defined(P_EXPAT_WIN32) || defined(P_EXPAT_WIN64) || defined(P_EXPAT_VCPKG32) || defined(P_EXPAT_VCPKG64)
     #undef P_EXPAT_LIBRARY
   #elif defined(P_64BIT)
     #if defined(_DEBUG)

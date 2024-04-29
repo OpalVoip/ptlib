@@ -17,7 +17,7 @@ class LocalAddress : public PProcess
 public:
     LocalAddress();
     
-    void Main();
+    virtual void Main() override;
 };
 
 PCREATE_PROCESS(LocalAddress);

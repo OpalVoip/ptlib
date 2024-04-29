@@ -107,7 +107,7 @@ class PGloballyUniqueID : public PBYTEArray
       */
     virtual void PrintOn(
       ostream & strm    ///<  Stream to output text representation
-    ) const;
+    ) const override;
 
     /**Standard stream read function.
        The PObject class has a >> operator defined that calls this function
@@ -115,19 +115,19 @@ class PGloballyUniqueID : public PBYTEArray
       */
     virtual void ReadFrom(
       istream & strm    ///<  Stream to output text representation
-    );
+    ) override;
 
     /**Create a clone of the ID.
        The duplicate ID has the same value as the source. Required for having
        this object as a key in dictionaries.
       */
-    virtual PObject * Clone() const;
+    virtual PObject * Clone() const override;
 
     /**Get the hash value for the ID.
        Creates a number based on the ID value for use in the hash table of
        a dictionary. Required for having this object as a key in dictionaries.
       */
-    virtual PINDEX HashFunction() const;
+    virtual PINDEX HashFunction() const override;
   //@}
 
   /**@name Operations */
@@ -144,7 +144,7 @@ class PGloballyUniqueID : public PBYTEArray
   //@}
 
   private:
-    virtual PBoolean SetSize(PINDEX) { return true; }
+    virtual PBoolean SetSize(PINDEX) override { return true; }
 };
 
 

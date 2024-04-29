@@ -39,7 +39,7 @@ class WAVFileTest : public PProcess
   public:
     WAVFileTest()
     : PProcess() { }
-    void Main();
+    virtual void Main() override;
     void Create(PArgList & args);
     void Play(PArgList & args);
     void Record(PArgList & args);

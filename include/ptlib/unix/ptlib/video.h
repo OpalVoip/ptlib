@@ -31,9 +31,9 @@
 // PVideo
 
   public:
-    virtual PBoolean Close();
+    virtual PBoolean Close() override;
 
-    virtual PString GetName() const;
+    virtual PString GetName() const override;
     // Return the name of the channel.
 
     PString GetErrorText() const;

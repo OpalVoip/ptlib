@@ -149,13 +149,6 @@ case "$target_os" in
 
    Darwin )
       OS_TAG="P_MACOSX" 
-      dnl Where "port" libraries live
-      if test -d /opt/local/include; then
-        CPPFLAGS="$CPPFLAGS -I/opt/local/include"
-      fi
-      if test -d /opt/local/lib; then
-        LIBS="-L/opt/local/lib $LIBS"
-      fi
    ;;
 
    iPhone* )
@@ -424,10 +417,11 @@ MY_ARG_ENABLE(
 dnl ########################################################################
 dnl check for headers
 AC_CHECK_HEADERS(limits.h alloca.h signal.h fcntl.h sys/time.h termios.h sys/termios.h \
-                 ioctl.h sys/ioctl.h sys/sockio.h sys/sysctl.h sys/socket.h \
+                 ioctl.h sys/ioctl.h sys/sockio.h sys/socket.h \
                  arpa/inet.h netdb.h ifaddrs.h netinet/in.h netinet/tcp.h \
                  net/if_types.h net/if_dl.h netinet/if_ether.h linux/errqueue.h)
 AC_CHECK_HEADER(net/if.h, [AC_DEFINE(HAVE_NET_IF_H,1)],, [#include <sys/socket.h>])
+AS_VAR_IF([target_os], [linux],[],[AC_CHECK_HEADERS(sys/sysctl.h)])
 AC_HEADER_DIRENT()
 
 
@@ -752,71 +746,6 @@ MY_COMPILE_IFELSE(
    [pid_t p = setpgrp();],
    [AC_DEFINE(P_SETPGRP_NOPARM, 1)]
 )
-   
-
-dnl ########################################################################
-dnl see if using GNU glibc++, because then we have atomic integer operations
-
-dnl MSWIN_DISPLAY    atomic,Has std::atomic
-dnl MSWIN_DEFINE     atomic,P_STD_ATOMIC
-
-MY_COMPILE_IFELSE(
-   [if has std::atomic],
-   [$CPLUSPLUS_STD],
-   [#include <atomic>],
-   [
-      std::atomic<unsigned> val;
-      val.exchange(1);
-   ],
-   [
-      AC_DEFINE(P_STD_ATOMIC, 1)
-   ],
-   [
-   MY_LINK_IFELSE(
-      [if has builtin atomic],
-      [],
-      [],
-      [],
-      [
-         int val;
-         __sync_fetch_and_add(&val, 1);
-      ],
-      [
-         AC_DEFINE(P_ATOMICITY_BUILTIN,1)
-      ],
-      MY_COMPILE_IFELSE(
-         [if has bits/atomicity.h],
-         [],
-         [#include <bits/atomicity.h>],
-         [_Atomic_word val],
-         [P_ATOMICITY_HEADER="<bits/atomicity.h>"],
-         MY_COMPILE_IFELSE(
-            [if has ext/atomicity.h],
-            [],
-            [#include <ext/atomicity.h>],
-            [_Atomic_word val],
-            [P_ATOMICITY_HEADER="<ext/atomicity.h>"],
-            [AC_MSG_RESULT([no (SIMULATING!)])]
-         )
-      )
-   )
-
-   if test -n "$P_ATOMICITY_HEADER" ; then
-      AC_MSG_RESULT(yes $P_ATOMICITY_HEADER)
-      AC_DEFINE_UNQUOTED(P_ATOMICITY_HEADER, $P_ATOMICITY_HEADER)
-
-      AC_MSG_CHECKING(if atomic __exchange_and_add is in __gnu_cxx namespace)
-      AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include P_ATOMICITY_HEADER]], [[
-            _Atomic_word val;
-            __gnu_cxx::__exchange_and_add(&val, 1);
-         ]])],[
-            AC_MSG_RESULT(yes)
-            AC_DEFINE_UNQUOTED(P_ATOMICITY_NAMESPACE, __gnu_cxx::)
-         ],[AC_MSG_RESULT(no)
-      ])
-   fi
-   ]
-)
 
 
 dnl ########################################################################
@@ -1062,30 +991,6 @@ AC_CHECK_HEADERS(
       AC_DEFINE(P_HAS_WCHAR, 1)
       AC_DEFINE(P_HAS_WOSTREAM, 1)
    ]
-)
-
-
-dnl ########################################################################
-dnl check for iostream::set_rdbuf
-
-dnl MSWIN_DISPLAY    set_rdbuf,iostream has set_rdbuf
-dnl MSWIN_DEFINE     set_rdbuf,P_HAS_SET_RDBUF
-dnl MSWIN_IF_FEATURE set_rdbuf,!android
-
-MY_COMPILE_IFELSE(
-   [if has iostream::set_rdbuf],
-   [$CPLUSPLUS_STD],
-   [#include <iostream>],
-   [
-      struct MyStream : public std::iostream {
-        MyStream()
-          : std::iostream(NULL)
-        {
-          set_rdbuf(NULL);
-        }
-      };
-   ],
-   [AC_DEFINE(P_HAS_SET_RDBUF, 1, "set_rdbuf found")]
 )
 
 
@@ -1711,34 +1616,34 @@ PTLIB_MODULE_OPTION(
 
 
 dnl ########################################################################
-dnl look for expat XML parser
+dnl look for Expat XML parser
 
-dnl MSWIN_DISPLAY    expat,Expat XML (local build)
-dnl MSWIN_CHECK_FILE expat,lib\expat.h,P_EXPAT_BUILD=1
-dnl MSWIN_DIR_SYMBOL expat,EXPAT_BUILD_DIR
-dnl MSWIN_FIND_FILE  expat,P_EXPAT_LIBRARY_W32_DEBUG,expat.lib,Debug
-dnl MSWIN_FIND_FILE  expat,P_EXPAT_LIBRARY_W32_RELEASE,expat.lib,Release
-dnl MSWIN_FIND_FILE  expat,P_EXPAT_LIBRARY_W32_DEBUG,libexpat.lib,win32/bin/Debug
-dnl MSWIN_FIND_FILE  expat,P_EXPAT_LIBRARY_W32_RELEASE,libexpat.lib,win32/bin/Release
-dnl MSWIN_FIND_FILE  expat,P_EXPAT_LIBRARY_W32_DEBUG,libexpatMT.lib,win32/bin/Debug
-dnl MSWIN_FIND_FILE  expat,P_EXPAT_LIBRARY_W32_RELEASE,libexpatMT.lib,win32/bin/Release
-dnl MSWIN_FIND_FILE  expat,P_EXPAT_LIBRARY_W64_DEBUG,libexpatMT.lib,win32/bin64/Debug
-dnl MSWIN_FIND_FILE  expat,P_EXPAT_LIBRARY_W64_RELEASE,libexpatMT.lib,win32/bin64/Release
-dnl MSWIN_FIND_FILE  expat,P_EXPAT_LIBRARY_WM5_DEBUG,expat.lib,wm5/Debug
-dnl MSWIN_FIND_FILE  expat,P_EXPAT_LIBRARY_WM5_RELEASE,expat.lib,wm5/Release
-dnl MSWIN_FIND_FILE  expat,P_EXPAT_LIBRARY_WM6_DEBUG,expat.lib,wm6/Debug
-dnl MSWIN_FIND_FILE  expat,P_EXPAT_LIBRARY_WM6_RELEASE,expat.lib,wm6/Release
-dnl MSWIN_FIND_FILE  expat,P_EXPAT_LIBRARY_W64_DEBUG,expat.lib,x64/Debug
-dnl MSWIN_FIND_FILE  expat,P_EXPAT_LIBRARY_W64_RELEASE,expat.lib,x64/Release
-dnl MSWIN_CHECK_DIR  expat,%EXPATDIR%\expat
-dnl MSWIN_CHECK_DIR  expat,..\expat\
-dnl MSWIN_CHECK_DIR  expat,..\external\expat\
-dnl MSWIN_CHECK_DIR  expat,..\..\external\expat\
-dnl MSWIN_CHECK_DIR  expat,..\Expat\expat\
-dnl MSWIN_CHECK_DIR  expat,..\external\Expat\expat\
-dnl MSWIN_CHECK_DIR  expat,..\..\external\Expat\expat\
-dnl MSWIN_CHECK_DIR  expat,c:\Expat\expat\
-dnl MSWIN_CHECK_DIR  expat,\libs\Expat\expat\
+dnl MSWIN_DISPLAY    expatlocal,Expat XML (local build)
+dnl MSWIN_CHECK_FILE expatlocal,lib\expat.h,P_EXPAT_BUILD=1
+dnl MSWIN_DIR_SYMBOL expatlocal,EXPAT_BUILD_DIR
+dnl MSWIN_FIND_FILE  expatlocal,P_EXPAT_LIBRARY_W32_DEBUG,expat.lib,Debug
+dnl MSWIN_FIND_FILE  expatlocal,P_EXPAT_LIBRARY_W32_RELEASE,expat.lib,Release
+dnl MSWIN_FIND_FILE  expatlocal,P_EXPAT_LIBRARY_W32_DEBUG,libexpat.lib,win32/bin/Debug
+dnl MSWIN_FIND_FILE  expatlocal,P_EXPAT_LIBRARY_W32_RELEASE,libexpat.lib,win32/bin/Release
+dnl MSWIN_FIND_FILE  expatlocal,P_EXPAT_LIBRARY_W32_DEBUG,libexpatMT.lib,win32/bin/Debug
+dnl MSWIN_FIND_FILE  expatlocal,P_EXPAT_LIBRARY_W32_RELEASE,libexpatMT.lib,win32/bin/Release
+dnl MSWIN_FIND_FILE  expatlocal,P_EXPAT_LIBRARY_W64_DEBUG,libexpatMT.lib,win32/bin64/Debug
+dnl MSWIN_FIND_FILE  expatlocal,P_EXPAT_LIBRARY_W64_RELEASE,libexpatMT.lib,win32/bin64/Release
+dnl MSWIN_FIND_FILE  expatlocal,P_EXPAT_LIBRARY_WM5_DEBUG,expat.lib,wm5/Debug
+dnl MSWIN_FIND_FILE  expatlocal,P_EXPAT_LIBRARY_WM5_RELEASE,expat.lib,wm5/Release
+dnl MSWIN_FIND_FILE  expatlocal,P_EXPAT_LIBRARY_WM6_DEBUG,expat.lib,wm6/Debug
+dnl MSWIN_FIND_FILE  expatlocal,P_EXPAT_LIBRARY_WM6_RELEASE,expat.lib,wm6/Release
+dnl MSWIN_FIND_FILE  expatlocal,P_EXPAT_LIBRARY_W64_DEBUG,expat.lib,x64/Debug
+dnl MSWIN_FIND_FILE  expatlocal,P_EXPAT_LIBRARY_W64_RELEASE,expat.lib,x64/Release
+dnl MSWIN_CHECK_DIR  expatlocal,%EXPATDIR%\expat
+dnl MSWIN_CHECK_DIR  expatlocal,..\expat\
+dnl MSWIN_CHECK_DIR  expatlocal,..\external\expat\
+dnl MSWIN_CHECK_DIR  expatlocal,..\..\external\expat\
+dnl MSWIN_CHECK_DIR  expatlocal,..\Expat\expat\
+dnl MSWIN_CHECK_DIR  expatlocal,..\external\Expat\expat\
+dnl MSWIN_CHECK_DIR  expatlocal,..\..\external\Expat\expat\
+dnl MSWIN_CHECK_DIR  expatlocal,c:\Expat\expat\
+dnl MSWIN_CHECK_DIR  expatlocal,\libs\Expat\expat\
 
 dnl MSWIN_DISPLAY    expat32,Expat XML (32 bit)
 dnl MSWIN_CHECK_FILE expat32,Source\lib\expat.h,P_EXPAT_WIN32=1
@@ -1760,6 +1665,27 @@ dnl MSWIN_CHECK_DIR  expat64,..\..\external\expat\
 dnl MSWIN_CHECK_DIR  expat64,%ProgramFiles%\Expat 2.*
 dnl MSWIN_CHECK_DIR  expat64,%ProgramW6432%\Expat 2.*
 
+dnl MSWIN_DISPLAY    expatvc32,Expat XML (vcpkg 32 bit)
+dnl MSWIN_CHECK_FILE expatvc32,include\expat.h,P_EXPAT_VCPKG32=1
+dnl MSWIN_CHECK_DIR  expatvc32,..\external\vcpkg\installed\x86-windows\
+dnl MSWIN_CHECK_DIR  expatvc32,..\..\external\vcpkg\installed\x86-windows\
+dnl MSWIN_CHECK_DIR  expatvc32,%ProgramFiles%\vcpkg\installed\x86-windows\
+dnl MSWIN_CHECK_DIR  expatvc32,%ProgramW6432%\vcpkg\installed\x86-windows\
+
+dnl MSWIN_DISPLAY    expatvc64,Expat XML (vcpkg 64 bit)
+dnl MSWIN_CHECK_FILE expatvc64,include\expat.h,P_EXPAT_VCPKG64=1
+dnl MSWIN_CHECK_DIR  expatvc64,..\external\vcpkg\installed\x64-windows\
+dnl MSWIN_CHECK_DIR  expatvc64,..\..\external\vcpkg\installed\x64-windows\
+dnl MSWIN_CHECK_DIR  expatvc64,%ProgramFiles%\vcpkg\installed\x64-windows\
+dnl MSWIN_CHECK_DIR  expatvc64,%ProgramW6432%\vcpkg\installed\x64-windows\
+
+dnl MSWIN_DISPLAY    expat,Expat XML
+dnl MSWIN_IF_FEATURE expat,expatlocal
+dnl MSWIN_IF_FEATURE expat,expat32
+dnl MSWIN_IF_FEATURE expat,expat64
+dnl MSWIN_IF_FEATURE expat,expatvc32
+dnl MSWIN_IF_FEATURE expat,expatvc64
+
 PTLIB_MODULE_OPTION(
    [EXPAT],
    [expat],
@@ -1776,23 +1702,25 @@ dnl ########################################################################
 dnl look for Lua library
 dnl MSWIN_DISPLAY    lua32,Lua interpreter (32 bit)
 dnl MSWIN_CHECK_FILE lua32,include\lua.h,P_LUA_WIN32=1
+dnl MSWIN_FIND_FILE  lua32,P_LUA_LIBRARY32,liblua53.a,lib
 dnl MSWIN_DIR_SYMBOL lua32,LUA_DIR_WIN32
 dnl MSWIN_CHECK_DIR  lua32,%LUA32DIR%
 dnl MSWIN_CHECK_DIR  lua32,..\Lua-win32\
 dnl MSWIN_CHECK_DIR  lua32,..\external\Lua-win32\
 dnl MSWIN_CHECK_DIR  lua32,..\..\external\Lua-win32\
-dnl MSWIN_CHECK_DIR  lua32,c:\Expat\Lua-win32\
-dnl MSWIN_CHECK_DIR  lua32,\libs\Expat\Lua-win32\
+dnl MSWIN_CHECK_DIR  lua32,c:\external\Lua-win32\
+dnl MSWIN_CHECK_DIR  lua32,\libs\external\Lua-win32\
 
 dnl MSWIN_DISPLAY    lua64,Lua interpreter (64 bit)
 dnl MSWIN_CHECK_FILE lua64,include\lua.h,P_LUA_WIN64=1
+dnl MSWIN_FIND_FILE  lua64,P_LUA_LIBRARY64,liblua53.a,lib
 dnl MSWIN_DIR_SYMBOL lua64,LUA_DIR_WIN64
 dnl MSWIN_CHECK_DIR  lua64,%LUA64DIR%
 dnl MSWIN_CHECK_DIR  lua64,..\Lua-win64\
 dnl MSWIN_CHECK_DIR  lua64,..\external\Lua-win64\
 dnl MSWIN_CHECK_DIR  lua64,..\..\external\Lua-win64\
-dnl MSWIN_CHECK_DIR  lua64,c:\Expat\Lua-win64\
-dnl MSWIN_CHECK_DIR  lua64,\libs\Expat\Lua-win64\
+dnl MSWIN_CHECK_DIR  lua64,c:\external\Lua-win64\
+dnl MSWIN_CHECK_DIR  lua64,\libs\external\Lua-win64\
 
 
 AC_LANG_PUSH(C)
@@ -1839,40 +1767,42 @@ dnl MSWIN_FIND_FILE  v8,P_V8_LIB_RELEASE32,v8_monolith.lib,out.gn/ia32.release/.
 dnl MSWIN_FIND_FILE  v8,P_V8_LIB_DEBUG64,v8_monolith.lib,out.gn/x64.debug/...
 dnl MSWIN_FIND_FILE  v8,P_V8_LIB_RELEASE64,v8_monolith.lib,out.gn/x64.release/...
 
+# Needs at least C++17
 oldCXXFLAGS="$CXXFLAGS"
-CXXFLAGS="$CXXFLAGS $CPLUSPLUS_STD"
- 
-AS_VAR_IF([target_os], [Darwin],
-   [
-      V8_EXTRA_CFLAGS="-I/opt/homebrew/opt/v8/include"
-      V8_EXTRA_LIBS="-L/opt/homebrew/opt/v8/lib -lv8_libplatform -lv8_libbase"
-   ]
-)
+CXXFLAGS="$CXXFLAGS -std=c++17"
 
 PTLIB_MODULE_OPTION(
    [V8],
    [v8],
    [V8 Javascript script support],
    [v8],
-   [$V8_EXTRA_CFLAGS],
-   [-lv8 $V8_EXTRA_LIBS],
+   [],
+   [],
    [#include <v8.h>],
    [v8::V8::Initialize()],
-   [],
-   [AS_VAR_IF([CPLUSPLUS_STD], ["-std=c++03"],[
-      CXXFLAGS="$oldCXXFLAGS -std=c++17"
-      MY_MODULE_OPTION(
+   [AC_SUBST(CPLUSPLUS_STD,"-std=c++17")],
+   [MY_MODULE_OPTION(
+      [V8],
+      [v8],
+      [V8 Javascript script support (Ubuntu)],
+      [],
+      [-I/usr/include/v8],
+      [-lv8 -lv8_libplatform -lv8_libbase],
+      [#include <v8.h>],
+      [v8::V8::Initialize()],
+      [AC_SUBST(CPLUSPLUS_STD,"-std=c++17")],
+      [MY_MODULE_OPTION(
          [V8],
          [v8],
-         [V8 Javascript script support (C++17)],
+         [V8 Javascript script support (Homebrew)],
          [],
-         [$V8_EXTRA_CFLAGS],
-         [-lv8 $V8_EXTRA_LIBS],
+         [-I/opt/homebrew/opt/v8/include],
+         [-L/opt/homebrew/opt/v8/lib -lv8 -lv8_libplatform -lv8_libbase],
          [#include <v8.h>],
          [v8::V8::Initialize()],
          [AC_SUBST(CPLUSPLUS_STD,"-std=c++17")]
-      )
-   ])],
+      )]
+   )]
 )
 
 CXXFLAGS="$oldCXXFLAGS"
@@ -1922,6 +1852,7 @@ PTLIB_MODULE_OPTION(
       [Aws::InitAPI(Aws::SDKOptions())],
       [
          AS_VAR_IF([CPLUSPLUS_STD], ["-std=c++03"],[AC_SUBST(CPLUSPLUS_STD,"-std=c++11")])
+         AS_VAR_IF([target_os], [Darwin],[MY_ADD_FLAGS([-laws-crt-cpp -laws-c-common])])
          MY_PKG_CHECK_MODULE(
             [AWS_SDK_POLLY],
             [aws-cpp-sdk-polly],
@@ -2108,7 +2039,6 @@ dnl Jabber
 dnl MSWIN_DISPLAY    jabber,Jabber
 dnl MSWIN_DEFINE     jabber,P_JABBER
 dnl MSWIN_IF_FEATURE jabber,expat
-dnl MSWIN_IF_FEATURE jabber,expat32
 
 PTLIB_SIMPLE_OPTION([jabber], [JABBER], [Jabber support], [HAS_EXPAT])
 
@@ -2117,7 +2047,6 @@ dnl VXML
 dnl MSWIN_DISPLAY    vxml,VXML Support
 dnl MSWIN_DEFINE     vxml,P_VXML
 dnl MSWIN_IF_FEATURE vxml,http&scripts&expat
-dnl MSWIN_IF_FEATURE vxml,http&scripts&expat32
 
 dnl MSWIN_DISPLAY    vxmlvideo,VXML (video) Support
 dnl MSWIN_DEFINE     vxmlvideo,P_VXML_VIDEO
@@ -2131,7 +2060,6 @@ dnl XMLRPC
 dnl MSWIN_DISPLAY    xmlrpc,XMLRPC Support
 dnl MSWIN_DEFINE     xmlrpc,P_XMLRPC
 dnl MSWIN_IF_FEATURE xmlrpc,http&expat
-dnl MSWIN_IF_FEATURE xmlrpc,http&expat32
 
 PTLIB_SIMPLE_OPTION([xmlrpc], [XMLRPC], [XMLRPC support], [HAS_EXPAT], [HAS_HTTP])
 
@@ -2140,7 +2068,6 @@ dnl SOAP
 dnl MSWIN_DISPLAY    soap,SOAP Support
 dnl MSWIN_DEFINE     soap,P_SOAP
 dnl MSWIN_IF_FEATURE soap,http&expat
-dnl MSWIN_IF_FEATURE soap,http&expat32
 
 PTLIB_SIMPLE_OPTION([soap], [SOAP], [SOAP support], [HAS_EXPAT], [HAS_HTTP])
 
@@ -2474,6 +2401,104 @@ AC_LANG_POP(C)
 
 
 dnl ########################################################################
+dnl check for iostream::set_rdbuf
+
+dnl MSWIN_DISPLAY    set_rdbuf,iostream has set_rdbuf
+dnl MSWIN_DEFINE     set_rdbuf,P_HAS_SET_RDBUF
+dnl MSWIN_IF_FEATURE set_rdbuf,!android
+
+MY_COMPILE_IFELSE(
+   [if has iostream::set_rdbuf],
+   [$CPLUSPLUS_STD],
+   [#include <iostream>],
+   [
+      struct MyStream : public std::iostream {
+        MyStream()
+          : std::iostream(NULL)
+        {
+          set_rdbuf(NULL);
+        }
+      };
+   ],
+   [AC_DEFINE(P_HAS_SET_RDBUF, 1, "set_rdbuf found")]
+)
+
+
+dnl ########################################################################
+dnl see if using GNU glibc++, because then we have atomic integer operations
+
+dnl MSWIN_DISPLAY    atomic,Has std::atomic
+dnl MSWIN_DEFINE     atomic,P_STD_ATOMIC
+
+MY_COMPILE_IFELSE(
+   [if has std::atomic],
+   [$CPLUSPLUS_STD],
+   [#include <atomic>],
+   [
+      std::atomic<unsigned> val;
+      val.exchange(1);
+   ],
+   [
+      AC_DEFINE(P_STD_ATOMIC, 1)
+   ],
+   [
+   MY_LINK_IFELSE(
+      [if has builtin atomic],
+      [],
+      [],
+      [],
+      [
+         int val;
+         __sync_fetch_and_add(&val, 1);
+      ],
+      [
+         AC_DEFINE(P_ATOMICITY_BUILTIN,1)
+      ],
+      MY_COMPILE_IFELSE(
+         [if has bits/atomicity.h],
+         [],
+         [#include <bits/atomicity.h>],
+         [_Atomic_word val],
+         [P_ATOMICITY_HEADER="<bits/atomicity.h>"],
+         MY_COMPILE_IFELSE(
+            [if has ext/atomicity.h],
+            [],
+            [#include <ext/atomicity.h>],
+            [_Atomic_word val],
+            [P_ATOMICITY_HEADER="<ext/atomicity.h>"],
+            [AC_MSG_RESULT([no (SIMULATING!)])]
+         )
+      )
+   )
+
+   if test -n "$P_ATOMICITY_HEADER" ; then
+      AC_MSG_RESULT(yes $P_ATOMICITY_HEADER)
+      AC_DEFINE_UNQUOTED(P_ATOMICITY_HEADER, $P_ATOMICITY_HEADER)
+
+      AC_MSG_CHECKING(if atomic __exchange_and_add is in __gnu_cxx namespace)
+      AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include P_ATOMICITY_HEADER]], [[
+            _Atomic_word val;
+            __gnu_cxx::__exchange_and_add(&val, 1);
+         ]])],[
+            AC_MSG_RESULT(yes)
+            AC_DEFINE_UNQUOTED(P_ATOMICITY_NAMESPACE, __gnu_cxx::)
+         ],[AC_MSG_RESULT(no)
+      ])
+   fi
+   ]
+)
+
+
+dnl ########################################################################
+dnl dynamic libraries
+
+MY_CHECK_DLFCN([
+   MY_ADD_FLAGS([$DLFCN_LIBS], [$DLFCN_CFLAGS])
+   PTLIB_SUBST([DYNALINK], 1)
+])
+
+
+dnl ########################################################################
 dnl check for Windows video capture support.
 
 PTLIB_SIMPLE_OPTION([vfw], [VFW_CAPTURE], [enable video for windows capture], [HAS_VIDEO])
@@ -2514,15 +2539,6 @@ fi
 
 AC_SUBST(HAS_DIRECTSHOW)
 AC_SUBST(HAS_DIRECTSOUND)
-
-
-dnl ########################################################################
-dnl dynamic libraries
-
-MY_CHECK_DLFCN([
-   MY_ADD_FLAGS([$DLFCN_LIBS], [$DLFCN_CFLAGS])
-   PTLIB_SUBST([DYNALINK], 1)
-])
 
 
 dnl ########################################################################

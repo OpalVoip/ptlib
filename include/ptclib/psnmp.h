@@ -61,7 +61,7 @@ class PSNMPVarBindingList : public PObject
     PString GetObjectID(PINDEX idx) const;
     PASNObject & operator[](PINDEX idx) const;
 
-    void PrintOn(ostream & strm) const;
+    void PrintOn(ostream & strm) const override;
 
   protected:
     PStringArray    objectIds;

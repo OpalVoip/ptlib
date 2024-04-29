@@ -95,6 +95,8 @@ using namespace std; // Not a good practice (name space polution), but will take
 ///////////////////////////////////////////////////////////////////////////////
 // Deal with different C++ versions and std::auto_ptr deprecation
 #if __cplusplus < 201103L
+  #define override
+
   struct PNonCopyable
   {
     PNonCopyable() { }
@@ -171,6 +173,7 @@ using namespace std; // Not a good practice (name space polution), but will take
   #define P_GCC_PRAGMA(token) _Pragma(#token)
   #define P_PUSH_GCC_WARNING(warning) _Pragma("GCC diagnostic push") P_GCC_PRAGMA(GCC diagnostic ignored warning)
   #define P_POP_GCC_WARNING()         _Pragma("GCC diagnostic pop")
+  //#pragma clang diagnostic ignored "-Winconsistent-missing-override"
 #endif // _MSC_VER
 #define P_DISABLE_MSVC_WARNINGS(warnings, statement) P_PUSH_MSVC_WARNINGS(warnings) statement  P_POP_MSVC_WARNINGS()
 #define P_DISABLE_GCC_WARNING(warning, statement)    P_PUSH_GCC_WARNING(warning)    statement; P_POP_GCC_WARNING()
@@ -2179,7 +2182,7 @@ class PSafeSingleton : public PSingleton<Type, atomic<unsigned>, Creator>
     typedef cls P_thisClass; \
     __inline static const char * Class() { return typeid(cls).name(); } \
     __inline bool IsClass(const char * name) const { return strcmp(name, Class()) == 0; } \
-    virtual PObject::Comparison CompareObjectMemoryDirect(const PObject & obj) const \
+    virtual PObject::Comparison CompareObjectMemoryDirect(const PObject & obj) const override \
       { return PObject::InternalCompareObjectMemoryDirect(this, dynamic_cast<const cls *>(&obj), sizeof(cls)); } \
     PNEW_AND_DELETE_FUNCTIONS(align)
 
@@ -2199,7 +2202,7 @@ of compatibility with documentation systems.
 /// Declare all the standard PTLib class information, plus Clone().
 #define PCLASSINFO_WITH_CLONE(cls, par) \
     PCLASSINFO(cls, par) \
-    virtual PObject * Clone() const { return new cls(*this); }
+    virtual PObject * Clone() const override { return new cls(*this); }
 
 
 #define PIsDescendant(ptr, cls)    (dynamic_cast<const cls *>(ptr) != NULL) 

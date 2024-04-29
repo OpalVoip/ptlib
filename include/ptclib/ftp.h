@@ -115,7 +115,7 @@ class PFTPClient : public PFTP
        @return
        true if the channel was closed and the QUIT accepted by the server.
      */
-    virtual PBoolean Close();
+    virtual PBoolean Close() override;
 
   //@}
 
@@ -255,7 +255,7 @@ class PFTPClient : public PFTP
 
   protected:
     /// Call back to verify open succeeded in an PInternetProtocol class
-    virtual PBoolean OnOpen();
+    virtual PBoolean OnOpen() override;
 
     PTCPSocket * NormalClientTransfer(
       Commands cmd,
@@ -447,7 +447,7 @@ class PFTPServer : public PFTP
 
   protected:
     /// Call back to verify open succeeded in an PInternetProtocol class
-    PBoolean OnOpen();
+    PBoolean OnOpen() override;
     void Construct();
 
     PString m_readyString;

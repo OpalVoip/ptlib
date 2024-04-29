@@ -24,7 +24,7 @@
  * Contributor(s): ______________________________________.
  */
 
-#ifdef __GNUC__
+#ifdef P_USE_PRAGMA
 #pragma implementation "speech.h"
 #endif
 
@@ -481,6 +481,8 @@ class PSpeechRecognition_SAPI : public PSpeechRecognition, protected PSpStreamFo
     CComPtr<ISpRecoContext> m_cpRecoContext;
     CComPtr<ISpRecoGrammar> m_cpRecoGrammar;
     PString                 m_language;
+    PString                 m_vocabulary;
+
   public:
     PSpeechRecognition_SAPI()
       : m_opened(false)
@@ -532,7 +534,7 @@ class PSpeechRecognition_SAPI : public PSpeechRecognition, protected PSpStreamFo
       return m_language;
     }
 
-    virtual bool SetVocabulary(const PString & /*name*/, const PStringArray & /*words*/)
+    virtual bool CreateVocabulary(const PString & /*name*/, const PStringArray & /*words*/)
     {
         /*
         WORD langId = MAKELANGID(LANG_FRENCH, SUBLANG_FRENCH);
@@ -562,7 +564,7 @@ class PSpeechRecognition_SAPI : public PSpeechRecognition, protected PSpStreamFo
         */
     }
 
-    virtual bool Open(const Notifier & notifier, const PString & vocabulary)
+    virtual bool Open(const Notifier & notifier)
     {
       m_notifier = notifier;
 
@@ -574,8 +576,8 @@ class PSpeechRecognition_SAPI : public PSpeechRecognition, protected PSpStreamFo
       PCOM_RETURN_ON_FAILED(m_cpRecoContext->SetNotifyWin32Event, ());
       PCOM_RETURN_ON_FAILED(m_cpRecoContext->CreateGrammar, (0, &m_cpRecoGrammar));
 
-      if (vocabulary.empty())
-        PCOM_RETURN_ON_FAILED(m_cpRecoGrammar->LoadDictation, (vocabulary.AsWide(), SPLO_STATIC));
+      if (m_vocabulary.empty())
+        PCOM_RETURN_ON_FAILED(m_cpRecoGrammar->LoadDictation, (m_vocabulary.AsWide(), SPLO_STATIC));
 
       PCOM_RETURN_ON_FAILED(m_cpRecoContext->SetInterest,(SPFEI(SPEI_RECOGNITION) | SPFEI(SPEI_END_SR_STREAM),
                                                           SPFEI(SPEI_RECOGNITION) | SPFEI(SPEI_END_SR_STREAM)));

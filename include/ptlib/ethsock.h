@@ -106,14 +106,14 @@ class PEthSocket : public PSocket
 
        @return the name of the channel.
      */
-    virtual PString GetName() const { return m_channelName; }
+    virtual PString GetName() const override { return m_channelName; }
 
     /**Close the channel, shutting down the link to the data source.
 
        @return
        true if the channel successfully closed.
      */
-    virtual PBoolean Close();
+    virtual PBoolean Close() override;
 
     /**Low level read from the channel. This function may block until the
        requested number of characters were read or the read timeout was
@@ -130,7 +130,7 @@ class PEthSocket : public PSocket
     virtual PBoolean Read(
       void * buf,   ///< Pointer to a block of memory to receive the read bytes.
       PINDEX len    ///< Maximum number of bytes to read into the buffer.
-    );
+    ) override;
 
     /**Low level write to the channel. This function will block until the
        requested number of characters are written or the write timeout is
@@ -146,7 +146,7 @@ class PEthSocket : public PSocket
     virtual PBoolean Write(
       const void * buf, ///< Pointer to a block of memory to write.
       PINDEX len        ///< Number of bytes to write.
-    );
+    ) override;
   //@}
 
   /**@name Overrides from class PSocket */
@@ -160,7 +160,7 @@ class PEthSocket : public PSocket
      */
     virtual PBoolean Connect(
       const PString & address   ///< Name of interface to connect to.
-    );
+    ) override;
 
     /**This function is illegal and will assert if attempted. You must be
        connected to an interface using Connect() to do I/O on the socket.
@@ -172,7 +172,7 @@ class PEthSocket : public PSocket
       unsigned queueSize = 5,  ///< Number of pending accepts that may be queued.
       WORD port = 0,           ///< Port number to use for the connection.
       Reusability reuse = AddressIsExclusive ///< Can/Cant listen more than once.
-    );
+    ) override;
   //@}
 
 
@@ -362,8 +362,8 @@ class PEthSocket : public PSocket
   //@}
 
   protected:
-    virtual PBoolean OpenSocket();
-    virtual const char * GetProtocolName() const;
+    virtual PBoolean OpenSocket() override;
+    virtual const char * GetProtocolName() const override;
 
     PString  m_channelName;
     bool     m_promiscuous;

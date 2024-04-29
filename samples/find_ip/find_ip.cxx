@@ -15,7 +15,7 @@ class FindIP : public PProcess
 {
   PCLASSINFO(FindIP, PProcess)
   public:
-    void Main();
+    virtual void Main() override;
     PBoolean get_ip(PString server_url, PString &ip_address);
 };
 

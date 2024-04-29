@@ -24,7 +24,7 @@
  * Contributor(s): ______________________________________.
  */
 
-#ifdef __GNUC__
+#ifdef P_USE_PRAGMA
 #pragma implementation "speech.h"
 #endif
 
@@ -529,6 +529,24 @@ bool PSpeechRecognition::SetOptions(const PStringOptions & options)
 
   PTRACE(4, "SetOptions succeeded");
   return true;
+}
+
+
+bool PSpeechRecognition::CreateVocabulary(const PString &, const PStringArray &)
+{
+  return false;
+}
+
+
+bool PSpeechRecognition::DeleteVocabulary(const PString &, const PStringArray &)
+{
+  return false;
+}
+
+
+bool PSpeechRecognition::ActivateVocabulary(const PStringSet &, const PStringSet &)
+{
+  return false;
 }
 
 

@@ -156,7 +156,7 @@ class PPipeChannel : public PChannel
      */
     Comparison Compare(
       const PObject & obj   ///< Another pipe channel to compare against.
-    ) const;
+    ) const override;
   //@}
 
 
@@ -167,7 +167,7 @@ class PPipeChannel : public PChannel
        @return
        string for the sub-program that is run.
      */
-    virtual PString GetName() const;
+    virtual PString GetName() const override;
 
     /**Low level read from the channel. This function may block until the
        requested number of characters were read or the read timeout was
@@ -188,7 +188,7 @@ class PPipeChannel : public PChannel
     virtual PBoolean Read(
       void * buf,   ///< Pointer to a block of memory to receive the read bytes.
       PINDEX len    ///< Maximum number of bytes to read into the buffer.
-    );
+    ) override;
 
     /**Low level write to the channel. This function will block until the
        requested number of characters are written or the write timeout is
@@ -207,7 +207,7 @@ class PPipeChannel : public PChannel
     virtual PBoolean Write(
       const void * buf, ///< Pointer to a block of memory to write.
       PINDEX len        ///< Number of bytes to write.
-    );
+    ) override;
 
     /**Close the channel. This will kill the sub-program's process (on
        platforms where that is relevent).
@@ -217,7 +217,7 @@ class PPipeChannel : public PChannel
        not yet called the <code>Execute()</code> function this will run the
        sub-program.
      */
-    virtual PBoolean Close();
+    virtual PBoolean Close() override;
   //@}
 
   /**@name New member functions */

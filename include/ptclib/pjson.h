@@ -67,10 +67,10 @@ class PJSON : public PObject
       public:
         Object() { }
         ~Object();
-        virtual bool IsType(Types type) const;
-        virtual void ReadFrom(istream & strm);
-        virtual void PrintOn(ostream & strm) const;
-        virtual Base * DeepClone() const;
+        virtual bool IsType(Types type) const override;
+        virtual void ReadFrom(istream & strm) override;
+        virtual void PrintOn(ostream & strm) const override;
+        virtual Base * DeepClone() const override;
 
         bool IsType(const PString & name, Types type) const;
 
@@ -118,10 +118,10 @@ class PJSON : public PObject
       public:
         Array() { }
         ~Array();
-        virtual bool IsType(Types type) const;
-        virtual void ReadFrom(istream & strm);
-        virtual void PrintOn(ostream & strm) const;
-        virtual Base * DeepClone() const;
+        virtual bool IsType(Types type) const override;
+        virtual void ReadFrom(istream & strm) override;
+        virtual void PrintOn(ostream & strm) const override;
+        virtual Base * DeepClone() const override;
 
         bool IsType(size_t index, Types type) const;
 
@@ -160,10 +160,10 @@ class PJSON : public PObject
     {
       public:
         String(const char * str = NULL) : PString(str) { }
-        virtual bool IsType(Types type) const;
-        virtual void ReadFrom(istream & strm);
-        virtual void PrintOn(ostream & strm) const;
-        virtual Base * DeepClone() const;
+        virtual bool IsType(Types type) const override;
+        virtual void ReadFrom(istream & strm) override;
+        virtual void PrintOn(ostream & strm) const override;
+        virtual Base * DeepClone() const override;
         String & operator=(const char * str) { PString::operator=(str); return *this; }
         String & operator=(const PString & str) { PString::operator=(str); return *this; }
     };
@@ -174,10 +174,10 @@ class PJSON : public PObject
         NumberType m_value;
       public:
         explicit Number(NumberType value = 0);
-        virtual bool IsType(Types type) const;
-        virtual void ReadFrom(istream & strm);
-        virtual void PrintOn(ostream & strm) const;
-        virtual Base * DeepClone() const;
+        virtual bool IsType(Types type) const override;
+        virtual void ReadFrom(istream & strm) override;
+        virtual void PrintOn(ostream & strm) const override;
+        virtual Base * DeepClone() const override;
         Number & operator=(NumberType value) { m_value = value; return *this; }
         void SetValue(NumberType value) { m_value = value; }
         NumberType GetValue() const { return m_value; }
@@ -189,10 +189,10 @@ class PJSON : public PObject
         bool m_value;
       public:
         explicit Boolean(bool value = false);
-        virtual bool IsType(Types type) const;
-        virtual void ReadFrom(istream & strm);
-        virtual void PrintOn(ostream & strm) const;
-        virtual Base * DeepClone() const;
+        virtual bool IsType(Types type) const override;
+        virtual void ReadFrom(istream & strm) override;
+        virtual void PrintOn(ostream & strm) const override;
+        virtual Base * DeepClone() const override;
         Boolean & operator=(bool value) { m_value = value; return *this; }
         void SetValue(bool value) { m_value = value; }
         bool GetValue() const { return m_value; }
@@ -201,10 +201,10 @@ class PJSON : public PObject
     class Null : public Base
     {
       public:
-        virtual bool IsType(Types type) const;
-        virtual void ReadFrom(istream & strm);
-        virtual void PrintOn(ostream & strm) const;
-        virtual Base * DeepClone() const;
+        virtual bool IsType(Types type) const override;
+        virtual void ReadFrom(istream & strm) override;
+        virtual void PrintOn(ostream & strm) const override;
+        virtual Base * DeepClone() const override;
     };
 
 
@@ -218,8 +218,8 @@ class PJSON : public PObject
 
     ~PJSON() { delete m_root; }
 
-    virtual void ReadFrom(istream & strm);
-    virtual void PrintOn(ostream & strm) const;
+    virtual void ReadFrom(istream & strm) override;
+    virtual void PrintOn(ostream & strm) const override;
 
     bool FromString(
       const PString & str
@@ -271,8 +271,8 @@ public:
   PJSONRecord(const PJSONRecord &);
   virtual ~PJSONRecord() { }
 
-  virtual void ReadFrom(istream & strm);
-  virtual void PrintOn(ostream & strm) const;
+  virtual void ReadFrom(istream & strm) override;
+  virtual void PrintOn(ostream & strm) const override;
 
   bool FromString(
     const PString & str

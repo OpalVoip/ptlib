@@ -333,8 +333,8 @@ class PSSLCertificate : public PObject
       public:
         X509_Name(X509_name_st * name = NULL) : m_name(name) { }
 
-        Comparison Compare(const PObject & other) const;
-        void PrintOn(ostream & strm) const;
+        Comparison Compare(const PObject & other) const override;
+        void PrintOn(ostream & strm) const override;
 
         bool IsValid() const { return m_name != NULL; }
 
@@ -377,7 +377,7 @@ class PSSLCertificate : public PObject
       CheckHostFlags flags = CheckHostNormalRules
     );
 
-    virtual void PrintOn(ostream & strm) const { strm << GetSubjectName(); }
+    virtual void PrintOn(ostream & strm) const override { strm << GetSubjectName(); }
 
     typedef std::list<x509_st *> X509_Chain;
     const X509_Chain & GetChain() const { return m_chain; }
@@ -418,7 +418,7 @@ class PSSLCertificateFingerprint : public PObject
       const PSSLCertificate& certificate  ///< Certificate to fingerprint.
     );
 
-    Comparison Compare(const PObject & other) const;
+    Comparison Compare(const PObject & other) const override;
 
     bool IsValid() const;
 
@@ -1005,12 +1005,12 @@ class PSSLChannel : public PIndirectChannel
     ~PSSLChannel();
 
     // Overrides from PChannel
-    virtual PBoolean Read(void * buf, PINDEX len);
-    virtual PBoolean Write(const void * buf, PINDEX len);
-    virtual PBoolean Close();
-    virtual PBoolean Shutdown(ShutdownValue);
-    virtual PString GetErrorText(ErrorGroup group = NumErrorGroups) const;
-    virtual PBoolean ConvertOSError(P_INT_PTR libcReturnValue, ErrorGroup group = LastGeneralError);
+    virtual PBoolean Read(void * buf, PINDEX len) override;
+    virtual PBoolean Write(const void * buf, PINDEX len) override;
+    virtual PBoolean Close() override;
+    virtual PBoolean Shutdown(ShutdownValue) override;
+    virtual PString GetErrorText(ErrorGroup group = NumErrorGroups) const override;
+    virtual PBoolean ConvertOSError(P_INT_PTR libcReturnValue, ErrorGroup group = LastGeneralError) override;
 
     // New functions
     /**Accept a new inbound connection (server).
@@ -1187,8 +1187,8 @@ class PSSLChannelDTLS : public PSSLChannel
     ~PSSLChannelDTLS();
 
     // Overrides from PChannel
-    virtual PBoolean Read(void * buf, PINDEX len);
-    virtual PBoolean Write(const void * buf, PINDEX len);
+    virtual PBoolean Read(void * buf, PINDEX len) override;
+    virtual PBoolean Write(const void * buf, PINDEX len) override;
 
     /** Set the MTU for DTLS handshake.
         Note, should be done before calling ExecuteHandshake().
@@ -1214,8 +1214,8 @@ class PSSLChannelDTLS : public PSSLChannel
     ) const;
 
   protected:
-    virtual bool InternalAccept();
-    virtual bool InternalConnect();
+    virtual bool InternalAccept() override;
+    virtual bool InternalConnect() override;
 };
 
 

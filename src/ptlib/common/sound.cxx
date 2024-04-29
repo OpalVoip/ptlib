@@ -25,7 +25,7 @@
  *                 Snark at GnomeMeeting
  */
 
-#ifdef __GNUC__
+#ifdef P_USE_PRAGMA
 #pragma implementation "sound.h"
 #endif
 
@@ -58,12 +58,12 @@ class PSoundChannelNull : public PSoundChannelEmulation
   public:
     PSoundChannelNull();
     static PStringArray GetDeviceNames(PSoundChannel::Directions = Player);
-    bool Open(const Params & params);
-    virtual PString GetName() const;
-    PBoolean Close();
-    PBoolean IsOpen() const;
-    PBoolean Write(const void *, PINDEX len);
-    PBoolean Read(void * buf, PINDEX len);
+    bool Open(const Params & params) override;
+    virtual PString GetName() const override;
+    PBoolean Close() override;
+    PBoolean IsOpen() const override;
+    PBoolean Write(const void *, PINDEX len) override;
+    PBoolean Read(void * buf, PINDEX len) override;
 };
 
 
@@ -180,7 +180,7 @@ PSoundChannel * PSoundChannel::CreateOpenedChannel(const Params & params)
     if (adjustedParams.m_driver.IsEmpty())
       adjustedParams.m_device = PSoundChannel::GetDefaultDevice(params.m_direction);
     else {
-      PStringArray devices = PSoundChannel::GetDriversDeviceNames(adjustedParams.m_driver, PSoundChannel::Player);
+      PStringArray devices = PSoundChannel::GetDriversDeviceNames(adjustedParams.m_driver, params.m_direction);
       if (!devices.IsEmpty())
         adjustedParams.m_device = devices[0];
     }
@@ -933,7 +933,8 @@ PBoolean PSoundChannelEmulation::Write(const void * data, PINDEX size)
   }
 
   // Pacing delay outside of mutex
-  m_Pacing.Delay(1000LL*GetLastWriteCount()/m_sampleRate/m_bytesPerSample);
+  if (m_bufferSize > 1)
+    m_Pacing.Delay(1000LL*GetLastWriteCount()/m_sampleRate/m_bytesPerSample);
   return true;
 }
 
@@ -945,7 +946,8 @@ PBoolean PSoundChannelEmulation::Read(void * data, PINDEX size)
       PINDEX count = GetLastReadCount();
       if (m_muted)
         memset(data, 0, count);
-      m_Pacing.Delay(1000LL*count/m_sampleRate/m_bytesPerSample);
+      if (m_bufferSize > 1)
+        m_Pacing.Delay(1000LL*count/m_sampleRate/m_bytesPerSample);
       return true;
     }
 
@@ -1140,7 +1142,8 @@ PBoolean PSoundChannelNull::Write(const void *, PINDEX len)
     return false;
 
   SetLastWriteCount(len);
-  m_Pacing.Delay(1000*len/m_sampleRate/m_bytesPerSample);
+  if (m_bufferSize > 1)
+    m_Pacing.Delay(1000*len/m_sampleRate/m_bytesPerSample);
   return true;
 }
 
@@ -1151,7 +1154,8 @@ PBoolean PSoundChannelNull::Read(void * buf, PINDEX len)
 
   memset(buf, 0, len);
   SetLastReadCount(len);
-  m_Pacing.Delay(1000*len/m_sampleRate/m_bytesPerSample);
+  if (m_bufferSize > 1)
+    m_Pacing.Delay(1000*len/m_sampleRate/m_bytesPerSample);
   return true;
 }
 

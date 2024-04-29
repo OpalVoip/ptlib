@@ -81,10 +81,8 @@ public:
 
   PString GetName() const;
 
-  PBoolean IsOpen() const
-  {
-    return (m_activeDirection == Player)? (m_playbackDevice != NULL) : (m_captureDevice != NULL);
-  }
+  /// Indicate the sound device is open
+  PBoolean IsOpen() const;
 
   /** Stop the Read/Write wait
    */
