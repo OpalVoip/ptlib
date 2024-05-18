@@ -364,8 +364,9 @@ template <class Digestor> struct PMessageDigestStatics
 {
     /** Encode the data in memory to and digest value. */
     static PString Encode(
-      const PString & str      ///< String to be encoded to digest
-    ) { return Encode(str.GetPointer(), str.GetLength()); }
+      const PString & str,    ///< String to be encoded to digest
+      bool base64 = true      /// Return base64 encoding of has, otherwise hex
+    ) { return Encode(str.GetPointer(), str.GetLength(), base64); }
 
     /** Encode the data in memory to and digest value. */
     static void Encode(
@@ -375,8 +376,9 @@ template <class Digestor> struct PMessageDigestStatics
 
     /** Encode the data in memory to and digest value. */
     static PString Encode(
-      const char * cstr        ///< C String to be encoded to digest
-    ) { return Encode(cstr, (PINDEX)strlen(cstr)); }
+      const char * cstr,      ///< C String to be encoded to digest
+      bool base64 = true      /// Return base64 encoding of has, otherwise hex
+    ) { return Encode(cstr, (PINDEX)strlen(cstr), base64); }
 
     /** Encode the data in memory to and digest value. */
     static void Encode(
@@ -386,8 +388,9 @@ template <class Digestor> struct PMessageDigestStatics
 
     /** Encode the data in memory to and digest value. */
     static PString Encode(
-      const PBYTEArray & data  ///< Data block to be encoded to digest
-    ) { return Encode(data, data.GetSize()); }
+      const PBYTEArray & data,  ///< Data block to be encoded to digest
+      bool base64 = true        /// Return base64 encoding of has, otherwise hex
+    ) { return Encode(data, data.GetSize(), base64); }
 
     /** Encode the data in memory to and digest value. */
     static void Encode(
@@ -398,11 +401,12 @@ template <class Digestor> struct PMessageDigestStatics
     /** Encode the data in memory to and digest value. */
     static PString Encode(
       const void * dataBlock,  ///< Pointer to data to be encoded to digest
-      PINDEX length            ///< Length of the data block.
+      PINDEX length,           ///< Length of the data block.
+      bool base64 = true       /// Return base64 encoding of has, otherwise hex
     ) {
       PMessageDigest::Result result;
       Encode(dataBlock, length, result);
-      return result.AsBase64();
+      return base64 ? result.AsBase64() : result.AsHex();
     }
 
     /** Encode the data in memory to digest value.
