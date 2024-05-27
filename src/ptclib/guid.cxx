@@ -180,16 +180,6 @@ PGloballyUniqueID::PGloballyUniqueID(const PGloballyUniqueID & nspace,
 }
 
 
-PGloballyUniqueID::PGloballyUniqueID(const char * cstr)
-  : PBYTEArray(Size)
-{
-  if (cstr != NULL && *cstr != '\0') {
-    PStringStream strm(cstr);
-    ReadFrom(strm);
-  }
-}
-
-
 PGloballyUniqueID::PGloballyUniqueID(const PString & str)
   : PBYTEArray(Size)
 {
