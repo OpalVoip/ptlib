@@ -77,6 +77,14 @@ class PGloballyUniqueID : public PBYTEArray
       int                       version = 5  ///< GIUD version to build
     );
 
+    /**Create an ID from a C string of hex (as produced by AsString()).
+       A useful construct is to construct a OpalGloballyUniqueID() with
+       NULL which produces an all zero GUID, detectable with the IsNULL()
+       function.
+     */
+    PGloballyUniqueID(
+      const char * cstr    ///<  C string to convert
+    );
     /**Create an ID from a PString of hex (as produced by AsString()).
      */
     PGloballyUniqueID(
