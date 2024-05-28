@@ -61,19 +61,19 @@ static PEthSocket::Address MacAddress()
 }
 
 
-static void Construct(int version, BYTE * theArray, const void * digest)
+static void Construct(PGloballyUniqueID::Version version, BYTE * theArray, const void * digest)
 {
   switch (version) {
-    case -1:
+    case PGloballyUniqueID::Version::max:
       memset(theArray, 0xff, PGloballyUniqueID::Size);
       return;
 
-    case 0:
+    case PGloballyUniqueID::Version::nil:
       return;
 
-    case 1:
-    case 2:
-    case 6:
+    case PGloballyUniqueID::Version::v1:
+    case PGloballyUniqueID::Version::v2:
+    case PGloballyUniqueID::Version::v6:
     {
       // Want time of UTC in 0.1 microseconds since 15 Oct 1582.
       static PTimeInterval const delta(0, 0, 0, 0,
@@ -111,18 +111,18 @@ static void Construct(int version, BYTE * theArray, const void * digest)
       break;
     }
 
-    case 3:
+    case PGloballyUniqueID::Version::v3:
     #if P_SSL
-    case 5:
+    case PGloballyUniqueID::Version::v5:
     #endif // P_SSL
       memcpy(theArray, digest, PGloballyUniqueID::Size);
       break;
 
-    case 4:
+    case PGloballyUniqueID::Version::v4:
       PRandom::Octets(theArray, PGloballyUniqueID::Size);
       break;
 
-    case 7:
+    case PGloballyUniqueID::Version::v7:
       *(PInt64b *)theArray = PTime().GetTimestamp()/1000;
       PRandom::Octets(theArray+6, PGloballyUniqueID::Size-6);
       break;
@@ -137,7 +137,7 @@ static void Construct(int version, BYTE * theArray, const void * digest)
 }
 
 
-PGloballyUniqueID::PGloballyUniqueID(int version)
+PGloballyUniqueID::PGloballyUniqueID(Version version)
   : PBYTEArray(Size)
 {
   Construct(version, GetPointer(Size), NULL);
@@ -147,18 +147,18 @@ PGloballyUniqueID::PGloballyUniqueID(int version)
 PGloballyUniqueID::PGloballyUniqueID(const PGloballyUniqueID & nspace,
                                      const void * name,
                                      size_t size,
-                                     int version)
+                                     Version version)
   : PBYTEArray(Size)
 {
   PMessageDigest * digestor;
 
   switch (version) {
-    case 3:
+    case v3:
       digestor = new PMessageDigest5();
       break;
 
     #if P_SSL
-    case 5:
+    case v5:
       digestor = new PMessageDigestSHA1();
       break;
     #endif // P_SSL
