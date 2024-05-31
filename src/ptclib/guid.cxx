@@ -251,7 +251,8 @@ void PGloballyUniqueID::PrintOn(ostream & strm) const
 {
   PAssert(GetSize() == Size, "PGloballyUniqueID is invalid size");
 
-  bool dashes = ((strm.flags()&ios::basefield) != ios::hex);
+  ios::fmtflags flags = strm.flags();
+  bool dashes = ((flags&ios::basefield) != ios::hex);
 
   const BYTE * theArray = GetPointer();
   char fillchar = strm.fill();
@@ -281,6 +282,8 @@ void PGloballyUniqueID::PrintOn(ostream & strm) const
        << setw(2) << (unsigned)(BYTE)theArray[14]
        << setw(2) << (unsigned)(BYTE)theArray[15]
        << dec << setfill(fillchar);
+
+  strm.flags(flags);
 }
 
 
