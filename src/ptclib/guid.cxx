@@ -251,26 +251,36 @@ void PGloballyUniqueID::PrintOn(ostream & strm) const
 {
   PAssert(GetSize() == Size, "PGloballyUniqueID is invalid size");
 
+  bool dashes = ((strm.flags()&ios::basefield) != ios::hex);
+
   const BYTE * theArray = GetPointer();
   char fillchar = strm.fill();
   strm << hex << setfill('0')
-    << setw(2) << (unsigned)(BYTE)theArray[0]
-    << setw(2) << (unsigned)(BYTE)theArray[1]
-    << setw(2) << (unsigned)(BYTE)theArray[2]
-    << setw(2) << (unsigned)(BYTE)theArray[3] << '-'
-    << setw(2) << (unsigned)(BYTE)theArray[4]
-    << setw(2) << (unsigned)(BYTE)theArray[5] << '-'
-    << setw(2) << (unsigned)(BYTE)theArray[6]
-    << setw(2) << (unsigned)(BYTE)theArray[7] << '-'
-    << setw(2) << (unsigned)(BYTE)theArray[8]
-    << setw(2) << (unsigned)(BYTE)theArray[9] << '-'
-    << setw(2) << (unsigned)(BYTE)theArray[10]
-    << setw(2) << (unsigned)(BYTE)theArray[11]
-    << setw(2) << (unsigned)(BYTE)theArray[12]
-    << setw(2) << (unsigned)(BYTE)theArray[13]
-    << setw(2) << (unsigned)(BYTE)theArray[14]
-    << setw(2) << (unsigned)(BYTE)theArray[15]
-    << dec << setfill(fillchar);
+       << setw(2) << (unsigned)(BYTE)theArray[0]
+       << setw(2) << (unsigned)(BYTE)theArray[1]
+       << setw(2) << (unsigned)(BYTE)theArray[2]
+       << setw(2) << (unsigned)(BYTE)theArray[3];
+  if (dashes)
+    strm << '-';
+  strm << setw(2) << (unsigned)(BYTE)theArray[4]
+       << setw(2) << (unsigned)(BYTE)theArray[5];
+  if (dashes)
+    strm << '-';
+  strm << setw(2) << (unsigned)(BYTE)theArray[6]
+       << setw(2) << (unsigned)(BYTE)theArray[7];
+  if (dashes)
+    strm  << '-';
+  strm << setw(2) << (unsigned)(BYTE)theArray[8]
+       << setw(2) << (unsigned)(BYTE)theArray[9];
+  if (dashes)
+    strm << '-';
+  strm << setw(2) << (unsigned)(BYTE)theArray[10]
+       << setw(2) << (unsigned)(BYTE)theArray[11]
+       << setw(2) << (unsigned)(BYTE)theArray[12]
+       << setw(2) << (unsigned)(BYTE)theArray[13]
+       << setw(2) << (unsigned)(BYTE)theArray[14]
+       << setw(2) << (unsigned)(BYTE)theArray[15]
+       << dec << setfill(fillchar);
 }
 
 
