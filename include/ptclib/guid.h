@@ -56,13 +56,39 @@ class PGloballyUniqueID : public PBYTEArray
       Size = 16
     };
 
+    enum Version
+    {
+      max = -1,
+      nil,
+      v1,
+      v2,
+      v3,
+      v4,
+      v5,
+      v6,
+      v7
+    };
+
   /**@name Construction */
   //@{
     /**Create a new ID.
        The ID created with this will be initialised to a globally unique ID
        as per specification.
      */
-    PGloballyUniqueID();
+    PGloballyUniqueID(
+      Version version = v4   ///< GUID version to build
+    );
+
+    /**Create a new version 3 or 5 ID.
+       The ID created with this will be initialised to a globally unique ID
+       as per specification.
+    */
+    PGloballyUniqueID(
+      const PGloballyUniqueID & nspace,       ///< The namespace for the hash
+      const void              * name,         ///< The data for the hash
+      size_t                    size,         ///< The size of data to hash
+      Version                   version = v5  ///< GIUD version to build
+    );
 
     /**Create an ID from a C string of hex (as produced by AsString()).
        A useful construct is to construct a OpalGloballyUniqueID() with

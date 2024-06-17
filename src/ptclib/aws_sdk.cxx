@@ -36,7 +36,7 @@ P_PUSH_MSVC_WARNINGS(26495)
 #define USE_IMPORT_EXPORT
 #include <aws/core/Aws.h>
 #include <aws/core/utils/logging/LogLevel.h>
-#include <aws/core/utils/logging/FormattedLogSystem.h>
+#include <aws/core/utils/logging/LogSystemInterface.h>
 #include <aws/core/client/ClientConfiguration.h>
 #include <aws/core/auth/AWSCredentials.h>
 P_POP_MSVC_WARNINGS()
@@ -82,6 +82,14 @@ private:
       }
     }
 
+    virtual void vaLog(Aws::Utils::Logging::LogLevel logLevel, const char* tag, const char* formatStr, va_list args) override
+    {
+      auto level = static_cast<unsigned>(logLevel)-1;
+      if (PTrace::CanTrace(level)) {
+        PTRACE_BEGIN(level, NULL, "AWS-Log") << pvsprintf(formatStr, args) << PTrace::End;
+      }
+    }
+
     virtual void LogStream(Aws::Utils::Logging::LogLevel logLevel, const char */*tag*/, const Aws::OStringStream &messageStream) override
     {
       auto level = static_cast<unsigned>(logLevel)-1;
@@ -97,7 +105,10 @@ private:
     { }
   };
 
-  static std::shared_ptr<Aws::Utils::Logging::LogSystemInterface> CreateLogger() { return std::make_shared<Logger>(); }
+  static std::shared_ptr<Aws::Utils::Logging::LogSystemInterface> CreateLogger()
+  {
+    return std::make_shared<Logger>();
+  }
 
 #endif // PTRACING
 
