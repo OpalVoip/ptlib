@@ -1581,12 +1581,12 @@
   #if defined(_DEBUG)
     #if P_AWS_SDK_DEBUG64
       #define P_AWS_SDK 1
-      #define AWS_SDK_SUBDIR "out/install/x64-Debug"
+      #define AWS_SDK_SUBDIR "install/x64-Debug"
     #endif
   #else
     #if P_AWS_SDK_RELEASE64
       #define P_AWS_SDK 1
-      #define AWS_SDK_SUBDIR "out/install/x64-Release"
+      #define AWS_SDK_SUBDIR "install/x64-Release"
     #endif
   #endif
   #if !defined(P_AWS_SDK)
@@ -1598,12 +1598,12 @@
   #if defined(_DEBUG)
     #if P_AWS_SDK_DEBUG32
       #define P_AWS_SDK 1
-      #define AWS_SDK_SUBDIR "out/install/x86-Debug"
+      #define AWS_SDK_SUBDIR "install/x86-Debug"
     #endif
   #else
     #if P_AWS_SDK_RELEASE32
       #define P_AWS_SDK 1
-      #define AWS_SDK_SUBDIR "out/install/x86-Release"
+      #define AWS_SDK_SUBDIR "install/x86-Release"
     #endif
   #endif
 #endif

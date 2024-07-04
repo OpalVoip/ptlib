@@ -13,11 +13,12 @@
     <FFMPEG64DIR Condition="'$(FFMPEG64DIR)' == ''">$(EXTERNALDIR)\ffmpeg-win64-dev</FFMPEG64DIR>
     <JPEG32DIR Condition="'$(JPEG32DIR)' == ''">$(EXTERNALDIR)\libjpeg-turbo</JPEG32DIR>
     <JPEG64DIR Condition="'$(JPEG64DIR)' == ''">$(EXTERNALDIR)\libjpeg-turbo64</JPEG64DIR>
-    <AWSDIR Condition="'$(AWSDIR)' == ''">$(EXTERNALDIR)\aws-sdk-cpp</AWSDIR>
-    <AWS32DBGDIR Condition="'$(AWS32DBGDIR)' == ''">$(AWSDIR)\out\install\x32-Debug\bin</AWS32DBGDIR>
-    <AWS64DBGDIR Condition="'$(AWS64DBGDIR)' == ''">$(AWSDIR)\out\install\x64-Debug\bin</AWS64DBGDIR>
-    <AWS32RELDIR Condition="'$(AWS32RELDIR)' == ''">$(AWSDIR)\out\install\x32-Release\bin</AWS32RELDIR>
-    <AWS64RELDIR Condition="'$(AWS64RELDIR)' == ''">$(AWSDIR)\out\install\x64-Release\bin</AWS64RELDIR>
+    <AWSDIR Condition="'$(AWSDIR)' == '' AND Exists('$(EXTERNALDIR)\aws-sdk-cpp\out')">$(EXTERNALDIR)\aws-sdk-cpp\out</AWSDIR>
+    <AWSDIR Condition="'$(AWSDIR)' == '' AND Exists('$(EXTERNALDIR)\aws-sdk-cpp\build')">$(EXTERNALDIR)\aws-sdk-cpp\build</AWSDIR>
+    <AWS32DBGDIR Condition="'$(AWS32DBGDIR)' == ''">$(AWSDIR)\install\x32-Debug\bin</AWS32DBGDIR>
+    <AWS64DBGDIR Condition="'$(AWS64DBGDIR)' == ''">$(AWSDIR)\install\x64-Debug\bin</AWS64DBGDIR>
+    <AWS32RELDIR Condition="'$(AWS32RELDIR)' == ''">$(AWSDIR)\install\x32-Release\bin</AWS32RELDIR>
+    <AWS64RELDIR Condition="'$(AWS64RELDIR)' == ''">$(AWSDIR)\install\x64-Release\bin</AWS64RELDIR>
     <WXDIR Condition="'$(WXDIR)' == ''">$(EXTERNALDIR)\wxWidgets</WXDIR>
     <LIB32PATH>$(LUA32DIR);$(OPENSSL32DIR)\bin;$(FFMPEG32DIR)\bin;$(AWS32DBGDIR);$(wxLibOrDllDir);$(ProjectDir)..\..\Lib</LIB32PATH>
     <LIB64PATH>$(LUA64DIR);$(OPENSSL64DIR)\bin;$(FFMPEG64DIR)\bin;$(AWS64DBGDIR);$(wxLibOrDllDir);$(ProjectDir)..\..\Lib</LIB64PATH>

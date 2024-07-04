@@ -82,7 +82,7 @@ private:
       }
     }
 
-    virtual void vaLog(Aws::Utils::Logging::LogLevel logLevel, const char* tag, const char* formatStr, va_list args) override
+    virtual void vaLog(Aws::Utils::Logging::LogLevel logLevel, const char* /*tag*/, const char * formatStr, va_list args) override
     {
       auto level = static_cast<unsigned>(logLevel)-1;
       if (PTrace::CanTrace(level)) {
