@@ -96,19 +96,31 @@
     <?define FFMPEGSubDir = "\bin" ?>
 <?endif?>
 <?ifndef AVFORMATVer ?>
-    <?define AVFORMATVer = "58" ?>
+    <?define AVFORMATVer = "60" ?>
 <?endif?>
 <?ifndef AVCODECVer ?>
-    <?define AVCODECVer = "58" ?>
+    <?define AVCODECVer = "60" ?>
 <?endif?>
 <?ifndef AVUTILVer ?>
-    <?define AVUTILVer = "56" ?>
+    <?define AVUTILVer = "58" ?>
 <?endif?>
 <?ifndef SWRESAMPLEVer ?>
-    <?define SWRESAMPLEVer = "3" ?>
+    <?define SWRESAMPLEVer = "4" ?>
 <?endif?>
 <?ifndef SWSCALEVer ?>
-    <?define SWSCALEVer = "5" ?>
+    <?define SWSCALEVer = "7" ?>
+<?endif?>
+
+<?ifndef LuaVer ?>
+    <?define LuaVer = "" ?>
+<?endif?>
+
+<?ifndef LuaSubDir ?>
+    <?define LuaSubDir = "\bin" ?>
+<?endif?>
+
+<?ifndef JPEGVer ?>
+    <?define JPEGVer = "62" ?>
 <?endif?>
 
 <?ifndef JPEGSubDir ?>
@@ -125,7 +137,7 @@
 <?endif?>
 <?if $(var.WxDir) != "" ?>
     <?ifndef WxVer ?>
-        <?define WxVer = "315" ?>
+        <?define WxVer = "32" ?>
     <?endif?>
     <?ifndef WxCustom ?>
         <?define WxCustom = "no" ?>
@@ -257,8 +269,8 @@
                                        Win64="$(var.IsWin64)"
                                        Guid='*'>
                                 <File Id='Lua_DLL'
-                                      Name='LUA53.DLL'
-                                      Source='$(var.LuaDir)\LUA53.DLL'
+                                      Name='LUA$(var.LuaVer).DLL'
+                                      Source='$(var.LuaDir)$(var.LuaSubDir)\LUA$(var.LuaVer).DLL'
                                       KeyPath='yes' />
                             </Component>
                         <?endif?>

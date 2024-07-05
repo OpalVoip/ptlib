@@ -551,6 +551,6 @@ void InitXmlResource()
         else wxFileSystem::AddHandler(new wxMemoryFSHandler);
     }
 
-    XRC_ADD_FILE(wxT("XRC_resource/resource.cpp$C__Work_stable_ptlib_samples_wx_resource.xrc"), xml_res_file_0, xml_res_size_0, _T("text/xml"));
-    wxXmlResource::Get()->Load(wxT("memory:XRC_resource/resource.cpp$C__Work_stable_ptlib_samples_wx_resource.xrc"));
+    XRC_ADD_FILE(wxT("XRC_resource/resource.cpp$C__Work_stable_win_ptlib_samples_wx_resource.xrc"), xml_res_file_0, xml_res_size_0, _T("text/xml"));
+    wxXmlResource::Get()->Load(wxT("memory:XRC_resource/resource.cpp$C__Work_stable_win_ptlib_samples_wx_resource.xrc"));
 }
