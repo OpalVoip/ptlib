@@ -1811,27 +1811,30 @@ CXXFLAGS="$oldCXXFLAGS"
 dnl ########################################################################
 dnl check for AWS SDK library
 
+dnl MSWIN_DISPLAY    aws,AWS SDK (local build)
+dnl MSWIN_CHECK_FILE aws,install/x86-Debug/include/aws/core/Aws.h,P_AWS_SDK_DEBUG32=1
+dnl MSWIN_CHECK_FILE aws,install/x86-Release/include/aws/core/Aws.h,P_AWS_SDK_RELEASE32=1
+dnl MSWIN_CHECK_FILE aws,install/x64-Debug/include/aws/core/Aws.h,P_AWS_SDK_DEBUG64=1
+dnl MSWIN_CHECK_FILE aws,install/x64-Release/include/aws/core/Aws.h,P_AWS_SDK_RELEASE64=1
+dnl MSWIN_DIR_SYMBOL aws,AWS_SDK_DIR
+dnl MSWIN_CHECK_DIR  aws,%AWS_SDK%\
+dnl MSWIN_CHECK_DIR  aws,..\external\aws-sdk-cpp\out
+dnl MSWIN_CHECK_DIR  aws,..\external\aws-sdk-cpp\build
+dnl MSWIN_CHECK_DIR  aws,..\..\external\aws-sdk-cpp\out
+dnl MSWIN_CHECK_DIR  aws,..\..\external\aws-sdk-cpp\build
+dnl MSWIN_CHECK_DIR  aws,\aws-sdk-cpp\out
+dnl MSWIN_CHECK_DIR  aws,\aws-sdk-cpp\build
+dnl MSWIN_CHECK_DIR  aws,%ProgramFiles%\aws-sdk-cpp
+dnl MSWIN_CHECK_DIR  aws,%ProgramW6432%\aws-sdk-cpp
+
 dnl MSWIN_DISPLAY    awsvc,AWS SDK (vcpkg)
+dnl MSWIN_IF_FEATURE awsvc,!aws
 dnl MSWIN_CHECK_FILE awsvc,include/aws/core/Aws.h,P_AWS_SDK_VCPKG=1
 dnl MSWIN_CHECK_DIR  awsvc,..\external\vcpkg\installed
 dnl MSWIN_CHECK_DIR  awsvc,..\..\external\vcpkg\installed
 dnl MSWIN_CHECK_DIR  awsvc,\vcpkg\installed
 dnl MSWIN_CHECK_DIR  awsvc,%ProgramFiles%\vcpkg\installed
 dnl MSWIN_CHECK_DIR  awsvc,%ProgramW6432%\vcpkg\installed
-
-dnl MSWIN_DISPLAY    aws,AWS SDK (local build)
-dnl MSWIN_IF_FEATURE aws,!awsvc
-dnl MSWIN_CHECK_FILE aws,out/install/x86-Debug/include/aws/core/Aws.h,P_AWS_SDK_DEBUG32=1
-dnl MSWIN_CHECK_FILE aws,out/install/x86-Release/include/aws/core/Aws.h,P_AWS_SDK_RELEASE32=1
-dnl MSWIN_CHECK_FILE aws,out/install/x64-Debug/include/aws/core/Aws.h,P_AWS_SDK_DEBUG64=1
-dnl MSWIN_CHECK_FILE aws,out/install/x64-Release/include/aws/core/Aws.h,P_AWS_SDK_RELEASE64=1
-dnl MSWIN_DIR_SYMBOL aws,AWS_SDK_DIR
-dnl MSWIN_CHECK_DIR  aws,%AWS_SDK%\
-dnl MSWIN_CHECK_DIR  aws,..\external\aws-sdk-cpp
-dnl MSWIN_CHECK_DIR  aws,..\..\external\aws-sdk-cpp
-dnl MSWIN_CHECK_DIR  aws,\aws-sdk-cpp
-dnl MSWIN_CHECK_DIR  aws,%ProgramFiles%\aws-sdk-cpp
-dnl MSWIN_CHECK_DIR  aws,%ProgramW6432%\aws-sdk-cpp
 
 PTLIB_MODULE_OPTION(
    [AWS_SDK], 

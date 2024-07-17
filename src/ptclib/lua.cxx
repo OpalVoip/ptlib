@@ -43,7 +43,7 @@ extern "C" {
 
 
 #if defined(_MSC_VER) && defined(P_LUA_LIBRARY)
-  #pragma comment(lib, P_LUA_LIBRARY)s
+  #pragma comment(lib, P_LUA_LIBRARY)
 #endif
 
 #if LUA_VERSION_NUM > 501 && !defined(lua_objlen)
