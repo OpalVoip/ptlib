@@ -12,7 +12,7 @@
  * Made into a C++ class by Roger Hardiman <roger@freebsd.org>, January 2002
  */
 
-#ifdef __GNUC__
+#ifdef P_USE_PRAGMA
 #pragma implementation "dtmf.h"
 #endif
 

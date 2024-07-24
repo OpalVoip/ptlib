@@ -40,7 +40,7 @@ class NetTest : public PProcess
 {
   PCLASSINFO(NetTest, PProcess)
   public:
-    void Main();
+    virtual void Main() override;
 };
 
 

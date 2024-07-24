@@ -34,6 +34,7 @@
 
 #include <ptlib/timer.h>
 #include <ptlib/syncthrd.h>
+#include <ptlib/notifier.h>
 
 
 #if P_TIMERS
@@ -121,7 +122,7 @@ class PTimer;
   </CODE>
 
  */
-class PSafeObject : public PObject
+class PSafeObject : public PObject, PNonCopyable
 {
     PCLASSINFO(PSafeObject, PObject);
   public:
@@ -257,7 +258,10 @@ class PSafeObject : public PObject
        Note this returns the value outside of any mutexes, so it could change
        at any moment. Care must be exercised in its use.
       */
-    unsigned IsSafelyBeingRemoved() const { return m_safelyBeingRemoved; }
+    unsigned IsSafelyBeingRemoved() const
+    {
+      return m_safelyBeingRemoved;
+    }
 
     /**Determine if the object can be safely deleted.
        This determines if the object has been flagged for deletion and all
@@ -288,9 +292,14 @@ class PSafeObject : public PObject
     unsigned GetSafeReferenceCount() const { PWaitAndSignal lock(m_safetyMutex); return m_safeReferenceCount; }
   //@}
 
-  private:
-    void operator=(const PSafeObject &) { }
+#if PTRACING
+    static atomic<unsigned> m_traceObjectContext;
+    static atomic<unsigned> m_traceObjectLevel;
+    static atomic<unsigned> m_traceDetailLevel;
+    unsigned GetTraceLogLevel() const { return m_traceContextIdentifier == m_traceObjectContext ? m_traceObjectLevel : m_traceDetailLevel; }
+#endif // PTRACING
 
+  private:
     bool InternalLockReadOnly(const PDebugLocation * location) const;
     void InternalUnlockReadOnly(const PDebugLocation * location) const;
     bool InternalLockReadWrite(const PDebugLocation * location) const;
@@ -383,13 +392,18 @@ class PSafeLockReadWrite : public PSafeLockBase
   #define P_INSTRUMENTED_LOCK_READ_ONLY2(var, obj)  PSafeLockReadOnly  var((obj))
   #define P_INSTRUMENTED_LOCK_READ_WRITE2(var, obj) PSafeLockReadWrite var((obj))
 #endif // P_TRACING
+
+#define P_MAKE_UNIQUE_VAR(base) P_MAKE_UNIQUE_VAR1(base, __LINE__)
+#define P_MAKE_UNIQUE_VAR1(base, line) P_MAKE_UNIQUE_VAR2(base, line)
+#define P_MAKE_UNIQUE_VAR2(base, line)  base##line
+
 #define P_READ_WRITE_RETURN_ARG_0()
-#define P_READ_WRITE_RETURN_ARG_1(arg) ; if (!lock.IsLocked()) arg
+#define P_READ_WRITE_RETURN_ARG_1(arg) ; if (!P_MAKE_UNIQUE_VAR(lock).IsLocked()) arg
 #define P_READ_WRITE_RETURN_PART1(narg, args) P_READ_WRITE_RETURN_PART2(narg, args)
 #define P_READ_WRITE_RETURN_PART2(narg, args) P_READ_WRITE_RETURN_ARG_##narg args
 
-#define P_INSTRUMENTED_LOCK_READ_ONLY(...)  P_INSTRUMENTED_LOCK_READ_ONLY2(lock,*this) P_READ_WRITE_RETURN_PART1(PARG_COUNT(__VA_ARGS__), (__VA_ARGS__))
-#define P_INSTRUMENTED_LOCK_READ_WRITE(...) P_INSTRUMENTED_LOCK_READ_WRITE2(lock,*this) P_READ_WRITE_RETURN_PART1(PARG_COUNT(__VA_ARGS__), (__VA_ARGS__))
+#define P_INSTRUMENTED_LOCK_READ_ONLY(...)  P_INSTRUMENTED_LOCK_READ_ONLY2(P_MAKE_UNIQUE_VAR(lock),*this) P_READ_WRITE_RETURN_PART1(PARG_COUNT(__VA_ARGS__), (__VA_ARGS__))
+#define P_INSTRUMENTED_LOCK_READ_WRITE(...) P_INSTRUMENTED_LOCK_READ_WRITE2(P_MAKE_UNIQUE_VAR(lock),*this) P_READ_WRITE_RETURN_PART1(PARG_COUNT(__VA_ARGS__), (__VA_ARGS__))
 
 
 /** This class defines a thread-safe collection of objects.
@@ -404,9 +418,9 @@ class PSafeLockReadWrite : public PSafeLockBase
   See the PSafeObject class for more details. Especially in regard to
   enumeration of collections.
  */
-class PSafeCollection : public PObject
+class PSafeCollection : public PSmartObject, PNonCopyable
 {
-    PCLASSINFO(PSafeCollection, PObject);
+    PCLASSINFO(PSafeCollection, PSmartObject);
   public:
   /**@name Construction */
   //@{
@@ -459,27 +473,13 @@ class PSafeCollection : public PObject
      */
     virtual void PrintOn(
       ostream &strm   // Stream to print the object into.
-    ) const;
+    ) const override;
 
     /**Remove all objects in collection.
       */
     virtual void RemoveAll(
       bool synchronous = false  ///< Wait till objects are deleted before returning
     );
-
-    /**Disallow the automatic delete any objects that have been removed.
-       Objects are simply removed from the collection and not marked for
-       deletion using PSafeObject::SafeRemove() and DeleteObject().
-      */
-    void AllowDeleteObjects(
-      bool yes = true   ///< New value for flag for deleting objects
-    ) { m_deleteObjects = yes; }
-
-    /**Disallow the automatic delete any objects that have been removed.
-       Objects are simply removed from the collection and not marked for
-       deletion using PSafeObject::SafeRemove() and DeleteObject().
-      */
-    void DisallowDeleteObjects() { m_deleteObjects = false; }
 
     /**Delete any objects that have been removed.
        Returns true if all objects in the collection have been removed and
@@ -530,10 +530,6 @@ class PSafeCollection : public PObject
     PTimer           * m_deleteObjectsTimer;
 #endif
 
-  private:
-    PSafeCollection(const PSafeCollection & other) : PObject(other) { }
-    void operator=(const PSafeCollection &) { }
-
   friend class PSafePtrBase;
 };
 
@@ -575,32 +571,6 @@ class PSafePtrBase : public PObject
       PSafetyMode mode = PSafeReference ///< Locking mode for the object
     );
 
-    /**Create a new pointer to a PSafeObject.
-       An optional locking mode may be provided to lock the object for reading
-       or writing and automatically unlock it on destruction.
-
-       The idx'th entry of the collection is pointed to by this object. If the
-       idx is beyond the size of the collection, the pointer is NULL.
-     */
-    PSafePtrBase(
-      const PSafeCollection & safeCollection, ///< Collection pointer will enumerate
-      PSafetyMode mode,                       ///< Locking mode for the object
-      PINDEX idx                              ///< Index into collection to point to
-    );
-
-    /**Create a new pointer to a PSafeObject.
-       An optional locking mode may be provided to lock the object for reading
-       or writing and automatically unlock it on destruction.
-
-       The obj parameter is only set if it contained in the collection,
-       otherwise the pointer is NULL.
-     */
-    PSafePtrBase(
-      const PSafeCollection & safeCollection, ///< Collection pointer will enumerate
-      PSafetyMode mode,                       ///< Locking mode for the object
-      PSafeObject * obj                       ///< Inital object in collection to point to
-    );
-
     /**Copy the pointer to the PSafeObject.
        This will create a copy of the pointer with the same locking mode and
        lock on the PSafeObject. It will also increment the reference count on
@@ -624,7 +594,7 @@ class PSafePtrBase : public PObject
       */
     virtual Comparison Compare(
       const PObject & obj   ///< Other instance to compare against
-    ) const;
+    ) const override;
 
     /** Output the contents of the object to the stream. The exact output is
        dependent on the exact semantics of the descendent class. This is
@@ -634,7 +604,7 @@ class PSafePtrBase : public PObject
      */
     virtual void PrintOn(
       ostream &strm   // Stream to print the object into.
-    ) const;
+    ) const override;
   //@}
 
   /**@name Operations */
@@ -672,13 +642,9 @@ class PSafePtrBase : public PObject
   //@}
 
     virtual void Assign(const PSafePtrBase & ptr);
-    virtual void Assign(const PSafeCollection & safeCollection);
     virtual void Assign(PSafeObject * obj);
-    virtual void Assign(PINDEX idx);
 
   protected:
-    virtual void Next();
-    virtual void Previous();
     virtual void DeleteObject(PSafeObject * obj);
 
     enum EnterSafetyModeOption {
@@ -697,9 +663,8 @@ class PSafePtrBase : public PObject
     virtual void UnlockPtr() { }
 
   protected:
-    const PSafeCollection * m_collection;
-    PSafeObject           * m_currentObject;
-    PSafetyMode             m_lockMode;
+    PSafeObject * m_currentObject;
+    PSafetyMode   m_lockMode;
 };
 
 
@@ -734,32 +699,6 @@ class PSafePtrMultiThreaded : public PSafePtrBase
       PSafetyMode mode = PSafeReference ///< Locking mode for the object
     );
 
-    /**Create a new pointer to a PSafeObject.
-       An optional locking mode may be provided to lock the object for reading
-       or writing and automatically unlock it on destruction.
-
-       The idx'th entry of the collection is pointed to by this object. If the
-       idx is beyond the size of the collection, the pointer is NULL.
-     */
-    PSafePtrMultiThreaded(
-      const PSafeCollection & safeCollection, ///< Collection pointer will enumerate
-      PSafetyMode mode,                       ///< Locking mode for the object
-      PINDEX idx                              ///< Index into collection to point to
-    );
-
-    /**Create a new pointer to a PSafeObject.
-       An optional locking mode may be provided to lock the object for reading
-       or writing and automatically unlock it on destruction.
-
-       The obj parameter is only set if it contained in the collection,
-       otherwise the pointer is NULL.
-     */
-    PSafePtrMultiThreaded(
-      const PSafeCollection & safeCollection, ///< Collection pointer will enumerate
-      PSafetyMode mode,                       ///< Locking mode for the object
-      PSafeObject * obj                       ///< Inital object in collection to point to
-    );
-
     /**Copy the pointer to the PSafeObject.
        This will create a copy of the pointer with the same locking mode and
        lock on the PSafeObject. It will also increment the reference count on
@@ -783,14 +722,14 @@ class PSafePtrMultiThreaded : public PSafePtrBase
       */
     virtual Comparison Compare(
       const PObject & obj   ///< Other instance to compare against
-    ) const;
+    ) const override;
   //@}
 
   /**@name Operations */
   //@{
     /**Set the pointer to NULL, unlocking/dereferencing existing pointer value.
       */
-    virtual void SetNULL();
+    virtual void SetNULL() override;
 
     /**Change the locking mode used by this pointer.
 
@@ -800,22 +739,30 @@ class PSafePtrMultiThreaded : public PSafePtrBase
       */
     virtual bool SetSafetyMode(
       PSafetyMode mode  ///< New locking mode
-    );
+    ) override;
   //@}
 
     virtual void Assign(const PSafePtrMultiThreaded & ptr);
+<<<<<<< HEAD
     virtual void Assign(const PSafePtrBase & ptr);
-    virtual void Assign(const PSafeCollection & safeCollection);
     virtual void Assign(PSafeObject * obj);
-    virtual void Assign(PINDEX idx);
 
   protected:
-    virtual void Next();
-    virtual void Previous();
     virtual void DeleteObject(PSafeObject * obj);
+=======
+    virtual void Assign(const PSafePtrBase & ptr) override;
+    virtual void Assign(const PSafeCollection & safeCollection) override;
+    virtual void Assign(PSafeObject * obj) override;
+    virtual void Assign(PINDEX idx) override;
 
-    virtual void LockPtr() { m_mutex.Wait(); }
-    virtual void UnlockPtr();
+  protected:
+    virtual void Next() override;
+    virtual void Previous() override;
+    virtual void DeleteObject(PSafeObject * obj) override;
+>>>>>>> v2_20
+
+    virtual void LockPtr() override { m_mutex.Wait(); }
+    virtual void UnlockPtr() override;
 
   protected:
     mutable PMutex m_mutex;
@@ -860,32 +807,6 @@ template <class T, class BaseClass = PSafePtrBase> class PSafePtr : public BaseC
       PSafetyMode mode = PSafeReference ///< Locking mode for the object
     ) : BaseClass(obj, mode) { }
 
-    /**Create a new pointer to a PSafeObject.
-       An optional locking mode may be provided to lock the object for reading
-       or writing and automatically unlock it on destruction.
-
-       The idx'th entry of the collection is pointed to by this object. If the
-       idx is beyond the size of the collection, the pointer is NULL.
-     */
-    PSafePtr(
-      const PSafeCollection & safeCollection, ///< Collection pointer will enumerate
-      PSafetyMode mode = PSafeReadWrite,      ///< Locking mode for the object
-      PINDEX idx = 0                          ///< Index into collection to point to
-    ) : BaseClass(safeCollection, mode, idx) { }
-
-    /**Create a new pointer to a PSafeObject.
-       An optional locking mode may be provided to lock the object for reading
-       or writing and automatically unlock it on destruction.
-
-       The obj parameter is only set if it contained in the collection,
-       otherwise the pointer is NULL.
-     */
-    PSafePtr(
-      const PSafeCollection & safeCollection, ///< Collection pointer will enumerate
-      PSafetyMode mode,                       ///< Locking mode for the object
-      PSafeObject * obj                       ///< Inital object in collection to point to
-    ) : BaseClass(safeCollection, mode, obj) { }
-
     /**Copy the pointer to the PSafeObject.
        This will create a copy of the pointer with the same locking mode and
        lock on the PSafeObject. It will also increment the reference count on
@@ -903,16 +824,6 @@ template <class T, class BaseClass = PSafePtrBase> class PSafePtr : public BaseC
     PSafePtr & operator=(const PSafePtr & ptr)
       {
         this->Assign(ptr);
-        return *this;
-      }
-
-    /**Start an enumerated PSafeObject.
-       This will create a read/write locked reference to teh first element in
-       the collection.
-      */
-    PSafePtr & operator=(const PSafeCollection & safeCollection)
-      {
-        this->Assign(safeCollection);
         return *this;
       }
 
@@ -934,21 +845,6 @@ template <class T, class BaseClass = PSafePtrBase> class PSafePtr : public BaseC
     PSafePtr & operator=(T * obj)
       {
         this->Assign(obj);
-        return *this;
-      }
-
-    /**Set the new pointer to a collection index.
-       This will set the pointer to the new object to the index entry in the
-       colelction that the pointer was created with. The old object pointed to
-       will be unlocked and dereferenced and the new object referenced and set
-       to the same locking mode as the previous pointer value.
-
-       If the idx'th object is not in the collection, then the safe pointer
-       is set to NULL.
-     */
-    PSafePtr & operator=(PINDEX idx)
-      {
-        this->Assign(idx);
         return *this;
       }
 
@@ -979,48 +875,6 @@ template <class T, class BaseClass = PSafePtrBase> class PSafePtr : public BaseC
     /**Allow access to the physical object the pointer is pointing to.
       */
     T * operator->() const { return  dynamic_cast<T *>(PAssertNULL(this->m_currentObject)); }
-
-    /**Post-increment the pointer.
-       This requires that the pointer has been created with a PSafeCollection
-       object so that it can enumerate the collection.
-      */
-    T * operator++(int)
-      {
-        T * previous = dynamic_cast<T *>(this->m_currentObject);
-        this->Next();
-        return previous;
-      }
-
-    /**Pre-increment the pointer.
-       This requires that the pointer has been created with a PSafeCollection
-       object so that it can enumerate the collection.
-      */
-    T * operator++()
-      {
-        this->Next();
-        return dynamic_cast<T *>(this->m_currentObject);
-      }
-
-    /**Post-decrement the pointer.
-       This requires that the pointer has been created with a PSafeCollection
-       object so that it can enumerate the collection.
-      */
-    T * operator--(int)
-      {
-        T * previous = dynamic_cast<T *>(this->m_currentObject);
-        this->Previous();
-        return previous;
-      }
-
-    /**Pre-decrement the pointer.
-       This requires that the pointer has been created with a PSafeCollection
-       object so that it can enumerate the collection.
-      */
-    T * operator--()
-      {
-        this->Previous();
-        return dynamic_cast<T *>(this->m_currentObject);
-      }
   //@}
 };
 
@@ -1048,26 +902,31 @@ PSafePtr<Derived> PSafePtrCast(const PSafePtr<Base> & oldPtr)
   See the PSafeObject class for more details. Especially in regard to
   enumeration of collections.
  */
-template <class Coll, class Base> class PSafeColl : public PSafeCollection
+template <class Collection> class PSafeColl : public PSafeCollection
 {
     PCLASSINFO_WITH_CLONE(PSafeColl, PSafeCollection);
   public:
+    typedef Collection coll_type;
+    typedef typename coll_type::iterator coll_iter;
+    typedef typename coll_type::value_type value_type;
+    typedef PSafePtr<value_type> ptr_type;
+
   /**@name Construction */
   //@{
     /**Create a safe list collection wrapper around the real collection.
       */
     PSafeColl()
-      : PSafeCollection(new Coll)
+      : PSafeCollection(new coll_type)
       { }
 
     /**Copy constructor for safe collection.
        Note the left hand side will always have DisallowDeleteObjects() set.
       */
     PSafeColl(const PSafeColl & other)
-      : PSafeCollection(new Coll)
+      : PSafeCollection(new coll_type)
     {
       PWaitAndSignal lock2(other.m_collectionMutex);
-      this->CopySafeCollection(dynamic_cast<Coll *>(other.m_collection));
+      this->CopySafeCollection(other.m_collection);
     }
 
     /**Assign one safe collection to another.
@@ -1079,7 +938,7 @@ template <class Coll, class Base> class PSafeColl : public PSafeCollection
         RemoveAll(true);
         PWaitAndSignal lock1(this->m_collectionMutex);
         PWaitAndSignal lock2(other.m_collectionMutex);
-        CopySafeCollection(dynamic_cast<Coll *>(other.m_collection));
+        CopySafeCollection(other.m_collection);
       }
       return *this;
     }
@@ -1091,14 +950,15 @@ template <class Coll, class Base> class PSafeColl : public PSafeCollection
        This uses the PCollection::Append() function to add the object to the
        collection, with full mutual exclusion locking on the collection.
       */
-    virtual PSafePtr<Base> Append(
-      Base * obj,       ///< Object to add to safe collection.
+    virtual ptr_type Append(
+      value_type * obj,       ///< Object to add to safe collection.
       PSafetyMode mode = PSafeReference   ///< Safety mode for returned locked PSafePtr
     ) {
         PWaitAndSignal mutex(this->m_collectionMutex);
-        if (SafeAddObject(obj, NULL))
-          return PSafePtr<Base>(*this, mode, this->m_collection->Append(obj));
-        return NULL;
+        if (!SafeAddObject(obj, NULL))
+          return NULL;
+        this->m_collection->Append(obj);
+        return ptr_type(obj, mode);
       }
 
     /**Remove an object to the collection.
@@ -1110,7 +970,7 @@ template <class Coll, class Base> class PSafeColl : public PSafeCollection
        is maintained.
       */
     virtual bool Remove(
-      Base * obj          ///< Object to remove from safe collection
+      value_type * obj          ///< Object to remove from safe collection
     ) {
         return SafeRemove(obj);
       }
@@ -1134,11 +994,20 @@ template <class Coll, class Base> class PSafeColl : public PSafeCollection
        PSafeObject and lock to the object in the mode specified. The lock
        will remain until the PSafePtr goes out of scope.
       */
-    virtual PSafePtr<Base> GetAt(
+    virtual ptr_type GetAt(
       PINDEX idx,
       PSafetyMode mode = PSafeReadWrite
-    ) {
-        return PSafePtr<Base>(*this, mode, idx);
+    ) const {
+        ptr_type ptr;
+        this->m_collectionMutex.Wait();
+        if (idx < this->GetCollectionPtr()->GetSize()) {
+          coll_iter it = this->GetCollectionPtr()->begin();
+          std::advance(it, idx);
+          ptr = ptr_type(&*it, PSafeReference);
+        }
+        this->m_collectionMutex.Signal();
+        ptr.SetSafetyMode(mode);
+        return ptr;
       }
 
     /**Find the instance in the collection of an object with the same value.
@@ -1146,17 +1015,97 @@ template <class Coll, class Base> class PSafeColl : public PSafeCollection
        PSafeObject and lock to the object in the mode specified. The lock
        will remain until the PSafePtr goes out of scope.
       */
-    virtual PSafePtr<Base> FindWithLock(
-      const Base & value,
+    virtual ptr_type FindWithLock(
+      const value_type & value,
       PSafetyMode mode = PSafeReadWrite
-    ) {
+    ) const {
         this->m_collectionMutex.Wait();
-        PSafePtr<Base> ptr(*this, PSafeReference, this->m_collection->GetValuesIndex(value));
+        coll_iter it = std::find(this->GetCollectionPtr()->begin(), this->GetCollectionPtr()->end(), value);
+        ptr_type ptr(it != this->GetCollectionPtr()->end() ? &*it : NULL, PSafeReference);
         this->m_collectionMutex.Signal();
         ptr.SetSafetyMode(mode);
         return ptr;
       }
   //@}
+
+    class iterator_base {
+      protected:
+        PSmartPtr<PSafeColl> m_collection;
+        coll_iter            m_iterator;
+        ptr_type             m_pointer;
+
+        iterator_base(const PSafeColl & coll)
+          : m_collection(new PSafeColl(coll))
+          , m_iterator(m_collection->GetCollectionPtr()->begin())
+          , m_pointer(m_iterator != m_collection->GetCollectionPtr()->end() ? &*m_iterator : NULL, PSafeReference)
+        {
+        }
+
+        void Next()
+        {
+          while (++this->m_iterator != this->m_collection->GetCollectionPtr()->end()) {
+            m_pointer = ptr_type(&*m_iterator, PSafeReference);
+            if (m_pointer != NULL)
+              return;
+          }
+          *this = iterator();
+        }
+
+      public:
+        iterator_base() { }
+
+        value_type * operator->() const { return &*this->m_pointer; }
+        value_type & operator* () const { return  *this->m_pointer; }
+
+        bool operator==(const iterator_base & it) const { return this->m_iterator == it.m_iterator; }
+        bool operator!=(const iterator_base & it) const { return !operator==(it); }
+
+        bool operator==(const value_type * ptr) const { return this->m_iterator != this->m_collection->GetCollectionPtr()->end() ? &*this->m_iterator == ptr : (ptr == NULL); }
+        bool operator!=(const value_type * ptr) const { return !operator==(ptr); }
+
+        bool SetSafetyMode(PSafetyMode mode) { return this->m_pointer.SetSafetyMode(mode); }
+    };
+
+    class iterator : public iterator_base, public std::iterator<std::forward_iterator_tag, value_type> {
+      protected:
+        iterator(const PSafeColl & coll)
+          : iterator_base(coll)
+        { }
+
+      public:
+        iterator() { }
+
+        iterator & operator++()    {                      this->Next(); return *this; }
+        iterator   operator++(int) { iterator it = *this; this->Next(); return it;    }
+
+        friend class PSafeColl;
+    };
+
+    iterator begin() { return iterator(*this); }
+    iterator end()   { return iterator(); }
+    void erase(const iterator& it) { if (PAssert(it != end(), PLogicError)) this->SafeRemove(&*it.m_iterator); }
+
+    class const_iterator : public iterator_base, public std::iterator<std::forward_iterator_tag, const value_type> {
+      protected:
+        const_iterator(const PSafeColl & coll)
+          : iterator_base(coll)
+        { }
+
+      public:
+        const_iterator() { }
+        const_iterator(const PSafeColl::iterator & it) : iterator_base(it) { }
+
+        const_iterator & operator++()    {                      this->Next(); return *this; }
+        const_iterator   operator++(int) { iterator it = *this; this->Next(); return it;    }
+
+        friend class PSafeColl;
+    };
+
+    const_iterator begin() const { return const_iterator(*this); }
+    const_iterator end()   const { return const_iterator(); }
+
+  protected:
+    coll_type * GetCollectionPtr() const { return dynamic_cast<coll_type *>(this->m_collection); }
 };
 
 
@@ -1164,7 +1113,7 @@ template <class Coll, class Base> class PSafeColl : public PSafeCollection
   See the PSafeObject class for more details. Especially in regard to
   enumeration of collections.
  */
-template <class Base> class PSafeArray : public PSafeColl<PArray<Base>, Base>
+template <class Base> class PSafeArray : public PSafeColl< PArray<Base> >
 {
   public:
     typedef PSafePtr<Base> value_type;
@@ -1175,7 +1124,7 @@ template <class Base> class PSafeArray : public PSafeColl<PArray<Base>, Base>
   See the PSafeObject class for more details. Especially in regard to
   enumeration of collections.
  */
-template <class Base> class PSafeList : public PSafeColl<PList<Base>, Base>
+template <class Base> class PSafeList : public PSafeColl< PList<Base> >
 {
   public:
     typedef PSafePtr<Base> value_type;
@@ -1186,7 +1135,7 @@ template <class Base> class PSafeList : public PSafeColl<PList<Base>, Base>
   See the PSafeObject class for more details. Especially in regard to
   enumeration of collections.
  */
-template <class Base> class PSafeSortedList : public PSafeColl<PSortedList<Base>, Base>
+template <class Base> class PSafeSortedList : public PSafeColl< PSortedList<Base> >
 {
   public:
     typedef PSafePtr<Base> value_type;
@@ -1203,37 +1152,43 @@ template <class Base> class PSafeSortedList : public PSafeColl<PSortedList<Base>
   See the PSafeObject class for more details. Especially in regard to
   enumeration of collections.
  */
-template <class Coll, class Key, class Base> class PSafeDictionaryBase : public PSafeCollection
+template <class K, class D> class PSafeDictionary : public PSafeCollection
 {
-    PCLASSINFO_WITH_CLONE(PSafeDictionaryBase, PSafeCollection);
+    PCLASSINFO_WITH_CLONE(PSafeDictionary, PSafeCollection);
   public:
+    typedef K key_type;
+    typedef D data_type;
+    typedef PDictionary<K, D> dict_type;
+    typedef typename dict_type::iterator dict_iter;
+    typedef PSafePtr<D> ptr_type;
+
   /**@name Construction */
   //@{
     /**Create a safe dictionary wrapper around the real collection.
       */
-    PSafeDictionaryBase()
-      : PSafeCollection(new Coll) { }
+    PSafeDictionary()
+      : PSafeCollection(new dict_type) { }
 
     /**Copy constructor for safe collection.
        Note the left hand side will always have DisallowDeleteObjects() set.
       */
-    PSafeDictionaryBase(const PSafeDictionaryBase & other)
-      : PSafeCollection(new Coll)
+    PSafeDictionary(const PSafeDictionary & other)
+      : PSafeCollection(new dict_type)
     {
       PWaitAndSignal lock2(other.m_collectionMutex);
-      CopySafeDictionary(dynamic_cast<Coll *>(other.m_collection));
+      CopySafeDictionary(other.GetDictionaryPtr());
     }
 
     /**Assign one safe collection to another.
        Note the left hand side will always have DisallowDeleteObjects() set.
       */
-    PSafeDictionaryBase & operator=(const PSafeDictionaryBase & other)
+    PSafeDictionary & operator=(const PSafeDictionary & other)
     {
       if (&other != this) {
         RemoveAll(true);
         PWaitAndSignal lock1(m_collectionMutex);
         PWaitAndSignal lock2(other.m_collectionMutex);
-        CopySafeDictionary(dynamic_cast<Coll *>(other.m_collection));
+        CopySafeDictionary(other.GetDictionaryPtr());
       }
       return *this;
     }
@@ -1245,11 +1200,11 @@ template <class Coll, class Key, class Base> class PSafeDictionaryBase : public 
        This uses the PCollection::Append() function to add the object to the
        collection, with full mutual exclusion locking on the collection.
       */
-    virtual void SetAt(const Key & key, Base * obj)
+    virtual void SetAt(const key_type & key, data_type * obj)
       {
         this->m_collectionMutex.Wait();
-        if (SafeAddObject(obj, dynamic_cast<Coll &>(*this->m_collection).GetAt(key)))
-          dynamic_cast<Coll &>(*this->m_collection).SetAt(key, obj);
+        if (SafeAddObject(obj, this->GetDictionaryPtr()->GetAt(key)))
+          this->GetDictionaryPtr()->SetAt(key, obj);
         this->m_collectionMutex.Signal();
       }
 
@@ -1262,31 +1217,19 @@ template <class Coll, class Key, class Base> class PSafeDictionaryBase : public 
        is maintained.
       */
     virtual bool RemoveAt(
-      const Key & key   ///< Key to find object to delete
+      const key_type & key   ///< Key to find object to delete
     ) {
-        PWaitAndSignal mutex(this->m_collectionMutex);
-        return SafeRemove(dynamic_cast<Coll &>(*this->m_collection).GetAt(key));
+        PWaitAndSignal lock(this->m_collectionMutex);
+        return SafeRemove(this->GetDictionaryPtr()->GetAt(key));
       }
 
     /**Determine of the dictionary contains an entry for the key.
       */
     virtual bool Contains(
-      const Key & key
+      const key_type & key
     ) {
         PWaitAndSignal lock(this->m_collectionMutex);
-        return dynamic_cast<Coll &>(*this->m_collection).Contains(key);
-      }
-
-    /**Get the instance in the collection of the index.
-       The returned safe pointer will increment the reference count on the
-       PSafeObject and lock to the object in the mode specified. The lock
-       will remain until the PSafePtr goes out of scope.
-      */
-    virtual PSafePtr<Base> GetAt(
-      PINDEX idx,
-      PSafetyMode mode = PSafeReadWrite
-    ) {
-        return PSafePtr<Base>(*this, mode, idx);
+        return this->GetDictionaryPtr()->Contains(key);
       }
 
     /**Find the instance in the collection of an object with the same value.
@@ -1294,47 +1237,27 @@ template <class Coll, class Key, class Base> class PSafeDictionaryBase : public 
        PSafeObject and lock to the object in the mode specified. The lock
        will remain until the PSafePtr goes out of scope.
       */
-    virtual PSafePtr<Base> Find(
-      const Key & key,
+    virtual ptr_type Find(
+      const key_type & key,
       PSafetyMode mode = PSafeReadWrite
     ) const {
         this->m_collectionMutex.Wait();
-        PSafePtr<Base> ptr(dynamic_cast<Coll &>(*this->m_collection).GetAt(key), PSafeReference);
+        ptr_type ptr(this->GetDictionaryPtr()->GetAt(key), PSafeReference);
         this->m_collectionMutex.Signal();
         ptr.SetSafetyMode(mode);
         return ptr;
       }
-
-    /**Find instance and use PSafePtr as an iterator.
-       This is not recommended for use, as the there is a true iterator class
-       available which is much more efficient
-      */
-    virtual PSafePtr<Base> FindIterator(
-      const Key & key,
-      PSafetyMode mode = PSafeReadWrite
-    ) const {
-        this->m_collectionMutex.Wait();
-        PSafePtr<Base> ptr(*this, PSafeReference, dynamic_cast<Coll &>(*this->m_collection).GetAt(key));
-        this->m_collectionMutex.Signal();
-        ptr.SetSafetyMode(mode);
-        return ptr;
-      }
-
-    P_DEPRECATED virtual PSafePtr<Base> FindWithLock(
-      const Key & key,
-      PSafetyMode mode = PSafeReadWrite
-    ) const { return FindIterator(key, mode); }
 
     /** Move an object from one key location to another.
       */
     virtual bool Move(
-      const Key & from,   ///< Key to find object to move
-      const Key & to      ///< Key to place found object
+      const key_type & from,   ///< Key to find object to move
+      const key_type & to      ///< Key to place found object
     ) {
       PWaitAndSignal mutex(this->m_collectionMutex);
-      if (dynamic_cast<Coll &>(*this->m_collection).GetAt(to) != NULL)
+      if (this->GetDictionaryPtr()->GetAt(to) != NULL)
         return false;
-      dynamic_cast<Coll &>(*this->m_collection).SetAt(to, dynamic_cast<Coll &>(*this->m_collection).GetAt(from));
+      this->GetDictionaryPtr()->SetAt(to, this->GetDictionaryPtr()->RemoveAt(from));
       return true;
     }
 
@@ -1342,7 +1265,7 @@ template <class Coll, class Key, class Base> class PSafeDictionaryBase : public 
         This will delete all the objects from the other dictionary, but does
         not delete the objects themselves.
       */
-    void MoveFrom(PSafeDictionaryBase & other)
+    void MoveFrom(PSafeDictionary & other)
     {
       if (this == &other)
         return;
@@ -1359,124 +1282,133 @@ template <class Coll, class Key, class Base> class PSafeDictionaryBase : public 
 
     /**Get an array containing all the keys for the dictionary.
       */
-    PArray<Key> GetKeys() const
+    PArray<key_type> GetKeys() const
     {
-      PArray<Key> keys;
+      PArray<key_type> keys;
       this->m_collectionMutex.Wait();
-      dynamic_cast<Coll &>(*this->m_collection).AbstractGetKeys(keys);
+      this->GetDictionaryPtr()->AbstractGetKeys(keys);
       this->m_collectionMutex.Signal();
       return keys;
     }
   //@}
-};
-
-
-/** This class defines a thread-safe array of objects.
-  See the PSafeObject class for more details. Especially in regard to
-  enumeration of collections.
- */
-template <class K, class D>
- class PSafeDictionary : public PSafeDictionaryBase<PDictionary<K, D>, K, D>
-{
-  public:
-    typedef K key_type;
-    typedef D data_type;
-    typedef PSafePtr<D> value_type;
-    typedef PSafeDictionary<K, D> dict_type;
 
   /**@name Iterators */
   //@{
     class iterator;
     class const_iterator;
-    class iterator_base {
-      protected:
-        K * m_internal_first;  // Must be first two members
-        value_type m_internal_second;
 
-        const dict_type * m_dictionary;
-        PArray<K>   m_keys;
-        PINDEX      m_position;
+    class iterator_pair
+    {
+    public:
+      const key_type & first;
+      ptr_type       & second;
+
+    private:
+      iterator_pair() : first(reinterpret_cast<const key_type &>(0)) { }
+    };
+
+    class iterator_base {
+      public:
+        typedef std::forward_iterator_tag iterator_category;
+        typedef iterator_pair value_type;
+        typedef ptrdiff_t difference_type;
+        typedef value_type * pointer;
+        typedef value_type & reference;
+
+      protected:
+        const key_type * m_internal_first;  // Must be first two members
+        ptr_type       * m_internal_second;
+
+        PSmartPtr<PSafeDictionary> m_collection;
+        dict_iter                  m_iterator;
+        ptr_type                   m_pointer;
 
         iterator_base()
           : m_internal_first(NULL)
-          , m_internal_second(NULL)
-          , m_dictionary(NULL)
-          , m_position(P_MAX_INDEX)
+          , m_internal_second(&m_pointer)
         {
         }
 
-        iterator_base(const dict_type * dict)
-          : m_dictionary(dict)
-          , m_keys(dict->GetKeys())
+        iterator_base(const iterator_base & iter)
+          : m_internal_first(NULL)
+          , m_internal_second(&m_pointer)
+          , m_collection(iter.m_collection)
         {
-          this->SetPosition(0);
-        }
-
-        iterator_base(const dict_type * dict, const K & key)
-          : m_dictionary(dict)
-          , m_keys(dict->GetKeys())
-        {
-          this->SetPosition(m_keys.GetValuesIndex(key));
-        }
-
-        bool SetPosition(PINDEX position)
-        {
-          if (position >= this->m_keys.GetSize()) {
-            this->m_position = P_MAX_INDEX;
-            this->m_internal_first = NULL;
-            this->m_internal_second.SetNULL();
-            return false;
+          if (iter.m_iterator != iter.m_collection->GetDictionaryPtr()->end()) {
+            dict_iter it = m_collection->GetDictionaryPtr()->begin();
+            std::advance(it, std::distance(iter.m_iterator, iter.m_collection->GetDictionaryPtr()->begin()));
+            SetIterator(it);
           }
-
-          this->m_position = position;
-          this->m_internal_first  = &this->m_keys[position];
-          this->m_internal_second = this->m_dictionary->Find(*this->m_internal_first, PSafeReference);
-          return this->m_internal_second == NULL;
         }
 
-        void Next() { while (this->SetPosition(this->m_position+1)) { } }
-        void Prev() { while (this->SetPosition(this->m_position > 0 ? this->m_position+1 : P_MAX_INDEX)) { } }
+        iterator_base(const PSafeDictionary & coll)
+          : m_internal_first(NULL)
+          , m_internal_second(&m_pointer)
+          , m_collection(new PSafeDictionary(coll))
+        {
+          dict_iter it = this->m_collection->GetDictionaryPtr()->begin();
+          while (this->SetIterator(it))
+            ++it;
+        }
+
+        iterator_base(const PSafeDictionary & coll, const key_type & key)
+          : m_internal_first(NULL)
+          , m_internal_second(&m_pointer)
+          , m_collection(new PSafeDictionary(coll))
+        {
+          this->SetIterator(this->m_collection->GetDictionaryPtr()->find(key));
+        }
+
+        bool SetIterator(const dict_iter & it)
+        {
+          this->m_internal_first = NULL;
+          this->m_pointer.SetNULL();
+          this->m_iterator = it;
+          if (it == this->m_collection->GetDictionaryPtr()->end())
+            return false;
+          if (it->second.IsSafelyBeingRemoved())
+            return true;
+          this->m_internal_first = &this->m_iterator->first;
+          this->m_pointer = const_cast<data_type *>(&this->m_iterator->second);
+          return false;
+        }
+
+        void Next()
+        {
+          dict_iter it = this->m_iterator;
+          do ++it; while (this->SetIterator(it));
+        }
 
       public:
-        bool operator==(const iterator_base & it) const { return this->m_position == it.m_position; }
-        bool operator!=(const iterator_base & it) const { return this->m_position != it.m_position; }
+        bool operator==(const iterator_base & it) const { return this->m_iterator == it.m_iterator; }
+        bool operator!=(const iterator_base & it) const { return !operator==(it); }
     };
 
-    class iterator_pair {
-      public:
-        const K & first;
-        value_type second;
-
-      private:
-        iterator_pair() : first(reinterpret_cast<const K &>(0)) { }
-    };
-
+    class iterator : public iterator_base {
     class iterator : public iterator_base
     {
       using iterator_category = std::forward_iterator_tag;
       using value_type = iterator_pair;
 
       protected:
-        iterator(dict_type * dict) : iterator_base(dict) { }
-        iterator(dict_type * dict, const K & key) : iterator_base(dict, key) { }
+        iterator(const PSafeDictionary & owner) : iterator_base(owner) { }
+        iterator(const PSafeDictionary & owner, const key_type & key) : iterator_base(owner, key) { }
 
       public:
         iterator() { }
 
-        iterator operator++()    {                      this->Next(); return *this; }
-        iterator operator--()    {                      this->Prev(); return *this; }
-        iterator operator++(int) { iterator it = *this; this->Next(); return it;    }
-        iterator operator--(int) { iterator it = *this; this->Prev(); return it;    }
+        iterator & operator++()    {                      this->Next(); return *this; }
+        iterator   operator++(int) { iterator it = *this; this->Next(); return it;    }
 
         const iterator_pair * operator->() const { return  reinterpret_cast<const iterator_pair *>(this); }
         const iterator_pair & operator* () const { return *reinterpret_cast<const iterator_pair *>(this); }
 
-      friend class PSafeDictionary<K, D>;
+        friend class PSafeDictionary;
     };
 
-    iterator begin() { return iterator(this); }
-    iterator end()   { return iterator(); }
-    iterator find(const K & key) { return iterator(this, key); }
+    iterator begin()             { return iterator(*this); }
+    iterator end()               { return iterator(); }
+    iterator find(const K & key) { return iterator(*this, key); }
 
 
     class const_iterator : public iterator_base
@@ -1485,31 +1417,32 @@ template <class K, class D>
       using value_type = iterator_pair;
 
       protected:
-        const_iterator(const dict_type * dict) : iterator_base(dict) { }
-        const_iterator(const dict_type * dict, const K & key) : iterator_base(dict, key) { }
+        const_iterator(const PSafeDictionary & owner) : iterator_base(owner) { }
+        const_iterator(const PSafeDictionary & owner, const key_type & key) : iterator_base(owner, key) { }
 
       public:
         const_iterator() { }
-        const_iterator(const typename dict_type::iterator & it) : iterator_base(it) { }
+        const_iterator(const PSafeDictionary::iterator & iter) : iterator_base(iter) { }
 
-        const_iterator operator++()    {                            this->Next(); return *this; }
-        const_iterator operator--()    {                            this->Prev(); return *this; }
-        const_iterator operator++(int) { const_iterator it = *this; this->Next(); return it;    }
-        const_iterator operator--(int) { const_iterator it = *this; this->Prev(); return it;    }
+        const_iterator & operator++()    {                            this->Next(); return *this; }
+        const_iterator   operator++(int) { const_iterator it = *this; this->Next(); return it;    }
 
         const iterator_pair * operator->() const { return  reinterpret_cast<const iterator_pair *>(this); }
         const iterator_pair & operator* () const { return *reinterpret_cast<const iterator_pair *>(this); }
 
-      friend class PSafeDictionary<K, D>;
+        friend class PSafeDictionary;
     };
 
-    const_iterator begin() const { return const_iterator(this); }
-    const_iterator end()   const { return const_iterator(); }
-    const_iterator find(const K & key) const { return const_iterator(this, key); }
+    const_iterator begin()                    const { return const_iterator(*this); }
+    const_iterator end()                      const { return const_iterator(); }
+    const_iterator find(const key_type & key) const { return const_iterator(*this, key); }
 
     void erase(const       iterator & it) { this->RemoveAt(it->first); }
     void erase(const const_iterator & it) { this->RemoveAt(it->first); }
   //@}
+
+  protected:
+    dict_type* GetDictionaryPtr() const { return PAssertNULL(dynamic_cast<dict_type*>(this->m_collection)); }
 };
 
 

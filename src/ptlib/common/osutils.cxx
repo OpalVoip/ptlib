@@ -37,6 +37,7 @@
 #include <ctype.h>
 #include <ptlib/pfactory.h>
 #include <ptlib/id_generator.h>
+#include <ptlib/ipsock.h>
 #include <ptlib/pprocess.h>
 #include <ptlib/svcproc.h>
 #include <ptlib/pluginmgr.h>
@@ -74,11 +75,11 @@ class PExternalThread : public PThread
       PTRACE(5, "Destroyed external thread " << *this);
     }
 
-    virtual void Main()
+    virtual void Main() override
     {
     }
 
-    virtual void Terminate()
+    virtual void Terminate() override
     {
       PTRACE(2, "Cannot terminate external thread " << this << ","
                 " thread-id=" << GetThreadId() << ","
@@ -104,7 +105,7 @@ class PSimpleThread : public PThread
         WaitForTermination();
     }
 
-    void Main();
+    void Main() override;
 
   protected:
     PNotifier callback;
@@ -407,7 +408,7 @@ public:
         PFilePath fn(m_filename);
         log << " to \"" << fn.GetDirectory() << fn.GetTitle() << m_rolloverPattern << fn.GetType();
       }
-      log << '"' << flush;
+      log << "\"\n";
       InternalEnd(log);
     }
   }
@@ -915,7 +916,7 @@ void PTraceInfo::InternalEnd(ostream & paramStream)
     message.Replace("\n", "\\n", true);
   }
 
-  if (message.GetLength() > m_maxLength)
+  if (context->m_level > 0 && message.GetLength() > m_maxLength)
     message.Splice("...", m_maxLength - 4, P_MAX_INDEX);
 
   if (outputJSON)
@@ -1006,6 +1007,20 @@ PTrace::ThrottleBase::ThrottleBase(const ThrottleBase & other)
   , m_repeatCount(0)
   , m_hiddenCount(0)
 {
+}
+
+
+PTrace::ThrottleBase & PTrace::ThrottleBase::operator=(const ThrottleBase & other)
+{
+  m_interval = other.m_interval;
+  m_lowLevel = other.m_lowLevel;
+  m_highLevel = other.m_highLevel;
+  m_maxShown = other.m_maxShown;
+  m_currentLevel = other.m_highLevel;
+  m_nextLog = 0;
+  m_repeatCount = 0;
+  m_hiddenCount = 0;
+  return *this;
 }
 
 
@@ -1122,6 +1137,26 @@ PDirectory::PDirectory(const PDirectory & dir)
   : PFilePathString(dir)
 {
   Construct();
+}
+
+
+bool PDirectory::RemoveTree(const PString & path, bool force)
+{
+  PDirectory dir(path);
+  if (dir.Open()) {
+    do {
+      PFilePath entry = dir + dir.GetEntryName();
+      if (dir.IsSubDir()) {
+        if (!RemoveTree(entry))
+          return false;
+      }
+      else {
+        if (!PFile::Remove(entry, force))
+          return false;
+      }
+    } while (dir.Next());
+  }
+  return dir.Remove();
 }
 
 
@@ -1503,10 +1538,11 @@ void PTimer::Stop(bool wait)
   unsigned retry = 0;
   do {
     /* Take out of timer list first, so when callback is waited for it's
-       completion it cannot then be called again. Note, the bitwise OR is
-       intentional! We don't want McCarthy breaking things. */
+       completion it cannot then be called again. Note, we can't use the
+       || operator! We don't want McCarthy breaking things. */
     list->m_timersMutex.Wait();
-    PAssert((list->m_timers.erase(m_handle) == 1) | !m_running.exchange(false), PLogicError);
+    bool notRunning = !m_running.exchange(false);
+    PAssert(list->m_timers.erase(m_handle) == 1 || notRunning, PLogicError);
     list->m_timersMutex.Signal();
 
     if (wait) {
@@ -2302,7 +2338,7 @@ PString PConfigArgs::CharToString(char letter) const
 ///////////////////////////////////////////////////////////////////////////////
 // PProcess
 
-PProcess * PProcessInstance = NULL;
+static atomic<PProcess *> PProcessInstance(NULL);
 
 
 int PProcess::InternalMain(int argc, char * argv[], void *)
@@ -2316,7 +2352,7 @@ int PProcess::InternalMain(int argc, char * argv[], void *)
   if (device != NULL && device->ApplicationMain())
     return m_terminationValue;
 #endif
-  
+
   Main();
 
   return m_terminationValue;
@@ -2358,11 +2394,17 @@ PProcess::PProcess(const char * manuf, const char * name,
   , m_shuttingDown(false)
   , m_keepingHouse(false)
   , m_houseKeeper(NULL)
+#if P_TIMERS
+  , m_timerList(new PTimer::List())
+#endif
   , m_processID(GetCurrentProcessID())
   , m_previousRunTimeSignalHandlers(SIGRTMAX)
   , m_RunTimeSignalsQueueBuffer(10)
   , m_RunTimeSignalsQueueIn(0)
   , m_RunTimeSignalsQueueOut(0)
+#if PTRACING
+  , m_profileProcessTimer(NULL)
+#endif
 {
   #if PTRACING
   // Do this before PProcessInstance is set to avoid a recursive loop with PTimedMutex
@@ -2422,10 +2464,6 @@ PProcess::PProcess(const char * manuf, const char * name,
 
   PlatformConstruct();
 
-#if P_TIMERS
-  m_timerList = new PTimer::List();
-#endif
-
   if (!suppressStartup)
     Startup();
 
@@ -2465,7 +2503,17 @@ void PProcess::Startup()
 #if PTRACING
   if (PTimedMutex::CtorDtorLogLevel != UINT_MAX)
     s_MutexLeakCheck = new PMutexLeakCheck();
-#endif
+
+  PString profileUpdateLogPeriodStr(getenv("PTLIB_PROFILE_LOG_PERIOD"));
+  if (profileUpdateLogPeriodStr.empty())
+    profileUpdateLogPeriodStr = "60";
+  PTimeInterval profileUpdateLogPeriod(0, profileUpdateLogPeriodStr.AsUnsigned());
+  if (profileUpdateLogPeriod != 0) {
+    m_profileProcessTimer = new PTimer();
+    m_profileProcessTimer->SetNotifier(PCREATE_NOTIFIER(ProfileUpdateLogTimer));
+    m_profileProcessTimer->RunContinuous(profileUpdateLogPeriod);
+  }
+#endif // PTRACING
 }
 
 
@@ -2515,6 +2563,14 @@ PProcess::~PProcess()
   PTRACE(4, "Starting process destruction.");
 
   m_shuttingDown = true;
+
+#if PTRACING
+  if (m_profileProcessTimer) {
+    m_profileProcessTimer->Stop();
+    ProfileUpdateLogTimer(*m_profileProcessTimer, 0);
+    delete m_profileProcessTimer;
+  }
+#endif
 
   RemoveRunTimeSignalHandlers();
 
@@ -2589,7 +2645,7 @@ m_threadMutex.Wait();
 #endif
 
   // Last chance to log anything ...
-  PTRACE(4, PProcessInstance, "Completed process destruction.");
+  PTRACE(4, "Completed process destruction.");
 
   // Can't do any more tracing after this ...
 #if PTRACING
@@ -2597,17 +2653,18 @@ m_threadMutex.Wait();
   PTrace::SetLevel(0);
 #endif
 
-  PProcessInstance = NULL;
+  PProcessInstance.store(NULL);
 }
 
 
 PProcess & PProcess::Current()
 {
-  if (PProcessInstance == NULL) {
+  PProcess * process = PProcessInstance.load();
+  if (process == NULL) {
     PAssertAlways("Catastrophic failure, PProcess::Current() = NULL!!");
     std::abort();
   }
-  return *PProcessInstance;
+  return *process;
 }
 
 
@@ -2828,10 +2885,9 @@ void PProcess::HandleRunTimeSignal(int signal)
 
 const char * PProcess::GetRunTimeSignalName(int signal)
 {
-  for (POrdinalToString::Initialiser const * name = InternalSigNames; name->key != 0; ++name) {
-    if ((int)name->key == signal)
-      return name->value;
-  }
+  auto it = InternalSigNames.find(signal);
+  if (it != InternalSigNames.end())
+    return it->second.c_str();
 
   /* Not strictly thread safe, but should be extremely rare for two signal
      handlers in two differnt threads get an unknown signal at exactly
@@ -2851,7 +2907,7 @@ bool PProcess::OnInterrupt(bool)
 
 bool PProcess::IsInitialised()
 {
-  return PProcessInstance != NULL;
+  return PProcessInstance.load() != NULL;
 }
 
 
@@ -2859,6 +2915,74 @@ PObject::Comparison PProcess::Compare(const PObject & obj) const
 {
   PAssert(PIsDescendant(&obj, PProcess), PInvalidCast);
   return m_productName.Compare(((const PProcess &)obj).m_productName);
+}
+
+
+void PProcess::PrintOn(ostream & strm) const
+{
+  strm << fixed << setprecision(1) << GetName() << " v" << GetVersion(true) << "; ";
+#if PTRACING
+  const_cast<PProcess *>(this)->PrintProfileOn(strm);
+}
+
+
+void PProcess::PrintProfileOn(ostream & strm)
+{
+  PWaitAndSignal lock(m_profileProcessMutex);
+
+  Times processTimes;
+  if (GetProcessTimes(processTimes)) {
+    float percentage = (processTimes - m_profileLastProcessTimes).AsPercentage();
+    m_profileLastProcessTimes = processTimes;
+    strm << "CPU: " << (percentage/PProcess::GetNumProcessors()) << "% (" << percentage << "%); ";
+  }
+
+  MemoryUsage mem;
+  GetMemoryUsage(mem);
+  strm << "Memory: virt=" << PString(PString::ScaleSI, mem.m_virtual, 4) << "B,"
+                 " res=" << PString(PString::ScaleSI, mem.m_resident, 4) << 'B';
+  if (mem.m_max > 0)
+    strm << ", max=" << PString(PString::ScaleSI, mem.m_max, 4) << 'B';
+  if (mem.m_current > 0)
+    strm << ", current=" << PString(PString::ScaleSI, mem.m_current, 4) << 'B';
+  strm << "; ";
+
+  std::map<std::string, unsigned> highWaterMarks = PProfiling::HighWaterMarkData::Get();
+  strm << "High water marks:";
+  char sep = ' ';
+  for (std::map<std::string, unsigned>::iterator it = highWaterMarks.begin(); it != highWaterMarks.end(); ++it) {
+    strm << sep << it->first << '=' << it->second;
+    sep = ',';
+  }
+  strm << "; ";
+
+  set<Times> threads;
+  GetTimes(threads);
+  for (set<Times>::iterator it = m_profileLastThreadTimes.begin(); it != m_profileLastThreadTimes.end(); ) {
+    if (threads.find(*it) != threads.end())
+      ++it;
+    else
+      m_profileLastThreadTimes.erase(it++);
+  }
+
+  std::map<float, PString> topThreads;
+  for (set<Times>::iterator it = threads.begin(); it != threads.end(); ++it) {
+    float percentage;
+    set<Times>::iterator prev = m_profileLastThreadTimes.find(*it);
+    if (prev == m_profileLastThreadTimes.end())
+      percentage = it->AsPercentage();
+    else {
+      percentage = (*it - *prev).AsPercentage();
+      m_profileLastThreadTimes.erase(prev);
+    }
+    if (percentage > 0.05)
+      topThreads[percentage] = it->m_name;
+    m_profileLastThreadTimes.insert(*it);
+  }
+  strm << "Threads: " << threads.size();
+  for (std::map<float, PString>::reverse_iterator it = topThreads.rbegin(); it != topThreads.rend(); ++it)
+    strm << ',' << it->second << '=' << it->first << '%';
+#endif // PTRACING
 }
 
 
@@ -3153,12 +3277,10 @@ void PThread::WaitForTermination() const
 }
 
 
-bool PThread::WaitForTermination(const PTimeInterval& maxWait) const
-{
-  if (GetThreadId() == GetCurrentThreadId()) {
-    PTRACE(3, "PTLib", "WaitForTermination short circuited");
-    return true;
-  }
+  PWaitAndSignal mutex(process.m_threadMutex);
+  process.m_externalThreads.push_back(thread);
+  return thread.get();
+}
 
   switch (m_type) {
     case Type::IsProcess:
@@ -3636,7 +3758,7 @@ void PMutexExcessiveLockInfo::ReleasedLock(const PObject & mutex,
                                            bool,
                                            const PDebugLocation & PTRACE_PARAM(location))
 {
-  if (m_excessiveLockActive) {
+  if (m_excessiveLockActive.exchange(false)) {
 #if PTRACING
     PTime releaseTime;
     PNanoSeconds heldDuration(PProfiling::CyclesToNanoseconds(PProfiling::GetCycles() - startHeldSamplePoint));
@@ -3663,7 +3785,6 @@ void PMutexExcessiveLockInfo::ReleasedLock(const PObject & mutex,
 #else
     PAssertAlways(PSTRSTRM("Released phantom deadlock in mutex " << mutex));
 #endif
-    m_excessiveLockActive = false;
   }
 }
 
@@ -4118,10 +4239,47 @@ PReadWriteMutex::~PReadWriteMutex()
      done by the user of the class too, but it is easier to fix here than
      there so practicality wins out!
    */
-  while (!m_nestedThreads.empty())
+  for (;;) {
+    m_nestingMutex.Wait();
+    bool empty = m_nestedThreads.empty();
+    m_nestingMutex.Signal();
+    if (empty)
+      break;
     PThread::Sleep(10);
+  }
 
   PMUTEX_DESTROYED();
+}
+
+
+PReadWriteMutex::Nest::Nest()
+  : m_readerCount(0)
+  , m_writerCount(0)
+  , m_waiting(false)
+  , m_startHeldCycle(0)
+  , m_uniqueId(PThread::GetCurrentUniqueIdentifier())
+{
+}
+
+
+PReadWriteMutex::Nest::Nest(const Nest & other)
+  : m_readerCount(other.m_readerCount.load())
+  , m_writerCount(other.m_writerCount.load())
+  , m_waiting(other.m_waiting.load())
+  , m_startHeldCycle(other.m_startHeldCycle.load())
+  , m_uniqueId(other.m_uniqueId.load())
+{
+}
+
+
+PReadWriteMutex::Nest & PReadWriteMutex::Nest::operator=(const Nest & other)
+{
+  m_readerCount = other.m_readerCount.load();
+  m_writerCount = other.m_writerCount.load();
+  m_waiting = other.m_waiting.load();
+  m_startHeldCycle = other.m_startHeldCycle.load();
+  m_uniqueId = other.m_uniqueId.load();
+  return *this;
 }
 
 
@@ -4847,9 +5005,9 @@ bool PFile::RotateInfo::Rotate(PFile & file, bool force, const PTime & now)
       while (!rotatedFiles.empty() && dir.GetVolumeSpace(total, free, cluster)) {
         int64_t limit = m_freeDisk > 0 ? m_freeDisk : (total * -m_freeDisk / 100);
         PTRACE(4, &file, "Disk:"
-               " total=" << PString(PString::ScaleSI, total, 4) << "b,"
-               " free="  << PString(PString::ScaleSI, free,  4) << "b,"
-               " limit=" << PString(PString::ScaleSI, limit, 4) << 'b');
+               " total=" << PScaleSI(total, 4, "B") << ","
+               " free="  << PScaleSI(free,  4, "B") << ","
+               " limit=" << PScaleSI(limit, 4, "B"));
         if (free > limit)
           break;
         DeleteOne(*this, rotatedFiles, "low disk space");

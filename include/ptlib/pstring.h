@@ -69,7 +69,7 @@ PString pvsprintf(
 
 
 /// Wide character array, based on standard wchar_t
-typedef PBaseArray<wchar_t> PWCharArray;
+typedef std::vector<wchar_t> PWCharArray;
 
 
 /**The character string class. It supports a wealth of additional functions
@@ -213,6 +213,13 @@ public:
          */
     PString(
       char ch    ///< Single character to initialise string.
+    );
+
+    /**Create a string from the boolean type.
+       This will create a string of either "true" or "false".
+      */
+    PString(
+      bool b   ///< Boolean to convert
     );
 
     /**Create a string from the integer type.
@@ -466,7 +473,7 @@ public:
        array of characters is duplicated as well and the new object is a
        unique reference to that data.
      */
-    virtual PObject * Clone() const;
+    virtual PObject * Clone() const override;
 
     /**Get the relative rank of the two strings. The system standard function,
        eg strcmp(), is used.
@@ -479,13 +486,13 @@ public:
      */
     virtual Comparison Compare(
       const PObject & obj   ///< Other PString to compare against.
-    ) const;
+    ) const override;
 
     /**Output the string to the specified stream.
      */
     virtual void PrintOn(
       ostream & strm  ///< I/O stream to output to.
-    ) const;
+    ) const override;
 
     /**Input the string from the specified stream. This will read all
        characters until a end of line is reached. The end of line itself is
@@ -494,7 +501,7 @@ public:
      */
     virtual void ReadFrom(
       istream & strm  ///< I/O stream to input from.
-    );
+    ) override;
 
     /**Calculate a hash value for use in sets and dictionaries.
 
@@ -509,7 +516,7 @@ public:
        @return
        hash value for string.
      */
-    virtual PINDEX HashFunction() const;
+    virtual PINDEX HashFunction() const override;
   //@}
 
   /**@name Size/Length functions */
@@ -1775,6 +1782,20 @@ public:
       PINDEX & offset
     ) const;
 
+    /**Determine if the string is a synonym for "true".
+       Will indicate true if string is "true", "t", "on", "yes", "y" or
+       a non-zero integer.
+      */
+    bool IsTrue() const;
+    static bool IsTrue(const char * str);
+
+    /**Determine if the string is a synonym for "false".
+       Will indicate true if string is "false", "f", "off", "no" "n" or
+       is a valid integer for zero, e.g. "0000".
+      */
+    bool IsFalse() const;
+    static bool IsFalse(const char * str);
+
     /**Get a pointer to the buffer and set the length of the string.
        Note the caller may require the actual length to be less than the len
        parameter, in which case the MakeMinimumSize() function should be
@@ -1848,26 +1869,20 @@ inline ostream & operator<<(ostream & stream, const PString & string)
 }
 
 
-class PWideString : public PWCharArray {
-  PCLASSINFO(PWideString, PWCharArray);
-
+class PWideString : public PObject, std::wstring {
+    PCLASSINFO(PWideString, PObject);
   public:
-  typedef const wchar_t * Initialiser;
-
     PWideString() { }
-    PWideString(const PWCharArray & arr) : PWCharArray(arr) { }
-    PWideString(const PString     & str) : PWCharArray(str.AsWide()) { }
+    PWideString(const PWCharArray & arr) : std::wstring(arr.data()) { }
+    PWideString(const PString     & str) : std::wstring(str.AsWide().data()) { }
     PWideString(const char        * str);
-    PWideString & operator=(const PWideString & str) { PWCharArray::operator=(str); return *this; }
-    PWideString & operator=(const PString     & str) { PWCharArray::operator=(str.AsWide()); return *this; }
+    PWideString & operator=(const PWideString & str) { std::wstring::operator=(str); return *this; }
+    PWideString & operator=(const PString     & str) { std::wstring::operator=(str.AsWide().data()); return *this; }
     PWideString & operator=(const std::string & str);
     PWideString & operator=(const char        * str);
-    friend inline ostream & operator<<(ostream & stream, const PWideString & string) { return stream << PString(string); }
+    friend inline ostream & operator<<(ostream & stream, const PWideString & string) { return stream << PString(string.c_str()); }
 
-    PINDEX GetLength() const { return GetSize() - 1; }
-
-  protected:
-    PWideString(PContainerReference & reference_) : PWCharArray(reference_) { }
+    PINDEX GetLength() const { return length(); }
 };
 
 #ifdef UNICODE
@@ -1973,7 +1988,7 @@ class PCaselessString : public PString
        array of characters is duplicated as well and the new object is a
        unique reference to that data.
      */
-    virtual PObject * Clone() const;
+    virtual PObject * Clone() const override;
 
   protected:
   // Overrides from class PString
@@ -1991,10 +2006,17 @@ typedef const PCaselessString PConstCaselessString;
 
 #ifdef _WIN32
 // Now have PConstString can have these definitions
-__inline PWideString::PWideString(const char * str) : PWCharArray(PConstString(str).AsWide()) { }
-__inline PWideString & PWideString::operator=(const std::string & str) { PWCharArray::operator=(PConstString(str.c_str()).AsWide()); return *this; }
-__inline PWideString & PWideString::operator=(const char        * str) { PWCharArray::operator=(PConstString(str).AsWide()); return *this; }
+__inline PWideString::PWideString(const char * str) : std::wstring(PConstString(str).AsWide().data()) { }
+__inline PWideString & PWideString::operator=(const std::string & str) { std::wstring::operator=(PConstString(str.c_str()).AsWide().data()); return *this; }
+__inline PWideString & PWideString::operator=(const char        * str) { std::wstring::operator=(PConstString(str).AsWide().data()); return *this; }
 #endif
+
+
+/// Convert a numberic value to a string using scientific notation.
+template <typename T> inline PString PScaleSI(T value, unsigned significantFigures = 3, const char * units = NULL)
+{
+  return PString(PString::ScaleSI, value, significantFigures) + units;
+}
 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -2005,7 +2027,7 @@ __inline PWideString & PWideString::operator=(const char        * str) { PWCharA
    All of the standard stream I/O operators, manipulators etc will operate on
    the PStringStream class.
  */
-class PStringStream : public PObject, public std::stringstream
+class PStringStream : public PObject, PNonCopyable, public std::stringstream
 {
   PCLASSINFO(PStringStream, PObject);
 
@@ -2083,12 +2105,6 @@ class PStringArray : public PArray<PString>
 {
     typedef PArray<PString> BaseClass;
     PCLASSINFO(PStringArray, BaseClass);
-
-  protected:
-    inline PStringArray(int dummy, const PStringArray * c)
-      : BaseClass(dummy, c)
-    {
-    }
 
   public:
   /**@name Construction */
@@ -2183,11 +2199,11 @@ class PStringArray : public PArray<PString>
      */
     virtual void ReadFrom(
       istream &strm   // Stream to read the objects contents from.
-    );
+    ) override;
 
-    virtual PObject * Clone() const
+    virtual PObject * Clone() const override
     {
-      return new PStringArray(0, this);
+      return this->CloneContents(PNEW PStringArray());
     }
   //@}
 
@@ -2241,8 +2257,8 @@ class PStringArray : public PArray<PString>
        @return
        A new PStringArray with the additional elements(s)
      */
-    PStringArray operator + (const PStringArray & array);
-    PStringArray operator + (const PString & str);
+    PStringArray operator+(const PStringArray & array) const;
+    PStringArray operator+(const PString & str) const;
 
     /**Create an array of C strings.
        If storage is NULL then this returns a single pointer that must be
@@ -2277,10 +2293,6 @@ class PStringList : public PList<PString>
 {
     typedef PList<PString> BaseClass;
     PCLASSINFO(PStringList, BaseClass);
-
-  protected:
-    PStringList(int dummy, const PStringList * c)
-      : BaseClass(dummy, c) { }
 
   public:
   /**@name Construction */
@@ -2337,11 +2349,11 @@ class PStringList : public PList<PString>
      */
     virtual void ReadFrom(
       istream &strm   // Stream to read the objects contents from.
-    );
+    ) override;
 
-    virtual PObject * Clone() const
+    virtual PObject * Clone() const override
     {
-      return new PStringList(0, this);
+      return this->CloneContents(new PStringList());
     }
   //@}
 
@@ -2419,10 +2431,6 @@ class PSortedStringList : public PSortedList<PString>
     typedef PSortedList<PString> BaseClass;
     PCLASSINFO(PSortedStringList, BaseClass);
 
-  protected:
-    PSortedStringList(int dummy, const PSortedStringList * c)
-      : BaseClass(dummy, c) { }
-
   public:
   /**@name Construction */
   //@{
@@ -2478,7 +2486,7 @@ class PSortedStringList : public PSortedList<PString>
      */
     virtual void ReadFrom(
       istream &strm   // Stream to read the objects contents from.
-    );
+    ) override;
   //@}
 
   /**@name Operations */
@@ -2505,14 +2513,6 @@ class PSortedStringList : public PSortedList<PString>
       const PString & str   ///< String value to search for.
     ) const;
   //@}
-
-  protected:
-    PINDEX InternalStringSelect(
-      const char * str,
-      PINDEX len,
-      PSortedListElement * thisElement,
-      PSortedListElement * & lastElement
-    ) const;
 };
 
 
@@ -2534,17 +2534,13 @@ class PStringSet : public PSet<PString>
     typedef PSet<PString> BaseClass;
     PCLASSINFO(PStringSet, BaseClass);
 
-  protected:
-    PStringSet(int dummy, const PStringSet * c)
-      : BaseClass(dummy, c) { }
-
   public:
   /**@name Construction */
   //@{
     /**Create a PStringSet.
      */
-    PStringSet(bool initialDeleteObjects = true)
-      : BaseClass(initialDeleteObjects) { }
+    PStringSet()
+      : BaseClass() { }
 
     PStringSet(const BaseClass & other)
       : BaseClass(other) { }
@@ -2589,11 +2585,11 @@ class PStringSet : public PSet<PString>
      */
     virtual void ReadFrom(
       istream &strm   ///< Stream to read the objects contents from.
-    );
+    ) override;
 
-    virtual PObject * Clone() const
+    virtual PObject * Clone() const override
     {
-      return PNEW PStringSet(0, this);
+      return this->CloneContents(new PStringSet());
     }
   //@}
 
@@ -2647,8 +2643,10 @@ template <class K> class PStringDictionary : public PDictionary<K, PString>
        the array are also cloned, so this will make a complete copy of the
        dictionary.
      */
-    virtual PObject * Clone() const
-      { return PNEW PStringDictionary(0, this); }
+    virtual PObject * Clone() const override
+    {
+      return this->CloneContents(PNEW PStringDictionary());
+    }
   //@}
 
   /**@name New functions for class */
@@ -2673,8 +2671,7 @@ template <class K> class PStringDictionary : public PDictionary<K, PString>
     }
 
     /**Add a new object to the collection. If the objects value is already in
-       the dictionary then the object is overrides the previous value. If the
-       AllowDeleteObjects option is set then the old object is also deleted.
+       the dictionary then the object is overrides the previous value.
 
        The object is placed in the an ordinal position dependent on the keys
        hash function. Subsequent searches use the has function to speed access
@@ -2686,123 +2683,7 @@ template <class K> class PStringDictionary : public PDictionary<K, PString>
     virtual bool SetAt(
       const K & key,       // Key for position in dictionary to add object.
       const PString & str  // New string value to put into the dictionary.
-    ) { return this->AbstractSetAt(key, PNEW PString(str)) != NULL; }
-  //@}
-
-  protected:
-    PStringDictionary(int dummy, const PStringDictionary * c)
-      : BaseClass(dummy, c) { }
-};
-
-
-/**This is a dictionary collection class of <code>PString</code> objects, keyed by an
-   ordinal value. It has all the usual functions for a collection, with the
-   object types set to <code>PString</code> pointers. The class could be considered
-   like a sparse array of strings.
-
-   In addition some addition functions are added that take a const
-   <code>PString</code> reference instead of a pointer as most standard collection
-   functions do. This is more convenient for when string expressions are used
-   as parameters to function in the collection.
- */
-class POrdinalToString : public PStringDictionary<POrdinalKey>
-{
-    PCLASSINFO(POrdinalToString, PStringDictionary<POrdinalKey>);
-  public:
-  /**@name Construction */
-  //@{
-    POrdinalToString()
-    { }
-
-    /// Structure for static array initialiser for class.
-    struct Initialiser {
-      /// Ordinal key for string.
-      PINDEX key;
-      /// String value for ordinal.
-      const char * value;
-    };
-    /** Initialise the ordinal dictionary of strings from the static array.
-     */
-    POrdinalToString(
-      PINDEX count,                ///< Count of strings in initialiser array
-      const Initialiser * init     ///< Array of Initialiser structures
-    );
-  //@}
-
-  /**@name Overrides from class PObject */
-  //@{
-    virtual PObject * Clone() const 
-      { return PNEW POrdinalToString(0, this); }
-
-    /** Input the contents of the object from the stream. This is
-       primarily used by the standard <code>operator>></code> function.
-
-       The default behaviour reads '\\n' separated strings until
-       <code>!strm.good()</code>.
-     */
-    virtual void ReadFrom(
-      istream &strm   // Stream to read the objects contents from.
-    );
-  //@}
-
-  protected:
-    POrdinalToString(int dummy, const POrdinalToString * c)
-      : PStringDictionary<POrdinalKey>(dummy, c) { }
-};
-
-/**This is a dictionary collection class of ordinals keyed by
-   <code>PString</code> objects. It has all the usual functions for a collection,
-   with the object types set to <code>POrdinalKey</code> pointers.
-
-   In addition some addition functions are added that take a const
-   <code>POrdinalKey</code> reference or a simple <code>PINDEX</code> instead of a pointer
-   as most standard collection functions do. This is more convenient for when
-   integer expressions are used as parameters to function in the collection.
-
-   See the PAbstractDicionary and POrdinalDictionary classes for more information.
- */
-class PStringToOrdinal : public POrdinalDictionary<PString>
-{
-    PCLASSINFO(PStringToOrdinal, PStringDictionary<PString>);
-  public:
-  /**@name Construction */
-  //@{
-    PStringToOrdinal() {}
-
-    /// Structure for static array initialiser for class.
-    struct Initialiser {
-      /// String key for ordinal.
-      const char * key;
-      /// Ordinal value for string.
-      PINDEX value;
-    };
-    /** Initialise the string dictionary of ordinals from the static array.
-     */
-    PStringToOrdinal(
-      PINDEX count,                ///< Count of strings in initialiser array
-      const Initialiser * init,    ///< Array of Initialiser structures
-      bool caseless = false        ///< New keys are to be PCaselessStrings
-    );
-    /** Initialise the string dictionary of ordinals from the static array.
-    */
-    PStringToOrdinal(
-      PINDEX count,                ///< Count of strings in initialiser array
-      const POrdinalToString::Initialiser * init,    ///< Array of Initialiser structures
-      bool caseless = false        ///< New keys are to be PCaselessStrings
-    );
-    //@}
-
-  /**@name Overrides from class PObject */
-  //@{
-    /** Input the contents of the object from the stream. This is
-       primarily used by the standard <code>operator>></code> function.
-
-       The default behaviour reads '\\n' separated strings until
-       <code>!strm.good()</code>.
-     */
-    virtual void ReadFrom(
-      istream &strm   // Stream to read the objects contents from.
-    );
+    ) { return this->BaseClass::SetAt(key, PNEW PString(str)) != NULL; }
   //@}
 };
 
@@ -2851,7 +2732,9 @@ class PStringToString : public PStringDictionary<PString>
   /**@name Overrides from class PObject */
   //@{
     virtual PObject * Clone() const 
-      { return PNEW PStringToString(0, this); }
+    {
+      return this->CloneContents(PNEW PStringToString());
+    }
 
     /** Input the contents of the object from the stream. This is
        primarily used by the standard <code>operator>></code> function.
@@ -2864,7 +2747,7 @@ class PStringToString : public PStringDictionary<PString>
      */
     virtual void ReadFrom(
       istream &strm   // Stream to read the objects contents from.
-    );
+    ) override;
   //@}
 
   /**@name New functions for class */
@@ -2910,10 +2793,6 @@ class PStringToString : public PStringDictionary<PString>
       const PString & str  ///< String to read dictionary from
     );
   //@}
-
-  protected:
-    PStringToString(int dummy, const PStringToString * c)
-      : PStringDictionary<PString>(dummy, c) { }
 };
 
 
@@ -2923,41 +2802,42 @@ class PStringToString : public PStringDictionary<PString>
     This assures that the keys are caseless and has some access functions for
     bool/int types for ease of access with default values.
   */
-class PStringOptions : public PStringToString 
+class PStringOptions : public PStringDictionary<PCaselessString>
 {
+    typedef PStringDictionary<PCaselessString> BaseClass;
+    PCLASSINFO(PStringOptions, BaseClass);
   public:
     PStringOptions() { }
-    explicit PStringOptions(const PString & str) : PStringToString(str) { }
-    PStringOptions(const PStringToString & other) : PStringToString(other) { }
-    PStringOptions & operator=(const PStringToString & other) { PStringToString::operator=(other); return *this; }
+    explicit PStringOptions(const PString & str) : PStringOptions(PStringToString(str)) { }
+    PStringOptions(const BaseClass & other) : BaseClass(other) { }
+    PStringOptions & operator=(const BaseClass & other) { BaseClass::operator=(other); return *this; }
+
+    PStringOptions(const PStringToString & other)
+    {
+      for (const auto & it : other)
+        this->SetAt(it.first, it.second);
+    }
 
     /// Determine if the specified key is present.
-    bool Contains(const char *              key   ) const { PConstCaselessString k(key); return PStringToString::Contains(k); }
-    bool Contains(const std::string     &   key   ) const { return PStringToString::Contains(PCaselessString(key)); }
-    bool Contains(const PString         &   key   ) const { return PStringToString::Contains(PCaselessString(key)); }
-    bool Contains(const PCaselessString &   key   ) const { return PStringToString::Contains(key); }
-    bool Contains(const PCaselessString & (*key)()) const { return PStringToString::Contains(key()); }
-
-    // Overide default PStringToString::SetAt() to make sure the key is caseless
-    PString * GetAt(const char *              key   ) const { PConstCaselessString k(key); return PStringToString::GetAt(k); }
-    PString * GetAt(const std::string     &   key   ) const { return PStringToString::GetAt(PCaselessString(key)); }
-    PString * GetAt(const PString         &   key   ) const { return PStringToString::GetAt(PCaselessString(key)); }
-    PString * GetAt(const PCaselessString &   key   ) const { return PStringToString::GetAt(key); }
-    PString * GetAt(const PCaselessString & (*key)()) const { return PStringToString::GetAt(key()); }
+    bool Contains(const char *              key   ) const { PConstCaselessString k(key); return BaseClass::Contains(k); }
+    bool Contains(const std::string     &   key   ) const { return BaseClass::Contains(PCaselessString(key)); }
+    bool Contains(const PString         &   key   ) const { return BaseClass::Contains(PCaselessString(key)); }
+    bool Contains(const PCaselessString &   key   ) const { return BaseClass::Contains(key); }
+    bool Contains(const PCaselessString & (*key)()) const { return BaseClass::Contains(key()); }
 
     // Overide default PStringToString::SetAt() to make sure the key is caseless
     bool SetAt(const char *              key,    const PString & data) { PConstCaselessString k(key); return SetAt(k, data); }
     bool SetAt(const std::string     &   key,    const PString & data) { return SetAt(PCaselessString(key), data); }
     bool SetAt(const PString         &   key,    const PString & data) { return SetAt(PCaselessString(key), data); }
-    bool SetAt(const PCaselessString &   key,    const PString & data) { MakeUnique(); return PStringToString::SetAt(key, data); }
+    bool SetAt(const PCaselessString &   key,    const PString & data) { return BaseClass::SetAt(key, data); }
     bool SetAt(const PCaselessString & (*key)(), const PString & data) { return SetAt(key(), data); }
 
     // Overide default PStringToString::RemoveAt() to make sure the key is caseless
-    PString * RemoveAt(const char *              key)    { PConstCaselessString k(key); return RemoveAt(k); }
-    PString * RemoveAt(const std::string     &   key)    { return RemoveAt(PCaselessString(key)); }
-    PString * RemoveAt(const PString         &   key)    { return RemoveAt(PCaselessString(key)); }
-    PString * RemoveAt(const PCaselessString &   key)    { MakeUnique(); return PStringToString::RemoveAt(key); }
-    PString * RemoveAt(const PCaselessString & (*key)()) { return RemoveAt(key()); }
+    void RemoveAt(const char *              key)    { PConstCaselessString k(key); return RemoveAt(k); }
+    void RemoveAt(const std::string     &   key)    { return RemoveAt(PCaselessString(key)); }
+    void RemoveAt(const PString         &   key)    { return RemoveAt(PCaselessString(key)); }
+    void RemoveAt(const PCaselessString &   key)    { return BaseClass::RemoveAt(key); }
+    void RemoveAt(const PCaselessString & (*key)()) { return RemoveAt(key()); }
 
     /// Get an option value.
     PString GetString(const char *              key,    const char * dflt = NULL) const { PConstCaselessString k(key); return GetString(k, dflt); }
@@ -3176,7 +3056,7 @@ class PRegularExpression : public PObject, public std::regex
      */
     virtual void PrintOn(
       ostream & strm  ///< I/O stream to output to.
-    ) const;
+    ) const override;
   //@}
 
   /**@name Status functions */

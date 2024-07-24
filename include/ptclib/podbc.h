@@ -139,7 +139,7 @@ class PODBC  : public PObject
 
     /** Class for Field Data
     */
-    class Field : public PVarType
+    class Field : public PVarType, PNonCopyable
     {
         PCLASSINFO(Field, PObject);
       public:
@@ -184,9 +184,9 @@ class PODBC  : public PObject
         Field(Row & row, PINDEX column);
 
         // Call backs from PVarType
-        virtual void OnGetValue();
-        virtual void OnValueChanged();
-        virtual void InternalCopy(const PVarType & other);
+        virtual void OnGetValue() override;
+        virtual void OnValueChanged() override;
+        virtual void InternalCopy(const PVarType & other) override;
 
         Row   & m_row;       /// Back Reference to the Row
         PINDEX  m_column;    /// Column number
@@ -201,9 +201,6 @@ class PODBC  : public PObject
 
         FieldExtra * m_extra; // Some types are not compatible with PVarType
 
-      private:
-        Field(const Field & other) : PVarType(), m_row(other.m_row) { }
-
       friend class Row;
       friend class RecordSet;
     };
@@ -216,7 +213,7 @@ class PODBC  : public PObject
     on a need to basis and not cached except
     to create a new row.
     */
-    class Row : public PObject
+    class Row : public PObject, PNonCopyable
     {
         PCLASSINFO(Row, PObject);
       public:
@@ -346,10 +343,6 @@ class PODBC  : public PObject
         RowIndex      m_rowIndex;    /// Current row number, starting at 1, 0 == new
         PArray<Field> m_fields;    /// PODBC::Field Array Cache (Used for New Row)
 
-      private:
-        Row(const Row & other) : PObject(other), m_recordSet(other.m_recordSet) { }
-        void operator=(const Row &) { }
-
       friend class Field;
       friend class RecordSet;
     };
@@ -359,7 +352,7 @@ class PODBC  : public PObject
     /** PODBC::RecordSet
     This is the main Class to access Data returned by a Select Query.
     */
-    class RecordSet : public PObject
+    class RecordSet : public PObject, PNonCopyable
     {
         PCLASSINFO(RecordSet, PObject);
       public:
@@ -477,10 +470,6 @@ class PODBC  : public PObject
         Statement * m_statement; // ODBC Fetched Statement Info
         RowIndex    m_totalRows;
         Row         m_cursor;
-
-      private:
-        RecordSet(const RecordSet & other);
-        void operator=(const RecordSet &) { }
 
       friend class Field;
       friend class Row;

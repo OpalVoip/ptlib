@@ -1014,7 +1014,12 @@ bool PSoundChannelWin32::Close()
 
 bool PSoundChannelWin32::SetBuffers(PINDEX size, PINDEX count)
 {
-  if (size_t(count) == buffers.size() && size_t(size) == buffers[0].size())
+  if (size < 2 || size > 65536) {
+    PTRACE(4, GetDirectionText() << " SetBuffers: invalid buffer size " << size << " bytes");
+    return SetErrorValues(BadParameter, E_INVALIDARG);
+  }
+
+  if (count == buffers.GetSize() && size == buffers[0].GetSize())
       return true;
 
   Abort();

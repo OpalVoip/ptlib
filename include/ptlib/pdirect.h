@@ -353,6 +353,16 @@ class PDirectory : public PFilePathString
       const PString & path   ///< Directory file path.
     );
 
+    /**Delete the specified directory and all it's files.
+
+       @return
+       true if directory was deleted.
+     */
+    static bool RemoveTree(
+      const PString & path,   ///< Directory file path.
+      bool force = false      ///< Force delete even if read only
+    );
+
     /// Get the OS temporary directory
     static PDirectory GetTemporary();
   //@}

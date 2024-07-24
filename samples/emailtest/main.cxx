@@ -36,7 +36,7 @@ class Test : public PProcess
 
   public:
     Test();
-    virtual void Main();
+    virtual void Main() override;
 };
 
 PCREATE_PROCESS(Test);

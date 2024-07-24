@@ -272,7 +272,7 @@ static PString GUID2Format(GUID guid)
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
-class MediaTypePtr
+class MediaTypePtr : PNonCopyable
 {
     AM_MEDIA_TYPE * pointer;
   public:
@@ -310,10 +310,6 @@ class MediaTypePtr
     AM_MEDIA_TYPE & operator*() const { return *pointer; }
     AM_MEDIA_TYPE** operator&()       { return &pointer; }
     AM_MEDIA_TYPE* operator->() const { return  pointer; }
-
-  private:
-    MediaTypePtr(const MediaTypePtr &) { }
-    void operator=(const MediaTypePtr &) { }
 };
 
 
@@ -570,7 +566,7 @@ bool PVideoInputDevice_DirectShow::Open(const PString & devName,
 
 bool PVideoInputDevice_DirectShow::IsOpen()
 {
-  return m_pGraphBuilder != NULL;
+  return !m_deviceName.empty();
 }
 
 
@@ -581,8 +577,11 @@ bool PVideoInputDevice_DirectShow::Close()
 
   PTRACE(4, "Closing " << this);
 
+  m_deviceName.MakeEmpty();
+
   // Stop Camera Graph
-  Stop();
+  m_pMediaControl->Pause();
+  m_pSampleGrabberCB->Stop();
 
   m_lastFrameMutex.Wait();
 
@@ -646,6 +645,9 @@ bool PVideoInputDevice_DirectShow::Stop()
 
 bool PVideoInputDevice_DirectShow::IsCapturing()
 {
+  if (!IsOpen())
+    return false;
+
   OAFilterState state;
   PCOM_RETURN_ON_FAILED(m_pMediaControl->GetState,(0, &state));
   return state != State_Stopped;

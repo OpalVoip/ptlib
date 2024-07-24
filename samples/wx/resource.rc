@@ -24,7 +24,7 @@
 #include <winver.h>
 #include "version.h"
 
-AppIcon  ICON "app.ico"
+AppIcon  ICON "wxSample.ico"
 
 #include "wx/msw/wx.rc"
 

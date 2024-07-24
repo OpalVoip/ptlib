@@ -56,15 +56,15 @@ class PSoundChannel_WAVFile : public PSoundChannelEmulation
 
     static PStringArray GetDeviceNames(PSoundChannel::Directions = Player);
 
-    virtual bool Open(const Params & params);
-    virtual PString GetName() const;
-    virtual bool Close();
-    virtual bool IsOpen() const;
+    virtual bool Open(const Params & params) override;
+    virtual PString GetName() const override;
+    virtual bool Close() override;
+    virtual bool IsOpen() const override;
 
   protected:
-    virtual bool RawWrite(const void * data, PINDEX size);
-    virtual bool RawRead(void * data, PINDEX size);
-    virtual bool Rewind();
+    virtual bool RawWrite(const void * data, PINDEX size) override;
+    virtual bool RawRead(void * data, PINDEX size) override;
+    virtual bool Rewind() override;
 
     PWAVFile m_WAVFile;
 };

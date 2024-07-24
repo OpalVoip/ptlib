@@ -136,19 +136,19 @@ endif
 #
 $(OBJDIR)/%.o : %.cxx 
 	@if [ ! -d $(dir $@) ] ; then $(MKDIR_P) $(dir $@) ; fi
-	$(Q_CXX)$(CXX) -o $@ $(strip $(CPPFLAGS) $(CPLUSPLUS_STD) $(CXXFLAGS)) -c $<
+	$(Q_CXX)$(CXX) -o $@ $(strip $(CPPFLAGS) $(CXXFLAGS) $(CPLUSPLUS_STD)) -c $<
 
 $(OBJDIR)/%.o : %.cpp 
 	@if [ ! -d $(dir $@) ] ; then $(MKDIR_P) $(dir $@) ; fi
-	$(Q_CXX)$(CXX) -o $@ $(strip $(CPPFLAGS) $(CPLUSPLUS_STD) $(CXXFLAGS)) -c $<
+	$(Q_CXX)$(CXX) -o $@ $(strip $(CPPFLAGS) $(CXXFLAGS) $(CPLUSPLUS_STD)) -c $<
 
 $(OBJDIR)/%.o : %.cc 
 	@if [ ! -d $(dir $@) ] ; then $(MKDIR_P) $(dir $@) ; fi
-	$(Q_CXX)$(CXX) -o $@ $(strip $(CPPFLAGS) $(CPLUSPLUS_STD) $(CXXFLAGS)) -c $<
+	$(Q_CXX)$(CXX) -o $@ $(strip $(CPPFLAGS) $(CXXFLAGS) $(CPLUSPLUS_STD)) -c $<
 
 $(OBJDIR)/%.o : %.mm 
 	@if [ ! -d $(dir $@) ] ; then $(MKDIR_P) $(dir $@) ; fi
-	$(Q_CC)$(CXX) -o $@ $(strip $(CPPFLAGS) $(CPLUSPLUS_STD) $(CXXFLAGS)) -c $<
+	$(Q_CC)$(CXX) -o $@ $(strip $(CPPFLAGS) $(CXXFLAGS) $(CPLUSPLUS_STD)) -c $<
 
 $(OBJDIR)/%.o : %.c 
 	@if [ ! -d $(dir $@) ] ; then $(MKDIR_P) $(dir $@) ; fi
@@ -244,7 +244,7 @@ ifdef PROG
 
   $(TARGET) : $(OBJS) $(TARGET_LIBS)
 	@if [ ! -d $(dir $@) ] ; then $(MKDIR_P) $(dir $@) ; fi
-	$(Q_LD)$(LD) -o $@ $(strip $(LDFLAGS) $(OBJS) $(LIBS))
+	$(Q_LD)$(LD) -o $@ $(strip $(LDFLAGS) $(OBJS) $(sort $(LIBS)))
 	$(BUILD_DEBUG_INFO)
 
   bundle: $(BUNDLE_DIR)
@@ -308,7 +308,7 @@ else # PROG -  so must be a library
 
     $(SHARED_LIB_FILE): $(STATIC_LIB_FILE) $(OBJS)
 	@if [ ! -d $(dir $@) ] ; then $(MKDIR_P) $(dir $@) ; fi
-	$(Q_LD)$(LD) -o $@ $(strip $(SHARED_LDFLAGS) $(LDFLAGS) $(OBJS) $(LIBS))
+	$(Q_LD)$(LD) -o $@ $(strip $(SHARED_LDFLAGS) $(LDFLAGS) $(OBJS) $(sort $(LIBS)))
 	$(BUILD_DEBUG_INFO)
 
   endif # SHARED_LIB_FILE

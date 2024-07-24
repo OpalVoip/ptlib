@@ -18,7 +18,7 @@ class Md5 : public PProcess
   PCLASSINFO(Md5, PProcess);
 public:
   Md5();
-  void Main();
+  virtual void Main() override;
 };
 
 PCREATE_PROCESS(Md5);

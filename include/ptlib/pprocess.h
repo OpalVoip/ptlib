@@ -62,7 +62,7 @@
     public: \
       cls() : ancestor(manuf, name, major, minor, status, build) { } \
     private: \
-      virtual void Main(); \
+      virtual void Main() override; \
   };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -122,14 +122,21 @@ class PProcess : public PThread
      */
     Comparison Compare(
       const PObject & obj   ///< Other process to compare against.
-    ) const;
+    ) const override;
+
+    /**This will print out performance indicators for the process.
+       Includes CPU, Memory, Threads & High water marks for various resources.
+      */
+    virtual void PrintOn(
+      ostream & strm
+    ) const override;
   //@}
 
   /**@name Overrides from class PThread */
   //@{
     /**Terminate the process. Usually only used in abnormal abort situation.
      */
-    virtual void Terminate();
+    virtual void Terminate() override;
   //@}
 
   /**@name Process information functions */
@@ -330,7 +337,7 @@ class PProcess : public PThread
       */
     void GetMemoryUsage(
       MemoryUsage & usage
-    );
+    ) const;
 
     PPROFILE_EXCLUDE(
     /** Get the process execution times.
@@ -692,7 +699,7 @@ class PProcess : public PThread
 
     static PRunTimeSignalHandler PlatformSetRunTimeSignalHandler(int signal);
     static void PlatformResetRunTimeSignalHandler(int signal, PRunTimeSignalHandler previous);
-    static POrdinalToString::Initialiser const InternalSigNames[];
+    static std::unordered_map<int, std::string> const InternalSigNames;
 
     std::vector<PRunTimeSignalHandler> m_previousRunTimeSignalHandlers;
     std::vector<RunTimeSignalInfo> m_RunTimeSignalsQueueBuffer;
@@ -701,6 +708,14 @@ class PProcess : public PThread
     void InternalPostRunTimeSignal(int signal, PProcessIdentifier source);
     void InternalHandleRunTimeSignal(const RunTimeSignalInfo & signalInfo);
 
+#if PTRACING
+    PDECLARE_NOTIFIER(PTimer, PProcess, ProfileUpdateLogTimer) { PTRACE(3, "PTLibProfile", *this); }
+    void PrintProfileOn(ostream & strm);
+    PTimer         * m_profileProcessTimer;
+    PCriticalSection m_profileProcessMutex;
+    Times            m_profileLastProcessTimes;
+    std::set<Times>  m_profileLastThreadTimes;
+#endif // PTRACING
 
   friend class PThread;
   friend class PExternalThread;
@@ -748,7 +763,7 @@ class PProcess : public PThread
   //@}
 
     ///< Dummy Main() as libraries do not have one.
-    virtual void Main() { }
+    virtual void Main() override { }
 };
 
 

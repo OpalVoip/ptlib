@@ -42,7 +42,7 @@ class QueueProcess : public PProcess
 
   /**Execution starts here, where the command line is processed. In here, the
      child threads (for generating and consuming data) are launched. */
-    void Main();
+    virtual void Main() override;
 
   protected:
 

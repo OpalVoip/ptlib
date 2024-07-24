@@ -158,7 +158,7 @@ class PSocket : public PChannel
      */
     virtual bool Shutdown(
       ShutdownValue option   ///< Flag for shutdown of read, write or both.
-    );
+    ) override;
   //@}
 
   /**@name Socket options functions */
@@ -328,18 +328,18 @@ class PSocket : public PChannel
   /**@name Multiple socket selection functions */
   //@{
     /// List of sockets used for Select() function.
-    class SelectList : public PSocketList
+    class SelectList : public PObject, public std::list<PSocket *>
     {
-      PCLASSINFO(SelectList, PSocketList)
+      PCLASSINFO(SelectList, PObject)
       public:
         SelectList()
-          { DisallowDeleteObjects(); }
+          { }
         /** Add a socket to list .*/
         void operator+=(PSocket & sock /** Socket to add. */)
-          { Append(&sock); }
+          { this->push_back(&sock); }
         /** Remove a socket from list .*/
         void operator-=(PSocket & sock /** Socket to remove. */)
-          { Remove(&sock); }
+          { this->remove(&sock); }
     };
 
     /**Select a socket with available data. */
@@ -492,7 +492,7 @@ class PSocket : public PChannel
   //@}
 
   protected:
-    virtual bool ConvertOSError(intptr_t libcReturnValue, ErrorGroup group = LastGeneralError);
+    virtual bool ConvertOSError(intptr_t libcReturnValue, ErrorGroup group = LastGeneralError) override;
 
     /*This function calls os_socket() with the correct parameters for the
        socket protocol type.
@@ -533,7 +533,7 @@ class PSocket : public PChannel
       socklen_t * size
     );
 
-    virtual int os_errno() const;
+    virtual int os_errno() const override;
 
 
   // Member variables

@@ -43,7 +43,7 @@ class MyApp : public wxApp, public PProcess
   public:
     MyApp();
 
-    void Main(); // Dummy function
+    virtual void Main() override; // Dummy function
 
       // FUnction from wxWindows
     virtual bool OnInit();
@@ -58,12 +58,6 @@ class MyFrame : public wxFrame
 
     bool Initialise();
 
-    void PostEvent(
-      unsigned id,
-      const PString & str = PString::Empty(),
-      const void * data = NULL
-    );
-
   private:
     void OnClose(wxCloseEvent & theEvent);
     void OnAdjustMenus(wxMenuEvent & theEvent);
@@ -75,8 +69,6 @@ class MyFrame : public wxFrame
     void OnMenuRecordWAV(wxCommandEvent & theEvent);
     void OnMenuPlayWAV(wxCommandEvent & theEvent);
     void OnMenuVideoTest(wxCommandEvent & theEvent);
-
-    void OnEvent(wxCommandEvent & theEvent);
 
     PwxString              m_player;
     PwxString              m_recorder;

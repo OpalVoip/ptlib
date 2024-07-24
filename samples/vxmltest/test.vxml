@@ -13,6 +13,7 @@
 
   <!-- Main menu -->
   <menu id="MainMenu">
+    <voice name="Kevin Lea Russell" languages="en-AU" gender="male"/>
 
     <!-- Set this property for the time to wait for input -->
     <property name="timeout" value="30s"/>
@@ -21,8 +22,12 @@
     <prompt bargein="false" count="1">
       <!-- Audio plays the URI in src, or if absent uses speech synthesis of the body text -->
       <audio src="file:menu_prompt.wav">
-        Welcome to the P T lib I V R test script.
+        Welcome to the P T lib I V R test script
       </audio>
+      on
+      <say-as interpret-as="vxml:date">
+        <value expr="Date()"/>
+      </say-as>
     </prompt>
     <prompt count="2">
       <audio src="file:menu_prompt.wav">
@@ -32,22 +37,47 @@
 
     <!-- The next attribute here indicats what <form> to go to when the menu is selected -->
     <choice dtmf="1" next="#PlayFile">
+      <grammar>
+        <rule id="1">
+          <item>file</item>
+        </rule>
+      </grammar>
       Press 1 to play files
     </choice>
     
     <choice dtmf="2" next="#RecordFile">
+      <grammar>
+        <rule id="2">
+          <item>record</item>
+        </rule>
+      </grammar>
       Press 2 to record a message
     </choice>
     
     <choice dtmf="3" next="#PlayRecording">
+      <grammar>
+        <rule id="3">
+          <item>play</item>
+        </rule>
+      </grammar>
       Press 3 to play back recorded message
     </choice>
 
     <choice dtmf="4" next="#GetDigits">
+      <grammar>
+        <rule id="4">
+          <item>digits</item>
+        </rule>
+      </grammar>
       Press 4 to enter a number
     </choice>
 
     <choice dtmf="0" next="#HangUp">
+      <grammar>
+        <rule id="0">
+          <item>quit</item>
+        </rule>
+      </grammar>
       Press 0 to disconnect
       <script>SignLanguageAnalyserPreview()</script>
     </choice>
@@ -130,14 +160,7 @@
     <!-- A field is a place to enter digits -->
     <field name="enteredDigits">
 
-      <!-- A grammar is a description of the input. We do not support any of the
-           standards at this point, only a custom grammer that will accept n to m
-           digits with something as a termiantor. -->
-      <grammar mode="dtmf" type="X-OPAL/digits">
-        minDigits=1;
-        maxDigits=5;
-        terminators=#
-      </grammar>
+      <grammar type="digits?minlength=1;maxlength=5"/>
 
       <prompt>
         <!-- If prompt does not contain an <audio> then just speaks the text -->
@@ -147,7 +170,9 @@
 
     <filled>
       <!-- A <value> evaluates the expression then speaks it using speech synthesis -->
-      <value expr="'You entered '+dialog.enteredDigits" />
+      <say-as interpret-as="vxml:digits">
+        <value expr="'You entered '+dialog.enteredDigits" />
+      </say-as>
       <goto next="#MainMenu"/>
     </filled>
 
@@ -170,5 +195,11 @@
 
     <!-- Seems obvious -->
     <disconnect/>
+    <catch event="connection.disconnect.hangup">
+      <log expr="'Caught disconnection in form'"/>
+    </catch>
   </form>
+  <catch event="connection.disconnect.hangup">
+    <log expr="'Caught disconnection globally'"/>
+  </catch>
 </vxml>

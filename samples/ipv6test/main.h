@@ -34,7 +34,7 @@ class IPV6Test : public PProcess
 
   public:
     IPV6Test();
-    virtual void Main();
+    virtual void Main() override;
 
  protected:
 

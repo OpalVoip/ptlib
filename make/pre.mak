@@ -215,8 +215,6 @@ ifdef PROG
 endif
 
 
-ifdef DEBUG_BUILD
-
 ###############################################################################
 # Add common directory to include path
 # Note also have include directory that is always relative to the
@@ -258,7 +256,5 @@ else
     endif
   endif
 endif
-
-endif # DEBUG_BUILD
 
 endif # PTLIB_PRE_INCLUDED

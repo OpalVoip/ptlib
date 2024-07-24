@@ -73,22 +73,22 @@ class PLua : public PScriptLanguage
     static PString LanguageName();
 
     /// Get the name of this scripting language
-    virtual PString GetLanguageName() const;
+    virtual PString GetLanguageName() const override;
 
     /// Indicate language has initialised successfully
-    virtual bool IsInitialised() const;
+    virtual bool IsInitialised() const override;
 
     /**Load a Lua script from a file.
       */
     virtual bool LoadFile(
       const PFilePath & filename  ///< Name of script file to load
-    );
+    ) override;
 
     /** Load a Lua script text.
       */
     virtual bool LoadText(
       const PString & text  ///< Script text to load.
-    );
+    ) override;
 
     /**Run the script.
        If \p script is NULL or empty then the currently laoded script is
@@ -98,7 +98,7 @@ class PLua : public PScriptLanguage
       */
     virtual bool Run(
       const char * script = NULL
-    );
+    ) override;
 
     /**Create a table with optional metatable.
        If the metatable does not exist it is created.
@@ -122,13 +122,21 @@ class PLua : public PScriptLanguage
 
 
     /**Create a composite structure.
-       For Lua this creates a table.
+       The exact semantics is language dependant.
+       For Lua this is always a table.
 
        See class description for how \p name is parsed.
       */
     virtual bool CreateComposite(
-      const PString & name   ///< Name of new table
-    );
+      const PString & name,       ///< Name of new composite structure
+      unsigned sequenceSize = 0   ///< Size of sequence, 0 means object
+    ) override;
+
+    /**Get the type of the variable.
+      */
+    virtual VarTypes GetVarType(
+      const PString & name  ///< Name of variable
+    ) override;
 
     /**Get a variable in the script 
        See class description for how \p name is parsed.
@@ -136,7 +144,7 @@ class PLua : public PScriptLanguage
     virtual bool GetVar(
       const PString & name,  ///< Name of global
       PVarType & var
-    );
+    ) override;
 
     /**Set a variable in the script 
        See class description for how \p name is parsed.
@@ -144,14 +152,14 @@ class PLua : public PScriptLanguage
     virtual bool SetVar(
       const PString & name, ///< Name of global
       const PVarType & var
-    );
+    ) override;
 
     /**Get a variable in the script as a string value.
        See class description for how \p name is parsed.
       */
     bool GetBoolean(
       const PString & name  ///< Name of global
-    );
+    ) override;
 
     /**Set a variable in the script as a string value.
        See class description for how \p name is parsed.
@@ -159,14 +167,14 @@ class PLua : public PScriptLanguage
     bool SetBoolean(
       const PString & name, ///< Name of global
       bool value            ///< New value
-    );
+    ) override;
 
     /**Get a variable in the script as an integer value.
        See class description for how \p name is parsed.
       */
     int GetInteger(
       const PString & name  ///< Name of global
-    );
+    ) override;
 
     /**Set a variable in the script as an integer value.
        See class description for how \p name is parsed.
@@ -174,14 +182,14 @@ class PLua : public PScriptLanguage
     bool SetInteger(
       const PString & name, ///< Name of global
       int value             ///< New value
-    );
+    ) override;
 
     /**Get a variable in the script as a number value.
        See class description for how \p name is parsed.
       */
     double GetNumber(
       const PString & name  ///< Name of global
-    );
+    ) override;
 
     /**Set a variable in the script as a number value.
        See class description for how \p name is parsed.
@@ -189,14 +197,14 @@ class PLua : public PScriptLanguage
     bool SetNumber(
       const PString & name, ///< Name of global
       double value          ///< New value
-    );
+    ) override;
 
     /**Get a variable in the script as a string value.
        See class description for how \p name is parsed.
       */
     PString GetString(
       const PString & name  ///< Name of global
-    );
+    ) override;
 
     /**Set a variable in the script as a string value.
        See class description for how \p name is parsed.
@@ -204,7 +212,7 @@ class PLua : public PScriptLanguage
     bool SetString(
       const PString & name, ///< Name of global
       const char * value    ///< New value
-    );
+    ) override;
 
     /**Release a variable name.
        Note this only applies to metatables and global tables/variables.
@@ -213,7 +221,7 @@ class PLua : public PScriptLanguage
       */
     virtual bool ReleaseVariable(
       const PString & name    ///< Name of table to delete
-    );
+    ) override;
 
     /**Call a specific function in the script.
        The \p sigString indicates the types of the arguments and return values
@@ -245,11 +253,11 @@ class PLua : public PScriptLanguage
       const PString & name,           ///< Name of function to execute.
       const char * sigString = NULL,  ///< Signature of arguments following
       ...
-    );
+    ) override;
     bool Call(
       const PString & name,       ///< Name of function to execute.
       Signature & signature ///< Signature of arguments following
-    );
+    ) override;
 
 
     #define PDECLARE_LuaFunctionNotifier(cls, fn) PDECLARE_ScriptFunctionNotifier(cls, fn)
@@ -260,7 +268,7 @@ class PLua : public PScriptLanguage
     bool SetFunction(
       const PString & name,         ///< Name of function Lua script can call
       const FunctionNotifier & func ///< Notifier excuted
-    );
+    ) override;
   //@}
 
   protected:

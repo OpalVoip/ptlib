@@ -243,6 +243,7 @@ PHTTPClient::PHTTPClient(const PString & userAgent)
   , m_persist(true)
   , m_maxRedirects(10)
   , m_authentication(NULL)
+  , m_commandUrlFormat(PURL::RelativeOnly)
 {
 }
 
@@ -276,12 +277,12 @@ PHTTP::StatusCode PHTTPClient::ExecuteCommand(Commands cmd,
 
 
 PHTTP::StatusCode PHTTPClient::ExecuteCommand(Commands cmd,
-                                              const PURL & url,
+                                              const PURL & originalURL,
                                               PMIMEInfo & outMIME,
                                               ContentProcessor & processor,
                                               PMIMEInfo & replyMIME)
 {
-  if (!outMIME.Contains(DateTag()))
+  if (cmd != CONNECT && !outMIME.Contains(DateTag()))
     outMIME.SetAt(DateTag(), PTime().AsString());
 
   if (!m_userAgentName.IsEmpty() && !outMIME.Contains(UserAgentTag()))
@@ -290,10 +291,11 @@ PHTTP::StatusCode PHTTPClient::ExecuteCommand(Commands cmd,
   if (m_persist && !outMIME.Contains(ConnectionTag()))
     outMIME.SetAt(ConnectionTag(), KeepAliveTag());
 
+  bool noPredefinedCookies = !outMIME.Has(PHTTP::CookieTag);
   unsigned redirectCount = m_maxRedirects;
   bool needAuthentication = true;
   bool forceReopen = !m_persist;
-  PURL adjustableURL = url;
+  PURL adjustableURL(originalURL);
   for (unsigned retry = 0; retry < 3; ++retry) {
     if (forceReopen)
       CloseBaseReadChannel();
@@ -304,13 +306,16 @@ PHTTP::StatusCode PHTTPClient::ExecuteCommand(Commands cmd,
 
     // Have connection, so fill in the required MIME fields
     if (!outMIME.Contains(HostTag)) {
-      if (url.GetHostName().IsEmpty())
+      if (adjustableURL.GetHostName().IsEmpty())
         outMIME.SetAt(HostTag, "localhost");
       else
-        outMIME.SetAt(HostTag, url.GetHostPort());
+        outMIME.SetAt(HostTag, adjustableURL.GetHostPort(true));
     }
 
-    if (!WriteCommand(cmd, url.AsString(PURL::RelativeOnly), outMIME, processor))
+    if (noPredefinedCookies)
+      m_cookies.AddCookie(outMIME, adjustableURL);
+
+    if (!WriteCommand(cmd, adjustableURL.AsString(m_commandUrlFormat), outMIME, processor))
       continue;
 
     // If not persisting need to shut down write so other end stops reading
@@ -337,6 +342,9 @@ PHTTP::StatusCode PHTTPClient::ExecuteCommand(Commands cmd,
         if (redirectCount-- > 0) {
           PURL newLocation = replyMIME("Location");
           if (!newLocation.IsEmpty() && adjustableURL != newLocation) {
+            PTRACE(3, "Redirected to " << newLocation);
+            if (outMIME.Get(HostTag) == adjustableURL.GetHostPort(true))
+              outMIME.SetAt(HostTag, newLocation.GetHostPort(true));
             adjustableURL = newLocation;
             retry = 0; // Go back to full quota of retries.
             continue;
@@ -344,25 +352,23 @@ PHTTP::StatusCode PHTTPClient::ExecuteCommand(Commands cmd,
         }
         break;
 
-      case UnAuthorised:
-        if (needAuthentication && replyMIME.Contains("WWW-Authenticate") && !(m_userName.IsEmpty() && m_password.IsEmpty())) {
-          // authenticate 
-          PString errorMsg;
-          PHTTPClientAuthentication * newAuth = PHTTPClientAuthentication::ParseAuthenticationRequired(false, replyMIME, errorMsg);
-          if (newAuth != NULL) {
-            newAuth->SetUsername(m_userName);
-            newAuth->SetPassword(m_password);
-
-            delete m_authentication;
-            m_authentication = newAuth;
-            needAuthentication = false;
-            forceReopen = !m_persist; // Don't close and reopen if persisting
-            continue;
-          }
-
-          m_lastResponseInfo += " - " + errorMsg;
+      case ProxyAuthenticationRequired :
+        if (needAuthentication && HandleAuthorisation(true, replyMIME)) {
+          if (cmd == CONNECT)
+            return ProxyAuthOnCONNECT;
+          needAuthentication = false;
+          forceReopen = !m_persist; // Don't close and reopen if persisting
+          continue;
         }
-        // Do next case
+        break;
+
+      case UnAuthorised:
+        if (needAuthentication && HandleAuthorisation(false, replyMIME)) {
+          needAuthentication = false;
+          forceReopen = !m_persist; // Don't close and reopen if persisting
+          continue;
+        }
+        break;
 
       default:
         break;
@@ -374,6 +380,29 @@ PHTTP::StatusCode PHTTPClient::ExecuteCommand(Commands cmd,
   PTRACE_IF(3, !IsOK(m_lastResponseCode), "Error " << m_lastResponseCode << ' ' << m_lastResponseInfo.Left(m_lastResponseInfo.FindOneOf("\r\n")));
   return (StatusCode)m_lastResponseCode;
 }
+
+
+bool PHTTPClient::HandleAuthorisation(bool isProxy, PMIMEInfo & replyMIME)
+{
+  if (m_auth[isProxy].m_userName.empty())
+    return false;
+
+  // authenticate 
+  PString errorMsg;
+  PHTTPClientAuthentication * newAuth = PHTTPClientAuthentication::ParseAuthenticationRequired(isProxy, replyMIME, errorMsg);
+  if (newAuth == NULL) {
+    m_lastResponseInfo += " - " + errorMsg;
+    return false;
+  }
+
+  newAuth->SetUsername(m_auth[isProxy].m_userName);
+  newAuth->SetPassword(m_auth[isProxy].m_password);
+
+  delete m_authentication;
+  m_authentication = newAuth;
+  return true;
+}
+
 
 
 bool PHTTPClient::WriteCommand(Commands cmd,
@@ -435,6 +464,7 @@ bool PHTTPClient::WriteCommand(Commands cmd,
       return false;
     }
   }
+  flush(); // In case no data is written
 
 #if PTRACING
   if (trace != NULL)
@@ -716,10 +746,19 @@ bool PHTTPClient::PostData(const PURL & url, const PStringToString & data)
 
 bool PHTTPClient::PostData(const PURL & url, const PStringToString & data, PMIMEInfo & replyMIME, PString & replyBody)
 {
+  PMIMEInfo outMIME;
+  return PostData(url, outMIME, data, replyMIME, replyBody);
+}
+
+
+bool PHTTPClient::PostData(const PURL & url,
+                           PMIMEInfo & outMIME,
+                           const PStringToString & data,
+                           PMIMEInfo & replyMIME,
+                           PString & replyBody)
+{
   PStringStream entityBody;
   PURL::OutputVars(entityBody, data, '\0', '&', '=', PURL::QueryTranslation);
-
-  PMIMEInfo outMIME;
   return PostData(url, outMIME, entityBody, replyMIME, replyBody);
 }
 
@@ -793,33 +832,96 @@ bool PHTTPClient::DeleteDocument(const PURL & url)
 }
 
 
-bool PHTTPClient::ConnectURL(const PURL & url)
+PHTTPClient::SelectProxyResult PHTTPClient::SelectProxy(const PURL & destURL, PURL & proxyURL)
+{
+  if (m_proxies.IsEmpty())
+    return PHTTP::Proxies(PConfig(PConfig::Environment)).Select(proxyURL, destURL);
+
+  return m_proxies.Select(proxyURL, destURL);
+}
+
+
+bool PHTTPClient::ConnectURL(const PURL & destURL)
 {
   if (IsOpen())
     return true;
 
-  PString host = url.GetHostName();
+  bool secure = destURL.GetScheme() == "https" || destURL.GetScheme() == "wss";
+
+  bool usingProxy = false;
+  PURL proxyURL;
+  PTRACE_CONTEXT_ID_TO(proxyURL);
+  switch (SelectProxy(destURL, proxyURL)) {
+    case e_BadProxy :
+      return SetLastResponse(BadRequest, "Invalid URL in proxy");
+
+    case e_HasProxy :
+      if (!secure)
+        m_commandUrlFormat = PURL::FullURL;
+      m_auth[true].m_userName = proxyURL.GetUserName();
+      m_auth[true].m_password = proxyURL.GetPassword();
+      usingProxy = true;
+    default :
+      break;
+  }
+
+  PIPAddressAndPort ap((usingProxy ? proxyURL : destURL).GetHostPort(true));
 
   // Is not open or other end shut down, restablish connection
-  if (host.IsEmpty())
-    return SetLastResponse(BadRequest, "No host specified");
+  if (!ap.IsValid())
+    return SetLastResponse(BadRequest, PSTRSTRM("Invalid host or port in "
+                                                << (usingProxy ? "proxy" : "URL") << " - "
+                                                << (usingProxy ? proxyURL : destURL)));
 
+  if (secure)
 #if P_SSL
-  if (url.GetScheme() == "https" || url.GetScheme() == "wss") {
-    std::unique_ptr<PSSLChannel> ssl;
+  {
+    PAutoPtr<PSSLChannel> ssl;
     PSSLContext::Method method = PSSLContext::HighestTLS;
     for (;;) {
-    std::unique_ptr<PTCPSocket> tcp(new PTCPSocket(url.GetPort()));
+      PAutoPtr<PTCPSocket> tcp(new PTCPSocket(ap.GetPort()));
       tcp->SetReadTimeout(readTimeout);
-      if (!tcp->Connect(host))
-        return SetLastResponse(TransportConnectError, PSTRSTRM("TCP connect fail: " << tcp->GetErrorText() << " (errno=" << tcp->GetErrorNumber() << ')'));
 
-      std::unique_ptr<PSSLContext> context(new PSSLContext(method));
-      if (!context->SetCredentials(m_authority, m_certificate, m_privateKey))
+      if (usingProxy) {
+        for (unsigned retry = 0; retry < 3; ++retry) {
+          PTRACE(4, "Connecting " << destURL.AsString(PURL::HostPortOnly) << " via proxy at " << ap);
+          if (!tcp->Connect(ap.GetAddress()))
+            return SetLastResponse(TransportConnectError, PSTRSTRM("TCP connect fail: " << tcp->GetErrorText() << " (errno=" << tcp->GetErrorNumber() << ')'));
+
+          if (!Open(tcp.get(), false)) {
+            Detach();
+            return SetLastResponse(TransportConnectError, PString::Empty());
+          }
+
+          m_persist = true;
+          PMIMEInfo outMIME, replyMIME;
+          PHTTPClient_DummyProcessor dummy(false);
+          outMIME.Set(HostTag, destURL.GetHostPort(true));
+          switch (ExecuteCommand(CONNECT, destURL.GetHostPort(true), outMIME, dummy, replyMIME)) {
+            case ProxyAuthOnCONNECT:
+              continue;
+            case RequestOK:
+              break;
+            default:
+              Close();
+              return false;
+          }
+          break;
+        }
+        Detach(); // Connects again later
+      }
+      else {
+        PTRACE(4, "Connecting " << destURL.AsString(PURL::HostPortOnly) << " to " << ap);
+        if (!tcp->Connect(ap.GetAddress()))
+          return SetLastResponse(TransportConnectError, PSTRSTRM("TCP connect fail: " << tcp->GetErrorText() << " (errno=" << tcp->GetErrorNumber() << ')'));
+      }
+
+      PAutoPtr<PSSLContext> context(new PSSLContext(method));
+      if (!ApplySSLCredentials(*context))
         return SetLastResponse(TransportConnectError, "Could not set certificates");
 
       ssl.reset(new PSSLChannel(context.release(), true));
-      ssl->SetServerNameIndication(host);
+      ssl->SetServerNameIndication(destURL.GetHostName());
       if (ssl->Connect(tcp.release()))
         break;
 
@@ -829,38 +931,31 @@ bool PHTTPClient::ConnectURL(const PURL & url)
       --method;
     }
 
-    if (!ssl->CheckHostName(host))
+    if (!ssl->CheckHostName(destURL.GetHostName()))
         return SetLastResponse(TransportConnectError, "SSL host check fail: " + ssl->GetErrorText());
 
     if (!Open(ssl.release()))
       return SetLastResponse(TransportConnectError, PString::Empty());
   }
   else
+#else
+    return SetLastResponse(TransportConnectError, "TLS secure sockets unsupported");
 #endif
-
-  if (!Connect(host, url.GetPort()))
-    return SetLastResponse(TransportConnectError, PString::Empty());
-
-  PTRACE(5, "Connected to " << host);
+  {
+    PTRACE(4, "Connecting " << destURL.AsString(PURL::HostPortOnly) <<  (usingProxy ? " via proxy at " : " to ") << ap);
+    if (!Connect(ap.GetAddress(), ap.GetPort()))
+      return SetLastResponse(TransportConnectError, PString::Empty());
+  }
   return true;
 }
 
 
 void PHTTPClient::SetAuthenticationInfo(const PString & userName,const PString & password)
 {
-  m_userName = userName;
-  m_password = password;
+  m_auth[false].m_userName = userName;
+  m_auth[false].m_password = password;
 }
 
-
-#if P_SSL
-void PHTTPClient::SetSSLCredentials(const PString & authority, const PString & certificate, const PString & privateKey)
-{
-  m_authority = authority;
-  m_certificate = certificate;
-  m_privateKey = privateKey;
-}
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////////
 
@@ -938,8 +1033,9 @@ PObject::Comparison PHTTPClientBasicAuthentication::Compare(const PObject & othe
   return PHTTPClientAuthentication::Compare(other);
 }
 
-bool PHTTPClientBasicAuthentication::Parse(const PString & /*auth*/, bool /*proxy*/)
+bool PHTTPClientBasicAuthentication::Parse(const PString & /*auth*/, bool proxy)
 {
+  isProxy = proxy;
   return true;
 }
 
@@ -1180,7 +1276,12 @@ static void AuthError(PString & errorMsg, const char * errText, const PString & 
 
 PHTTPClientAuthentication * PHTTPClientAuthentication::ParseAuthenticationRequired(bool isProxy, const PMIMEInfo & replyMIME, PString & errorMsg)
 {
-  PStringArray lines = replyMIME(isProxy ? "Proxy-Authenticate" : "WWW-Authenticate").Lines();
+  PString headerName = isProxy ? "Proxy-Authenticate" : "WWW-Authenticate";
+  PStringArray lines = replyMIME(headerName).Lines();
+  if (lines.empty()) {
+    errorMsg = PSTRSTRM("No " << headerName << " header present");
+    return NULL;
+  }
 
   // find authentication
   for (PINDEX i = 0; i < lines.GetSize(); ++i) {
@@ -1235,16 +1336,6 @@ PString PHTTPClientAuthenticator::GetMethod()
 
 ////////////////////////////////////////////////////////////////////////////////////
 
-#if P_SSL
-void PHTTPClientPool::SetSSLCredentials(const PString & authority, const PString & certificate, const PString & privateKey)
-{
-  m_authority = authority;
-  m_certificate = certificate;
-  m_privateKey = privateKey;
-}
-#endif
-
-
 void PHTTPClientPool::ShutDown()
 {
   PWaitAndSignal lock(m_mutex);
@@ -1271,7 +1362,7 @@ void PHTTPClientPool::QueueRequest(const Request & request)
         ++it;
       else {
         delete it->second;
-        it = m_connections.erase(it);
+        m_connections.erase(it++);
       }
     }
 
@@ -1346,7 +1437,7 @@ class PURL_HttpLoader : public PURLLoader
 {
     PCLASSINFO(PURL_HttpLoader, PURLLoader);
   public:
-    virtual bool Load(PString & str, const PURL & url, const PURL::LoadParams & params) const
+    virtual bool Load(PString & str, const PURL & url, const PURL::LoadParams & params) const override
     {
       PHTTPClient http;
       http.SetPersistent(false);
@@ -1358,7 +1449,7 @@ class PURL_HttpLoader : public PURLLoader
       return http.GetTextDocument(url, str, params.m_requiredContentType);
     }
 
-    virtual bool Load(PBYTEArray & data, const PURL & url, const PURL::LoadParams & params) const
+    virtual bool Load(PBYTEArray & data, const PURL & url, const PURL::LoadParams & params) const override
     {
       PHTTPClient http;
       http.SetPersistent(false);

@@ -17,7 +17,7 @@ class PVideoInputDevice;
 class PVideoOutputDevice;
 
 
-class TestInstance
+class TestInstance : public PVXMLSession
 {
 #if P_VXML
   public:
@@ -25,20 +25,25 @@ class TestInstance
     ~TestInstance();
 
     bool Initialise(unsigned instance, const PArgList & args);
-    void SendInput(const PString & digits);
-    void SetVar(const PString & name, const PString & value) { m_vxml->SetVar(name, value); }
-    PString GetVar(const PString & name) { return m_vxml->GetVar(name); }
+    void SendInput(const PString & digits) { OnUserInput(digits); }
+
+    virtual void OnEndDialog() override;
+    virtual void OnEndSession() override;
+    virtual TransferStatus OnTransfer(const PString & destination, TransferType type) override;
 
   protected:
     unsigned             m_instance;
     PSoundChannel      * m_player;
+    PSoundChannel      * m_recorder;
     PVideoInputDevice  * m_grabber;
     PVideoOutputDevice * m_preview;
     PVideoOutputDevice * m_viewer;
-    PVXMLSession       * m_vxml;
 
-    PThread * m_audioThread;
-    void CopyAudio();
+    PThread * m_playerThread;
+    void PlayAudio();
+
+    PThread * m_recorderThread;
+    void RecordAudio();
 
 #if P_VXML_VIDEO
     PThread * m_videoSenderThread;
@@ -57,13 +62,15 @@ class VxmlTest : public PProcess
 
   public:
     VxmlTest();
-    void Main();
+    virtual void Main() override;
 
   protected:
     PDECLARE_NOTIFIER(PCLI::Arguments, VxmlTest, SimulateInput);
     PDECLARE_NOTIFIER(PCLI::Arguments, VxmlTest, SetVar);
     PDECLARE_NOTIFIER(PCLI::Arguments, VxmlTest, GetVar);
-    std::vector<TestInstance> m_tests;
+    PDECLARE_NOTIFIER(PCLI::Arguments, VxmlTest, TransferStatus);
+    PDECLARE_NOTIFIER(PCLI::Arguments, VxmlTest, Disconnect);
+    std::vector< PSharedPtr<TestInstance> > m_tests;
 };
 
 

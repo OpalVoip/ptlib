@@ -107,6 +107,23 @@ typedef std::thread::id PThreadIdentifier;
 #define PNullThreadIdentifier std::thread::id()
 
 
+struct PNonCopyable
+{
+  PNonCopyable() = default;
+  PNonCopyable(const PNonCopyable &) = delete;
+  PNonCopyable & operator=(const PNonCopyable &) = delete;
+};
+
+template <typename T> class PAutoPtr : public std::unique_ptr<T>
+{
+  public:
+    PAutoPtr() = default;
+    explicit PAutoPtr(T * p) : std::unique_ptr<T>(p) { }
+    PAutoPtr(PAutoPtr & other) : std::unique_ptr<T>(other.release()) { }
+    void transfer(PAutoPtr & other) { std::unique_ptr<T>::operator=(std::move(other)); }
+};
+
+
 ///////////////////////////////////////////////////////////////////////////////
 
 #define P_REMOVE_VIRTUAL_INTERNAL_BASE(fn) __inline virtual struct ptlib_virtual_function_changed_or_removed ****** fn { return 0; }
@@ -118,12 +135,19 @@ typedef std::thread::id PThreadIdentifier;
 
 #ifdef _MSC_VER
   #define P_PUSH_MSVC_WARNINGS(warnings) __pragma(warning(push)) __pragma(warning(disable:warnings))
-  #define P_POP_MSVC_WARNINGS() __pragma(warning(pop))
+  #define P_POP_MSVC_WARNINGS()          __pragma(warning(pop))
+  #define P_PUSH_GCC_WARNING(warning)
+  #define P_POP_GCC_WARNING()
 #else
   #define P_PUSH_MSVC_WARNINGS(warnings)
   #define P_POP_MSVC_WARNINGS()
+  #define P_GCC_PRAGMA(token) _Pragma(#token)
+  #define P_PUSH_GCC_WARNING(warning) _Pragma("GCC diagnostic push") P_GCC_PRAGMA(GCC diagnostic ignored warning)
+  #define P_POP_GCC_WARNING()         _Pragma("GCC diagnostic pop")
+  //#pragma clang diagnostic ignored "-Winconsistent-missing-override"
 #endif // _MSC_VER
-#define P_DISABLE_MSVC_WARNINGS(warnings, statement) P_PUSH_MSVC_WARNINGS(warnings) statement P_POP_MSVC_WARNINGS()
+#define P_DISABLE_MSVC_WARNINGS(warnings, statement) P_PUSH_MSVC_WARNINGS(warnings) statement  P_POP_MSVC_WARNINGS()
+#define P_DISABLE_GCC_WARNING(warning, statement)    P_PUSH_GCC_WARNING(warning)    statement; P_POP_GCC_WARNING()
 
 #ifdef _MSC_VER
   #define PIGNORE_RETURN(t,e)	(void)(e)
@@ -838,6 +862,7 @@ public:
         unsigned maxShown = 1       ///< Max shown messages in time interval
       );
       ThrottleBase(const ThrottleBase & other);
+      ThrottleBase & operator=(const ThrottleBase & other);
 
       bool CanTrace(int64_t now = 0);
       operator unsigned() const { return m_currentLevel; }
@@ -850,17 +875,14 @@ public:
       __inline unsigned GetHiddenCount() const { return m_hiddenCount; }
 
     protected:
-      const unsigned   m_interval;
-      const unsigned   m_lowLevel;
-      const unsigned   m_highLevel;
-      const unsigned   m_maxShown;
+      unsigned         m_interval;
+      unsigned         m_lowLevel;
+      unsigned         m_highLevel;
+      unsigned         m_maxShown;
       atomic<unsigned> m_currentLevel;
       atomic<int64_t>  m_nextLog;
       atomic<unsigned> m_repeatCount;
       atomic<unsigned> m_hiddenCount;
-
-    private:
-      void operator=(const ThrottleBase &) { }
   };
 
   /** Template class to reduce noise level for some logging.
@@ -1400,14 +1422,11 @@ namespace PProfiling
      the time used by a section of code delimited by the scope (block till the close
      brace) with minimum, maximum and averages displayed as a PTRACE().
     */
-  class TimeScope
+  class TimeScope : PNonCopyable
   {
     protected:
       struct Implementation;
       Implementation * const m_implementation;
-
-    private:
-      void operator=(const TimeScope &) { }
 
     public:
       /**Create a TimeScope instance. This is usually created as a static variable
@@ -1495,6 +1514,24 @@ namespace PProfiling
   #define PPROFILE_TIMESCOPE(...)
 #endif // PTRACING
 
+  struct HighWaterMarkData
+  {
+    std::string      m_name;
+    atomic<unsigned> m_totalCount;
+    atomic<unsigned> m_highWaterMark;
+
+    HighWaterMarkData(const std::string & name);
+    void NewInstance();
+    static HighWaterMarkData & Get(const type_info & ti);
+    static std::map<std::string, unsigned> Get();
+  };
+
+  template <class CLS> struct HighWaterMark
+  {
+    static HighWaterMarkData & GetHighWaterMarkData() { static HighWaterMarkData & data = HighWaterMarkData::Get(typeid(CLS)); return data; }
+    HighWaterMark() { GetHighWaterMarkData().NewInstance(); }
+    ~HighWaterMark() { --GetHighWaterMarkData().m_totalCount; }
+  };
 };
 
 
@@ -1885,8 +1922,10 @@ inline void * operator new[](size_t nSize, const char * file, int line)
   { return PMemoryHeap::Allocate(nSize, file, line, NULL); }
 
 #ifndef __GNUC__
+P_PUSH_MSVC_WARNINGS(28251)
 void * operator new(size_t nSize);
 void * operator new[](size_t nSize);
+P_POP_MSVC_WARNINGS()
 
 void operator delete(void * ptr);
 void operator delete[](void * ptr);
@@ -2036,7 +2075,7 @@ class PSafeSingleton : public PSingleton<Type, atomic<unsigned>, Creator>
     typedef cls P_thisClass; \
     __inline static const char * Class() { return typeid(cls).name(); } \
     __inline bool IsClass(const char * name) const { return strcmp(name, Class()) == 0; } \
-    virtual PObject::Comparison CompareObjectMemoryDirect(const PObject & obj) const \
+    virtual PObject::Comparison CompareObjectMemoryDirect(const PObject & obj) const override \
       { return PObject::InternalCompareObjectMemoryDirect(this, dynamic_cast<const cls *>(&obj), sizeof(cls)); } \
     PNEW_AND_DELETE_FUNCTIONS(align)
 
@@ -2052,11 +2091,24 @@ these functions for correct operation.
 /// Declare all the standard PTLib class information, plus Clone().
 #define PCLASSINFO_WITH_CLONE(cls, par) \
     PCLASSINFO(cls, par) \
-    virtual PObject * Clone() const { return new cls(*this); }
+    virtual PObject * Clone() const override { return new cls(*this); }
 
 
 #define PIsDescendant(ptr, cls)    (dynamic_cast<const cls *>(ptr) != NULL) 
 #define PRemoveConst(cls, ptr)  (const_cast<cls*>(ptr))
+
+template <class CLS, class BASE> CLS & PCastPtrToRef(BASE * obj)
+{
+  if (obj)
+    return dynamic_cast<CLS &>(*obj);
+  PAssertAlways(PNullPointerReference);
+  std::abort();
+}
+
+template <class CLS, class BASE> const CLS & PConstCastPtrToRef(const BASE * obj)
+{
+  return PCastPtrToRef<const CLS, const BASE>(obj);
+}
 
 #if P_USE_ASSERTS
 template<class BaseClass> inline BaseClass * PAssertCast(BaseClass * obj, const char * file, int line) 
@@ -2074,7 +2126,8 @@ template<class BaseClass> inline BaseClass * PAssertCast(BaseClass * obj, const 
 This provides functionality provided to all classes, eg run-time types,
 default comparison operations, simple stream I/O and serialisation support.
 */
-class PObject {
+class PObject
+{
   protected:
     unsigned m_traceContextIdentifier;
 #if PTRACING==2
@@ -2319,6 +2372,15 @@ class PObject {
   //@}
 };
 
+template <> struct std::hash<PObject>
+{
+  std::size_t operator()(const PObject & obj) const noexcept
+  {
+    return obj.HashFunction();
+  }
+};
+
+
 ///////////////////////////////////////////////////////////////////////////////
 // Platform independent types
 
@@ -2356,7 +2418,7 @@ struct PIntReversedOrder {
   __inline PIntReversedOrder & operator=(const PIntReversedOrder & value)                 { data = value.data;           return *this; }
   __inline operator type() const                                                          { return ReverseBytes(data); }
   __inline friend ostream & operator<<(ostream & s, const PIntReversedOrder & value)      { return s << ReverseBytes(value.data); }
-  __inline friend istream & operator>>(istream & s, PIntReversedOrder & value)            { type i; s >> i; value = i; return s; }
+  __inline friend istream & operator>>(istream & s, PIntReversedOrder & value)            { type i = 0; s >> i; value = i; return s; }
 
   private:
     type data;

@@ -49,7 +49,7 @@ class PVideoOutputDevice_SDL : public PVideoOutputDevice
 
     /**Get a list of all of the devices available.
     */
-    virtual PStringArray GetDeviceNames() const;
+    virtual PStringArray GetDeviceNames() const override;
     static PStringArray GetOutputDeviceNames();
   
     /**Open the device given the device name.
@@ -57,15 +57,15 @@ class PVideoOutputDevice_SDL : public PVideoOutputDevice
     virtual bool Open(
       const PString & /*deviceName*/,   ///< Device name to open
       bool /*startImmediate*/ = true    ///< Immediately start device
-    );
+    ) override;
   
     /**Synonymous with the destructor.
     */
-    virtual bool Close();
+    virtual bool Close() override;
   
     /**Global test function to determine if this video rendering
     class is open.*/
-    virtual bool IsOpen();
+    virtual bool IsOpen() override;
   
     /**Set the colour format to be used.
        Note that this function does not do any conversion. If it returns true
@@ -79,7 +79,7 @@ class PVideoOutputDevice_SDL : public PVideoOutputDevice
     */
     virtual bool SetColourFormat(
       const PString & colourFormat ///< New colour format for device.
-    );
+    ) override;
 
     /**Set the frame size to be used.
 
@@ -92,14 +92,14 @@ class PVideoOutputDevice_SDL : public PVideoOutputDevice
     virtual bool SetFrameSize(
       unsigned width,   ///< New width of frame
       unsigned height   ///< New height of frame
-    );
+    ) override;
 
     /**Set a section of the output frame buffer.
       */
-    virtual bool SetFrameData(const FrameData & frameData);
+    virtual bool SetFrameData(const FrameData & frameData) override;
 
 #ifdef P_MACOSX
-    virtual bool ApplicationMain();
+    virtual bool ApplicationMain() override;
 #endif
   
   private:

@@ -146,8 +146,7 @@
       <PrecompiledHeaderFile>ptlib.h</PrecompiledHeaderFile>
       <BrowseInformation>true</BrowseInformation>
       <WarningLevel>Level4</WarningLevel>
-      <DisableSpecificWarnings>
-      </DisableSpecificWarnings>
+      <DisableSpecificWarnings>26812</DisableSpecificWarnings>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <PrecompiledHeaderOutputFile>$(VS_PCH_DIR)$(IntDir)$(TargetName).pch</PrecompiledHeaderOutputFile>
@@ -172,8 +171,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>ptlib.h</PrecompiledHeaderFile>
       <WarningLevel>Level4</WarningLevel>
-      <DisableSpecificWarnings>
-      </DisableSpecificWarnings>
+      <DisableSpecificWarnings>26812</DisableSpecificWarnings>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
@@ -306,6 +304,14 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\ptclib\aws_sdk.cxx">
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(AWS32DBGDIR)\..\include;$(EXTERNALDIR)\aws-sdk-cpp\out\install\x86-Debug\include;$(SolutionDir)..\aws-sdk-cpp\out\install\x86-Debug\include;$(SolutionDir)..\external\aws-sdk-cpp\out\install\x86-Debug\include;$(SolutionDir)..\..\external\aws-sdk-cpp\out\install\x86-Debug\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='No Trace|Win32'">$(AWS32RELDIR)\..\include;$(EXTERNALDIR)\aws-sdk-cpp\out\install\x86-Release\include;$(SolutionDir)..\aws-sdk-cpp\out\install\x86-Release\include;$(SolutionDir)..\external\aws-sdk-cpp\out\install\x86-Release\include;$(SolutionDir)..\..\external\aws-sdk-cpp\out\install\x86-Release\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(AWS32RELDIR)\..\include;$(EXTERNALDIR)\aws-sdk-cpp\out\install\x86-Release\include;$(SolutionDir)..\aws-sdk-cpp\out\install\x86-Release\include;$(SolutionDir)..\external\aws-sdk-cpp\out\install\x86-Release\include;$(SolutionDir)..\..\external\aws-sdk-cpp\out\install\x86-Release\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(AWS64DBGDIR)\..\include;$(EXTERNALDIR)\aws-sdk-cpp\out\install\x64-Debug\include;$(SolutionDir)..\aws-sdk-cpp\out\install\x64-Debug\include;$(SolutionDir)..\external\aws-sdk-cpp\out\install\x64-Debug\include;$(SolutionDir)..\..\external\aws-sdk-cpp\out\install\x64-Debug\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='No Trace|x64'">$(AWS64RELDIR)\..\include;$(EXTERNALDIR)\aws-sdk-cpp\out\install\x64-Debug\include;$(SolutionDir)..\aws-sdk-cpp\out\install\x64-Debug\include;$(SolutionDir)..\external\aws-sdk-cpp\out\install\x64-Debug\include;$(SolutionDir)..\..\external\aws-sdk-cpp\out\install\x64-Debug\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(AWS64RELDIR)\..\include;$(EXTERNALDIR)\aws-sdk-cpp\out\install\x64-Debug\include;$(SolutionDir)..\aws-sdk-cpp\out\install\x64-Debug\include;$(SolutionDir)..\external\aws-sdk-cpp\out\install\x64-Debug\include;$(SolutionDir)..\..\external\aws-sdk-cpp\out\install\x64-Debug\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
     <ClCompile Include="..\..\ptclib\json.cxx" />
     <ClCompile Include="..\..\ptclib\mediafile.cxx">
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">..\..\..\..\external\ffmpeg-win64-dev\include;$(FFMPEG64DIR)\include</AdditionalIncludeDirectories>
@@ -315,8 +321,18 @@
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='No Trace|Win32'">..\..\..\..\external\ffmpeg-win32-dev\include;$(FFMPEG32DIR)\include</AdditionalIncludeDirectories>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\..\..\external\ffmpeg-win32-dev\include;$(FFMPEG32DIR)\include</AdditionalIncludeDirectories>
     </ClCompile>
+    <ClCompile Include="..\..\ptclib\simplescript.cxx" />
+    <ClCompile Include="..\..\ptclib\speech_aws.cxx">
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(AWS64DBGDIR)\..\include;$(EXTERNALDIR)\vcpkg\installed\x64-windows\include;$(EXTERNALDIR)\aws-sdk-cpp\out\install\x64-Debug\include;$(SolutionDir)..\aws-sdk-cpp\out\install\x64-Debug\include;$(SolutionDir)..\external\aws-sdk-cpp\out\install\x64-Debug\include;$(SolutionDir)..\..\external\aws-sdk-cpp\out\install\x64-Debug\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='No Trace|x64'">$(AWS64RELDIR)\..\include;$(EXTERNALDIR)\aws-sdk-cpp\out\install\x64-Debug\include;$(SolutionDir)..\aws-sdk-cpp\out\install\x64-Debug\include;$(SolutionDir)..\external\aws-sdk-cpp\out\install\x64-Debug\include;$(SolutionDir)..\..\external\aws-sdk-cpp\out\install\x64-Debug\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(AWS64RELDIR)\..\include;$(EXTERNALDIR)\aws-sdk-cpp\out\install\x64-Debug\include;$(SolutionDir)..\aws-sdk-cpp\out\install\x64-Debug\include;$(SolutionDir)..\external\aws-sdk-cpp\out\install\x64-Debug\include;$(SolutionDir)..\..\external\aws-sdk-cpp\out\install\x64-Debug\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(AWS32DBGDIR)\..\include;$(EXTERNALDIR)\aws-sdk-cpp\out\install\x86-Debug\include;$(SolutionDir)..\aws-sdk-cpp\out\install\x86-Debug\include;$(SolutionDir)..\external\aws-sdk-cpp\out\install\x86-Debug\include;$(SolutionDir)..\..\external\aws-sdk-cpp\out\install\x86-Debug\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='No Trace|Win32'">$(AWS32RELDIR)\..\include;$(EXTERNALDIR)\aws-sdk-cpp\out\install\x86-Release\include;$(SolutionDir)..\aws-sdk-cpp\out\install\x86-Release\include;$(SolutionDir)..\external\aws-sdk-cpp\out\install\x86-Release\include;$(SolutionDir)..\..\external\aws-sdk-cpp\out\install\x86-Release\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(AWS32RELDIR)\..\include;$(EXTERNALDIR)\aws-sdk-cpp\out\install\x86-Release\include;$(SolutionDir)..\aws-sdk-cpp\out\install\x86-Release\include;$(SolutionDir)..\external\aws-sdk-cpp\out\install\x86-Release\include;$(SolutionDir)..\..\external\aws-sdk-cpp\out\install\x86-Release\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
     <ClCompile Include="..\..\ptclib\textdata.cxx" />
     <ClCompile Include="..\..\ptclib\tonedev.cxx" />
+    <ClCompile Include="..\common\speech.cxx" />
     <ClCompile Include="..\unix\opensl_es.cxx">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='No Trace|Win32'">true</ExcludedFromBuild>
@@ -335,6 +351,24 @@
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(V8_DIR)/v8/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='No Trace|x64'">$(V8_DIR)/v8/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(V8_DIR)/v8/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">stdcpp17</LanguageStandard>
+      <LanguageStandard Condition="'$(Configuration)|$(Platform)'=='No Trace|Win32'">stdcpp17</LanguageStandard>
+      <LanguageStandard Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">stdcpp17</LanguageStandard>
+      <LanguageStandard Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">stdcpp17</LanguageStandard>
+      <LanguageStandard Condition="'$(Configuration)|$(Platform)'=='No Trace|x64'">stdcpp17</LanguageStandard>
+      <LanguageStandard Condition="'$(Configuration)|$(Platform)'=='Release|x64'">stdcpp17</LanguageStandard>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='No Trace|Win32'">/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='No Trace|x64'">/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|x64'">/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='No Trace|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='No Trace|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="..\..\ptclib\script.cxx" />
     <ClCompile Include="..\..\ptclib\ssdp.cxx" />
@@ -468,6 +502,14 @@
       <AssemblerListingLocation Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(IntDir)\unix\</AssemblerListingLocation>
       <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(IntDir)\unix\</ObjectFileName>
       <XMLDocumentationFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(IntDir)\unix\</XMLDocumentationFileName>
+    </ClCompile>
+    <ClCompile Include="..\unix\speech_festival.cxx">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='No Trace|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='No Trace|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\unix\socket.cxx">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
@@ -676,7 +718,7 @@
     </ClCompile>
     <ClCompile Include="..\..\ptclib\pstun.cxx" />
     <ClCompile Include="..\..\ptclib\pstunsrvr.cxx" />
-    <ClCompile Include="..\..\ptlib\msos\ptts.cxx" />
+    <ClCompile Include="speech_sapi.cxx" />
     <ClCompile Include="..\..\ptclib\pvfiledev.cxx" />
     <ClCompile Include="..\..\ptclib\pvidfile.cxx">
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(ProgramW6432)\ImageMagick-7.0.5-Q16\include</AdditionalIncludeDirectories>
@@ -887,8 +929,10 @@ if errorlevel 1 copy "%(FullPath)"+nul "%(RootDir)%(Directory)%(FileName)"</Comm
     <None Include="..\..\..\tools\get_revision.sh" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\..\include\ptclib\aws_sdk.h" />
     <ClInclude Include="..\..\..\include\ptclib\mediafile.h" />
     <ClInclude Include="..\..\..\include\ptclib\pjson.h" />
+    <ClInclude Include="..\..\..\include\ptclib\psr.h" />
     <ClInclude Include="..\..\..\include\ptclib\textdata.h" />
     <ClInclude Include="..\..\..\include\ptlib\id_generator.h" />
     <ClInclude Include="..\..\..\include\ptclib\gstreamer.h" />
@@ -900,6 +944,7 @@ if errorlevel 1 copy "%(FullPath)"+nul "%(RootDir)%(Directory)%(FileName)"</Comm
     <ClInclude Include="..\..\..\include\ptlib\bitwise_enum.h" />
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\platform.h" />
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\pt_atl.h" />
+    <ClInclude Include="..\..\..\include\ptlib\psharedptr.h" />
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\channel.h" />
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\config.h" />
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\ethsock.h" />
@@ -1041,7 +1086,6 @@ if errorlevel 1 copy "%(FullPath)"+nul "%(RootDir)%(Directory)%(FileName)"</Comm
     <ClInclude Include="..\..\..\include\ptclib\psockbun.h" />
     <ClInclude Include="..\..\..\include\ptclib\pssl.h" />
     <ClInclude Include="..\..\..\include\ptclib\pstun.h" />
-    <ClInclude Include="..\..\..\include\ptclib\ptts.h" />
     <ClInclude Include="..\..\..\include\ptclib\pvfiledev.h" />
     <ClInclude Include="..\..\..\include\ptclib\pvidfile.h" />
     <ClInclude Include="..\..\..\include\ptclib\pwavfile.h" />
@@ -1067,6 +1111,4 @@ if errorlevel 1 copy "%(FullPath)"+nul "%(RootDir)%(Directory)%(FileName)"</Comm
     <ClInclude Include="..\..\..\include\ptclib\xmpp_roster.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
-  <ImportGroup Label="ExtensionTargets">
-  </ImportGroup>
 </Project>

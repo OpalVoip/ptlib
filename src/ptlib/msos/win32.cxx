@@ -1187,7 +1187,7 @@ PProcessIdentifier PProcess::GetCurrentProcessID()
 }
 
 
-void PProcess::GetMemoryUsage(MemoryUsage & usage)
+void PProcess::GetMemoryUsage(MemoryUsage & usage) const
 {
   usage = MemoryUsage();
 

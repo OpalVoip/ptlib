@@ -144,10 +144,10 @@ class PNatMethod  : public PObject
   //@{
     virtual void PrintOn(
       ostream & strm
-    ) const;
+    ) const override;
     virtual Comparison Compare(
       const PObject & obj
-    ) const;
+    ) const override;
   //@}
 
 
@@ -387,8 +387,8 @@ class PNatCandidate : public PObject
       const char * protocol = "udp"
     );
 
-    virtual Comparison Compare(const PObject & other) const;
-    virtual void PrintOn(ostream & strm) const;
+    virtual Comparison Compare(const PObject & other) const override;
+    virtual void PrintOn(ostream & strm) const override;
 
     Types                   m_type;
     PNatMethod::Component   m_component;
@@ -418,7 +418,7 @@ class PNATUDPSocket : public PUDPSocket
       PNatMethod::Component component
     );
 
-    virtual PString GetName() const;
+    virtual PString GetName() const override;
     virtual const char * GetNatName() const { return "NAT"; }
 
     virtual void GetCandidateInfo(PNatCandidate & candidate);
@@ -466,14 +466,14 @@ class PNatMethod_Fixed  : public PNatMethod
     PNatMethod_Fixed(unsigned priority = DefaultPriority);
 
     static const char * MethodName();
-    virtual PCaselessString GetMethodName() const;
+    virtual PCaselessString GetMethodName() const override;
 
-    virtual PString GetServer() const;
-    virtual bool SetServer(const PString & str);
-    virtual bool GetInterfaceAddress(PIPSocket::Address & ifaceAddr) const;
-    virtual bool Open(const PIPSocket::Address & ifaceAddr);
-    virtual void Close();
-    virtual bool IsAvailable(const PIPSocket::Address & binding, PObject * context);
+    virtual PString GetServer() const override;
+    virtual bool SetServer(const PString & str) override;
+    virtual bool GetInterfaceAddress(PIPSocket::Address & ifaceAddr) const override;
+    virtual bool Open(const PIPSocket::Address & ifaceAddr) override;
+    virtual void Close() override;
+    virtual bool IsAvailable(const PIPSocket::Address & binding, PObject * context) override;
 
     class Socket : public PNATUDPSocket
     {
@@ -484,13 +484,13 @@ class PNatMethod_Fixed  : public PNatMethod
           const PIPSocket::Address & externalAddress
         );
       private:
-        bool InternalGetLocalAddress(PIPSocketAddressAndPort & addr);
+        bool InternalGetLocalAddress(PIPSocketAddressAndPort & addr) override;
         PIPSocket::Address m_externalAddress;
     };
   protected:
-    virtual bool InternalGetServerAddress(PIPSocketAddressAndPort & externalAddressAndPort) const;
-    virtual PNATUDPSocket * InternalCreateSocket(Component component, PObject * context);
-    virtual void InternalUpdate(bool);
+    virtual bool InternalGetServerAddress(PIPSocketAddressAndPort & externalAddressAndPort) const override;
+    virtual PNATUDPSocket * InternalCreateSocket(Component component, PObject * context) override;
+    virtual void InternalUpdate(bool) override;
 
     PString            m_serverString;
     PIPSocket::Address m_interfaceAddress;
@@ -510,14 +510,14 @@ class PNatMethod_AWS : public PNatMethod_Fixed
     PNatMethod_AWS(unsigned priority = DefaultPriority);
 
     static const char * MethodName();
-    virtual PCaselessString GetMethodName() const;
+    virtual PCaselessString GetMethodName() const override;
 
-    virtual PString GetServer() const;
-    virtual bool SetServer(const PString & str);
+    virtual PString GetServer() const override;
+    virtual bool SetServer(const PString & str) override;
 
   protected:
-    virtual bool InternalGetServerAddress(PIPSocketAddressAndPort & externalAddressAndPort) const;
-    void InternalUpdate(bool);
+    virtual bool InternalGetServerAddress(PIPSocketAddressAndPort & externalAddressAndPort) const override;
+    void InternalUpdate(bool) override;
 };
 
 /////////////////////////////////////////////////////////////

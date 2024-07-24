@@ -24,39 +24,39 @@ class PPER_Stream : public PASN_Stream
 
     unsigned GetBitsLeft() const;
 
-    virtual bool Read(PChannel & chan);
-    virtual bool Write(PChannel & chan);
+    virtual bool Read(PChannel & chan) override;
+    virtual bool Write(PChannel & chan) override;
 
-    virtual bool NullDecode(PASN_Null &);
-    virtual void NullEncode(const PASN_Null &);
-    virtual bool BooleanDecode(PASN_Boolean &);
-    virtual void BooleanEncode(const PASN_Boolean &);
-    virtual bool IntegerDecode(PASN_Integer &);
-    virtual void IntegerEncode(const PASN_Integer &);
-    virtual bool EnumerationDecode(PASN_Enumeration &);
-    virtual void EnumerationEncode(const PASN_Enumeration &);
-    virtual bool RealDecode(PASN_Real &);
-    virtual void RealEncode(const PASN_Real &);
-    virtual bool ObjectIdDecode(PASN_ObjectId &);
-    virtual void ObjectIdEncode(const PASN_ObjectId &);
-    virtual bool BitStringDecode(PASN_BitString &);
-    virtual void BitStringEncode(const PASN_BitString &);
-    virtual bool OctetStringDecode(PASN_OctetString &);
-    virtual void OctetStringEncode(const PASN_OctetString &);
-    virtual bool ConstrainedStringDecode(PASN_ConstrainedString &);
-    virtual void ConstrainedStringEncode(const PASN_ConstrainedString &);
-    virtual bool BMPStringDecode(PASN_BMPString &);
-    virtual void BMPStringEncode(const PASN_BMPString &);
-    virtual bool ChoiceDecode(PASN_Choice &);
-    virtual void ChoiceEncode(const PASN_Choice &);
-    virtual bool ArrayDecode(PASN_Array &);
-    virtual void ArrayEncode(const PASN_Array &);
-    virtual bool SequencePreambleDecode(PASN_Sequence &);
-    virtual void SequencePreambleEncode(const PASN_Sequence &);
-    virtual bool SequenceKnownDecode(PASN_Sequence &, PINDEX, PASN_Object &);
-    virtual void SequenceKnownEncode(const PASN_Sequence &, PINDEX, const PASN_Object &);
-    virtual bool SequenceUnknownDecode(PASN_Sequence &);
-    virtual void SequenceUnknownEncode(const PASN_Sequence &);
+    virtual bool NullDecode(PASN_Null &) override;
+    virtual void NullEncode(const PASN_Null &) override;
+    virtual bool BooleanDecode(PASN_Boolean &) override;
+    virtual void BooleanEncode(const PASN_Boolean &) override;
+    virtual bool IntegerDecode(PASN_Integer &) override;
+    virtual void IntegerEncode(const PASN_Integer &) override;
+    virtual bool EnumerationDecode(PASN_Enumeration &) override;
+    virtual void EnumerationEncode(const PASN_Enumeration &) override;
+    virtual bool RealDecode(PASN_Real &) override;
+    virtual void RealEncode(const PASN_Real &) override;
+    virtual bool ObjectIdDecode(PASN_ObjectId &) override;
+    virtual void ObjectIdEncode(const PASN_ObjectId &) override;
+    virtual bool BitStringDecode(PASN_BitString &) override;
+    virtual void BitStringEncode(const PASN_BitString &) override;
+    virtual bool OctetStringDecode(PASN_OctetString &) override;
+    virtual void OctetStringEncode(const PASN_OctetString &) override;
+    virtual bool ConstrainedStringDecode(PASN_ConstrainedString &) override;
+    virtual void ConstrainedStringEncode(const PASN_ConstrainedString &) override;
+    virtual bool BMPStringDecode(PASN_BMPString &) override;
+    virtual void BMPStringEncode(const PASN_BMPString &) override;
+    virtual bool ChoiceDecode(PASN_Choice &) override;
+    virtual void ChoiceEncode(const PASN_Choice &) override;
+    virtual bool ArrayDecode(PASN_Array &) override;
+    virtual void ArrayEncode(const PASN_Array &) override;
+    virtual bool SequencePreambleDecode(PASN_Sequence &) override;
+    virtual void SequencePreambleEncode(const PASN_Sequence &) override;
+    virtual bool SequenceKnownDecode(PASN_Sequence &, PINDEX, PASN_Object &) override;
+    virtual void SequenceKnownEncode(const PASN_Sequence &, PINDEX, const PASN_Object &) override;
+    virtual bool SequenceUnknownDecode(PASN_Sequence &) override;
+    virtual void SequenceUnknownEncode(const PASN_Sequence &) override;
 
     bool IsAligned() const { return aligned; }
 

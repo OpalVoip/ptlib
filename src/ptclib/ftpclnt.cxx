@@ -337,7 +337,7 @@ class PURL_FtpLoader : public PURLLoader
 {
     PCLASSINFO(PURL_FtpLoader, PURLLoader);
   public:
-    virtual bool Load(PString & str, const PURL & url, const PURL::LoadParams & params) const
+    virtual bool Load(PString & str, const PURL & url, const PURL::LoadParams & params) const override
     {
       PFTPClient ftp;
       ftp.SetReadTimeout(params.m_timeout);
@@ -354,7 +354,7 @@ class PURL_FtpLoader : public PURLLoader
       return true;
     }
 
-    virtual bool Load(PBYTEArray & data, const PURL & url, const PURL::LoadParams & params) const
+    virtual bool Load(PBYTEArray & data, const PURL & url, const PURL::LoadParams & params) const override
     {
       PFTPClient ftp;
       ftp.SetReadTimeout(params.m_timeout);

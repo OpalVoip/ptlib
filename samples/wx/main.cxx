@@ -84,14 +84,6 @@ DEF_FIELD(VideoGrabFrameSize);
 DEF_FIELD(VideoGrabFlipped);
 
 
-enum {
-  ID_VIDEO_ENDED,
-};
-
-DECLARE_EVENT_TYPE(wxMyEventMessage, -1)
-DEFINE_EVENT_TYPE(wxMyEventMessage)
-
-
 ///////////////////////////////////////////////////////////////////////////////
 
 IMPLEMENT_APP(MyApp)
@@ -231,25 +223,6 @@ void MyFrame::OnClose(wxCloseEvent& /*event*/)
   config->Write(MainFrameHeightKey, h);
 
   Destroy();
-}
-
-
-void MyFrame::PostEvent(unsigned id, const PString & str, const void * data)
-{
-  wxCommandEvent theEvent(wxMyEventMessage, id);
-  theEvent.SetEventObject(this);
-  theEvent.SetString(PwxString(str));
-  theEvent.SetClientData((void *)data);
-  GetEventHandler()->AddPendingEvent(theEvent);
-}
-
-
-void MyFrame::OnEvent(wxCommandEvent & theEvent)
-{
-  switch (theEvent.GetId()) {
-    case ID_VIDEO_ENDED :
-      break;
-  }
 }
 
 

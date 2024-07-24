@@ -89,7 +89,7 @@ class PModem : public PSerialChannel
 
 
   // Overrides from class PChannel
-    virtual bool Close();
+    virtual bool Close() override;
     // Close the modem serial port channel.
 
 
@@ -110,7 +110,7 @@ class PModem : public PSerialChannel
       uint8_t stop = 0,          ///< Number of stop bits for serial port.
       FlowControl inputFlow = DefaultFlowControl,   ///< Input flow control.
       FlowControl outputFlow = DefaultFlowControl   ///< Output flow control.
-    );
+    ) override;
 
 #if P_CONFIG_FILE
     /** Open the modem serial port obtaining the parameters from standard
@@ -122,11 +122,11 @@ class PModem : public PSerialChannel
      */
     virtual bool Open(
       PConfig & cfg   ///< Configuration file to read parameters from.
-    );
+    ) override;
 
     virtual void SaveSettings(
       PConfig & cfg   ///< Configuration file to write parameters to.
-    );
+    ) override;
     // Save the current modem serial port settings into the configuration file.
 #endif // P_CONFIG_FILE
 

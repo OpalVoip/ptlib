@@ -279,7 +279,7 @@
             <orient>wxHORIZONTAL</orient>
             <object class="sizeritem">
                 <option>1</option>
-                <flag>wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL</flag>
+                <flag>wxALIGN_CENTER_VERTICAL</flag>
                 <object class="wxStaticText" name="label_1">
                     <style>wxALIGN_CENTRE</style>
                     <label>A sample wxWidgets/PTLib application</label>

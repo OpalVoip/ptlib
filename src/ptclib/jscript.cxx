@@ -24,7 +24,7 @@
  * Contributor(s): Craig Southeren
  */
 
-#ifdef __GNUC__
+#ifdef P_USE_PRAGMA
 #pragma implementation "jscript.h"
 #endif
 
@@ -40,45 +40,69 @@
 Requires Google's V8 version 6 or later
 
 For Unix variants, follow build instructions for v8 or just use distro.
-Note most distro's use a very early version of V8 (3.14 typical) so if
-you need advanced features you need to build it.
+Note some distro's use a very early version of V8, so you may need to
+build it.
 
 For Windows the following commands was used to build V8:
 
-Install Visual Studio 2015, note you should do a full isntallation, in
-particular the "Windows SDK" component.
-Install Windows 10 SDK (yes, in addition to the above) from
-https://developer.microsoft.com/en-us/windows/downloads/windows-10-sdk
-Download https://storage.googleapis.com/chrome-infra/depot_tools.zip and
-unpack to somehere, e.g. C:\tools\depot_tools
+* Install Visual Studio 2019, note you should do a full installation, in
+  particular the "Windows SDK" component.
+
+* Install Windows 10 SDK 10.0.20348 (yes, in addition to the above) from
+  https://developer.microsoft.com/en-us/windows/downloads/windows-10-sdk
+
+* Download https://storage.googleapis.com/chrome-infra/depot_tools.zip and
+  unpack to somehere, e.g. C:\tools\depot_tools
+
+* Set up the environment in CMD:
+
 set DEPOT_TOOLS_WIN_TOOLCHAIN=0
-set GYP_MSVS_VERSION=2015
 PATH=C:\tools\depot_tools;%PATH%
-mkdir <v8-dir>   ;e.g. if PTLib is in C:\Work\ptlib, use C:\Work\v8 or C:\Work\external\v8
+
+* Or for PowerShell:
+
+$env:DEPOT_TOOLS_WIN_TOOLCHAIN=0
+$env:PATH="C:\tools\depot_tools;$env:PATH"
+
+* Get the source to somewhere e.g. if PTLib is in C:\Work\ptlib then
+  C:\Work\external\v8 would work "out of the box". The following gets the
+  source as per the V8 instructions:
+
+mkdir <v8-dir>
 cd <v8-dir>
 fetch v8
-Wait a while, this step is notorious for failing in myserious ways
 cd v8
-Edit build\config\win\BUILD.gn and change ":static_crt" to ":dynamic_crt"
+gclient sync
 
-Then do any or all of the following
-.\tools\dev\v8gen.py x64.release -- v8_static_library=true is_component_build=false
-ninja -C out.gn\x64.release
+* Now (as of time of writing) apply the following patched:
 
-.\tools\dev\v8gen.py x64.debug -- v8_static_library=true is_component_build=false
-ninja -C out.gn\x64.debug
+In ./build/config/win/BUILD.gn b/config/win/BUILD.gn, find and replace:
 
-.\tools\dev\v8gen.py ia32.release -- v8_static_library=true is_component_build=false
-ninja -C out.gn\ia32.release
+-      configs = [ ":static_crt" ]
++      configs = [ ":dynamic_crt" ]
 
-.\tools\dev\v8gen.py ia32.debug -- v8_static_library=true is_component_build=false
-ninja -C out.gn\ia32.debug
+In ./v8/third_party/icu/source/i18n/fmtable.cpp, find and replace:
 
-Then reconfigure PTLib.
+-     return *((const Measure*)a) == ((const Measure*)b);
++     return *((const Measure*)a) == *b;
 
-Note that three files, icudtl.dat, natives_blob.bin & snapshot_blob.bin, must be
-copied to the executable directory of any application that uses the V8 system.
-They are usually in the output directory of the build, e.g. out.gn\x64.release
+* To set up the build directories you execute:
+
+python3 tools/dev/v8gen.py x64.release  -- is_clang=false v8_monolithic=true is_component_build=false v8_use_external_startup_data=false v8_enable_sandbox=false
+python3 tools/dev/v8gen.py x64.debug    -- is_clang=false v8_monolithic=true is_component_build=false v8_use_external_startup_data=false v8_enable_sandbox=false enable_iterator_debugging=true
+
+And if you need 32 bit:
+
+python3 tools/dev/v8gen.py ia32.release -- is_clang=false v8_monolithic=true is_component_build=false v8_use_external_startup_data=false v8_enable_sandbox=false
+python3 tools/dev/v8gen.py ia32.debug   -- is_clang=false v8_monolithic=true is_component_build=false v8_use_external_startup_data=false v8_enable_sandbox=false enable_iterator_debugging=true
+
+* Then build each directory:
+
+ninja -C out.gn/x64.release v8_monolith
+ninja -C out.gn/x64.debug v8_monolith
+etc
+
+Finally, reconfigure PTLib and rebuild.
 */
 
 #ifdef _MSC_VER
@@ -91,69 +115,33 @@ They are usually in the output directory of the build, e.g. out.gn\x64.release
 
 #define V8_DEPRECATION_WARNINGS 1
 #define V8_IMMINENT_DEPRECATION_WARNINGS 1
+#define V8_COMPRESS_POINTERS 1
+#pragma warning(push)
+#pragma warning(disable:4996 4458)
 #include <v8.h>
+#pragma warning(pop)
 
 #ifndef V8_MAJOR_VERSION
-// This is the version distributed with many Linux distros
-#define V8_MAJOR_VERSION 3
-#define V8_MINOR_VERSION 14
+  // This is the version distributed with many Linux distros
+  #define V8_MAJOR_VERSION 3
+  #define V8_MINOR_VERSION 14
 #endif
 
 
 #if V8_MAJOR_VERSION >= 6
-#include "libplatform/libplatform.h"
+  #include "libplatform/libplatform.h"
 #endif
 
 
 #ifdef _MSC_VER
-#pragma comment(lib, "winmm.lib")
-#pragma comment(lib, "dbghelp.lib")
-#pragma comment(lib, "shlwapi.lib")
-#if defined(_DEBUG)
-#if defined(P_64BIT)
-#pragma comment(lib, P_V8_BASE0_DEBUG64)
-#pragma comment(lib, P_V8_BASE1_DEBUG64)
-#pragma comment(lib, P_V8_LIBBASE_DEBUG64)
-#pragma comment(lib, P_V8_SNAPSHOT_DEBUG64)
-#pragma comment(lib, P_V8_LIBPLATFORM_DEBUG64)
-#pragma comment(lib, P_V8_LIBSAMPLER_DEBUG64)
-#pragma comment(lib, P_V8_ICUI18N_DEBUG64)
-#pragma comment(lib, P_V8_ICUUC_DEBUG64)
-#define V8_BLOBS_DIR V8_DIR "/out.gn/x64.debug"
-#else
-#pragma comment(lib, P_V8_BASE0_DEBUG32)
-#pragma comment(lib, P_V8_BASE1_DEBUG32)
-#pragma comment(lib, P_V8_LIBBASE_DEBUG32)
-#pragma comment(lib, P_V8_SNAPSHOT_DEBUG32)
-#pragma comment(lib, P_V8_LIBPLATFORM_DEBUG32)
-#pragma comment(lib, P_V8_LIBSAMPLER_DEBUG32)
-#pragma comment(lib, P_V8_ICUI18N_DEBUG32)
-#pragma comment(lib, P_V8_ICUUC_DEBUG32)
-#define V8_BLOBS_DIR V8_DIR "/out.gn/ia32.debug"
-#endif
-#else
-#if defined(P_64BIT)
-#pragma comment(lib, P_V8_BASE0_RELEASE64)
-#pragma comment(lib, P_V8_BASE1_RELEASE64)
-#pragma comment(lib, P_V8_LIBBASE_RELEASE64)
-#pragma comment(lib, P_V8_SNAPSHOT_RELEASE64)
-#pragma comment(lib, P_V8_LIBPLATFORM_RELEASE64)
-#pragma comment(lib, P_V8_LIBSAMPLER_RELEASE64)
-#pragma comment(lib, P_V8_ICUI18N_RELEASE64)
-#pragma comment(lib, P_V8_ICUUC_RELEASE64)
-#define V8_BLOBS_DIR V8_DIR "/out.gn/x64.release"
-#else
-#pragma comment(lib, P_V8_BASE0_RELEASE32)
-#pragma comment(lib, P_V8_BASE1_RELEASE32)
-#pragma comment(lib, P_V8_LIBBASE_RELEASE32)
-#pragma comment(lib, P_V8_SNAPSHOT_RELEASE32)
-#pragma comment(lib, P_V8_LIBPLATFORM_RELEASE32)
-#pragma comment(lib, P_V8_LIBSAMPLER_RELEASE32)
-#pragma comment(lib, P_V8_ICUI18N_RELEASE32)
-#pragma comment(lib, P_V8_ICUUC_RELEASE32)
-#define V8_BLOBS_DIR V8_DIR "/out.gn/ia32.release"
-#endif
-#endif
+  #if _MSC_VER >= 1932 && _MSC_VER < 1938 // Visual Studio 2022 version 17.2+
+    #pragma comment(linker, "/alternatename:__imp___std_init_once_complete=__imp_InitOnceComplete")
+    #pragma comment(linker, "/alternatename:__imp___std_init_once_begin_initialize=__imp_InitOnceBeginInitialize")
+  #endif
+  #pragma comment(lib, "winmm.lib")
+  #pragma comment(lib, "dbghelp.lib")
+  #pragma comment(lib, "shlwapi.lib")
+  #pragma comment(lib, P_V8_LIB)
 #endif
 
 
@@ -165,9 +153,9 @@ PFACTORY_CREATE(PFactory<PScriptLanguage>, PJavaScript, JavaName, false);
 
 
 #if PTRACING && V8_MAJOR_VERSION > 3
-static void LogEventCallback(const char * PTRACE_PARAM(name), int PTRACE_PARAM(event))
+static void LogEventCallback(const char * PTRACE_PARAM(name), int PTRACE_PARAM(startEnd))
 {
-  PTRACE(4, "V8-Log", "Event=" << event << " - " << name);
+  PTRACE(5, "V8-Log", name << ' '  << (startEnd == 0 ? "started" : "ended"));
 }
 
 static void TraceFunction(const v8::FunctionCallbackInfo<v8::Value>& args)
@@ -195,23 +183,6 @@ static void TraceFunction(const v8::FunctionCallbackInfo<v8::Value>& args)
   trace << PTrace::End;
 }
 #endif // PTRACING && V8_MAJOR_VERSION > 3
-
-
-#ifdef V8_BLOBS_DIR
-static bool MyInitializeExternalStartupData(const PDirectory dir)
-{
-  /* For some exceptionally stupid reason, the initialisation function for the
-  external start up files returns no success/failure, it just crashes later
-  when you try and create an Isolate object */
-  if (!PFile::Exists(dir + "snapshot_blob.bin"))
-    return false;
-  if (!PFile::Exists(dir + "natives_blob.bin"))
-    return false;
-
-  v8::V8::InitializeExternalStartupData(dir);
-  return true;
-}
-#endif // V8_BLOBS_DIR
 
 
 struct PJavaScript::Private : PObject
@@ -316,11 +287,13 @@ struct PJavaScript::Private : PObject
     {
       PTRACE(4, PTraceModule(), "V8 shutdown.");
       v8::V8::Dispose();
-#if V8_MAJOR_VERSION > 3
+#if V8_MAJOR_VERSION > 8
+      v8::V8::DisposePlatform();
+#elif V8_MAJOR_VERSION > 3
       v8::V8::ShutdownPlatform();
 #endif
     }
-    };
+   };
 
 
 #if V8_MAJOR_VERSION > 3
@@ -413,12 +386,12 @@ public:
     value = name[0] != '[' ? object->Get(NewString(name)) : object->Get(name.Mid(1).AsInteger());
 #endif
     if (value.IsEmpty())
-      m_owner.OnError(101, PSTRSTRM("Cannot get memmber \"" << name << '"'));
+      m_owner.OnError(101, PSTRSTRM("Cannot get member \"" << name << '"'));
     return value;
   }
 
 
-  v8::Local<v8::Object> GetObjectHandle(const v8::Local<v8::Context> & context, const PString & key, PString & var)
+  v8::Local<v8::Object> GetObjectHandle(const v8::Local<v8::Context> & context, const PString & key, PString & var, bool withError)
   {
     PStringArray tokens = key.Tokenise('.', false);
     if (tokens.GetSize() < 1) {
@@ -449,13 +422,15 @@ public:
       // get the member variable
       v8::Local<v8::Value> value = GetMember(context, object, tokens[i]);
       if (value.IsEmpty()) {
-        m_owner.OnError(103, PSTRSTRM("Cannot get intermediate element \"" << tokens[i] << "\" of \"" << key << '"'));
+        if (withError)
+          m_owner.OnError(103, PSTRSTRM("Cannot get intermediate element \"" << tokens[i] << "\" of \"" << key << '"'));
         return v8::Local<v8::Object>();
       }
 
       // terminals must not be composites, internal nodes must be composites
       if (!value->IsObject()) {
-        m_owner.OnError(104, PSTRSTRM("Non composite intermediate element \"" << tokens[i] << "\" of \"" << key << '"'));
+        if (withError)
+          m_owner.OnError(104, PSTRSTRM("Non composite intermediate element \"" << tokens[i] << "\" of \"" << key << '"'));
         return v8::Local<v8::Object>();
       }
 
@@ -467,7 +442,8 @@ public:
         *(object = value->ToObject()) == NULL || object->IsNull()
 #endif
         ) {
-        m_owner.OnError(105, PSTRSTRM("Cannot get value of intermediate element \"" << tokens[i] << "\" of \"" << key << '"'));
+        if (withError)
+          m_owner.OnError(105, PSTRSTRM("Cannot get value of intermediate element \"" << tokens[i] << "\" of \"" << key << '"'));
         return v8::Local<v8::Object>();
       }
     }
@@ -486,7 +462,8 @@ public:
   bool GetVarValue(const v8::Local<v8::Context> & context,
                    v8::Local<v8::Value> value,
                    PVarType & var,
-                   const PString & key)
+                   const PString & key,
+                   bool withError)
   {
     if (value.IsEmpty())
       return false;
@@ -510,7 +487,11 @@ public:
     }
 
     if (value->IsBoolean()) {
+#if V8_MAJOR_VERSION > 8
+      var = PVarType(value->BooleanValue(m_isolate));
+#else
       var = ToVarType(BooleanValue, false);
+#endif
       PTRACE(5, "Got Boolean \"" << key << "\" = " << var);
       return true;
     }
@@ -525,13 +506,50 @@ public:
       return true;
     }
 
-    m_owner.OnError(106, PSTRSTRM("Unable to determine type of \"" << key << "\" = \"" << ToPString(value) << '"'));
+    if (withError)
+      m_owner.OnError(106, PSTRSTRM("Unable to determine type of \"" << key << "\" = \"" << ToPString(value) << '"'));
     var.SetType(PVarType::VarNULL);
     return false;
   }
 
 
-  bool GetVar(const PString & key, PVarType & var)
+  PScriptLanguage::VarTypes GetVarType(const PString & key)
+  {
+    if (m_isolate == NULL) {
+      m_owner.OnError(100, "Uninitialised");
+      return NumVarTypes;
+    }
+
+    v8::Isolate::Scope isolateScope(m_isolate);
+    HandleScope handleScope(this);
+    v8::Local<v8::Context> context = GetContext();
+    v8::Context::Scope contextScope(context);
+
+    PString varName;
+    v8::Local<v8::Object> object = GetObjectHandle(context, key, varName, false);
+    v8::Local<v8::Value> member = GetMember(context, object, varName);
+    if (member.IsEmpty() || member->IsUndefined())
+      return UndefinedType;
+
+    if (member->IsNull())
+      return NullType;
+    if (member->IsBoolean())
+      return BooleanType;
+    if (member->IsInt32())
+      return IntegerType;
+    if (member->IsNumber())
+      return NumberType;
+    if (member->IsString())
+      return StringType;
+    if (member->IsObject())
+      return CompositeType;
+    if (member->IsArray())
+      return SequenceType;
+    return NumVarTypes;
+}
+
+
+  bool GetVar(const PString & key, PVarType & var, bool withError)
   {
     if (m_isolate == NULL) {
       m_owner.OnError(100, "Uninitialised");
@@ -544,20 +562,17 @@ public:
     v8::Context::Scope contextScope(context);
 
     PString varName;
-    v8::Local<v8::Object> object = GetObjectHandle(context, key, varName);
+    v8::Local<v8::Object> object = GetObjectHandle(context, key, varName, withError);
     if (object.IsEmpty())
       return false;
 
-    return GetVarValue(context, GetMember(context, object, varName), var, key);
+    return GetVarValue(context, GetMember(context, object, varName), var, key, withError);
   }
 
 
   v8::Local<v8::Value> SetVarValue(const PVarType & var)
   {
     switch (var.GetType()) {
-      case PVarType::VarNULL:
-        return v8::Local<v8::Value>();
-
       case PVarType::VarBoolean:
 #if V8_MAJOR_VERSION > 3
         return NewObject<v8::Boolean>(var.AsBoolean());
@@ -591,11 +606,8 @@ public:
       case PVarType::VarFloatExtended:
         return NewObject<v8::Number>(var.AsFloat());
 
-      case PVarType::VarTime:
-      case PVarType::VarStaticBinary:
-      case PVarType::VarDynamicBinary:
       default:
-        return NewObject<v8::Object>();
+        return v8::Local<v8::Value>();
     }
   }
 
@@ -613,7 +625,7 @@ public:
     v8::Context::Scope contextScope(context);
 
     PString varName;
-    v8::Local<v8::Object> object = GetObjectHandle(context, key, varName);
+    v8::Local<v8::Object> object = GetObjectHandle(context, key, varName, true);
     if (object.IsEmpty())
       return false;
 
@@ -626,12 +638,65 @@ public:
     if (varName[0] != '[' ? object->Set(NewString(varName), value) : object->Set(varName.Mid(1).AsInteger(), value))
 #endif
     {
-      PTRACE(4, "Set \"" << key << "\" to " <<
-             (var.GetType() == PVarType::VarStaticBinary ? PConstString("composite") : var.AsString().Left(100).ToLiteral()));
+      PTRACE(4, "Set \"" << key << "\" to " << var.AsString().Left(100).ToLiteral());
       return true;
     }
 
     m_owner.OnError(107, PSTRSTRM("Could not set \"" << key << "\" to " << var.AsString().Left(100).ToLiteral()));
+    return false;
+  }
+
+
+  bool CreateComposite(const PString & key, int sequenceSize)
+  {
+    if (m_isolate == NULL) {
+      m_owner.OnError(100, "Uninitialised");
+      return false;
+    }
+
+    v8::Isolate::Scope isolateScope(m_isolate);
+    HandleScope handleScope(this);
+    v8::Local<v8::Context> context = GetContext();
+    v8::Context::Scope contextScope(context);
+
+    PString varName;
+    v8::Local<v8::Object> object = GetObjectHandle(context, key, varName, true);
+    if (object.IsEmpty())
+      return false;
+
+    v8::Local<v8::Value> member = GetMember(context, object, varName);
+    if (!member.IsEmpty() && !member->IsUndefined()) {
+      if (sequenceSize == 0) {
+        if (member->IsObject())
+          return true;
+        m_owner.OnError(107, PSTRSTRM("Could not set \"" << key << "\" to an object, already set"));
+        return false;
+      }
+      if (!member->IsArray()) {
+        m_owner.OnError(107, PSTRSTRM("Could not set \"" << key << "\" to array, already set"));
+        return false;
+      }
+      return true;
+    }
+
+    v8::Local<v8::Value> value;
+    if (sequenceSize > 0)
+      value = NewObject<v8::Array>(sequenceSize);
+    else
+      value = NewObject<v8::Object>();
+#if V8_MAJOR_VERSION > 3
+    v8::Maybe<bool> result = varName[0] != '[' ? object->Set(context, NewString(varName), value)
+      : object->Set(context, varName.Mid(1).AsUnsigned(), value);
+    if (result.FromMaybe(false))
+#else
+    if (varName[0] != '[' ? object->Set(NewString(varName), value) : object->Set(varName.Mid(1).AsInteger(), value))
+#endif
+    {
+      PTRACE(4, "Set \"" << key << "\" to " << (sequenceSize > 0 ? "array" : "object"));
+      return true;
+    }
+
+    m_owner.OnError(107, PSTRSTRM("Could not set \"" << key << "\" to " << (sequenceSize > 0 ? "array" : "object")));
     return false;
   }
 
@@ -656,7 +721,7 @@ public:
     int nargs = callbackInfo.Length();
     signature.m_arguments.resize(nargs);
     for (int arg = 0; arg < nargs; ++arg)
-      GetVarValue(context, callbackInfo[arg], signature.m_arguments[arg], notifierInfo.m_key);
+      GetVarValue(context, callbackInfo[arg], signature.m_arguments[arg], notifierInfo.m_key, true);
 
     notifierInfo.m_notifiers(notifierInfo.m_owner, signature);
 
@@ -700,7 +765,7 @@ public:
     v8::Context::Scope contextScope(context);
 
     PString varName;
-    v8::Local<v8::Object> object = GetObjectHandle(context, key, varName);
+    v8::Local<v8::Object> object = GetObjectHandle(context, key, varName, true);
     if (object.IsEmpty())
       return false;
 
@@ -766,38 +831,48 @@ public:
 
     TryCatch exceptionHandler(this);
 
-    // compile the source 
+    // compile the source
+    PString error;
     v8::Local<v8::Script> script;
 #if V8_MAJOR_VERSION > 3
-    v8::Script::Compile(context, source).ToLocal(&script);
+    if (!v8::Script::Compile(context, source).ToLocal(&script))
 #else
     script = v8::Script::Compile(source);
+    if (script.IsEmpty())
 #endif
-    if (exceptionHandler.HasCaught()) {
+      error = "Compile ToLocal failed";
+    if (error.empty() && exceptionHandler.HasCaught())
+      error = OnException(exceptionHandler);
+    if (!error.empty()) {
       PTRACE(3, "Could not compile source " << text. Ellipsis(100).ToLiteral());
-      m_owner.OnError(120, OnException(exceptionHandler));
+      m_owner.OnError(120, error);
       return false;
     }
 
     // run the code
     v8::Local<v8::Value> result;
 #if V8_MAJOR_VERSION > 3
-    script->Run(context).ToLocal(&result);
+    if (!script->Run(context).ToLocal(&result))
 #else
     result = script->Run();
+    if (result.IsEmpty())
 #endif
-    if (exceptionHandler.HasCaught()) {
-      PTRACE(3, "Could not run source " << text. Ellipsis(100).ToLiteral());
-      m_owner.OnError(121, OnException(exceptionHandler));
+      error = "Run ToLocal failed";
+    if (error.empty() && exceptionHandler.HasCaught())
+      error = OnException(exceptionHandler);
+    if (!error.empty()) {
+      PTRACE(3, "Exception running source " << text.Ellipsis(100).ToLiteral());
+      m_owner.OnError(121, error);
       return false;
     }
 
     resultText = ToPString(result);
-    PTRACE(4, "Script execution returned " << resultText.Ellipsis(100).ToLiteral());
+    PTRACE(4, "Script execution of " << text.Ellipsis(100).ToLiteral()
+           << " returned " << resultText.Ellipsis(100).ToLiteral());
 
     return true;
   }
-  };
+};
 
 
 #define new PNEW
@@ -835,21 +910,21 @@ bool PJavaScript::IsInitialised() const
 }
 
 
-bool PJavaScript::LoadFile(const PFilePath & /*filename*/)
+bool PJavaScript::LoadText(const PString & text)
 {
-  return false;
-}
-
-
-bool PJavaScript::LoadText(const PString & /*text*/)
-{
-  return false;
+  PWaitAndSignal mutex(m_mutex);
+  m_scriptToRun = text;
+  return !text.empty();
 }
 
 
 bool PJavaScript::Run(const char * text)
 {
-  PString script(text);
+  PWaitAndSignal mutex(m_mutex);
+
+  PString script(text != NULL ? text : m_scriptToRun.c_str());
+  if (script.empty())
+    return false;
 
   PTextFile file(text, PFile::ReadOnly);
   if (file.IsOpen()) {
@@ -857,85 +932,51 @@ bool PJavaScript::Run(const char * text)
     script = file.ReadString(P_MAX_INDEX);
   }
 
-  return m_private->Run(script, m_resultText);
+  if (m_scopeChain.empty())
+    return m_private->Run(script, m_resultText);
+
+  PStringStream wrapped;
+  for (PStringList::iterator it = m_scopeChain.begin(); it != m_scopeChain.end(); ++it)
+    wrapped << "with(" << *it << "){";
+  wrapped << script << std::string(m_scopeChain.size(), '}');
+  return m_private->Run(wrapped, m_resultText);
 }
 
 
-bool PJavaScript::CreateComposite(const PString & name)
+bool PJavaScript::CreateComposite(const PString & name, unsigned sequenceSize)
 {
-  PVarType dummy;
-  dummy.SetType(PVarType::VarStaticBinary);
-  return m_private->SetVar(name, dummy);
+  PWaitAndSignal mutex(m_mutex);
+  return m_private->CreateComposite(name, sequenceSize);
 }
 
 
-bool PJavaScript::GetVar(const PString & key, PVarType & var)
+PScriptLanguage::VarTypes PJavaScript::GetVarType(const PString & name)
 {
-  return m_private->GetVar(key, var);
-}
-
-bool PJavaScript::SetVar(const PString & key, const PVarType & var)
-{
-  return m_private->SetVar(key, var);
+  PWaitAndSignal mutex(m_mutex);
+  return m_private->GetVarType(name);
 }
 
 
-bool PJavaScript::GetBoolean(const PString & name)
+bool PJavaScript::GetVar(const PString & name, PVarType & var)
 {
-  PVarType var;
-  return GetVar(name, var) && var.AsBoolean();
+  PWaitAndSignal mutex(m_mutex);
+  for (PStringList::iterator it = m_scopeChain.rbegin(); it != m_scopeChain.rend(); --it) {
+    if (m_private->GetVar(PSTRSTRM(*it << '.' << name), var, false))
+      return true;
+  }
+  return m_private->GetVar(name, var, true);
+}
+
+bool PJavaScript::SetVar(const PString & name, const PVarType & var)
+{
+  PWaitAndSignal mutex(m_mutex);
+  return m_private->SetVar(name, var);
 }
 
 
-bool PJavaScript::SetBoolean(const PString & name, bool value)
+bool PJavaScript::ReleaseVariable(const PString & name)
 {
-  PVarType var(value);
-  return SetVar(name, value);
-}
-
-
-int PJavaScript::GetInteger(const PString & name)
-{
-  PVarType var;
-  return GetVar(name, var) ? var.AsInteger() : 0;
-}
-
-
-bool PJavaScript::SetInteger(const PString & name, int value)
-{
-  return SetVar(name, value);
-}
-
-
-double PJavaScript::GetNumber(const PString & name)
-{
-  PVarType var;
-  return GetVar(name, var) ? var.AsFloat() : 0.0;
-}
-
-
-bool PJavaScript::SetNumber(const PString & name, double value)
-{
-  return SetVar(name, value);
-}
-
-
-PString PJavaScript::GetString(const PString & name)
-{
-  PVarType var;
-  return GetVar(name, var) ? var.AsString() : PString::Empty();
-}
-
-
-bool PJavaScript::SetString(const PString & name, const char * value)
-{
-  return SetVar(name, value);
-}
-
-
-bool PJavaScript::ReleaseVariable(const PString & /*name*/)
-{
-  return false;
+  return Run("delete " + name);
 }
 
 
@@ -953,6 +994,7 @@ bool PJavaScript::Call(const PString & /*name*/, Signature & /*signature*/)
 
 bool PJavaScript::SetFunction(const PString & name, const FunctionNotifier & func)
 {
+  PWaitAndSignal mutex(m_mutex);
   return m_private->SetFunction(name, func);
 }
 

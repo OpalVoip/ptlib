@@ -1400,14 +1400,6 @@ bool PWebSocket::WriteMasked(const uint32_t * data, PINDEX len, uint32_t mask)
 }
 
 
-void PWebSocket::SetSSLCredentials(const PString & authority, const PString & certificate, const PString & privateKey)
-{
-  m_authority = authority;
-  m_certificate = certificate;
-  m_privateKey = privateKey;
-}
-
-
 bool PWebSocket::Connect(const PURL & url, const PStringArray & protocols, PString * selectedProtocol)
 {
   channelPointerMutex.StartWrite();
@@ -1425,7 +1417,8 @@ bool PWebSocket::Connect(const PURL & url, const PStringArray & protocols, PStri
 
   channelPointerMutex.EndWrite();
 
-  http->SetSSLCredentials(m_authority, m_certificate, m_privateKey);
+  http->SetProxies(m_proxies);
+  http->SetSSLCredentials(*this);
 
   // Before starting up, make sure underlying socket is closed, so reconnects
   http->CloseBaseReadChannel();
@@ -1435,7 +1428,8 @@ bool PWebSocket::Connect(const PURL & url, const PStringArray & protocols, PStri
   outMIME.SetAt(PHTTP::ConnectionTag(), PHTTP::UpgradeTag());
   outMIME.SetAt(PHTTP::UpgradeTag(), PHTTP::WebSocketTag());
   outMIME.SetAt(PHTTP::WebSocketVersionTag(), "13");
-  outMIME.SetAt(PHTTP::WebSocketProtocolTag(), PSTRSTRM(std::setfill(',') << protocols));
+  if (!protocols.empty())
+    outMIME.SetAt(PHTTP::WebSocketProtocolTag(), PSTRSTRM(std::setfill(',') << protocols));
   outMIME.SetAt(PHTTP::WebSocketKeyTag(), key);
 
   int result = http->ExecuteCommand(PHTTP::GET, url, outMIME, PString::Empty(), replyMIME);
@@ -1456,14 +1450,14 @@ bool PWebSocket::Connect(const PURL & url, const PStringArray & protocols, PStri
   }
 
   PString protocol = outMIME(PHTTP::WebSocketProtocolTag());
-  if (protocols.GetValuesIndex(protocol) == P_MAX_INDEX) {
+  if (!protocols.empty() && protocols.GetValuesIndex(protocol) == P_MAX_INDEX) {
     PTRACE(2, "WebSocket selected a protocol we did not offer.");
     SetErrorValues(ProtocolFailure, EPROTO);
     return false;
   }
 
   if (selectedProtocol != NULL)
-    * selectedProtocol = protocol;
+    *selectedProtocol = protocol;
 
   PTRACE(3, "WebSocket started for protocol: " << protocol);
   m_client = true;

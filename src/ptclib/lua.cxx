@@ -25,7 +25,7 @@
  *                 Robert Jongbloed
  */
 
-#ifdef __GNUC__
+#ifdef P_USE_PRAGMA
 #pragma implementation "lua.h"
 #endif
 
@@ -42,7 +42,7 @@ extern "C" {
 }
 
 
-#ifdef _MSC_VER
+#if defined(_MSC_VER) && defined(P_LUA_LIBRARY)
   #pragma comment(lib, P_LUA_LIBRARY)
 #endif
 
@@ -224,7 +224,7 @@ bool PLua::DeleteTable(const PString & name, bool metaTable)
 }
 
 
-bool PLua::CreateComposite(const PString & name)
+bool PLua::CreateComposite(const PString & name, unsigned /*sequenceSize*/)
 {
   return CreateTable(name);
 }
@@ -233,6 +233,49 @@ bool PLua::CreateComposite(const PString & name)
 bool PLua::ReleaseVariable(const PString & name)
 {
   return DeleteTable(name);
+}
+
+
+PScriptLanguage::VarTypes PLua::GetVarType(const PString & name)
+{
+  PWaitAndSignal mutex(m_mutex);
+
+  if (!InternalGetVariable(name))
+    return NumVarTypes;
+
+  VarTypes result;
+  switch (lua_type(m_lua, -1)) {
+    case LUA_TNONE:
+      result = UndefinedType;
+      break;
+
+    case LUA_TNIL:
+      result = NullType;
+      break;
+
+    case LUA_TBOOLEAN:
+      result = BooleanType;
+      break;
+
+    case LUA_TNUMBER:
+      result = NumberType;
+      break;
+
+    case LUA_TSTRING:
+      result = StringType;
+      break;
+
+    case LUA_TTABLE:
+      result = CompositeType;
+      break;
+
+    default:
+      result = NumVarTypes;
+      break;
+  }
+
+  lua_pop(m_lua, 1);
+  return result;
 }
 
 

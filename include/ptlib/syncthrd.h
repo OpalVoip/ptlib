@@ -78,7 +78,7 @@ class PSyncPointAck : public PSyncPoint
        The <code>waitTime</code> parameter is used as a maximum amount of time
        to wait for the achnowledgement to be returned from the other thread.
      */
-    virtual void Signal();
+    virtual void Signal() override;
     void Signal(const PTimeInterval & waitTime);
 
     /** This indicates that the thread that was blocked in a Wait() on this
@@ -113,7 +113,7 @@ class PCondMutex : public PMutex
        was blocked. If no waiting threads and the count is less than the
        maximum then increment the semaphore.
      */
-    virtual void Signal();
+    virtual void Signal() override;
 
     /** This is the condition that must be met for the WaitCondition() function
        to acquire the mutex.
@@ -169,7 +169,7 @@ class PIntCondMutex : public PCondMutex
     /** Print the object on the stream. This will be of the form
        #"(value < target)"#.
      */
-    void PrintOn(ostream & strm) const;
+    void PrintOn(ostream & strm) const override;
   //@}
 
   /**@name Condition access functions */
@@ -179,7 +179,7 @@ class PIntCondMutex : public PCondMutex
 
        @return true if condition is met.
      */
-    virtual bool Condition();
+    virtual bool Condition() override;
 
     /**Get the current value of the condition variable.
       @return Current condition variable value.
@@ -253,7 +253,7 @@ class PIntCondMutex : public PCondMutex
    http://arxiv.org/ftp/arxiv/papers/1309/1309.4507.pdf to improve efficiency.
  */
 
-class PReadWriteMutex : public PObject, public PMutexExcessiveLockInfo
+class PReadWriteMutex : public PObject, public PMutexExcessiveLockInfo, PProfiling::HighWaterMark<PReadWriteMutex>, PNonCopyable
 {
   PCLASSINFO(PReadWriteMutex, PObject);
   public:
@@ -314,7 +314,7 @@ class PReadWriteMutex : public PObject, public PMutexExcessiveLockInfo
     void EndWrite(const PDebugLocation & location) { InternalEndWrite(&location); }
   //@}
 
-    virtual void PrintOn(ostream &strm) const;
+    virtual void PrintOn(ostream &strm) const override;
 
   protected:
     void InternalStartRead(const PDebugLocation * location);
@@ -341,19 +341,15 @@ class PReadWriteMutex : public PObject, public PMutexExcessiveLockInfo
 #endif
     struct Nest
     {
-      unsigned m_readerCount;
-      unsigned m_writerCount;
-      bool     m_waiting;
-      uint64_t m_startHeldCycle;
-      PUniqueThreadIdentifier m_uniqueId;
+      atomic<unsigned> m_readerCount;
+      atomic<unsigned> m_writerCount;
+      atomic<bool>     m_waiting;
+      atomic<uint64_t> m_startHeldCycle;
+      atomic<PUniqueThreadIdentifier> m_uniqueId;
 
-      Nest()
-        : m_readerCount(0)
-        , m_writerCount(0)
-        , m_waiting(false)
-        , m_startHeldCycle(0)
-        , m_uniqueId(PThread::GetCurrentUniqueIdentifier())
-      { }
+      Nest();
+      Nest(const Nest & other);
+      Nest & operator=(const Nest & other);
     };
     typedef std::map<PThreadIdentifier, Nest> NestMap;
     NestMap          m_nestedThreads;
@@ -367,10 +363,6 @@ class PReadWriteMutex : public PObject, public PMutexExcessiveLockInfo
     void InternalStartWriteWithNest(Nest & nest, const PDebugLocation & location);
     void InternalEndWriteWithNest(Nest & nest, const PDebugLocation & location);
     void InternalWait(Nest & nest, PSync & sync, const PDebugLocation & location) const;
-
-  private:
-    PReadWriteMutex(const PReadWriteMutex & other) : PObject(other) { }
-    void operator=(const PReadWriteMutex &) { }
 
   friend class PSafeObject;
   friend class PReadWaitAndSignal;
@@ -580,7 +572,7 @@ class PWriteWaitAndSignal : public PReadWriteWaitAndSignalBase
     This implements a queue of objects between threads. The dequeue action will
     always block until an object is placed into the queue.
   */
-template <class T> class PSyncQueue : public PObject
+template <class T> class PSyncQueue : public PObject, PNonCopyable
 {
     PCLASSINFO(PSyncQueue, PObject);
   public:
@@ -764,10 +756,6 @@ template <class T> class PSyncQueue : public PObject
     PSemaphore     m_available;
     PDECLARE_MUTEX(m_mutex);
     PSyncPoint     m_closed;
-
-  private:
-    __inline PSyncQueue(const PSyncQueue & other) : PObject(other) { }
-    __inline void operator=(const PSyncQueue &) { }
 };
 
 

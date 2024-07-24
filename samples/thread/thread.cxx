@@ -49,7 +49,7 @@ class MyThread1 : public PThread
       Start(); // start running this thread when it is created.
     }
 
-    void Main() {
+    virtual void Main() override {
       while (!shutdown.Wait(10)) { // 10ms delay
         printf("1 ");
         fflush(stdout);
@@ -84,7 +84,7 @@ class MyThread2 : public PThread
     {
     }
 
-    void Main() {
+    void Main() override {
       for (;;) {
         // Check if we need to exit
         if (m_exitFlag.load()) {
@@ -150,7 +150,7 @@ class ThreadTest : public PProcess
 {
   PCLASSINFO(ThreadTest, PProcess)
 public:
-  void Main()
+  void Main() override
   {
     cout << "Thread Test Program" << endl;
 

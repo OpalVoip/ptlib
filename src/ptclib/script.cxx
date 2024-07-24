@@ -25,7 +25,7 @@
  *                 Robert Jongbloed
  */
 
-#ifdef __GNUC__
+#ifdef P_USE_PRAGMA
 #pragma implementation "script.h"
 #endif
 
@@ -60,6 +60,97 @@ bool PScriptLanguage::Load(const PString & script)
   }
 
   return true;
+}
+
+
+bool PScriptLanguage::LoadFile(const PFilePath & filename)
+{
+  PTextFile file;
+  if (!file.Open(filename, PFile::ReadOnly))
+    return false;
+
+  return LoadText(file.ReadString(P_MAX_INDEX));
+}
+
+
+bool PScriptLanguage::PushScopeChain(const PString & name, bool create)
+{
+  PWaitAndSignal lock(m_mutex);
+  VarTypes type = GetVarType(name);
+  if (type != CompositeType) {
+    if (type != UndefinedType || !create)
+      return false;
+    if (!CreateComposite(name))
+      return false;
+  }
+  m_scopeChain.push_back(name);
+  return true;
+}
+
+
+PString PScriptLanguage::PopScopeChain(bool release)
+{
+  PWaitAndSignal lock(m_mutex);
+  if (m_scopeChain.empty())
+    return PString::Empty();
+  PString popped = m_scopeChain.back();
+  m_scopeChain.pop_back();
+  if (release)
+    ReleaseVariable(popped);
+  return popped;
+}
+
+
+bool PScriptLanguage::GetBoolean(const PString & name)
+{
+  PVarType var;
+  return GetVar(name, var) && var.AsBoolean();
+}
+
+
+bool PScriptLanguage::SetBoolean(const PString & name, bool value)
+{
+  PVarType var(value);
+  return SetVar(name, value);
+}
+
+
+int PScriptLanguage::GetInteger(const PString & name)
+{
+  PVarType var;
+  return GetVar(name, var) ? var.AsInteger() : 0;
+}
+
+
+bool PScriptLanguage::SetInteger(const PString & name, int value)
+{
+  return SetVar(name, value);
+}
+
+
+double PScriptLanguage::GetNumber(const PString & name)
+{
+  PVarType var;
+  return GetVar(name, var) ? var.AsFloat() : 0.0;
+}
+
+
+bool PScriptLanguage::SetNumber(const PString & name, double value)
+{
+  return SetVar(name, value);
+}
+
+
+PString PScriptLanguage::GetString(const PString & name)
+{
+  PVarType var;
+  return GetVar(name, var) ? var.AsString() : PString::Empty();
+}
+
+
+bool PScriptLanguage::SetString(const PString & name, const char * value)
+{
+  return SetVar(name, value);
 }
 
 
@@ -106,6 +197,18 @@ PScriptLanguage * PScriptLanguage::Create(const PString & language)
     return script;
 
   delete script;
+  return NULL;
+}
+
+
+PScriptLanguage * PScriptLanguage::CreateOne(const PStringArray & languages)
+{
+  for (PINDEX i = 0; i < languages.GetSize(); ++i) {
+    PScriptLanguage * script = Create(languages[i]);
+    if (script != NULL && script->IsInitialised())
+      return script;
+    delete script;
+  }
   return NULL;
 }
 

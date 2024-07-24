@@ -305,7 +305,7 @@ class MapDictionary : public PProcess
     {
     }
 
-    void Main();
+    virtual void Main() override;
     void TestAll();
     void Test(const Tester & tester);
 

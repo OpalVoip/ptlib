@@ -35,6 +35,8 @@
 #endif
 
 #include <ptlib/mutex.h>
+#include <ptlib/notifier.h>
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // I/O Channels
@@ -128,7 +130,7 @@ class PChannel : public PObject, public std::iostream
      */
     virtual Comparison Compare(
       const PObject & obj   ///< Other PString to compare against.
-    ) const;
+    ) const override;
 
     /**Calculate a hash value for use in sets and dictionaries.
     
@@ -143,7 +145,7 @@ class PChannel : public PObject, public std::iostream
        @return
        hash value for string.
      */
-    virtual PINDEX HashFunction() const;
+    virtual PINDEX HashFunction() const override;
   //@}
 
   /**@name Information functions */
@@ -796,13 +798,13 @@ class PNullChannel : public PChannel
   public:
     PNullChannel();
 
-    virtual PString GetName() const { return "null"; }
-    virtual bool Read(void *, PINDEX);
-    virtual bool Write(const void *, PINDEX);
+    virtual PString GetName() const override { return "null"; }
+    virtual bool Read(void *, PINDEX) override;
+    virtual bool Write(const void *, PINDEX) override;
 };
 
 
-class P_fd_set
+class P_fd_set : PNonCopyable
 {
 public:
   P_fd_set();
@@ -830,10 +832,6 @@ protected:
 
   intptr_t max_fd;
   fd_set * set;
-
-private:
-  P_fd_set(const P_fd_set &) { }
-  void operator=(const P_fd_set &) { }
 };
 
 

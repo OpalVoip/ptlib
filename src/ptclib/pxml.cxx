@@ -29,7 +29,7 @@
 
 #include <ptlib.h>
 
-#ifdef __GNUC__
+#ifdef P_USE_PRAGMA
 #pragma implementation "pxml.h"
 #endif
 
@@ -61,6 +61,8 @@ PXMLBase::PXMLBase(Options opts)
   : m_options(opts)
   , m_maxEntityLength(PXML::DEFAULT_MAX_ENTITY_LENGTH)
 {
+  if (opts&Indent)
+    opts |= NewLineAfterElement;
 }
 
 
@@ -490,8 +492,10 @@ bool PXML::LoadFile(const PFilePath & fn)
 
   PXMLParser parser(*this, m_options, file.GetLength());
   parser.SetMaxEntityLength(m_maxEntityLength);
-  if (!parser.Parse(file))
+  if (!parser.Parse(file)) {
+    parser.GetErrorInfo(m_errorString, m_errorColumn, m_errorLine);
     return false;
+  }
 
   PTRACE(4, "XML\tRead XML <" << GetDocumentType() << '>');
 
@@ -727,10 +731,13 @@ void PXML::ReadFrom(istream & strm)
 
   PXMLParser parser(*this, m_options, 0);
   parser.SetMaxEntityLength(m_maxEntityLength);
-  if (!parser.Parse(strm))
-    return;
-
-  PTRACE(4, "XML\tRead XML <" << GetDocumentType() << '>');
+  if (parser.Parse(strm)) {
+    PTRACE(4, "XML\tRead XML <" << GetDocumentType() << '>');
+  }
+  else {
+    parser.GetErrorInfo(m_errorString, m_errorColumn, m_errorLine);
+    strm.setstate(ios::badbit);
+  }
 }
 
 
@@ -1205,7 +1212,7 @@ void PXMLData::Output(ostream & strm, const PXMLBase & xml, int indent) const
   xml.OutputProgress();
   bool newLine = xml.OutputIndent(strm, indent, m_parent->GetName());
 
-  strm << m_value;
+  strm << PXML::EscapeSpecialChars(m_value);
 
   if (newLine)
     strm << endl;

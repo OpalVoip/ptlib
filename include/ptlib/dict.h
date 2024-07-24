@@ -37,6 +37,9 @@
 
 #include <ptlib/array.h>
 
+#include <unordered_set>
+
+
 ///////////////////////////////////////////////////////////////////////////////
 // PDictionary classes
 
@@ -68,7 +71,7 @@ class PKey : public PObject
   /**@name Overrides from class PObject */
   //@{
     /// Create a duplicate of the PKey.
-    virtual PObject * Clone() const { return new PKey(this->m_key); }
+    virtual PObject * Clone() const override { return new PKey(this->m_key); }
 
     /* Get the relative rank of the ordinal index. This is a simpel comparison
        of the objects PINDEX values.
@@ -79,19 +82,9 @@ class PKey : public PObject
        object and <code>GreaterThan</code> for \p obj logically
        greater than the object.
      */
-    virtual Comparison Compare(const PObject & obj) const
+    virtual Comparison Compare(const PObject & obj) const override
     {
-      const my_type * other = dynamic_cast<const my_type *>(&obj);
-      if (!PAssert(other != NULL, PInvalidCast))
-        return GreaterThan;
-
-      if (this->m_key < other->m_key)
-        return LessThan;
-
-      if (this->m_key > other->m_key)
-        return GreaterThan;
-
-      return EqualTo;
+      return Compare2(this->m_key, dynamic_cast<const my_type &>(obj).m_key);
     }
 
     /**This function calculates a hash table index value for the implementation
@@ -100,7 +93,7 @@ class PKey : public PObject
        @return
        hash table bucket number.
      */
-    virtual PINDEX HashFunction() const
+    virtual PINDEX HashFunction() const override
     {
 #if PINDEX_SIGNED
       return std::abs((PINDEX)this->m_key)%23;
@@ -115,7 +108,7 @@ class PKey : public PObject
        @return
        stream that the index was output to.
      */
-    virtual void PrintOn(ostream & strm) const { strm << this->m_key; }
+    virtual void PrintOn(ostream & strm) const override { strm << this->m_key; }
   //@}
 
   /**@name New functions for class */
@@ -158,178 +151,15 @@ typedef PKey<PINDEX> POrdinalKey;
 
 //////////////////////////////////////////////////////////////////////////////
 
-// Member variables
-struct PHashTableElement
-{
-    PObject           * m_key;
-    PObject           * m_data;
-    PHashTableElement * m_next;
-    PHashTableElement * m_prev;
-    PINDEX              m_bucket;
-};
-
-struct PHashTableList
-{
-  PHashTableList() : m_head(NULL), m_tail(NULL) { }
-  PHashTableElement * m_head;
-  PHashTableElement * m_tail;
-#if PTRACING
-  PINDEX              m_size;
-#endif
-};
-__inline std::ostream & operator<<(std::ostream & strm, const PHashTableList & hash) { return strm << (void *)hash.m_head; }
-
-class PHashTable;
-
-
-class PHashTableInfo : public PBaseArray<PHashTableList>
-{
-    typedef PBaseArray<PHashTableList> ParentClass;
-    PCLASSINFO(PCharArray, ParentClass);
-  public:
-    PHashTableInfo(PINDEX initialSize = 0)
-      : ParentClass(initialSize) { }
-    PHashTableInfo(PHashTableList const * buffer, PINDEX length, bool dynamic = true)
-      : ParentClass(buffer, length, dynamic) { }
-    virtual PObject * Clone() const { return PNEW PHashTableInfo(*this, GetSize()); }
-    virtual ~PHashTableInfo() { Destruct(); }
-    virtual void DestroyContents();
-
-    void AppendElement(PObject * key, PObject * data PTRACE_PARAM(, PHashTable * owner));
-    PObject * RemoveElement(const PObject & key);
-    PHashTableElement * GetElementAt(PINDEX index);
-    PHashTableElement * GetElementAt(const PObject & key);
-    PINDEX GetElementsIndex(const PObject*obj,bool byVal,bool keys) const;
-    PHashTableElement * NextElement(PHashTableElement * element) const;
-    PHashTableElement * PrevElement(PHashTableElement * element) const;
-
-    bool deleteKeys;
-    PTRACE_THROTTLE(m_throttlePoorHashFunction, 1);
-
-  friend class PHashTable;
-  friend class PAbstractSet;
-};
-
-
-/**The hash table class is the basis for implementing the <code>PSet</code> and
-   <code>PDictionary</code> classes.
-
-   The hash table allows for very fast searches for an object based on a "hash
-   function". This function yields an index into an array which is directly
-   looked up to locate the object. When two key values have the same hash
-   function value, then a linear search of a linked list is made to locate
-   the object. Thus the efficiency of the hash table is highly dependent on the
-   quality of the hash function for the data being used as keys.
- */
-class PHashTable : public PCollection
-{
-  PCONTAINERINFO(PHashTable, PCollection);
-
-  public:
-  /**@name Construction */
-  //@{
-    /// Create a new, empty, hash table.
-    PHashTable();
-  //@}
-
-  /**@name Overrides from class PObject */
-  //@{
-    /**Get the relative rank of the two hash tables. Actally ranking hash
-       tables is really meaningless, so only equality is returned by the
-       comparison. Equality is only achieved if the two instances reference the
-       same hash table.
-
-       @return
-       comparison of the two objects, <code>EqualTo</code> if the same
-       reference and <code>GreaterThan</code> if not.
-     */
-    virtual Comparison Compare(
-      const PObject & obj   ///< Other PHashTable to compare against.
-    ) const;
-  //@}
-
-
-  /**@name Overrides from class PContainer */
-  //@{
-    /**This function is meaningless for hash table. The size of the collection
-       is determined by the addition and removal of objects. The size cannot be
-       set in any other way.
-
-       @return
-       Always true.
-     */
-    virtual bool SetSize(
-      PINDEX newSize  ///< New size for the hash table, this is ignored.
-    );
-  //@}
-
-
-  /**@name New functions for class */
-  //@{
-    /**Determine if the value of the object is contained in the hash table. The
-       object values are compared, not the pointers.  So the objects in the
-       collection must correctly implement the <code>PObject::Compare()</code>
-       function. The hash table is used to locate the entry.
-
-       @return
-       true if the object value is in the set.
-     */
-    PINLINE bool AbstractContains(
-      const PObject & key   ///< Key to look for in the set.
-    ) const;
-
-    /**Get the key in the hash table at the ordinal index position.
-
-       The ordinal position in the hash table is determined by the hash values
-       of the keys and the order of insertion.
-
-       WARNING: this code requires a linear search for every operation
-                and will be VERY slow for large data sets. This function
-                is kept for backwards compatibilty only. New code should
-                use the iterator based access methods
-
-       This function is primarily used by the descendent template classes, or
-       macro, with the appropriate type conversion.
-
-       @return
-       reference to key at the index position.
-     */
-    virtual const PObject & AbstractGetKeyAt(
-      PINDEX index  ///< Ordinal position in the hash table.
-    ) const;
-
-    /**Get the data in the hash table at the ordinal index position.
-
-       The ordinal position in the hash table is determined by the hash values
-       of the keys and the order of insertion.
-
-       WARNING: this code requires a linear search for every operation
-                and will be VERY slow for large data sets. This function
-                is kept for backwards compatibilty only. New code should
-                use the iterator based access methods
-
-       This function is primarily used by the descendent template classes, or
-       macro, with the appropriate type conversion.
-
-       @return
-       reference to key at the index position.
-     */
-    virtual PObject & AbstractGetDataAt(
-      PINDEX index  ///< Ordinal position in the hash table.
-    ) const;
-  //@}
-
-    PHashTableInfo * hashTable;
-};
-
-
-//////////////////////////////////////////////////////////////////////////////
-
 /** Abstract set of PObjects.
  */
-class PAbstractSet : public PHashTable
+template <class T> class PSet : public PCollection<T, std::unordered_set<std::shared_ptr<T>>>
 {
-  PCONTAINERINFO(PAbstractSet, PHashTable);
+    typedef T value_type;
+    typedef std::shared_ptr<value_type> pointer_type;
+    typedef std::unordered_set<pointer_type> set_type;
+    typedef PCollection<value_type, set_type> base_type;
+    PCLASSINFO(PSet, base_type);
   public:
   /**@name Construction */
   //@{
@@ -338,186 +168,7 @@ class PAbstractSet : public PHashTable
        Note that by default, objects placed into the list will be deleted when
        removed or when all references to the list are destroyed.
      */
-    PINLINE PAbstractSet();
-  //@}
-
-  /**@name Overrides from class PCollection */
-  //@{
-    /**Add a new object to the collection. If the objects value is already in
-       the set then the object is \b not included. If the
-       <code>AllowDeleteObjects</code> option is set then the \p obj parameter
-       is also deleted.
-
-       @return
-       hash function value of the newly added object.
-     */
-    virtual PINDEX Append(
-      PObject * obj   ///< New object to place into the collection.
-    );
-
-    /**Add a new object to the collection. If the objects value is already in
-       the set then the object is \b not included. If the
-       <code>AllowDeleteObjects</code> option is set then the \p obj parameter is
-       also deleted.
-
-       The object is always placed in the an ordinal position dependent on its
-       hash function. It is not placed at the specified position. The
-       \p before parameter is ignored.
-
-       @return
-       hash function value of the newly added object.
-     */
-    virtual PINDEX Insert(
-      const PObject & before,   ///< Object value to insert before.
-      PObject * obj             ///< New object to place into the collection.
-    );
-
-    /**Add a new object to the collection. If the objects value is already in
-       the set then the object is \b not included. If the
-       <code>AllowDeleteObjects</code> option is set then the \p obj parameter is
-       also deleted.
-
-       The object is always placed in the an ordinal position dependent on its
-       hash function. It is not placed at the specified position. The
-       \p index parameter is ignored.
-
-       @return
-       hash function value of the newly added object.
-     */
-    virtual PINDEX InsertAt(
-      PINDEX index,   ///< Index position in collection to place the object.
-      PObject * obj   ///< New object to place into the collection.
-    );
-
-    /**Remove the object from the collection. If the <code>AllowDeleteObjects</code> option
-       is set then the object is also deleted.
-
-       Note that the comparison for searching for the object in collection is
-       made by pointer, not by value. Thus the parameter must point to the
-       same instance of the object that is in the collection.
-
-       @return
-       true if the object was in the collection.
-     */
-    virtual bool Remove(
-      const PObject * obj   ///< Existing object to remove from the collection.
-    );
-
-    /**Remove an object at the specified index. If the <code>AllowDeleteObjects</code>
-       option is set then the object is also deleted.
-
-       WARNING: this code requires a linear search for every operation
-                and will be VERY slow for large data sets. This function
-                is kept for backwards compatibilty only. New code should
-                use the iterator based access methods
-
-       @return
-       pointer to the object being removed, or NULL if it was deleted.
-     */
-    virtual PObject * RemoveAt(
-      PINDEX index   ///< Index position in collection to place the object.
-    );
-
-    /**This function is the same as PHashTable::AbstractGetKeyAt().
-
-       WARNING: this code requires a linear search for every operation
-                and will be VERY slow for large data sets. This function
-                is kept for backwards compatibilty only. New code should
-                use the iterator based access methods
-
-       @return
-       Always NULL.
-     */
-    virtual PObject * GetAt(
-      PINDEX index  ///< Index position in the collection of the object.
-    ) const;
-
-    /**Add a new object to the collection. If the objects value is already in
-       the set then the object is \b not included. If the
-       AllowDeleteObjects option is set then the \p obj parameter is
-       also deleted.
-
-       The object is always placed in the an ordinal position dependent on its
-       hash function. It is not placed at the specified position. The
-       \p index parameter is ignored.
-
-       @return
-       true if the object was successfully added.
-     */
-    virtual bool SetAt(
-      PINDEX index,   ///< Index position in collection to set.
-      PObject * val   ///< New value to place into the collection.
-    );
-
-    /**Search the collection for the specific instance of the object. The
-       object pointers are compared, not the values. The hash table is used
-       to locate the entry.
-
-       Note that that will require value comparisons to be made to find the
-       equivalent entry and then a final check is made with the pointers to
-       see if they are the same instance.
-
-       @return
-       ordinal index position of the object, or P_MAX_INDEX .
-     */
-    virtual PINDEX GetObjectsIndex(
-      const PObject * obj   ///< Object to find.
-    ) const;
-
-    /**Search the collection for the specified value of the object. The object
-       values are compared, not the pointers.  So the objects in the
-       collection must correctly implement the <code>PObject::Compare()</code>
-       function. The hash table is used to locate the entry.
-
-       @return
-       ordinal index position of the object, or P_MAX_INDEX.
-     */
-    virtual PINDEX GetValuesIndex(
-      const PObject & obj   ///< Object to find equal value.
-    ) const;
-
-    /**Calculate union of sets.
-       Returns true if any new elements were added.
-      */
-    bool Union(
-      const PAbstractSet & set
-    );
-
-    /**Calculate intersection of sets.
-       Returns true if there is an intersection.
-      */
-    static bool Intersection(
-      const PAbstractSet & set1,
-      const PAbstractSet & set2,
-      PAbstractSet * intersection = NULL
-    );
-  //@}
-};
-
-
-/**This template class maps the <code>PAbstractSet</code> to a specific object type. The
-   functions in this class primarily do all the appropriate casting of types.
-
-   By default, objects placed into the set will \b not be deleted when
-   removed or when all references to the set are destroyed. This is different
-   from the default on most collection classes.
- */
-template <class T> class PSet : public PAbstractSet
-{
-  PCLASSINFO(PSet, PAbstractSet);
-
-  public:
-  /**@name Construction */
-  //@{
-    /**Create a new, empty, dictionary. The parameter indicates whether to
-       delete objects that are removed from the set.
-
-       Note that by default, objects placed into the set will \b not be
-       deleted when removed or when all references to the set are destroyed.
-       This is different from the default on most collection classes.
-     */
-    inline PSet(bool initialDeleteObjects = false)
-      : PAbstractSet() { this->AllowDeleteObjects(initialDeleteObjects); }
+    PINLINE PSet() { }
   //@}
 
   /**@name Overrides from class PObject */
@@ -525,24 +176,40 @@ template <class T> class PSet : public PAbstractSet
     /**Make a complete duplicate of the set. Note that all objects in the
        array are also cloned, so this will make a complete copy of the set.
      */
-    virtual PObject * Clone() const
-      { return PNEW PSet(0, this); }
+    virtual PObject * Clone() const override
+    {
+      return this->CloneContents(PNEW PSet());
+    }
+  //@}
+
+  /**@name Overrides from class PCollection */
+  //@{
+    /**Add a new object to the collection. If the objects value is already in
+       the set then the object is \b not included.
+
+       @return
+       hash function value of the newly added object.
+     */
+    virtual void Append(
+      value_type * obj   ///< New object to place into the collection.
+    ) override
+    {
+      this->m_collection.emplace(obj);
+    }
   //@}
 
   /**@name New functions for class */
   //@{
     /**Include the specified object into the set. If the objects value is
-       already in the set then the object is \b not included. If the
-       <code>AllowDeleteObjects</code> option is set then the \p obj parameter is
-       also deleted.
+       already in the set then the object is \b not included.
 
        The object values are compared, not the pointers.  So the objects in
        the collection must correctly implement the <code>PObject::Compare()</code>
        function. The hash table is used to locate the entry.
      */
     void Include(
-      const T * obj   // New object to include in the set.
-    ) { this->Append((PObject *)obj); }
+      const value_type * obj   // New object to include in the set.
+    ) { this->m_collection.emplace(obj); }
 
     /**Include the specified objects value into the set. If the objects value
        is already in the set then the object is \b not included.
@@ -552,30 +219,28 @@ template <class T> class PSet : public PAbstractSet
        function. The hash table is used to locate the entry.
      */
     PSet & operator+=(
-      const T & obj   // New object to include in the set.
-    ) { this->Append(obj.Clone()); return *this; }
+      const value_type & obj   // New object to include in the set.
+    ) { this->m_collection.emplace(obj.Clone()); return *this; }
 
-    /**Remove the object from the set. If the <code>AllowDeleteObjects</code> option is set
-       then the object is also deleted.
+    /**Remove the object from the set.
 
        The object values are compared, not the pointers.  So the objects in
        the collection must correctly implement the <code>PObject::Compare()</code>
        function. The hash table is used to locate the entry.
      */
     void Exclude(
-      const T * obj   // New object to exclude in the set.
-    ) { this->Remove(obj); }
+      const value_type * obj   // New object to exclude in the set.
+    ) { this->m_collection.erase(this->m_collection.find(obj)); }
 
-    /**Remove the objects value from the set. If the <code>AllowDeleteObjects</code>
-       option is set then the object is also deleted.
+    /**Remove the objects value from the set.
 
        The object values are compared, not the pointers.  So the objects in
        the collection must correctly implement the <code>PObject::Compare()</code>
        function. The hash table is used to locate the entry.
      */
     PSet & operator-=(
-      const T & obj   // New object to exclude in the set.
-    ) { this->erase(this->find(obj)); return *this; }
+      const value_type & obj   // New object to exclude in the set.
+    ) { this->m_collection.erase(this->m_collection.find(obj)); return *this; }
 
     /**Determine if the value of the object is contained in the set. The
        object values are compared, not the pointers.  So the objects in the
@@ -586,8 +251,8 @@ template <class T> class PSet : public PAbstractSet
        true if the object value is in the set.
      */
     bool Contains(
-      const T & key  ///< Key to look for in the set.
-    ) const { return this->AbstractContains(key); }
+      const value_type & key  ///< Key to look for in the set.
+    ) const { return this->m_collection.contains(key); }
 
     /**Determine if the value of the object is contained in the set. The
        object values are compared, not the pointers.  So the objects in the
@@ -598,119 +263,25 @@ template <class T> class PSet : public PAbstractSet
        true if the object value is in the set.
      */
     bool operator[](
-      const T & key  ///< Key to look for in the set.
-    ) const { return this->AbstractContains(key); }
+      const value_type & key  ///< Key to look for in the set.
+    ) const { return this->Contains(key); }
 
-    /**Get the key in the set at the ordinal index position.
+    /**Calculate union of sets.
+       Returns true if any new elements were added.
+      */
+    bool Union(
+      const PSet & set
+    );
 
-       The ordinal position in the set is determined by the hash values of the
-       keys and the order of insertion.
-
-       WARNING: this code requires a linear search for every operation
-                and will be VERY slow for large data sets. This function
-                is kept for backwards compatibilty only. New code should
-                use the iterator based access methods
-
-       @return
-       reference to key at the index position.
-     */
-    virtual const T & GetKeyAt(
-      PINDEX index    ///< Index of value to get.
-    ) const
-      { return dynamic_cast<const T &>(this->AbstractGetKeyAt(index)); }
+    /**Calculate intersection of sets.
+       Returns true if there is an intersection.
+      */
+    static bool Intersection(
+      const PSet & set1,
+      const PSet & set2,
+      PSet * intersection = NULL
+    );
   //@}
-
-  /**@name Iterators */
-  //@{
-    class iterator;
-    class const_iterator;
-    class iterator_base
-    {
-      using iterator_category = std::forward_iterator_tag;
-      using value_type = T;
-
-      protected:
-        iterator_base()
-          : table(NULL)
-          , element(NULL)
-          { }
-        iterator_base(PHashTableInfo * t)
-          : table(t)
-          , element(t->GetElementAt((PINDEX)0))
-          { }
-        iterator_base(PHashTableInfo * t, const T & k)
-          : table(t)
-          , element(t->GetElementAt(k))
-          { }
-
-        PHashTableInfo    * table;
-        PHashTableElement * element;
-
-        void Next() { this->element = PAssertNULL(this->table)->NextElement(this->element); }
-        void Prev() { this->element = PAssertNULL(this->table)->PrevElement(this->element); }
-
-        T * Ptr() const { return dynamic_cast<T *>(PAssertNULL(this->element)->m_key); }
-
-      public:
-        bool operator==(const iterator_base & it) const { return this->element == it.element; }
-        bool operator!=(const iterator_base & it) const { return this->element != it.element; }
-    };
-
-    class iterator : public iterator_base  {
-      protected:
-        iterator(PHashTableInfo * t) : iterator_base(t) { }
-        iterator(PHashTableInfo * t, const T & k) : iterator_base(t, k) { }
-
-      public:
-        iterator() { }
-
-        iterator operator++()    {                      this->Next(); return *this; }
-        iterator operator--()    {                      this->Prev(); return *this; }
-        iterator operator++(int) { iterator it = *this; this->Next(); return it;    }
-        iterator operator--(int) { iterator it = *this; this->Prev(); return it;    }
-
-        T * operator->() const { return  this->Ptr(); }
-        T & operator* () const { return *this->Ptr(); }
-
-      friend class PSet<T>;
-    };
-
-    iterator begin() { return iterator(this->hashTable); }
-    iterator end()   { return iterator(); }
-    iterator find(const T & k) { return iterator(this->hashTable, k); }
-
-
-    class const_iterator : public iterator_base {
-      protected:
-        const_iterator(PHashTableInfo * t) : iterator_base(t) { }
-        const_iterator(PHashTableInfo * t, const T & k) : iterator_base(t, k) { }
-
-      public:
-        const_iterator() { }
-
-        const_iterator operator++()    {                            this->Next(); return *this; }
-        const_iterator operator--()    {                            this->Prev(); return *this; }
-        const_iterator operator++(int) { const_iterator it = *this; this->Next(); return it;    }
-        const_iterator operator--(int) { const_iterator it = *this; this->Prev(); return it;    }
-
-        const T * operator->() const { return  this->Ptr(); }
-        const T & operator* () const { return *this->Ptr(); }
-
-      friend class PSet<T>;
-    };
-
-    const_iterator begin() const { return const_iterator(this->hashTable); }
-    const_iterator end()   const { return const_iterator(); }
-    const_iterator find(const T & k) const { return const_iterator(this->hashTable, k); }
-
-    void erase(const iterator & it) { this->Remove(&*it); }
-    void erase(const const_iterator & it) { this->Remove(&*it); }
-  //@}
-
-  protected:
-    PSet(int dummy, const PSet * c)
-      : PAbstractSet(dummy, c)
-      { this->reference->deleteObjects = c->reference->deleteObjects; }
 };
 
 
@@ -719,10 +290,15 @@ template <class T> class PSet : public PAbstractSet
 
 /**An abstract dictionary container.
 */
-class PAbstractDictionary : public PHashTable
+template <typename K, class D> class PDictionary : public PObject
 {
-  PCLASSINFO(PAbstractDictionary, PHashTable);
+    PCLASSINFO(PDictionary, PObject);
   public:
+    typedef K key_type;
+    typedef D data_type;
+    typedef std::shared_ptr<data_type> pointer_type;
+    typedef std::unordered_map<key_type, pointer_type, std::hash<PObject>> map_type;
+
   /**@name Construction */
   //@{
     /**Create a new, empty, dictionary.
@@ -730,227 +306,7 @@ class PAbstractDictionary : public PHashTable
        Note that by default, objects placed into the dictionary will be deleted
        when removed or when all references to the dictionary are destroyed.
      */
-    PINLINE PAbstractDictionary();
-  //@}
-
-  /**@name Overrides from class PObject */
-  //@{
-    /**Output the contents of the object to the stream. The exact output is
-       dependent on the exact semantics of the descendent class. This is
-       primarily used by the standard <code>operator<<</code> function.
-
-       The default behaviour is to print the class name.
-     */
-    virtual void PrintOn(
-      ostream &strm   ///< Stream to print the object into.
-    ) const;
-  //@}
-
-  /**@name Overrides from class PCollection */
-  //@{
-    /**Insert a new object into the dictionary. The semantics of this function
-       is different from that of the <code>PCollection</code> class. This function is
-       exactly equivalent to the <code>SetAt()</code> function that sets a data value at
-       the key value location.
-
-       @return
-       Always zero.
-     */
-    virtual PINDEX Insert(
-      const PObject & key,   ///< Object value to use as the key.
-      PObject * obj          ///< New object to place into the collection.
-    );
-
-    /**Insert a new object at the specified index. This function only applies
-       to derived classes whose key is PINDEX based.
-
-       @return
-       \p index parameter.
-     */
-    virtual PINDEX InsertAt(
-      PINDEX index,   ///< Index position in collection to place the object.
-      PObject * obj   ///< New object to place into the collection.
-    );
-
-    /**Remove an object at the specified index.  This function only applies
-       to derived classes whose key is PINDEX based. The returned pointer is
-       then removed using the <code>SetAt()</code> function to set that key value to NULL.
-       If the <code>AllowDeleteObjects</code> option is set then the object is also
-       deleted.
-
-       @return
-       pointer to the object being removed, or NULL if it was deleted.
-     */
-    virtual PObject * RemoveAt(
-      PINDEX index   ///< Index position in collection to place the object.
-    );
-
-    /**Set the object at the specified index to the new value. This function
-       only applies to derived classes whose key is PINDEX based. This will
-       overwrite the existing entry. If the AllowDeleteObjects() option is set
-       then the old object is also deleted.
-
-       @return
-       true if the object was successfully added.
-     */
-    virtual bool SetAt(
-      PINDEX index,   ///< Index position in collection to set.
-      PObject * val   ///< New value to place into the collection.
-    );
-
-    /**Get the object at the specified index position. If the index was not in
-       the collection then NULL is returned.
-
-       @return
-       pointer to object at the specified index.
-     */
-    virtual PObject * GetAt(
-      PINDEX index  ///< Index position in the collection of the object.
-    ) const;
-
-    /**Search the collection for the specific instance of the object. The
-       object pointers are compared, not the values. The hash table is used
-       to locate the entry.
-
-       Note that that will require value comparisons to be made to find the
-       equivalent entry and then a final check is made with the pointers to
-       see if they are the same instance.
-
-       @return
-       ordinal index position of the object, or P_MAX_INDEX.
-     */
-    virtual PINDEX GetObjectsIndex(
-      const PObject * obj  ///< Object to find.
-    ) const;
-
-    /**Search the collection for the specified value of the object. The object
-       values are compared, not the pointers.  So the objects in the
-       collection must correctly implement the <code>PObject::Compare()</code>
-       function. The hash table is used to locate the entry.
-
-       @return
-       ordinal index position of the object, or P_MAX_INDEX.
-     */
-    virtual PINDEX GetValuesIndex(
-      const PObject & obj  ///< Object to find value of.
-    ) const;
-  //@}
-
-
-  /**@name New functions for class */
-  //@{
-    /**Set the data at the specified ordinal index position in the dictionary.
-
-       The ordinal position in the dictionary is determined by the hash values
-       of the keys and the order of insertion.
-
-       @return
-       true if the new object could be placed into the dictionary.
-     */
-    P_DEPRECATED virtual bool SetDataAt(
-      PINDEX index,   ///< Ordinal index in the dictionary.
-      PObject * obj   ///< New object to put into the dictionary.
-    );
-
-    /**Add a new object to the collection. If the objects value is already in
-       the dictionary then the object is overrides the previous value. If the
-       AllowDeleteObjects option is set then the old object is also deleted.
-
-       The object is placed in the an ordinal position dependent on the keys
-       hash function. Subsequent searches use the hash function to speed access
-       to the data item.
-
-       @return
-       true if the object was successfully added.
-     */
-    virtual PObject * AbstractSetAt(
-      const PObject & key,  ///< Key for position in dictionary to add object.
-      PObject * obj         ///< New object to put into the dictionary.
-    );
-
-    /**Get the object at the specified key position. If the key was not in the
-       collection then this function asserts.
-
-       This function is primarily for use by the operator[] function in the
-       descendent template classes.
-
-       @return
-       reference to object at the specified key.
-     */
-    virtual PObject & GetRefAt(
-      const PObject & key   ///< Key for position in dictionary to get object.
-    ) const;
-
-    /**Get the object at the specified key position. If the key was not in the
-       collection then NULL is returned.
-
-       @return
-       pointer to object at the specified key.
-     */
-    virtual PObject * AbstractGetAt(
-      const PObject & key   ///< Key for position in dictionary to get object.
-    ) const;
-
-    /**Get an array containing all the keys for the dictionary.
-      */
-    virtual void AbstractGetKeys(
-      PArrayObjects & keys
-    ) const;
-  //@}
-
-  protected:
-    PINLINE PAbstractDictionary(int dummy, const PAbstractDictionary * c);
-
-  private:
-    /**This function is meaningless and will assert.
-
-       @return
-       Always zero.
-     */
-    virtual PINDEX Append(
-      PObject * obj   ///< New object to place into the collection.
-    );
-
-    /**Remove the object from the collection. If the <code>AllowDeleteObjects</code> option
-       is set then the object is also deleted.
-
-       Note that the comparison for searching for the object in collection is
-       made by pointer, not by value. Thus the parameter must point to the
-       same instance of the object that is in the collection.
-
-       @return
-       true if the object was in the collection.
-     */
-    virtual bool Remove(
-      const PObject * obj   ///< Existing object to remove from the collection.
-    );
-
-};
-
-
-/**This template class maps the <code>PAbstractDictionary</code> to a specific key and data
-   types. The functions in this class primarily do all the appropriate casting
-   of types.
- */
-template <class K, class D> class PDictionary : public PAbstractDictionary
-{
-  PCLASSINFO(PDictionary, PAbstractDictionary);
-
-  public:
-    typedef K key_type;
-    typedef D data_type;
-    typedef PDictionary<K, D> dict_type;
-
-  /**@name Construction */
-  //@{
-    /**Create a new, empty, dictionary.
-
-       Note that by default, objects placed into the dictionary will be
-       deleted when removed or when all references to the dictionary are
-       destroyed.
-     */
-    PDictionary()
-      : PAbstractDictionary() { }
+    PINLINE PDictionary() { }
   //@}
 
   /**@name Overrides from class PObject */
@@ -959,12 +315,74 @@ template <class K, class D> class PDictionary : public PAbstractDictionary
        the array are also cloned, so this will make a complete copy of the
        dictionary.
      */
-    virtual PObject * Clone() const
-      { return PNEW PDictionary(0, this); }
+    virtual PObject * Clone() const override
+    {
+      return this->CloneContents(PNEW PDictionary());
+    }
+
+  /**Output the contents of the object to the stream. The exact output is
+       dependent on the exact semantics of the descendent class. This is
+       primarily used by the standard <code>operator<<</code> function.
+
+       The default behaviour is to print the class name.
+     */
+    virtual void PrintOn(
+      ostream &strm   ///< Stream to print the object into.
+    ) const override
+    {
+      char separator = '\0';
+
+      for (const auto & it : this->m_map) {
+        if (separator != '\0')
+          strm << separator;
+        else {
+          separator = strm.fill();
+          if (separator == ' ')
+            separator = '\n';
+        }
+        strm << it.first<< '=' << *it.second;
+      }
+
+      if (separator == '\n')
+        strm << separator;
+    }
   //@}
 
   /**@name New functions for class */
   //@{
+    /**Add a new object to the collection. If the objects value is already in
+       the dictionary then the object is overrides the previous value.
+
+       The object is placed in the an ordinal position dependent on the keys
+       hash function. Subsequent searches use the hash function to speed access
+       to the data item.
+
+       @return
+       true if the object was successfully added.
+     */
+    virtual data_type * SetAt(
+      const key_type & key,  ///< Key for position in dictionary to add object.
+      data_type * obj         ///< New object to put into the dictionary.
+    )
+    {
+      this->m_map.emplace(key, obj);
+    }
+
+    /**Get the object at the specified key position. If the key was not in the
+       collection then NULL is returned.
+
+       @return
+       pointer to object at the specified key.
+     */
+    virtual data_type * GetAt(
+      const key_type & key   ///< Key for position in dictionary to get object.
+    ) const
+    {
+      const auto & m = this->m_map;
+      const auto it = m.find(key);
+      return it != m.end() ? it->second.get() : nullptr;
+    }
+
     /**Get the object contained in the dictionary at the \p key
        position. The hash table is used to locate the data quickly via the
        hash function provided by the \p key.
@@ -976,106 +394,57 @@ template <class K, class D> class PDictionary : public PAbstractDictionary
        reference to the object indexed by the key.
      */
     const D & operator[](
-      const K & key   ///< Key to look for in the dictionary.
-    ) const { return dynamic_cast<const D &>(this->GetRefAt(key)); }
+      const key_type & key   ///< Key to look for in the dictionary.
+    ) const
+    {
+      return *this->m_map[key];
+    }
     D & operator[](
-      const K & key   ///< Key to look for in the dictionary.
-    ) { return dynamic_cast<D &>(this->GetRefAt(key)); }
+      const key_type & key   ///< Key to look for in the dictionary.
+    )
+    {
+      return *this->m_map[key];
+    }
 
-    /**Determine if the value of the object is contained in the hash table. The
-       object values are compared, not the pointers.  So the objects in the
-       collection must correctly implement the <code>PObject::Compare()</code>
-       function. The hash table is used to locate the entry.
+/**Determine if the value of the object is contained in the hash table. The
+   object values are compared, not the pointers.  So the objects in the
+   collection must correctly implement the <code>PObject::Compare()</code>
+   function. The hash table is used to locate the entry.
 
-       @return
-       true if the object value is in the dictionary.
-     */
+   @return
+   true if the object value is in the dictionary.
+ */
     bool Contains(
       const K & key   ///< Key to look for in the dictionary.
-    ) const { return this->AbstractContains(key); }
-
-    /**Remove an object at the specified \p key. The returned pointer is then
-       removed using the <code>SetAt()</code> function to set that key value to
-       NULL. If the <code>AllowDeleteObjects</code> option is set then the
-       object is also deleted.
-
-       @return
-       pointer to the object being removed, or NULL if the key was not
-       present in the dictionary or the object was deleted automatically.
-     */
-    virtual D * RemoveAt(
-      const K & key   ///< Key for position in dictionary to get object.
-    ) { return dynamic_cast<D *>(this->AbstractSetAt(key, NULL)); }
-
-    /**Add a new object to the collection. If the objects value is already in
-       the dictionary then the object is overrides the previous value. If the
-       <code>AllowDeleteObjects</code> option is set then the old object is also deleted.
-
-       The object is placed in the an ordinal position dependent on the keys
-       hash function. Subsequent searches use the hash function to speed access
-       to the data item.
-
-       @return
-       true if the object was successfully added.
-     */
-    virtual bool SetAt(
-      const K & key,  // Key for position in dictionary to add object.
-      D * obj         // New object to put into the dictionary.
-    ) { return this->AbstractSetAt(key, obj) != NULL; }
-
-    /**Get the object at the specified key position. If the key was not in the
-       collection then NULL is returned.
-
-       @return
-       pointer to object at the specified key.
-     */
-    virtual D * GetAt(
-      const K & key   // Key for position in dictionary to get object.
-    ) const { return dynamic_cast<D *>(this->AbstractGetAt(key)); }
-
-    /**Get the key in the dictionary at the ordinal index position.
-
-       The ordinal position in the dictionary is determined by the hash values
-       of the keys and the order of insertion.
-
-       WARNING: this code requires a linear search for every operation
-                and will be VERY slow for large data sets. This function
-                is kept for backwards compatibilty only. New code should
-                use the iterator based access methods
-
-       @return
-       reference to key at the index position.
-     */
-    const K & GetKeyAt(
-      PINDEX index  ///< Ordinal position in dictionary for key.
     ) const
-      { return dynamic_cast<const K &>(this->AbstractGetKeyAt(index)); }
-
-    /**Get the data in the dictionary at the ordinal index position.
-
-       The ordinal position in the dictionary is determined by the hash values
-       of the keys and the order of insertion.
-
-       WARNING: this code requires a linear search for every operation
-                and will be VERY slow for large data sets. This function
-                is kept for backwards compatibilty only. New code should
-                use the iterator based access methods
-
-       @return
-       reference to data at the index position.
-     */
-    D & GetDataAt(
-      PINDEX index  ///< Ordinal position in dictionary for data.
-    ) const
-      { return dynamic_cast<D &>(this->AbstractGetDataAt(index)); }
-
-    /**Get an array containing all the keys for the dictionary.
-      */
-    PArray<K> GetKeys() const
     {
-      PArray<K> keys;
-      this->AbstractGetKeys(keys);
-      return keys;
+      return this->m_map.contains(key);
+    }
+
+/**Remove an object at the specified \p key. The returned pointer is then
+   removed using the <code>SetAt()</code> function to set that key value to
+   NULL.
+
+   @return
+   pointer to the object being removed, or NULL if the key was not
+   present in the dictionary or the object was deleted automatically.
+ */
+    virtual void RemoveAt(
+      const K & key   ///< Key for position in dictionary to get object.
+    )
+    {
+      this->m_map.erase(key);
+    }
+
+/**Get an array containing all the keys for the dictionary.
+      */
+    virtual void GetKeys(
+      std::vector<K> & keys
+    ) const
+    {
+      keys.reserve(this->m_map.size());
+      for (const auto & it : this->m_map)
+        keys.push_back(it.first);
     }
   //@}
 
@@ -1083,264 +452,97 @@ template <class K, class D> class PDictionary : public PAbstractDictionary
   //@{
     class iterator;
     class const_iterator;
-    class iterator_base {
-      protected:
-        K * m_internal_first;  // Must be first two members
-        D * m_internal_second;
+    class iterator_base
+    {
+    protected:
+      mutable key_type const * m_internal_first;  // Must be first two members
+      mutable data_type * m_internal_second;
+      mutable pointer_type m_internal_pointer;
 
-        PHashTableInfo    * m_table;
-        PHashTableElement * m_element;
+      iterator_base()
+        : m_internal_first(nullptr)
+        , m_internal_second(nullptr)
+      { }
 
-        iterator_base()
-          : m_internal_first(NULL)
-          , m_internal_second(NULL)
-          , m_table(NULL)
-          , m_element(NULL)
-        {
-        }
-
-        iterator_base(const dict_type * dict)
-          : m_table(dict->hashTable)
-        {
-          this->SetElement(this->m_table->GetElementAt((PINDEX)0));
-        }
-        
-        iterator_base(const dict_type * dict, const K & key)
-          : m_table(dict->hashTable)
-        {
-          this->SetElement(this->m_table->GetElementAt(key));
-        }
-
-        void SetElement(PHashTableElement * element)
-        {
-          this->m_element = element;
-          if (element != NULL) {
-            this->m_internal_first  = dynamic_cast<K *>(element->m_key);
-            this->m_internal_second = dynamic_cast<D *>(element->m_data);
-          }
-          else {
-            this->m_internal_first = NULL;
-            this->m_internal_second = NULL;
-          }
-        }
-
-        void Next() { this->SetElement(PAssertNULL(this->m_table)->NextElement(this->m_element)); }
-        void Prev() { this->SetElement(PAssertNULL(this->m_table)->PrevElement(this->m_element)); }
-
-      public:
-        bool operator==(const iterator_base & it) const { return this->m_element == it.m_element; }
-        bool operator!=(const iterator_base & it) const { return this->m_element != it.m_element; }
+      template <typename P> void internal_set(const P & pair) const
+      {
+        this->m_internal_first = &pair.first;
+        this->m_internal_second = pair.second.get();
+        this->m_internal_pointer = pair.second;
+      }
     };
 
     template<class CK, class CD>
-    class iterator_pair {
-      public:
-        CK & first;
-        CD & second;
-
-      private:
-        iterator_pair() : first(reinterpret_cast<CK&>(0)), second(reinterpret_cast<CD&>(0)) { }
-    };
-
-    class iterator : public iterator_base
+    class iterator_pair
     {
-      using iterator_category = std::forward_iterator_tag;
-      using value_type = iterator_pair<K, D>;
+    public:
+      CK & first;
+      CD & second;
 
-      protected:
-        iterator(dict_type * dict) : iterator_base(dict) { }
-        iterator(dict_type * dict, const K & key) : iterator_base(dict, key) { }
-
-      public:
-        iterator() { }
-
-        iterator operator++()    {                      this->Next(); return *this; }
-        iterator operator--()    {                      this->Prev(); return *this; }
-        iterator operator++(int) { iterator it = *this; this->Next(); return it;    }
-        iterator operator--(int) { iterator it = *this; this->Prev(); return it;    }
-
-        typedef iterator_pair<K,D> pair;
-        const pair * operator->() const { return  reinterpret_cast<const pair *>(this); }
-        const pair & operator* () const { return *reinterpret_cast<const pair *>(this); }
-
-      friend class PDictionary<K, D>;
+    private:
+      iterator_pair() = delete;
     };
 
-    iterator begin() { return iterator(this); }
-    iterator end()   { return iterator(); }
-    iterator find(const K & key) { return iterator(this, key); }
-
-
-    class const_iterator : public iterator_base
+    class iterator : public iterator_base, public map_type::iterator
     {
-      using iterator_category = std::forward_iterator_tag;
-      using value_type = iterator_pair<const K, const D>;
-
-      protected:
-        const_iterator(const dict_type * dict) : iterator_base(dict) { }
-        const_iterator(const dict_type * dict, const K & key) : iterator_base(dict, key) { }
-
-      public:
-        const_iterator() { }
-        const_iterator(iterator it) : iterator_base(it) { }
-
-        const_iterator operator++()    {                            this->Next(); return *this; }
-        const_iterator operator--()    {                            this->Prev(); return *this; }
-        const_iterator operator++(int) { const_iterator it = *this; this->Next(); return it;    }
-        const_iterator operator--(int) { const_iterator it = *this; this->Prev(); return it;    }
-
-        typedef iterator_pair<const K, const D> pair;
-        const pair * operator->() const { return  reinterpret_cast<const pair *>(this); }
-        const pair & operator* () const { return *reinterpret_cast<const pair *>(this); }
-
-      friend class PDictionary<K, D>;
+      friend class PDictionary;
+      iterator(const map_type::iterator & it): map_type::iterator(it) { }
+    public:
+      iterator() : map_type::iterator() { }
+      typedef iterator_pair<K, D> pair;
+      const pair * operator->() const {
+        this->internal_set(this->map_type::iterator::operator*());
+        return  reinterpret_cast<const pair *>(this);
+      }
+      const pair & operator* () const {
+        this->internal_set(this->map_type::iterator::operator*());
+        return *reinterpret_cast<const pair *>(this);
+      }
     };
 
-    const_iterator begin() const { return const_iterator(this); }
-    const_iterator end()   const { return const_iterator(); }
-    const_iterator find(const K & k) const { return const_iterator(this, k); }
+    iterator begin() { return this->m_map.begin(); }
+    iterator end() { return this->m_map.end(); }
+    iterator find(const key_type & key) { return this->m_map.find(key); }
 
-    void erase(const       iterator & it) { this->AbstractSetAt(*it.m_element->m_key, NULL); }
-    void erase(const const_iterator & it) { this->AbstractSetAt(*it.m_element->m_key, NULL); }
-  //@}
+
+    class const_iterator : public iterator_base, public map_type::const_iterator
+    {
+      friend class PDictionary;
+      const_iterator(const map_type::const_iterator & it) : map_type::const_iterator(it) { }
+    public:
+      const_iterator() : map_type::iterator() { }
+      typedef iterator_pair<const K, const D> pair;
+      const pair * operator->() const
+      {
+        this->internal_set(this->map_type::const_iterator::operator*());
+        return  reinterpret_cast<const pair *>(this);
+      }
+      const pair & operator* () const
+      {
+        this->internal_set(this->map_type::const_iterator::operator*());
+        return *reinterpret_cast<const pair *>(this);
+      }
+    };
+
+    const_iterator begin() const { return this->m_map.begin(); }
+    const_iterator end()   const { return this->m_map.end(); }
+    const_iterator find(const key_type & key) const { return this->m_map.find(key); }
+
+    void erase(const       iterator & it) { this->m_map.erase(it); }
+    void erase(const const_iterator & it) { this->m_map.erase(it); }
+    //@}
 
   protected:
-    PDictionary(int dummy, const PDictionary * c)
-      : PAbstractDictionary(dummy, c) { }
+    map_type m_map;
+
+    virtual PObject * CloneContents(PDictionary * clone) const
+    {
+      for (const auto & it : this->m_map) {
+        clone->m_map.emplace(it.first, it.second->CloneAs<D>());
+      }
+      return clone;
+    }
 };
-
-
-/**This template class maps the <code>PAbstractDictionary</code> to a specific key
-   type and a <code>POrdinalKey</code> data type. The functions in this class
-   primarily do all the appropriate casting of types.
-
-   Note that if templates are not used the <code>PDECLARE_ORDINAL_DICTIONARY</code>
-   macro will simulate the template instantiation.
- */
-template <class K> class POrdinalDictionary : public PDictionary<K, POrdinalKey>
-{
-  typedef PDictionary<K, POrdinalKey> ParentClass;
-  PCLASSINFO(POrdinalDictionary, ParentClass);
-
-  public:
-  /**@name Construction */
-  //@{
-    /**Create a new, empty, dictionary.
-
-       Note that by default, objects placed into the dictionary will be
-       deleted when removed or when all references to the dictionary are
-       destroyed.
-     */
-    POrdinalDictionary()
-      : ParentClass() { }
-  //@}
-
-  /**@name Overrides from class PObject */
-  //@{
-    /**Make a complete duplicate of the dictionary. Note that all objects in
-       the array are also cloned, so this will make a complete copy of the
-       dictionary.
-     */
-    virtual PObject * Clone() const
-      { return PNEW POrdinalDictionary(0, this); }
-  //@}
-
-  /**@name New functions for class */
-  //@{
-    /**Get the object contained in the dictionary at the \p key
-       position. The hash table is used to locate the data quickly via the
-       hash function provided by the key.
-
-       The last key/data pair is remembered by the class so that subseqent
-       access is very fast.
-
-       @return
-       reference to the object indexed by the key.
-     */
-    PINDEX operator[](
-      const K & key   // Key to look for in the dictionary.
-    ) const
-      { return dynamic_cast<POrdinalKey &>(this->GetRefAt(key)); }
-
-    /**Set the data at the specified ordinal index position in the dictionary.
-
-       The ordinal position in the dictionary is determined by the hash values
-       of the keys and the order of insertion.
-
-       WARNING: this code requires a linear search for every operation
-                and will be VERY slow for large data sets. This function
-                is kept for backwards compatibilty only. New code should
-                use the iterator based access methods
-
-       @return
-       true if the new object could be placed into the dictionary.
-     */
-    virtual bool SetDataAt(
-      PINDEX index,   ///< Ordinal index in the dictionary.
-      PINDEX ordinal  ///< New ordinal value to put into the dictionary.
-    ) { return this->AbstractSetAt(this->AbstractGetKeyAt(index), PNEW POrdinalKey(ordinal)) != NULL; }
-
-    /**Add a new object to the collection. If the objects value is already in
-       the dictionary then the object is overrides the previous value. If the
-       <code>AllowDeleteObjects</code> option is set then the old object is also deleted.
-
-       The object is placed in the an ordinal position dependent on the keys
-       hash function. Subsequent searches use the hash function to speed access
-       to the data item.
-
-       @return
-       true if the object was successfully added.
-     */
-    virtual bool SetAt(
-      const K & key,  ///< Key for position in dictionary to add object.
-      PINDEX ordinal  ///< New ordinal value to put into the dictionary.
-    ) { return this->AbstractSetAt(key, PNEW POrdinalKey(ordinal)) != NULL; }
-
-    /**Get the key in the dictionary at the ordinal index position.
-
-       The ordinal position in the dictionary is determined by the hash values
-       of the keys and the order of insertion.
-
-       WARNING: this code requires a linear search for every operation
-                and will be VERY slow for large data sets. This function
-                is kept for backwards compatibilty only. New code should
-                use the iterator based access methods
-
-       @return
-       reference to key at the index position.
-     */
-    const K & GetKeyAt(
-      PINDEX index  ///< Ordinal position in dictionary for key.
-    ) const
-      { return dynamic_cast<const K &>(this->AbstractGetKeyAt(index)); }
-
-    /**Get the data in the dictionary at the ordinal index position.
-
-       The ordinal position in the dictionary is determined by the hash values
-       of the keys and the order of insertion.
-
-       The last key/data pair is remembered by the class so that subseqent
-       access is very fast.
-
-       WARNING: this code requires a linear search for every operation
-                and will be VERY slow for large data sets. This function
-                is kept for backwards compatibilty only. New code should
-                use the iterator based access methods
-
-       @return
-       reference to data at the index position.
-     */
-    PINDEX GetDataAt(
-      PINDEX index  ///< Ordinal position in dictionary for data.
-    ) const
-      { return dynamic_cast<POrdinalKey &>(this->AbstractGetDataAt(index)); }
-  //@}
-
-  protected:
-    POrdinalDictionary(int dummy, const POrdinalDictionary * c)
-      : ParentClass(dummy, c) { }
-};
-
 
 #endif // PTLIB_DICT_H
 

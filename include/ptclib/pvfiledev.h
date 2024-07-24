@@ -62,7 +62,7 @@ class PVideoInputDevice_VideoFile : public PVideoInputEmulatedDevice
     /**Get a list of all of the drivers available.
       */
     static PStringArray GetInputDeviceNames();
-    virtual PStringArray GetDeviceNames() const;
+    virtual PStringArray GetDeviceNames() const override;
 
 
     /**Open the device given the device name.
@@ -70,19 +70,19 @@ class PVideoInputDevice_VideoFile : public PVideoInputEmulatedDevice
     bool Open(
       const PString & deviceName,   /// Device name to open
       bool startImmediate = true    /// Immediately start device
-    );
+    ) override;
 
     /**Determine of the device is currently open.
       */
-    bool IsOpen() ;
+    bool IsOpen() override;
 
     /**Close the device.
       */
-    bool Close();
+    bool Close() override;
 
    
 protected:
-  virtual bool InternalReadFrameData(uint8_t * frame);
+  virtual bool InternalReadFrameData(BYTE * frame) override;
 
    PVideoFile    * m_file;
    PDECLARE_READ_WRITE_MUTEX(m_mutex);
@@ -111,7 +111,7 @@ class PVideoOutputDevice_VideoFile : public PVideoOutputDevice
       */
     static PStringArray GetOutputDeviceNames();
 
-    virtual PStringArray GetDeviceNames() const
+    virtual PStringArray GetDeviceNames() const override
       { return GetOutputDeviceNames(); }
 
     /**Open the device given the device name.
@@ -119,23 +119,23 @@ class PVideoOutputDevice_VideoFile : public PVideoOutputDevice
     virtual bool Open(
       const PString & deviceName,   /// Device name to open
       bool startImmediate = true    /// Immediately start device
-    );
+    ) override;
 
     /**Start the video device I/O.
       */
-    bool Start();
+    bool Start() override;
 
     /**Stop the video device I/O capture.
       */
-    bool Stop();
+    bool Stop() override;
 
     /**Close the device.
       */
-    virtual bool Close();
+    virtual bool Close() override;
 
     /**Determine if the device is currently open.
       */
-    virtual bool IsOpen();
+    virtual bool IsOpen() override;
 
     /**Set the colour format to be used.
 
@@ -144,11 +144,11 @@ class PVideoOutputDevice_VideoFile : public PVideoOutputDevice
     */
     virtual bool SetColourFormat(
       const PString & colourFormat   // New colour format for device.
-    );
+    ) override;
     
     /**Set a section of the output frame buffer.
       */
-    virtual bool SetFrameData(const FrameData & frameData);
+    virtual bool SetFrameData(const FrameData & frameData) override;
 
   protected:  
    PVideoFile * m_file;

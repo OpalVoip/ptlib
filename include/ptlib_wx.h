@@ -47,6 +47,7 @@
 
 // The SDL main override inteferes with wxWidgets, disable it
 #if P_SDL && defined(P_MACOSX)
+  #undef HAVE_STRTOULL
   #include <ptlib/videoio.h>
   #undef main
 #endif

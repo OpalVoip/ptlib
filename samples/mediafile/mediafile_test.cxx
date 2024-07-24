@@ -34,7 +34,7 @@ class Test : public PProcess
 {
   PCLASSINFO(Test, PProcess)
   public:
-    void Main();
+    virtual void Main() override;
     void DoRead(const PFilePath & filename, bool native);
     void DoWrite(const PFilePath & filename, const PStringArray & trackInfo, bool variableFPS);
 };

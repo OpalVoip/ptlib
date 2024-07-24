@@ -34,12 +34,16 @@ class TimingTest : public PProcess
 {
   PCLASSINFO(TimingTest, PProcess)
   public:
-    void Main();
+    virtual void Main() override;
 };
 
 PCREATE_PROCESS(TimingTest);
 
 #define TEST_TIME(t) cout << t << " => " << PTime(t) << '\n'
+#define TEST_TIME_INTERVAL(t) cout << t << " => " << \
+                              PTimeInterval(t).AsString(9, PTimeInterval::SecondsOnly) << ' ' << \
+                              PTimeInterval(t).AsString(6, PTimeInterval::IncludeDays) << ' ' << \
+                              PTimeInterval(t) << '\n'
 
 // The main program
 void TimingTest::Main()
@@ -119,6 +123,18 @@ void TimingTest::Main()
   TEST_TIME("10 minutes ago");
   TEST_TIME("2 weeks");
 
+  cout << "\nTesting time interval string conversion" << endl;
+  TEST_TIME_INTERVAL("123.45");
+  TEST_TIME_INTERVAL("123.45ms");
+  TEST_TIME_INTERVAL("123.45us");
+  TEST_TIME_INTERVAL("123.45ns");
+  TEST_TIME_INTERVAL("123.45s");
+  TEST_TIME_INTERVAL("123.45m");
+  TEST_TIME_INTERVAL("123.45h");
+  TEST_TIME_INTERVAL("123.45d");
+  TEST_TIME_INTERVAL("12:34.56");
+  TEST_TIME_INTERVAL("1:2:3:4.5");
+  
   cout << "\nTesting time interval arithmetic" << endl;
   PTime then("1 month ago");
   PTimeInterval elapsed = now - then;

@@ -154,7 +154,7 @@ class PThreadPoolBase : public PObject
     {
       protected:
         WorkerThreadBase(PThreadPoolBase & pool, Priority priority, const char * threadName);
-        virtual void Main();
+        virtual void Main() override;
 
       public:
         virtual bool Work() = 0;

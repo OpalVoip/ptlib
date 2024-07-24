@@ -45,7 +45,7 @@ class PJSON : public PObject
     };
 
     ////////////////////////////////////////////////////////////////////////////////////////////
-    class Base
+    class Base : PNonCopyable
     {
       public:
         Base() { }
@@ -54,9 +54,6 @@ class PJSON : public PObject
         virtual void ReadFrom(istream & strm) = 0;
         virtual void PrintOn(ostream & strm) const = 0;
         virtual Base * DeepClone() const = 0;
-      private:
-        Base(const Base &) { }
-        void operator=(const Base &);
 
       friend ostream & operator<<(ostream & s, const Base & b) { b.PrintOn(s); return s; }
     };
@@ -70,10 +67,10 @@ class PJSON : public PObject
       public:
         Object() { }
         ~Object();
-        virtual bool IsType(Types type) const;
-        virtual void ReadFrom(istream & strm);
-        virtual void PrintOn(ostream & strm) const;
-        virtual Base * DeepClone() const;
+        virtual bool IsType(Types type) const override;
+        virtual void ReadFrom(istream & strm) override;
+        virtual void PrintOn(ostream & strm) const override;
+        virtual Base * DeepClone() const override;
 
         bool IsType(const PString & name, Types type) const;
 
@@ -114,10 +111,6 @@ class PJSON : public PObject
         bool SetInterval(const PString & name, const PTimeInterval & value);
 
         bool Remove(const PString & name);
-
-      private:
-        Object(const Object &) { }
-        void operator=(const Object &) { }
     };
 
     class Array : public Base, public std::vector<Base *>
@@ -125,10 +118,10 @@ class PJSON : public PObject
       public:
         Array() { }
         ~Array();
-        virtual bool IsType(Types type) const;
-        virtual void ReadFrom(istream & strm);
-        virtual void PrintOn(ostream & strm) const;
-        virtual Base * DeepClone() const;
+        virtual bool IsType(Types type) const override;
+        virtual void ReadFrom(istream & strm) override;
+        virtual void PrintOn(ostream & strm) const override;
+        virtual Base * DeepClone() const override;
 
         bool IsType(size_t index, Types type) const;
 
@@ -161,20 +154,16 @@ class PJSON : public PObject
         void AppendInterval(const PTimeInterval & value);
 
         bool Remove(size_t index);
-
-      private:
-        Array(const Array &) { }
-        void operator=(const Array &) { }
     };
 
     class String : public Base, public PString
     {
       public:
         String(const char * str = NULL) : PString(str) { }
-        virtual bool IsType(Types type) const;
-        virtual void ReadFrom(istream & strm);
-        virtual void PrintOn(ostream & strm) const;
-        virtual Base * DeepClone() const;
+        virtual bool IsType(Types type) const override;
+        virtual void ReadFrom(istream & strm) override;
+        virtual void PrintOn(ostream & strm) const override;
+        virtual Base * DeepClone() const override;
         String & operator=(const char * str) { PString::operator=(str); return *this; }
         String & operator=(const PString & str) { PString::operator=(str); return *this; }
     };
@@ -185,10 +174,10 @@ class PJSON : public PObject
         NumberType m_value;
       public:
         explicit Number(NumberType value = 0);
-        virtual bool IsType(Types type) const;
-        virtual void ReadFrom(istream & strm);
-        virtual void PrintOn(ostream & strm) const;
-        virtual Base * DeepClone() const;
+        virtual bool IsType(Types type) const override;
+        virtual void ReadFrom(istream & strm) override;
+        virtual void PrintOn(ostream & strm) const override;
+        virtual Base * DeepClone() const override;
         Number & operator=(NumberType value) { m_value = value; return *this; }
         void SetValue(NumberType value) { m_value = value; }
         NumberType GetValue() const { return m_value; }
@@ -200,10 +189,10 @@ class PJSON : public PObject
         bool m_value;
       public:
         explicit Boolean(bool value = false);
-        virtual bool IsType(Types type) const;
-        virtual void ReadFrom(istream & strm);
-        virtual void PrintOn(ostream & strm) const;
-        virtual Base * DeepClone() const;
+        virtual bool IsType(Types type) const override;
+        virtual void ReadFrom(istream & strm) override;
+        virtual void PrintOn(ostream & strm) const override;
+        virtual Base * DeepClone() const override;
         Boolean & operator=(bool value) { m_value = value; return *this; }
         void SetValue(bool value) { m_value = value; }
         bool GetValue() const { return m_value; }
@@ -212,10 +201,10 @@ class PJSON : public PObject
     class Null : public Base
     {
       public:
-        virtual bool IsType(Types type) const;
-        virtual void ReadFrom(istream & strm);
-        virtual void PrintOn(ostream & strm) const;
-        virtual Base * DeepClone() const;
+        virtual bool IsType(Types type) const override;
+        virtual void ReadFrom(istream & strm) override;
+        virtual void PrintOn(ostream & strm) const override;
+        virtual Base * DeepClone() const override;
     };
 
 
@@ -229,8 +218,8 @@ class PJSON : public PObject
 
     ~PJSON() { delete m_root; }
 
-    virtual void ReadFrom(istream & strm);
-    virtual void PrintOn(ostream & strm) const;
+    virtual void ReadFrom(istream & strm) override;
+    virtual void PrintOn(ostream & strm) const override;
 
     bool FromString(
       const PString & str
@@ -243,12 +232,12 @@ class PJSON : public PObject
 
     bool IsValid() const { return m_valid; }
 
-    bool IsType(Types type) const { return PAssertNULL(m_root)->IsType(type); }
+    bool IsType(Types type) const { return PAssertNULL(m_root) && m_root->IsType(type); }
 
     void Set(Types type);
 
-    template <class T> const T & GetAs() const { return dynamic_cast<const T &>(*PAssertNULL(m_root)); }
-    template <class T>       T & GetAs()       { return dynamic_cast<      T &>(*PAssertNULL(m_root)); }
+    template <class T> const T & GetAs() const { return PConstCastPtrToRef<T, Base>(m_root); }
+    template <class T>       T & GetAs()       { return PCastPtrToRef<T, Base>(m_root); }
     const Object  & GetObject()  const { return GetAs<Object>();  }
           Object  & GetObject()        { return GetAs<Object>();  }
     const Array   & GetArray ()  const { return GetAs<Array>();   }
@@ -269,8 +258,9 @@ class PJSON : public PObject
 
 class PJSONWrapMember;
 
-class PJSONRecord
+class PJSONRecord : public PObject
 {
+  PCLASSINFO(PJSONRecord, PObject)
   friend class PJSONWrapMember;
 protected:
   std::map<PString, PJSONWrapMember *> m_jsonDataMembers;
@@ -281,8 +271,8 @@ public:
   PJSONRecord(const PJSONRecord &);
   virtual ~PJSONRecord() { }
 
-  virtual void ReadFrom(istream & strm);
-  virtual void PrintOn(ostream & strm) const;
+  virtual void ReadFrom(istream & strm) override;
+  virtual void PrintOn(ostream & strm) const override;
 
   bool FromString(
     const PString & str

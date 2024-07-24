@@ -34,7 +34,7 @@ class MyProcess : public PProcess
 {
     PCLASSINFO(MyProcess, PProcess)
   public:
-    void Main();
+    virtual void Main() override;
 #if P_LUA
     PDECLARE_ScriptFunctionNotifier(MyProcess, TestFunction);
 #endif

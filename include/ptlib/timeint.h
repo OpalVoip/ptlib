@@ -128,7 +128,7 @@ class PTimeInterval : public PObject
        @return
        new time interval on heap.
      */
-    PObject * Clone() const;
+    PObject * Clone() const override;
 
     /** Rank the two time intervals. This ranks the intervals as you would
        expect for two integers.
@@ -139,7 +139,7 @@ class PTimeInterval : public PObject
      */
     virtual Comparison Compare(
       const PObject & obj   ///< Time interval to compare against.
-    ) const;
+    ) const override;
 
     /** Output the time interval to the I/O stream.
         The output is controlled by various stream flags:
@@ -152,14 +152,14 @@ class PTimeInterval : public PObject
      */
     virtual void PrintOn(
       ostream & strm    ///< I/O stream to output the time interval.
-    ) const;
+    ) const override;
 
     /** Input the time interval from the I/O stream. This expects the input
        to be a signed decimal integer number.
      */
     virtual void ReadFrom(
       istream & strm    ///< I/O stream to input the time interval from.
-    );
+    ) override;
   //@}
 
   /**@name Conversion functions */
@@ -511,6 +511,12 @@ class PTimeInterval : public PObject
   private:
     atomic<int64_t> m_nanoseconds;
 };
+
+
+inline PString PScaleSI(const PTimeInterval & value, unsigned significantFigures = 3, const char * units = "s" )
+{
+  return value.AsString(significantFigures, PTimeInterval::SecondsSI) + units;
+}
 
 
 /// Class wrapper of PTimeInterval to initialise to nanoseconds.

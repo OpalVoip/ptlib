@@ -36,7 +36,7 @@ class AsyncTest : public PProcess
 {
     PCLASSINFO(AsyncTest, PProcess)
   public:
-    void Main();
+    virtual void Main() override;
 
     unsigned m_numTests;
     unsigned m_concurrent;

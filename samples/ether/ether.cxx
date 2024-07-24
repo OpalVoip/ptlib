@@ -37,9 +37,9 @@ class MyProcess : public PProcess
       : PProcess("Vox Lucida", "Ethernet", 1, 0, ReleaseCode, 1)
     { }
 
-    virtual void Main();
+    virtual void Main() override;
 
-    virtual bool OnInterrupt(bool)
+    virtual bool OnInterrupt(bool) override
     {
       m_exit.Signal();
       return true;
@@ -63,7 +63,7 @@ class TestThread : public PThread
     void Stop();
 
   protected:
-    virtual void Main();
+    virtual void Main() override;
 
     PINDEX     m_index;
     PEthSocket m_socket;

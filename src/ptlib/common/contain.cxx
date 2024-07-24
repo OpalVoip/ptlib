@@ -48,403 +48,6 @@
 
 ///////////////////////////////////////////////////////////////////////////////
 
-PContainer::PContainer(PINDEX initialSize)
-{
-  reference = new PContainerReference(initialSize);
-  PAssert(reference != NULL, POutOfMemory);
-}
-
-
-PContainer::PContainer(int, const PContainer * cont)
-{
-  if (cont == this)
-    return;
-
-  PAssert(cont != NULL, PInvalidParameter);
-  PAssert2(cont->reference != NULL, cont->GetClass(), "Clone of deleted container");
-
-  reference = new PContainerReference(*cont->reference);
-  PAssert(reference != NULL, POutOfMemory);
-}
-
-
-PContainer::PContainer(const PContainer & cont)
-{
-  if (&cont == this)
-    return;
-
-  PAssert2(cont.reference != NULL, cont.GetClass(), "Copy of deleted container");
-
-  ++cont.reference->count;
-  reference = cont.reference;  // copy the reference pointer
-}
-
-
-PContainer::PContainer(PContainerReference & ref)
-  : reference(&ref)
-{
-}
-
-
-void PContainer::AssignContents(const PContainer & cont)
-{
-  if(cont.reference == NULL){
-    PAssertAlways("container reference is null");
-    return;
-  }
-  if(cont.GetClass() == NULL){
-    PAssertAlways("container class is null");
-    return;
-  }
-
-  if (reference == cont.reference)
-    return;
-
-  if (--reference->count == 0) {
-    DestroyContents();
-    DestroyReference();
-  }
-
-  PAssert(++cont.reference->count > 1, "Assignment of container that was deleted");
-  reference = cont.reference;
-}
-
-
-void PContainer::Destruct()
-{
-  if (reference != NULL) {
-    if (--reference->count <= 0) {
-      DestroyContents();
-      DestroyReference();
-    }
-    reference = NULL;
-  }
-}
-
-
-void PContainer::DestroyReference()
-{
-  delete reference;
-  reference = NULL;
-}
-
-
-bool PContainer::SetMinSize(PINDEX minSize)
-{
-#if PINDEX_SIGNED
-  PASSERTINDEX(minSize);
-  if (minSize < 0)
-    minSize = 0;
-#endif
-  if (minSize < GetSize())
-    minSize = GetSize();
-  return SetSize(minSize);
-}
-
-
-bool PContainer::MakeUnique()
-{
-  if (IsUnique())
-    return true;
-
-  PContainerReference * oldReference = reference;
-  reference = new PContainerReference(*reference);
-  --oldReference->count;
-
-  return false;
-}
-
-
-///////////////////////////////////////////////////////////////////////////////
-
-#if PMEMORY_CHECK
-
-  #define PAbstractArrayAllocate(s)     (char *)PMemoryHeap::Allocate(s, __FILE__, __LINE__, "PAbstractArrayData")
-  #define PAbstractArrayReallocate(p,s)         PMemoryHeap::Reallocate(p, s, __FILE__, __LINE__, "PAbstractArrayData")
-  #define PAbstractArrayDeallocate(p)           PMemoryHeap::Deallocate(p, "PAbstractArrayData")
-
-#else // PMEMORY_CHECK
-
-  #define PAbstractArrayAllocate(s)     (char *)malloc(s)
-  #define PAbstractArrayReallocate(p,s)         realloc(p, s)
-  #define PAbstractArrayDeallocate(p)           free(p)
-
-#endif // PMEMORY_CHECK
-
-
-PAbstractArray::PAbstractArray(PINDEX elementSizeInBytes, PINDEX initialSize)
-  : PContainer(initialSize)
-{
-  elementSize = elementSizeInBytes;
-  PAssert(elementSize != 0, PInvalidParameter);
-
-  if (GetSize() == 0)
-    m_theArray = NULL;
-  else {
-    m_theArray = PAbstractArrayAllocate(GetSize() * elementSize);
-    if (PAssert(m_theArray != NULL, POutOfMemory))
-      memset(m_theArray, 0, GetSize() * elementSize);
-  }
-
-  allocatedDynamically = true;
-}
-
-
-PAbstractArray::PAbstractArray(PINDEX elementSizeInBytes,
-                               const void *buffer,
-                               PINDEX bufferSizeInElements,
-                               bool dynamicAllocation)
-  : PContainer(bufferSizeInElements)
-{
-  elementSize = elementSizeInBytes;
-  PAssert(elementSize != 0, PInvalidParameter);
-
-  allocatedDynamically = dynamicAllocation;
-
-  if (GetSize() == 0)
-    m_theArray = NULL;
-  else if (dynamicAllocation) {
-    PINDEX sizebytes = elementSize*GetSize();
-    m_theArray = PAbstractArrayAllocate(sizebytes);
-    if (PAssert(m_theArray != NULL, POutOfMemory))
-      memcpy(m_theArray, PAssertNULL(buffer), sizebytes);
-  }
-  else
-    m_theArray = (char *)buffer;
-}
-
-
-PAbstractArray::PAbstractArray(PContainerReference & reference, PINDEX elementSizeInBytes)
-  : PContainer(reference)
-  , elementSize(elementSizeInBytes)
-  , m_theArray(NULL)
-  , allocatedDynamically(false)
-{
-}
-
-
-void PAbstractArray::DestroyContents()
-{
-  if (m_theArray != NULL) {
-    if (allocatedDynamically)
-      PAbstractArrayDeallocate(m_theArray);
-    m_theArray = NULL;
-  }
-}
-
-
-void PAbstractArray::CopyContents(const PAbstractArray & array)
-{
-  elementSize = array.elementSize;
-  m_theArray = array.m_theArray;
-  allocatedDynamically = array.allocatedDynamically;
-
-  if (reference->constObject)
-    MakeUnique();
-}
-
-
-void PAbstractArray::CloneContents(const PAbstractArray * array)
-{
-  elementSize = array->elementSize;
-  PINDEX sizebytes = elementSize*GetSize();
-  char * newArray = PAbstractArrayAllocate(sizebytes);
-  if (newArray == NULL)
-    reference->size = 0;
-  else
-    memcpy(newArray, array->m_theArray, sizebytes);
-  m_theArray = newArray;
-  allocatedDynamically = true;
-}
-
-
-void PAbstractArray::PrintOn(ostream & strm) const
-{
-  char separator = strm.fill();
-  int width = (int)strm.width();
-  for (PINDEX  i = 0; i < GetSize(); i++) {
-    if (i > 0 && separator != '\0' && !isdigit(separator))
-      strm << separator;
-    strm.width(width);
-    PrintElementOn(strm, i);
-  }
-  if (separator == '\n')
-    strm << '\n';
-}
-
-
-void PAbstractArray::ReadFrom(istream & strm)
-{
-  PINDEX i = 0;
-  while (strm.good()) {
-    ReadElementFrom(strm, i);
-    if (!strm.fail())
-      i++;
-  }
-  SetSize(i);
-}
-
-
-PObject::Comparison PAbstractArray::Compare(const PObject & obj) const
-{
-  PAssert(PIsDescendant(&obj, PAbstractArray), PInvalidCast);
-  const PAbstractArray & other = (const PAbstractArray &)obj;
-
-  char * otherArray = other.m_theArray;
-  if (m_theArray == otherArray)
-    return EqualTo;
-
-  if (elementSize < other.elementSize)
-    return LessThan;
-
-  if (elementSize > other.elementSize)
-    return GreaterThan;
-
-  PINDEX thisSize = GetSize();
-  PINDEX otherSize = other.GetSize();
-
-  if (thisSize < otherSize)
-    return LessThan;
-
-  if (thisSize > otherSize)
-    return GreaterThan;
-
-  if (thisSize == 0)
-    return EqualTo;
-
-  int retval = memcmp(m_theArray, otherArray, elementSize*thisSize);
-  if (retval < 0)
-    return LessThan;
-  if (retval > 0)
-    return GreaterThan;
-  return EqualTo;
-}
-
-
-bool PAbstractArray::SetSize(PINDEX newSize)
-{
-  return InternalSetSize(newSize, false);
-}
-
-
-bool PAbstractArray::InternalSetSize(PINDEX newSize, bool force)
-{
-#if PINDEX_SIGNED
-  if (newSize < 0)
-    return false;
-#endif
-
-  PINDEX newsizebytes = elementSize*newSize;
-  PINDEX oldsizebytes = elementSize*GetSize();
-
-  if (!force && (newsizebytes == oldsizebytes))
-    return true;
-
-  char * newArray;
-
-  if (!IsUnique()) {
-
-    if (newsizebytes == 0)
-      newArray = NULL;
-    else {
-      if ((newArray = PAbstractArrayAllocate(newsizebytes)) == NULL)
-        return false;
-  
-      allocatedDynamically = true;
-
-      if (m_theArray != NULL)
-        memcpy(newArray, m_theArray, PMIN(oldsizebytes, newsizebytes));
-    }
-
-    --reference->count;
-    reference = new PContainerReference(newSize);
-
-  } else {
-
-    if (m_theArray != NULL) {
-      if (newsizebytes == 0) {
-        if (allocatedDynamically)
-          PAbstractArrayDeallocate(m_theArray);
-        newArray = NULL;
-      }
-      else {
-        if ((newArray = PAbstractArrayAllocate(newsizebytes)) == NULL)
-          return false;
-        memcpy(newArray, m_theArray, PMIN(newsizebytes, oldsizebytes));
-        if (allocatedDynamically)
-          PAbstractArrayDeallocate(m_theArray);
-        allocatedDynamically = true;
-      }
-    }
-    else if (newsizebytes != 0) {
-      if ((newArray = PAbstractArrayAllocate(newsizebytes)) == NULL)
-        return false;
-    }
-    else
-      newArray = NULL;
-
-    reference->size = newSize;
-  }
-
-  if (newsizebytes > oldsizebytes)
-    memset(newArray+oldsizebytes, 0, newsizebytes-oldsizebytes);
-
-  m_theArray = newArray;
-  return true;
-}
-
-void PAbstractArray::Attach(const void *buffer, PINDEX bufferSize)
-{
-  if (allocatedDynamically && m_theArray != NULL)
-    PAbstractArrayDeallocate(m_theArray);
-
-  m_theArray = (char *)buffer;
-  reference->size = bufferSize;
-  allocatedDynamically = false;
-}
-
-
-void * PAbstractArray::GetPointer(PINDEX minSize)
-{
-  PAssert(SetMinSize(minSize), POutOfMemory);
-  return m_theArray;
-}
-
-
-PINDEX PAbstractArray::GetLength() const
-{
-  return elementSize*GetSize();
-}
-
-
-bool PAbstractArray::Concatenate(const PAbstractArray & array)
-{
-  if (!allocatedDynamically || array.elementSize != elementSize)
-    return false;
-
-  PINDEX oldLen = GetSize();
-  PINDEX addLen = array.GetSize();
-
-  if (!SetSize(oldLen + addLen))
-    return false;
-
-  memcpy(m_theArray+oldLen*elementSize, array.m_theArray, addLen*elementSize);
-  return true;
-}
-
-
-void PAbstractArray::PrintElementOn(ostream & /*stream*/, PINDEX /*index*/) const
-{
-}
-
-
-void PAbstractArray::ReadElementFrom(istream & /*stream*/, PINDEX /*index*/)
-{
-}
-
-
-///////////////////////////////////////////////////////////////////////////////
-
 void PCharArray::PrintOn(ostream & strm) const
 {
   PINDEX width = (int)strm.width();
@@ -613,6 +216,13 @@ PString::PString(const std::string & str)
 
 PString::PString(char c)
   : std::string(1, c)
+{
+}
+
+
+PString::PString(bool b)
+  : PCharArray(b ? "true" : "false", b ? 5 : 6)
+  , m_length(b ? 4 : 5)
 {
 }
 
@@ -1839,7 +1449,7 @@ PString PString::ToLiteral(bool ascii) const
       strm << "\\\"";
     else if (*p == '\\')
       strm << "\\\\";
-    else if (isprint(*p) || (!ascii && (*p & 0x80) != 0))
+    else if (isprint(*p & 0xff) || (!ascii && (*p & 0x80) != 0))
       strm << *p;
     else {
       PINDEX i;
@@ -1870,6 +1480,46 @@ PString PString::FromLiteral(PINDEX & offset) const
   offset = cstr - c_str();
 
   return str;
+}
+
+
+bool PString::IsTrue() const
+{
+  return IsTrue(c_str());
+}
+
+
+bool PString::IsTrue(const char * str)
+{
+  if (str == NULL || *str == '\0')
+    return false;
+
+  return strcasecmp(str, "true") == 0 ||
+         strcasecmp(str, "t") == 0 ||
+         strcasecmp(str, "on") == 0 ||
+         strcasecmp(str, "yes") == 0 ||
+         strcasecmp(str, "y") == 0 ||
+         atoi(str) != 0;
+}
+
+
+bool PString::IsFalse() const
+{
+  return IsFalse(c_str());
+}
+
+
+bool PString::IsFalse(const char * str)
+{
+  if (str == NULL || *str == '\0')
+    return false;
+
+  return strcasecmp(str, "false") == 0 ||
+         strcasecmp(str, "f") == 0 ||
+         strcasecmp(str, "off") == 0 ||
+         strcasecmp(str, "no") == 0 ||
+         strcasecmp(str, "n") == 0 ||
+         strspn(str, "-0") == strlen(str);
 }
 
 
@@ -1981,15 +1631,13 @@ PStringArray::PStringArray(PINDEX count, char const * const * strarr, bool casel
 
 PStringArray::PStringArray(const PString & str)
 {
-  SetSize(1);
-  (*theArray)[0] = str.CloneAs<PString>();
+  m_objectArray->SetAt(0, str.CloneAs<PString>());
 }
 
 
 PStringArray::PStringArray(const char * cstr)
 {
-  SetSize(1);
-  (*theArray)[0] = new PString(cstr);
+  m_objectArray->SetAt(0, new PString(cstr));
 }
 
 
@@ -1998,7 +1646,7 @@ PStringArray::PStringArray(const PStringList & list)
   SetSize(list.GetSize());
   PINDEX count = 0;
   for (PStringList::const_iterator it = list.begin(); it != list.end(); ++it)
-    (*theArray)[count++] = it->CloneAs<PString>();
+    m_objectArray->SetAt(count++, it->CloneAs<PString>());
 }
 
 
@@ -2006,7 +1654,7 @@ PStringArray::PStringArray(const PSortedStringList & list)
 {
   SetSize(list.GetSize());
   for (PINDEX i = 0; i < list.GetSize(); i++)
-    (*theArray)[i] = list[i].CloneAs<PString>();
+    m_objectArray->SetAt(i, list[i].CloneAs<PString>());
 }
 
 
@@ -2015,7 +1663,7 @@ PStringArray::PStringArray(const PStringSet & set)
   SetSize(set.GetSize());
   PINDEX count = 0;
   for (PStringSet::const_iterator it = set.begin(); it != set.end(); ++it)
-    (*theArray)[count++] = it->CloneAs<PString>();
+    m_objectArray->SetAt(count++, it->CloneAs<PString>());
 }
 
 
@@ -2026,6 +1674,24 @@ PStringArray & PStringArray::operator+=(const PStringArray & v)
     AppendString(v[i]);
 
   return *this;
+}
+
+
+PStringArray PStringArray::operator+(const PStringArray & v) const
+{
+  PStringArray arr = *this;
+  arr.MakeUnique();
+  arr += v;
+  return arr;
+}
+
+
+PStringArray PStringArray::operator+(const PString & v) const
+{
+  PStringArray arr = *this;
+  arr.MakeUnique();
+  arr += v;
+  return arr;
 }
 
 
@@ -2042,8 +1708,8 @@ void PStringArray::ReadFrom(istream & strm)
 PString PStringArray::operator[](PINDEX index) const
 {
   PASSERTINDEX(index);
-  if (index < GetSize() && (*theArray)[index] != NULL)
-    return *(PString *)(*theArray)[index];
+  if (index < GetSize() && m_objectArray->GetAt(index) != NULL)
+    return *(PString *)m_objectArray->GetAt(index);
   return PString::Empty();
 }
 
@@ -2052,9 +1718,9 @@ PString & PStringArray::operator[](PINDEX index)
 {
   PASSERTINDEX(index);
   PAssert(SetMinSize(index+1), POutOfMemory);
-  if ((*theArray)[index] == NULL)
-    (*theArray)[index] = new PString;
-  return *(PString *)(*theArray)[index];
+  if (m_objectArray->GetAt(index) == NULL)
+    m_objectArray->SetAt(index, new PString);
+  return *(PString *)m_objectArray->GetAt(index);
 }
 
 
@@ -2783,6 +2449,7 @@ bool PRegularExpression::Execute(const char * cstr, PINDEX & start, PINDEX & len
 {
   if (m_lastErrorCode != NoError && m_lastErrorCode != NoMatch)
     return false;
+  }
 
   std::match_results<const char *> match;
   if (!std::regex_search(cstr, match, *this, flags)) {

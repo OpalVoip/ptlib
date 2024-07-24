@@ -34,6 +34,19 @@
 
 #if P_CYPHER
 
+
+namespace PCRC32 {
+  uint32_t Update(const void * data, size_t size, uint32_t crc);
+  inline uint32_t Update(const PBYTEArray & data, uint32_t crc) { return Update(data.GetPointer(), data.size(), crc); }
+  inline uint32_t Update(const PString & str, uint32_t crc)     { return Update(str.c_str(), str.length(), crc); }
+  inline uint32_t Update(const std::string & str, uint32_t crc) { return Update(str.c_str(), str.length(), crc); }
+  inline uint32_t Calculate(const void * data, size_t size)     { return Update(data, size, 0); }
+  inline uint32_t Calculate(const PBYTEArray & data)            { return Update(data.GetPointer(), data.size(), 0); }
+  inline uint32_t Calculate(const PString & str)                { return Update(str.c_str(), str.length(), 0); }
+  inline uint32_t Calculate(const std::string & str)            { return Update(str.c_str(), str.length(), 0); }
+}
+
+
 /** RFC4013 "SASLprep" compatible string.
     For security systems, often some identifiers, usersname, passwords etc
     must not contain extraneous characters. This class represents a string
@@ -299,7 +312,7 @@ class PMessageDigest : public PObject
     /// Result of digest/hash function
     class Result : public PBYTEArray {
       public:
-        virtual void PrintOn(ostream & strm) const;
+        virtual void PrintOn(ostream & strm) const override;
 
         bool ConstantTimeCompare(const Result & other) const;
 
@@ -351,8 +364,9 @@ template <class Digestor> struct PMessageDigestStatics
 {
     /** Encode the data in memory to and digest value. */
     static PString Encode(
-      const PString & str      ///< String to be encoded to digest
-    ) { return Encode(str.GetPointer(), str.GetLength()); }
+      const PString & str,    ///< String to be encoded to digest
+      bool base64 = true      /// Return base64 encoding of has, otherwise hex
+    ) { return Encode(str.GetPointer(), str.GetLength(), base64); }
 
     /** Encode the data in memory to and digest value. */
     static void Encode(
@@ -362,8 +376,9 @@ template <class Digestor> struct PMessageDigestStatics
 
     /** Encode the data in memory to and digest value. */
     static PString Encode(
-      const char * cstr        ///< C String to be encoded to digest
-    ) { return Encode(cstr, (PINDEX)strlen(cstr)); }
+      const char * cstr,      ///< C String to be encoded to digest
+      bool base64 = true      /// Return base64 encoding of has, otherwise hex
+    ) { return Encode(cstr, (PINDEX)strlen(cstr), base64); }
 
     /** Encode the data in memory to and digest value. */
     static void Encode(
@@ -373,8 +388,9 @@ template <class Digestor> struct PMessageDigestStatics
 
     /** Encode the data in memory to and digest value. */
     static PString Encode(
-      const PBYTEArray & data  ///< Data block to be encoded to digest
-    ) { return Encode(data, data.GetSize()); }
+      const PBYTEArray & data,  ///< Data block to be encoded to digest
+      bool base64 = true        /// Return base64 encoding of has, otherwise hex
+    ) { return Encode(data, data.GetSize(), base64); }
 
     /** Encode the data in memory to and digest value. */
     static void Encode(
@@ -385,11 +401,12 @@ template <class Digestor> struct PMessageDigestStatics
     /** Encode the data in memory to and digest value. */
     static PString Encode(
       const void * dataBlock,  ///< Pointer to data to be encoded to digest
-      PINDEX length            ///< Length of the data block.
+      PINDEX length,           ///< Length of the data block.
+      bool base64 = true       /// Return base64 encoding of has, otherwise hex
     ) {
       PMessageDigest::Result result;
       Encode(dataBlock, length, result);
-      return result.AsBase64();
+      return base64 ? result.AsBase64() : result.AsHex();
     }
 
     /** Encode the data in memory to digest value.
@@ -452,9 +469,9 @@ class PMessageDigest5 : public PMessageDigest, public PMessageDigestStatics<PMes
     PMessageDigest5();
 
   protected:
-    virtual void InternalStart();
-    virtual void InternalProcess(const void * dataBlock, PINDEX length);
-    virtual void InternalCompleteDigest(Result & result);
+    virtual void InternalStart() override;
+    virtual void InternalProcess(const void * dataBlock, PINDEX length) override;
+    virtual void InternalCompleteDigest(Result & result) override;
 
   private:
     void Transform(const uint8_t * block);
@@ -477,14 +494,14 @@ class PHMAC_MD5 : public PHMAC
     enum { BlockSize = 64 };
 
   protected:
-    virtual void InitKey(const void * key, PINDEX len);
-    virtual void InternalProcess(const void * data, PINDEX len, PHMAC::Result & result);
+    virtual void InitKey(const void * key, PINDEX len) override;
+    virtual void InternalProcess(const void * data, PINDEX len, PHMAC::Result & result) override;
 };
 
 
 #if P_SSL
 
-class PMessageDigestSHA : public PMessageDigest
+class PMessageDigestSHA : public PMessageDigest, PNonCopyable
 {
     PCLASSINFO(PMessageDigestSHA, PMessageDigest)
   public:
@@ -498,9 +515,9 @@ class PMessageDigestSHA : public PMessageDigest
     ~PMessageDigestSHA();
 
   protected:
-    virtual void InternalStart();
-    virtual void InternalProcess(const void * dataBlock, PINDEX length);
-    virtual void InternalCompleteDigest(Result & result);
+    virtual void InternalStart() override;
+    virtual void InternalProcess(const void * dataBlock, PINDEX length) override;
+    virtual void InternalCompleteDigest(Result & result) override;
     void Failed();
 
     Context * m_context;
@@ -509,10 +526,6 @@ class PMessageDigestSHA : public PMessageDigest
       e_Processing,
       e_Failed
     } m_state;
-
-  private:
-    PMessageDigestSHA(const PMessageDigestSHA &) { }
-    void operator=(const PMessageDigestSHA &) { }
 };
 
 
@@ -568,7 +581,7 @@ class PHMAC_SHA : public PHMAC
     typedef struct evp_md_st const * Algorithm;
 
     explicit PHMAC_SHA(Algorithm algo);
-    virtual void InternalProcess(const void * data, PINDEX len, PHMAC::Result & result);
+    virtual void InternalProcess(const void * data, PINDEX len, PHMAC::Result & result) override;
 
     Algorithm m_algorithm;
 };
@@ -810,19 +823,19 @@ class PTEACypher : public PCypher
     /** Initialise the encoding/decoding sequence. */
     virtual void Initialise(
       bool encoding   ///< Flag for encoding/decoding sequence about to start.
-    );
+    ) override;
 
     /** Encode an n bit block of memory according to the encryption algorithm. */
     virtual void EncodeBlock(
       const void * in,  ///< Pointer to clear n bit block.
       void * out        ///< Pointer to coded n bit block.
-    );
+    ) override;
 
     /** Decode an n bit block of memory according to the encryption algorithm. */
     virtual void DecodeBlock(
       const void * in,  ///< Pointer to coded n bit block.
       void * out        ///< Pointer to clear n bit block.
-    );
+    ) override;
 
   private:
     uint32_t k0, k1, k2, k3;

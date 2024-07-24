@@ -11,7 +11,7 @@ class SockBundleProcess : public PProcess
 
   public:
     SockBundleProcess();
-    void Main();
+    virtual void Main() override;
 };
 
 PCREATE_PROCESS(SockBundleProcess);

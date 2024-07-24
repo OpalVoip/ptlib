@@ -205,24 +205,24 @@ class PVideoInputDevice_Mac : public PVideoInputDevice
     PVideoInputDevice_Mac();
     ~PVideoInputDevice_Mac();
 
-    PBoolean Open(const PString & deviceName, PBoolean startImmediate);
-    PBoolean IsOpen() ;
-    PBoolean Close();
-    PBoolean Start();
-    PBoolean Stop();
-    PBoolean IsCapturing();
+    PBoolean Open(const PString & deviceName, PBoolean startImmediate) override;
+    PBoolean IsOpen() override;
+    PBoolean Close() override;
+    PBoolean Start() override;
+    PBoolean Stop() override;
+    PBoolean IsCapturing() override;
     static PStringArray GetInputDeviceNames();
-    virtual PStringArray GetDeviceNames() const;
+    virtual PStringArray GetDeviceNames() const override;
     static bool GetDeviceCapabilities(const PString &, Capabilities *);
     virtual bool GetDeviceCapabilities(Capabilities * caps) { return GetDeviceCapabilities(PString::Empty(), caps); }
-    virtual PINDEX GetMaxFrameBytes();
-    virtual PBoolean SetColourFormat(const PString & colourFormat);
-    virtual PBoolean SetFrameRate(unsigned rate);
-    virtual PBoolean SetFrameSize(unsigned width, unsigned height);
-    virtual PBoolean GetFrameSizeLimits(unsigned & minWidth, unsigned & minHeight, unsigned & maxWidth, unsigned & maxHeight);
+    virtual PINDEX GetMaxFrameBytes() override;
+    virtual PBoolean SetColourFormat(const PString & colourFormat) override;
+    virtual PBoolean SetFrameRate(unsigned rate) override;
+    virtual PBoolean SetFrameSize(unsigned width, unsigned height) override;
+    virtual PBoolean GetFrameSizeLimits(unsigned & minWidth, unsigned & minHeight, unsigned & maxWidth, unsigned & maxHeight) override;
   
   protected:
-    virtual bool InternalGetFrameData(BYTE * buffer, PINDEX & bytesReturned, bool & keyFrame, bool wait);
+    virtual bool InternalGetFrameData(BYTE * buffer, PINDEX & bytesReturned, bool & keyFrame, bool wait) override;
 
     AVCaptureSession * m_session;
     AVCaptureDevice * m_device;

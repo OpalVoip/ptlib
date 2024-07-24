@@ -44,7 +44,7 @@ class PSystemLogTarget;
     To send messages to the system error log, the PSYSTEMLOG macro should be used. 
   */
 
-class PSystemLog : public PObject, public std::ostream
+class PSystemLog : public PObject, public std::ostream, PNonCopyable
 {
     PCLASSINFO(PSystemLog, PObject);
   public:
@@ -95,9 +95,6 @@ class PSystemLog : public PObject, public std::ostream
   //@}
 
   private:
-    PSystemLog(const PSystemLog & other);
-    PSystemLog & operator=(const PSystemLog &);
-
     class Buffer : public std::streambuf {
       public:
         Buffer();
@@ -115,7 +112,7 @@ class PSystemLog : public PObject, public std::ostream
 };
 
 
-class PSystemLogTarget : public PObject
+class PSystemLogTarget : public PObject, PNonCopyable
 {
     PCLASSINFO(PSystemLogTarget, PObject);
   public:
@@ -175,10 +172,6 @@ class PSystemLogTarget : public PObject
     PAtomicEnum<PSystemLog::Level> m_thresholdLevel;
     bool m_outputLevelName;
 
-  private:
-    PSystemLogTarget(const PSystemLogTarget & other);
-    PSystemLogTarget & operator=(const PSystemLogTarget &);
-
   friend void PSystemLog::OutputToTarget(PSystemLog::Level level, const char * msg);
 };
 
@@ -189,7 +182,7 @@ class PSystemLogToNowhere : public PSystemLogTarget
 {
     PCLASSINFO(PSystemLogToNowhere, PSystemLogTarget);
   public:
-    virtual void Output(PSystemLog::Level, const char *)
+    virtual void Output(PSystemLog::Level, const char *) override
     {
     }
 };
@@ -208,7 +201,7 @@ class PSystemLogToStderr : public PSystemLogTarget
     virtual void Output(
       PSystemLog::Level level,  ///< Level of this message
       const char * msg          ///< Message to be logged
-    );
+    ) override;
   //@}
 };
 
@@ -232,7 +225,7 @@ class PSystemLogToTrace : public PSystemLogTarget
     virtual void Output(
       PSystemLog::Level level,  ///< Level of this message
       const char * msg          ///< Message to be logged
-    );
+    ) override;
   //@}
 };
 #endif
@@ -258,7 +251,7 @@ class PSystemLogToFile : public PSystemLogTarget
     virtual void Output(
       PSystemLog::Level level,  ///< Level of this message
       const char * msg          ///< Message to be logged
-    );
+    ) override;
   //@}
 
   /**@name Miscellaneous functions */
@@ -344,7 +337,7 @@ class PSystemLogToNetwork : public PSystemLogTarget
     virtual void Output(
       PSystemLog::Level level,  ///< Level of this message
       const char * msg          ///< Message to be logged
-    );
+    ) override;
   //@}
 
     const PIPSocket::AddressAndPort & GetServer() const { return m_server; }
@@ -401,7 +394,7 @@ class PSystemLogToSyslog : public PSystemLogTarget
     virtual void Output(
       PSystemLog::Level level,  ///< Level of this message
       const char * msg          ///< Message to be logged
-    );
+    ) override;
   //@}
 
   protected:

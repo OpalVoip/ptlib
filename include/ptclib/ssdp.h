@@ -83,7 +83,7 @@ class PSSDP : public PHTTP
     );
 
   protected:
-    bool Close();
+    bool Close() override;
 
     bool m_listening;
 };

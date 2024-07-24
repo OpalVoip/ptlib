@@ -277,7 +277,8 @@
 #undef P_VIDEO
 
 #undef P_TIMERS
-#undef P_TTS
+#undef P_TEXT_TO_SPEECH
+#undef P_SPEECH_RECOGNITION
 #undef P_ASN
 #undef P_PIPECHAN
 #undef P_DTMF
@@ -381,26 +382,20 @@
 #undef P_OPENSSL
 #undef P_SSL_WIN64
 #undef P_SSL_WIN32
+#undef P_SSL_VCPKG64
+#undef P_SSL_VCPKG32
 
 #if (defined(P_SSL_WIN64) &&  defined(P_64BIT)) || \
     (defined(P_SSL_WIN32) && !defined(P_64BIT)) || \
+    (defined(P_SSL_VCPKG64) &&  defined(P_64BIT)) || \
+    (defined(P_SSL_VCPKG32) && !defined(P_64BIT)) || \
     P_OPENSSL
   #define P_SSL 1
 #endif
 
-#if P_SSL
-  #undef P_SSL_SRTP
-  #undef P_SSL_USE_CONST
-#endif
-
-#if defined(_MSC_VER) && P_SSL
+#if defined(_MSC_VER) && P_SSL && !(defined(P_SSL_VCPKG32) || defined(P_SSL_VCPKG64))
 
   #if P_64BIT
-
-    #define P_SSL_USE_CONST 1
-
-    #undef P_SSL_AES64
-    #define P_SSL_AES P_SSL_AES64
 
     #define P_SSL_INCLUDE(inc) include_alias(<inc>, <@SSL_WIN64_DIR@/include/inc>)
 
@@ -426,9 +421,6 @@
   #elif P_SSL_WIN32==2
 
     #define P_SSL_USE_CONST 1
-
-    #undef P_SSL_AES32
-    #define P_SSL_AES P_SSL_AES32
 
     #define P_SSL_INCLUDE(inc) include_alias(<inc>, <@SSL_WIN32_DIR@/include/inc>)
 
@@ -467,6 +459,7 @@
   #endif
 
   #pragma P_SSL_INCLUDE(openssl/ssl.h)
+  #pragma P_SSL_INCLUDE(openssl/sslerr.h)
   #pragma P_SSL_INCLUDE(openssl/safestack.h)
   #pragma P_SSL_INCLUDE(openssl/stack.h)
   #pragma P_SSL_INCLUDE(openssl/crypto.h)
@@ -474,9 +467,11 @@
   #pragma P_SSL_INCLUDE(openssl/opensslv.h)
   #pragma P_SSL_INCLUDE(openssl/lhash.h)
   #pragma P_SSL_INCLUDE(openssl/buffer.h)
+  #pragma P_SSL_INCLUDE(openssl/buffererr.h)
   #pragma P_SSL_INCLUDE(openssl/bio.h)
   #pragma P_SSL_INCLUDE(openssl/bioerr.h)
   #pragma P_SSL_INCLUDE(openssl/pem.h)
+  #pragma P_SSL_INCLUDE(openssl/pemerr.h)
   #pragma P_SSL_INCLUDE(openssl/evp.h)
   #pragma P_SSL_INCLUDE(openssl/evperr.h)
   #pragma P_SSL_INCLUDE(openssl/md2.h)
@@ -494,19 +489,26 @@
   #pragma P_SSL_INCLUDE(openssl/idea.h)
   #pragma P_SSL_INCLUDE(openssl/mdc2.h)
   #pragma P_SSL_INCLUDE(openssl/rsa.h)
+  #pragma P_SSL_INCLUDE(openssl/rsaerr.h)
   #pragma P_SSL_INCLUDE(openssl/bn.h)
   #pragma P_SSL_INCLUDE(openssl/bnerr.h)
   #pragma P_SSL_INCLUDE(openssl/dsa.h)
+  #pragma P_SSL_INCLUDE(openssl/dsaerr.h)
   #pragma P_SSL_INCLUDE(openssl/dh.h)
+  #pragma P_SSL_INCLUDE(openssl/dherr.h)
   #pragma P_SSL_INCLUDE(openssl/objects.h)
   #pragma P_SSL_INCLUDE(openssl/objectserr.h)
   #pragma P_SSL_INCLUDE(openssl/asn1.h)
   #pragma P_SSL_INCLUDE(openssl/asn1err.h)
   #pragma P_SSL_INCLUDE(openssl/x509.h)
+  #pragma P_SSL_INCLUDE(openssl/x509err.h)
   #pragma P_SSL_INCLUDE(openssl/x509_vfy.h)
   #pragma P_SSL_INCLUDE(openssl/x509v3.h)
+  #pragma P_SSL_INCLUDE(openssl/x509v3err.h)
   #pragma P_SSL_INCLUDE(openssl/conf.h)
+  #pragma P_SSL_INCLUDE(openssl/conferr.h)
   #pragma P_SSL_INCLUDE(openssl/pkcs7.h)
+  #pragma P_SSL_INCLUDE(openssl/pkcs7err.h)
   #pragma P_SSL_INCLUDE(openssl/pem2.h)
   #pragma P_SSL_INCLUDE(openssl/ssl2.h)
   #pragma P_SSL_INCLUDE(openssl/ssl3.h)
@@ -514,8 +516,10 @@
   #pragma P_SSL_INCLUDE(openssl/ssl23.h)
   #pragma P_SSL_INCLUDE(openssl/err.h)
   #pragma P_SSL_INCLUDE(openssl/rand.h)
+  #pragma P_SSL_INCLUDE(openssl/randerr.h)
   #pragma P_SSL_INCLUDE(openssl/symhacks.h)
   #pragma P_SSL_INCLUDE(openssl/comp.h)
+  #pragma P_SSL_INCLUDE(openssl/comperr.h)
   #pragma P_SSL_INCLUDE(openssl/ossl_typ.h)
   #pragma P_SSL_INCLUDE(openssl/md4.h)
   #pragma P_SSL_INCLUDE(openssl/des_old.h)
@@ -525,6 +529,7 @@
   #pragma P_SSL_INCLUDE(openssl/obj_mac.h)
   #pragma P_SSL_INCLUDE(openssl/kssl.h)
   #pragma P_SSL_INCLUDE(openssl/ec.h)
+  #pragma P_SSL_INCLUDE(openssl/ecerr.h)
   #pragma P_SSL_INCLUDE(openssl/ecdsa.h)
   #pragma P_SSL_INCLUDE(openssl/ecdh.h)
   #pragma P_SSL_INCLUDE(openssl/pq_compat.h)
@@ -533,73 +538,26 @@
   #pragma P_SSL_INCLUDE(openssl/hmac.h)
   #pragma P_SSL_INCLUDE(openssl/srtp.h)
   #pragma P_SSL_INCLUDE(openssl/aes.h)
-
+  #pragma P_SSL_INCLUDE(openssl/async.h)
+  #pragma P_SSL_INCLUDE(openssl/asyncerr.h)
+  #pragma P_SSL_INCLUDE(openssl/ct.h)
+  #pragma P_SSL_INCLUDE(openssl/cterr.h)
+  #pragma P_SSL_INCLUDE(openssl/macros.h)
+  #pragma P_SSL_INCLUDE(openssl/configuration.h)
+  #pragma P_SSL_INCLUDE(openssl/types.h)
+  #pragma P_SSL_INCLUDE(openssl/cryptoerr_legacy.h)
+  #pragma P_SSL_INCLUDE(openssl/core.h)
+  #pragma P_SSL_INCLUDE(openssl/core_dispatch.h)
+  #pragma P_SSL_INCLUDE(openssl/params.h)
+  #pragma P_SSL_INCLUDE(openssl/http.h)
+  #pragma P_SSL_INCLUDE(openssl/conftypes.h)
+  #pragma P_SSL_INCLUDE(openssl/sslerr_legacy.h)
+  #pragma P_SSL_INCLUDE(openssl/prov_ssl.h)
 #endif
 
-#undef P_d2i_DHparams_bio_OLD
+// For backward compatibility, should always be present now
+#define P_SSL_AES 1
 
-
-/////////////////////////////////////////////////
-//
-// EXPAT library for XML parsing
-//
-
-#undef P_EXPAT
-#undef P_EXPAT_BUILD
-#undef P_EXPAT_WIN32
-#undef P_EXPAT_WIN64
-#undef P_EXPAT_LIBRARY_W32_DEBUG
-#undef P_EXPAT_LIBRARY_W32_RELEASE
-#undef P_EXPAT_LIBRARY_W64_DEBUG
-#undef P_EXPAT_LIBRARY_W64_RELEASE
-
-#if (defined(P_EXPAT_WIN64)                 &&  defined(P_64BIT)) || \
-    (defined(P_EXPAT_WIN32)                 && !defined(P_64BIT)) || \
-    ((defined(P_EXPAT_LIBRARY_W64_DEBUG)                          || \
-      defined(P_EXPAT_LIBRARY_W64_RELEASE)) &&  defined(P_64BIT)) || \
-    ((defined(P_EXPAT_LIBRARY_W32_DEBUG)                          || \
-      defined(P_EXPAT_LIBRARY_W32_RELEASE)) && !defined(P_64BIT))
-  #define P_EXPAT 1
-#endif
-
-#if defined(_MSC_VER) && P_EXPAT
-
-  #if P_EXPAT_BUILD
-    #pragma include_alias(<expat.h>, <@EXPAT_BUILD_DIR@/lib/expat.h>)
-  #elif defined(P_EXPAT_WIN32)
-    #pragma include_alias(<expat.h>, <@EXPAT_WIN32_DIR@/Source/lib/expat.h>)
-  #else
-    #pragma include_alias(<expat.h>, <@EXPAT_WIN64_DIR@/include/expat.h>)
-  #endif
-
-  #if defined(P_EXPAT_WIN32) || defined(P_EXPAT_WIN64)
-    #undef P_EXPAT_LIBRARY
-  #elif defined(P_64BIT)
-    #if defined(_DEBUG)
-      #define P_EXPAT_LIBRARY P_EXPAT_LIBRARY_W64_DEBUG
-    #else
-      #define P_EXPAT_LIBRARY P_EXPAT_LIBRARY_W64_RELEASE
-    #endif
-  #else
-    #if defined(_DEBUG)
-      #define P_EXPAT_LIBRARY P_EXPAT_LIBRARY_W32_DEBUG
-    #else
-      #define P_EXPAT_LIBRARY P_EXPAT_LIBRARY_W32_RELEASE
-    #endif
-  #endif
-#endif
-
-#ifdef P_EXPAT
-  #if P_TTS
-    #undef P_VXML
-    #if P_VIDEO && P_VXML
-      #undef P_VXML_VIDEO
-    #endif
-  #endif
-  #undef P_JABBER
-  #undef P_XMLRPC
-  #undef P_SOAP
-#endif
 
 
 /////////////////////////////////////////////////
@@ -631,10 +589,16 @@
 #if defined(_MSC_VER) && defined(P_LUA)
   #if defined(P_64BIT)
     #define P_LUA_INCLUDE(inc) include_alias(<inc>, <@LUA_DIR_WIN64@/include/inc>)
-    #define P_LUA_LIBRARY "@LUA_DIR_WIN64@/liblua53.a"
+    #undef P_LUA_LIBRARY64
+    #ifdef P_LUA_LIBRARY64
+      #define P_LUA_LIBRARY P_LUA_LIBRARY64
+    #endif
   #else
     #define P_LUA_INCLUDE(inc) include_alias(<inc>, <@LUA_DIR_WIN32@/include/inc>)
-    #define P_LUA_LIBRARY "@LUA_DIR_WIN32@/liblua53.a"
+    #undef P_LUA_LIBRARY32
+    #ifdef P_LUA_LIBRARY32
+      #define P_LUA_LIBRARY P_LUA_LIBRARY32
+    #endif
   #endif
 
   #pragma P_LUA_INCLUDE(lua.hpp)
@@ -653,64 +617,45 @@
   #undef P_V8
 
   #if defined(_MSC_VER)
-    #undef P_V8_WIN32
-    #undef P_V8_WIN64
-
-    #undef P_V8_BASE0_DEBUG32
-    #undef P_V8_BASE0_DEBUG64
-    #undef P_V8_BASE0_RELEASE32
-    #undef P_V8_BASE0_RELEASE64
-    #undef P_V8_BASE1_DEBUG32
-    #undef P_V8_BASE1_DEBUG64
-    #undef P_V8_BASE1_RELEASE32
-    #undef P_V8_BASE1_RELEASE64
-    #undef P_V8_LIBBASE_DEBUG32
-    #undef P_V8_LIBBASE_DEBUG64
-    #undef P_V8_LIBBASE_RELEASE32
-    #undef P_V8_LIBBASE_RELEASE64
-    #undef P_V8_SNAPSHOT_DEBUG32
-    #undef P_V8_SNAPSHOT_DEBUG64
-    #undef P_V8_SNAPSHOT_RELEASE32
-    #undef P_V8_SNAPSHOT_RELEASE64
-    #undef P_V8_LIBPLATFORM_DEBUG32
-    #undef P_V8_LIBPLATFORM_DEBUG64
-    #undef P_V8_LIBPLATFORM_RELEASE32
-    #undef P_V8_LIBPLATFORM_RELEASE64
-    #undef P_V8_LIBSAMPLER_DEBUG32
-    #undef P_V8_LIBSAMPLER_DEBUG64
-    #undef P_V8_LIBSAMPLER_RELEASE32
-    #undef P_V8_LIBSAMPLER_RELEASE64
-    #undef P_V8_ICUI18N_DEBUG32
-    #undef P_V8_ICUI18N_DEBUG64
-    #undef P_V8_ICUI18N_RELEASE32
-    #undef P_V8_ICUI18N_RELEASE64
-    #undef P_V8_ICUUC_DEBUG32
-    #undef P_V8_ICUUC_DEBUG64
-    #undef P_V8_ICUUC_RELEASE32
-    #undef P_V8_ICUUC_RELEASE64
+    #undef P_V8_LIB_DEBUG32
+    #undef P_V8_LIB_DEBUG64
+    #undef P_V8_LIB_RELEASE32
+    #undef P_V8_LIB_RELEASE64
 
     #if defined(P_64BIT)
-      #if defined(P_V8_WIN64)
-        #if defined(_DEBUG)
-          #if defined(P_V8_LIBBASE_DEBUG64)
-            #define P_V8 1
-          #endif
-        #else
-          #if defined(P_V8_LIBBASE_RELEASE64)
-            #define P_V8 1
-          #endif
+      #if defined(_DEBUG)
+        #if defined(P_V8_LIB_DEBUG64)
+          #define P_V8 1
+          #define P_V8_LIB P_V8_LIB_DEBUG64
+        #elif defined(P_V8_LIB_RELEASE64)
+          #define P_V8 1
+          #define P_V8_LIB P_V8_LIB_RELEASE64
+        #endif
+      #else
+        #if defined(P_V8_LIB_RELEASE64)
+          #define P_V8 1
+          #define P_V8_LIB P_V8_LIB_RELEASE64
+        #elif defined(P_V8_LIB_DEBUG64)
+          #define P_V8 1
+          #define P_V8_LIB P_V8_LIB_DEBUG64
         #endif
       #endif
     #else
-      #if defined(P_V8_WIN32)
-        #if defined(_DEBUG)
-          #if defined(P_V8_LIBBASE_DEBUG32)
-            #define P_V8 1
-          #endif
-        #else
-          #if defined(P_V8_LIBBASE_RELEASE32)
-            #define P_V8 1
-          #endif
+      #if defined(_DEBUG)
+        #if defined(P_V8_LIB_DEBUG32)
+          #define P_V8 1
+          #define P_V8_LIB P_V8_LIB_DEBUG32
+        #elif defined(P_V8_LIB_RELEASE32)
+          #define P_V8 1
+          #define P_V8_LIB P_V8_LIB_RELEASE32
+        #endif
+      #else
+        #if defined(P_V8_LIBE_RELEASE32)
+          #define P_V8 1
+          #define P_V8_LIB P_V8_LIBE_RELEASE32
+        #elif defined(P_V8_LIB_DEBUG32)
+          #define P_V8 1
+          #define P_V8_LIB P_V8_LIB_DEBUG32
         #endif
       #endif
     #endif
@@ -726,6 +671,73 @@
     #endif
   #endif // _MSC_VER
 #endif // P_SCRIPTS
+
+
+/////////////////////////////////////////////////
+//
+// EXPAT library for XML parsing
+//
+
+#undef P_EXPAT
+#undef P_EXPAT_BUILD
+#undef P_EXPAT_VCPKG32
+#undef P_EXPAT_VCPKG64
+#undef P_EXPAT_WIN32
+#undef P_EXPAT_WIN64
+#undef P_EXPAT_LIBRARY_W32_DEBUG
+#undef P_EXPAT_LIBRARY_W32_RELEASE
+#undef P_EXPAT_LIBRARY_W64_DEBUG
+#undef P_EXPAT_LIBRARY_W64_RELEASE
+
+#if (defined(P_EXPAT_WIN64)                 &&  defined(P_64BIT)) || \
+    (defined(P_EXPAT_WIN32)                 && !defined(P_64BIT)) || \
+    (defined(P_EXPAT_VCPKG64)               &&  defined(P_64BIT)) || \
+    (defined(P_EXPAT_VCPKG32)               && !defined(P_64BIT)) || \
+    ((defined(P_EXPAT_LIBRARY_W64_DEBUG)                          || \
+      defined(P_EXPAT_LIBRARY_W64_RELEASE)) &&  defined(P_64BIT)) || \
+    ((defined(P_EXPAT_LIBRARY_W32_DEBUG)                          || \
+      defined(P_EXPAT_LIBRARY_W32_RELEASE)) && !defined(P_64BIT))
+  #define P_EXPAT 1
+#endif
+
+#if defined(_MSC_VER) && P_EXPAT
+
+  #if P_EXPAT_BUILD
+    #pragma include_alias(<expat.h>, <@EXPAT_BUILD_DIR@/lib/expat.h>)
+  #elif defined(P_EXPAT_WIN32)
+    #pragma include_alias(<expat.h>, <@EXPAT_WIN32_DIR@/Source/lib/expat.h>)
+  #elif defined(P_EXPAT_WIN64)
+    #pragma include_alias(<expat.h>, <@EXPAT_WIN64_DIR@/include/expat.h>)
+  #endif
+
+  #if defined(P_EXPAT_WIN32) || defined(P_EXPAT_WIN64) || defined(P_EXPAT_VCPKG32) || defined(P_EXPAT_VCPKG64)
+    #undef P_EXPAT_LIBRARY
+  #elif defined(P_64BIT)
+    #if defined(_DEBUG)
+      #define P_EXPAT_LIBRARY P_EXPAT_LIBRARY_W64_DEBUG
+    #else
+      #define P_EXPAT_LIBRARY P_EXPAT_LIBRARY_W64_RELEASE
+    #endif
+  #else
+    #if defined(_DEBUG)
+      #define P_EXPAT_LIBRARY P_EXPAT_LIBRARY_W32_DEBUG
+    #else
+      #define P_EXPAT_LIBRARY P_EXPAT_LIBRARY_W32_RELEASE
+    #endif
+  #endif
+#endif
+
+#if P_EXPAT
+  #if P_TEXT_TO_SPEECH && P_SCRIPTS && P_HTTP
+    #undef P_VXML
+    #if P_VIDEO && P_VXML
+      #undef P_VXML_VIDEO
+    #endif
+  #endif
+  #undef P_JABBER
+  #undef P_XMLRPC
+  #undef P_SOAP
+#endif
 
 
 /////////////////////////////////////////////////
@@ -810,8 +822,14 @@
 // Text To Speech - SAPI for Windows, Festival for Unix
 //
 
-#undef P_SAPI
-#undef P_FESTIVAL
+#if P_TEXT_TO_SPEECH
+  #define P_TTS P_TEXT_TO_SPEECH
+  #undef P_FESTIVAL
+#endif
+
+#if P_TEXT_TO_SPEECH || P_SPEECH_RECOGNITION
+  #undef P_SAPI
+#endif
 
 
 /////////////////////////////////////////////////
@@ -1520,6 +1538,59 @@
   #define P_GOBJECT_LIBRARY   P_GSTREAMER_DIRSTR "/lib/gobject-2.0.lib"
   #define P_GLIB_LIBRARY      P_GSTREAMER_DIRSTR "/lib/glib-2.0.lib"
   #define P_GIO_LIBRARY       P_GSTREAMER_DIRSTR "/lib/gio-2.0.lib"
+#endif
+
+
+/////////////////////////////////////////////////
+//
+// AWS SDK
+//
+
+#undef P_AWS_SDK_DEBUG32
+#undef P_AWS_SDK_RELEASE32
+#undef P_AWS_SDK_DEBUG64
+#undef P_AWS_SDK_RELEASE64
+#undef P_AWS_SDK_VCPKG
+
+#if defined(P_AWS_SDK_VCPKG)
+  #define P_AWS_SDK 1
+#elif defined(P_64BIT)
+  #if defined(_DEBUG)
+    #if P_AWS_SDK_DEBUG64
+      #define P_AWS_SDK 1
+      #define AWS_SDK_SUBDIR "install/x64-Debug"
+    #endif
+  #else
+    #if P_AWS_SDK_RELEASE64
+      #define P_AWS_SDK 1
+      #define AWS_SDK_SUBDIR "install/x64-Release"
+    #endif
+  #endif
+  #if !defined(P_AWS_SDK)
+    // Default build can only be x64
+    #undef P_AWS_SDK
+    #define AWS_SDK_SUBDIR ""
+  #endif
+#else
+  #if defined(_DEBUG)
+    #if P_AWS_SDK_DEBUG32
+      #define P_AWS_SDK 1
+      #define AWS_SDK_SUBDIR "install/x86-Debug"
+    #endif
+  #else
+    #if P_AWS_SDK_RELEASE32
+      #define P_AWS_SDK 1
+      #define AWS_SDK_SUBDIR "install/x86-Release"
+    #endif
+  #endif
+#endif
+
+#if defined(P_AWS_SDK) && !defined(P_AWS_SDK_VCPKG)
+  #if defined(_MSC_VER)
+    #define P_AWS_SDK_LIBDIR(module) "@AWS_SDK_DIR@/" AWS_SDK_SUBDIR "/bin/aws-cpp-sdk-" ## #module ## ".lib"
+  #elif __cplusplus < 201103L
+    #undef P_AWS_SDK
+  #endif
 #endif
 
 

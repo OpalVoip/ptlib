@@ -40,7 +40,7 @@
 #include <ptlib/videoio.h>
 #include <ptclib/pwavfile.h>
 #include <ptclib/pvidfile.h>
-#include <ptclib/ptts.h>
+#include <ptclib/speech.h>
 #include <ptclib/script.h>
 
 

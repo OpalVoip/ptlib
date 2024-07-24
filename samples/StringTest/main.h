@@ -34,7 +34,7 @@ class StringTest : public PProcess
  public:
   StringTest();
   
-  void Main();
+  virtual void Main() override;
   
   void HandleUserInterface();
   

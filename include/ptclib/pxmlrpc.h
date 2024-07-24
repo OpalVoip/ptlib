@@ -191,7 +191,8 @@ class PXMLRPCBlock : public PXML
 
 /////////////////////////////////////////////////////////////////
 
-class PXMLRPCVariableBase : public PObject {
+class PXMLRPCVariableBase : public PObject, PNonCopyable
+{
     PCLASSINFO(PXMLRPCVariableBase, PObject);
   protected:
     PXMLRPCVariableBase(const char * name, const char * type = NULL);
@@ -214,9 +215,6 @@ class PXMLRPCVariableBase : public PObject {
   protected:
     const char * m_name;
     const char * m_type;
-
-  private:
-    PXMLRPCVariableBase(const PXMLRPCVariableBase &) : PObject() { }
 };
 
 
@@ -227,11 +225,11 @@ class PXMLRPCArrayBase : public PXMLRPCVariableBase {
     PXMLRPCArrayBase & operator=(const PXMLRPCArrayBase &);
 
   public:
-    virtual void PrintOn(ostream & strm) const;
-    virtual void Copy(const PXMLRPCVariableBase & other);
-    virtual bool IsArray() const;
-    virtual PINDEX GetSize() const;
-    virtual bool SetSize(PINDEX);
+    virtual void PrintOn(ostream & strm) const override;
+    virtual void Copy(const PXMLRPCVariableBase & other) override;
+    virtual bool IsArray() const override;
+    virtual PINDEX GetSize() const override;
+    virtual bool SetSize(PINDEX) override;
 
   protected:
     PContainer & m_array;
@@ -245,9 +243,9 @@ class PXMLRPCArrayObjectsBase : public PXMLRPCArrayBase {
     PXMLRPCArrayObjectsBase & operator=(const PXMLRPCArrayObjectsBase &);
 
   public:
-    virtual PString ToString(PINDEX i) const;
-    virtual void FromString(PINDEX i, const PString & str);
-    virtual bool SetSize(PINDEX);
+    virtual PString ToString(PINDEX i) const override;
+    virtual void FromString(PINDEX i, const PString & str) override;
+    virtual bool SetSize(PINDEX) override;
 
     virtual PObject * CreateObject() const = 0;
 
@@ -256,16 +254,15 @@ class PXMLRPCArrayObjectsBase : public PXMLRPCArrayBase {
 };
 
 
-class PXMLRPCStructBase : public PObject {
+class PXMLRPCStructBase : public PObject, PNonCopyable
+{
     PCLASSINFO(PXMLRPCStructBase, PObject);
   protected:
     PXMLRPCStructBase();
     PXMLRPCStructBase & operator=(const PXMLRPCStructBase &);
-  private:
-    PXMLRPCStructBase(const PXMLRPCStructBase &) : PObject() { }
 
   public:
-    void PrintOn(ostream & strm) const;
+    void PrintOn(ostream & strm) const override;
 
     PINDEX GetNumVariables() const { return variablesByOrder.GetSize(); }
     PXMLRPCVariableBase & GetVariable(PINDEX idx) const { return variablesByOrder[idx]; }

@@ -43,7 +43,7 @@ class PMutexExcessiveLockInfo
   protected:
     PDebugLocation m_location;
     unsigned       m_excessiveLockTimeout;
-    mutable bool   m_excessiveLockActive;
+    mutable atomic<bool> m_excessiveLockActive;
     uint64_t       m_startHeldSamplePoint;
 
     PMutexExcessiveLockInfo();
@@ -97,7 +97,7 @@ class PMutexExcessiveLockInfo
     <code>Signal()</code> function, releasing the second thread.
  */
 
-class PTimedMutex : public PSync, public PMutexExcessiveLockInfo, public std::recursive_timed_mutex
+class PTimedMutex : public PSync, public PMutexExcessiveLockInfo, PProfiling::HighWaterMark<PTimedMutex>, public std::recursive_timed_mutex
 {
     PCLASSINFO(PTimedMutex, PSync)
   public:
@@ -128,7 +128,7 @@ class PTimedMutex : public PSync, public PMutexExcessiveLockInfo, public std::re
 
     /**Block until the synchronisation object is available.
      */
-    virtual void Wait();
+    virtual void Wait() override;
 
     /**Block, for a time, until the synchronisation object is available.
 
@@ -137,18 +137,18 @@ class PTimedMutex : public PSync, public PMutexExcessiveLockInfo, public std::re
      */
     virtual bool Wait(
       const PTimeInterval & timeout // Amount of time to wait.
-    );
+    ) override;
 
     /**Signal that the synchronisation object is available.
      */
-    virtual void Signal();
+    virtual void Signal() override;
 
     /** Try to enter the critical section for exlusive access. Does not wait.
         @return true if cirical section entered, leave/Signal must be called.
       */
     PINLINE bool Try() { return Wait(0); }
 
-    virtual void PrintOn(ostream &strm) const;
+    virtual void PrintOn(ostream &strm) const override;
 
     static unsigned ExcessiveLockWaitTime;
     enum DeadlockStackWalkModes
@@ -285,7 +285,7 @@ class PCriticalSection : public PSync, public std::mutex
 
     /** Enter the critical section by waiting for exclusive access.
      */
-    virtual void Wait();
+    virtual void Wait() override;
     inline void Enter() { Wait(); }
 
     /**Block, for a time, until the synchronisation object is available.
@@ -295,11 +295,11 @@ class PCriticalSection : public PSync, public std::mutex
      */
     virtual bool Wait(
       const PTimeInterval & timeout // Amount of time to wait.
-    );
+    ) override;
 
     /** Leave the critical section by unlocking the mutex
      */
-    virtual void Signal();
+    virtual void Signal() override;
     inline void Leave() { Signal(); }
 
     /** Try to enter the critical section for exlusive access. Does not wait.

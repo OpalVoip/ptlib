@@ -20,7 +20,10 @@
             ],
             "problemMatcher": [
                 "$gcc"
-            ]
+            ],
+            "group": {
+                "kind": "build",
+            }
         },
         {
             "label": "Make PTLib (debug)",
@@ -40,7 +43,11 @@
             ],
             "problemMatcher": [
                 "$gcc"
-            ]
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
         },
         {
             "label": "Make PTLib (release)",
@@ -60,7 +67,10 @@
             ],
             "problemMatcher": [
                 "$gcc"
-            ]
+            ],
+            "group": {
+                "kind": "build",
+            }
         },
         {
             "label": "Clean PTLib",
@@ -76,7 +86,13 @@
                 "--directory=${workspaceFolder}",
                 "MULTIPLATFORM=yes",
                 "clean"
-            ]
+            ],
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": {
+                "kind": "build",
+            }
         }
     ]
 }

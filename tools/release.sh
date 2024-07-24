@@ -318,6 +318,7 @@ function create_tag () {
     echo "Adjusting $VERSION_FILE from ${release_version[*]} ReleaseCode to ${new_version[*]} BetaCode"
     awk "/PATCH_VERSION/{print \$1,\$2,\"${new_version[2]}\";next};/BUILD_TYPE/{print \$1,\$2,\"BetaCode\";next};{print}" "$VERSION_FILE" > "$VERSION_FILE.tmp"
     mv -f "$VERSION_FILE.tmp" "$VERSION_FILE"
+    ( cd $base && aclocal && autoconf )
     msg="Update version number for beta v${new_version[0]}.${new_version[1]}.${new_version[2]}"
     pushd ${base} > /dev/null
     if [ -n "$debug_tagging" ]; then
@@ -332,7 +333,7 @@ function create_tag () {
   fi
 
   if $need_push; then
-    ( cd $base && $GIT push --all && $GIT push --tags )
+    ( cd $base && $GIT pull --rebase && $GIT push --all && $GIT push --tags )
   fi
 }
 

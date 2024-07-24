@@ -24,7 +24,7 @@
  * Contributor(s): Robert Jongbloed
  */
 
-#ifdef __GNUC__
+#ifdef P_USE_PRAGMA
 #pragma implementation "vartype.h"
 #endif
 
@@ -134,7 +134,7 @@ bool PVarType::SetType(BasicType type, int option)
       break;
 
     default :
-      m_ = { };
+      m_ = Variant();
   }
 
   return true;

@@ -11,7 +11,7 @@ AC_INIT([PTLib], m4_esyscmd([sed -n \
                              -e "s/ *#define *PATCH_VERSION *\\(.*\\)/\\1/p" \
                              version.h | tr -d '\n']))
 
-AC_PREREQ([2.66])
+AC_PREREQ([2.71])
 
 AC_CONFIG_AUX_DIR(make)
 
@@ -71,6 +71,7 @@ if test "${enable_minsize}x" = "yesx" ; then
   DEFAULT_VIDFILE=no
   DEFAULT_FFVDEV=no
   DEFAULT_VXML=no
+  DEFAULT_AWS_SDK=yes
 fi
 
 DEFAULT_APPSHARE=no
@@ -87,8 +88,9 @@ MEMORY_CHECKER=None
 dnl ########################################################################
 dnl Normalise target_os and target_cpu
 
+dnl Set to Windows 7 or above
 dnl MSWIN_DISPLAY winver,Advanced Windows API
-dnl MSWIN_DEFINE  winver,WINVER=0x502
+dnl MSWIN_DEFINE  winver,WINVER=0x601
 
 dnl MSWIN_DISPLAY android,Android build (using vs-android)
 dnl MSWIN_DEFINE  android,P_ANDROID
@@ -147,13 +149,6 @@ case "$target_os" in
 
    Darwin )
       OS_TAG="P_MACOSX" 
-      dnl Where "port" libraries live
-      if test -d /opt/local/include; then
-        CPPFLAGS="$CPPFLAGS -I/opt/local/include"
-      fi
-      if test -d /opt/local/lib; then
-        LIBS="-L/opt/local/lib $LIBS"
-      fi
    ;;
 
    iPhone* )
@@ -370,10 +365,11 @@ MY_ARG_ENABLE(
 dnl ########################################################################
 dnl check for headers
 AC_CHECK_HEADERS(limits.h alloca.h signal.h fcntl.h sys/time.h termios.h sys/termios.h \
-                 ioctl.h sys/ioctl.h sys/sockio.h sys/sysctl.h sys/socket.h \
+                 ioctl.h sys/ioctl.h sys/sockio.h sys/socket.h \
                  arpa/inet.h netdb.h ifaddrs.h netinet/in.h netinet/tcp.h \
                  net/if_types.h net/if_dl.h netinet/if_ether.h linux/errqueue.h)
 AC_CHECK_HEADER(net/if.h, [AC_DEFINE(HAVE_NET_IF_H,1)],, [#include <sys/socket.h>])
+AS_VAR_IF([target_os], [linux],[],[AC_CHECK_HEADERS(sys/sysctl.h)])
 AC_HEADER_DIRENT()
 
 
@@ -664,7 +660,7 @@ MY_COMPILE_IFELSE(
    [pid_t p = setpgrp();],
    [AC_DEFINE(P_SETPGRP_NOPARM, 1)]
 )
-   
+
 
 dnl ########################################################################
 dnl check for pthreads library
@@ -1357,7 +1353,7 @@ PTLIB_MODULE_OPTION(
    [],
    [-lldap -llber],
    [#include <ldap.h>],
-   [ldap_init("localhost", 1234)],
+   [ldap_initialize(NULL, "http://localhost")],
    [],
    [],
    [HAS_DNS_RESOLVER]
@@ -1377,12 +1373,25 @@ dnl As if that is not enough, autoconf gets very confused if configure.in
 dnl contains a AC_CHECK_HEADER directive that never gets used. So we have 
 dnl to ensure that it is always called
 
+dnl MSWIN_DISPLAY    opensslvc32,Open SSL (vcpkg 32 bit)
+dnl MSWIN_CHECK_FILE opensslvc32,include\openssl\ssl.h,P_SSL_VCPKG32=1
+dnl MSWIN_CHECK_DIR  opensslvc32,..\external\vcpkg\installed\x86-windows\
+dnl MSWIN_CHECK_DIR  opensslvc32,..\..\external\vcpkg\installed\x86-windows\
+dnl MSWIN_CHECK_DIR  opensslvc32,%ProgramFiles%\vcpkg\installed\x86-windows\
+dnl MSWIN_CHECK_DIR  opensslvc32,%ProgramW6432%\vcpkg\installed\x86-windows\
+
+dnl MSWIN_DISPLAY    opensslvc64,Open SSL (vcpkg 64 bit)
+dnl MSWIN_CHECK_FILE opensslvc64,include\openssl\ssl.h,P_SSL_VCPKG64=1
+dnl MSWIN_CHECK_DIR  opensslvc64,..\external\vcpkg\installed\x64-windows\
+dnl MSWIN_CHECK_DIR  opensslvc64,..\..\external\vcpkg\installed\x64-windows\
+dnl MSWIN_CHECK_DIR  opensslvc64,%ProgramFiles%\vcpkg\installed\x64-windows\
+dnl MSWIN_CHECK_DIR  opensslvc64,%ProgramW6432%\vcpkg\installed\x64-windows\
+
 dnl MSWIN_DISPLAY    openssl,Open SSL (32 bit)
+dnl MSWIN_IF_FEATURE openssl,!opensslvc32
 dnl MSWIN_CHECK_FILE openssl,inc32\openssl\ssl.h,P_SSL_WIN32=1
 dnl MSWIN_CHECK_FILE openssl,include\openssl\ssl.h,P_SSL_WIN32=2
-dnl MSWIN_FIND_FILE  openssl,P_SSL_AES32,aes.h,...
 dnl MSWIN_FIND_FILE  openssl,P_SSL_LIBEAY32,libeay32MD.lib,...
-dnl MSWIN_DEFINE     openssl,P_SSL_SRTP
 dnl MSWIN_DIR_SYMBOL openssl,SSL_WIN32_DIR
 dnl MSWIN_CHECK_DIR  openssl,%OPENSSL32DIR%\
 dnl MSWIN_CHECK_DIR  openssl,..\openssl\
@@ -1399,11 +1408,10 @@ dnl MSWIN_CHECK_DIR  openssl,%ProgramW6432%\OpenSSL\
 dnl MSWIN_CHECK_DIR  openssl,\OpenSSL-Win32
 
 dnl MSWIN_DISPLAY    openssl64,Open SSL (64 bit)
+dnl MSWIN_IF_FEATURE openssl64,!opensslvc64
 dnl MSWIN_CHECK_FILE openssl64,include\openssl\ssl.h,P_SSL_WIN64=1
-dnl MSWIN_FIND_FILE  openssl64,P_SSL_AES64,aes.h,...
 dnl MSWIN_FIND_FILE  openssl64,P_SSL_LIBEAY64,libeay32MD.lib,...
 dnl MSWIN_DIR_SYMBOL openssl64,SSL_WIN64_DIR
-dnl MSWIN_DEFINE     openssl64,P_SSL_SRTP
 dnl MSWIN_CHECK_DIR  openssl64,%OPENSSL64DIR%\
 dnl MSWIN_CHECK_DIR  openssl64,..\openssl64\
 dnl MSWIN_CHECK_DIR  openssl64,..\OpenSSL-Win64\
@@ -1423,97 +1431,52 @@ PTLIB_MODULE_OPTION(
    [OPENSSL], 
    [openssl],
    [OpenSSL support],
-   [openssl], 
+   [openssl >= 1.1.0], 
    [],[],
    [#include <openssl/ssl.h>],
-   [TLSv1_method()],
-   [
-      MY_COMPILE_IFELSE(
-         [for OPENSSL const arg to d2i_AutoPrivateKey],
-         [$OPENSSL_CFLAGS],
-         [#include <openssl/evp.h>],
-         [
-            EVP_PKEY **a;
-            const unsigned char **p;
-            long l;
-            d2i_AutoPrivateKey(a, p, l);
-         ],
-         [AC_DEFINE([P_SSL_USE_CONST], [1], [SSL with const])]
-      )
-
-      MY_COMPILE_IFELSE(
-         [for OPENSSL SRTP support],
-         [$OPENSSL_CFLAGS],
-         [#include <openssl/ssl.h>],
-         [
-            SSL *s;
-            SRTP_PROTECTION_PROFILE * srtp = SSL_get_selected_srtp_profile(s);
-         ],
-         [
-            AC_DEFINE([P_SSL_SRTP], [1],[openssl with SRTP yes])
-            HAS_SSL_SRTP=1
-         ]
-      )
-
-      MY_COMPILE_IFELSE(
-         [for OPENSSL AES header],
-         [$OPENSSL_CFLAGS],
-         [#include <openssl/aes.h>],
-         [],
-         [
-            AC_DEFINE([P_SSL_AES], [1],[openssl with AES yes])
-            HAS_SSL_AES=1
-         ]
-      )
-
-      MY_COMPILE_IFELSE(
-         [for OPENSSL d2i_DHparams_bio new variant],
-         [$OPENSSL_CFLAGS],
-         [
-            #include <openssl/dh.h>
-            #include <openssl/asn1.h>
-         ],
-         [
-            BIO * in;
-            d2i_DHparams_bio(in, NULL);
-         ],
-         [],
-         [AC_DEFINE(P_d2i_DHparams_bio_OLD, 1)]
-      )
-   ]
+   [TLS_method()],
+   [],
+   [PTLIB_MODULE_OPTION(
+      [OPENSSL],
+      [openssl],
+      [OpenSSL support],
+      [openssl11],
+      [],[],
+      [#include <openssl/ssl.h>],
+      [TLS_method()]
+   )]
 )
-PTLIB_SUBST(SSL_AES)
 
 
 dnl ########################################################################
-dnl look for expat XML parser
+dnl look for Expat XML parser
 
-dnl MSWIN_DISPLAY    expat,Expat XML (local build)
-dnl MSWIN_CHECK_FILE expat,lib\expat.h,P_EXPAT_BUILD=1
-dnl MSWIN_DIR_SYMBOL expat,EXPAT_BUILD_DIR
-dnl MSWIN_FIND_FILE  expat,P_EXPAT_LIBRARY_W32_DEBUG,expat.lib,Debug
-dnl MSWIN_FIND_FILE  expat,P_EXPAT_LIBRARY_W32_RELEASE,expat.lib,Release
-dnl MSWIN_FIND_FILE  expat,P_EXPAT_LIBRARY_W32_DEBUG,libexpat.lib,win32/bin/Debug
-dnl MSWIN_FIND_FILE  expat,P_EXPAT_LIBRARY_W32_RELEASE,libexpat.lib,win32/bin/Release
-dnl MSWIN_FIND_FILE  expat,P_EXPAT_LIBRARY_W32_DEBUG,libexpatMT.lib,win32/bin/Debug
-dnl MSWIN_FIND_FILE  expat,P_EXPAT_LIBRARY_W32_RELEASE,libexpatMT.lib,win32/bin/Release
-dnl MSWIN_FIND_FILE  expat,P_EXPAT_LIBRARY_W64_DEBUG,libexpatMT.lib,win32/bin64/Debug
-dnl MSWIN_FIND_FILE  expat,P_EXPAT_LIBRARY_W64_RELEASE,libexpatMT.lib,win32/bin64/Release
-dnl MSWIN_FIND_FILE  expat,P_EXPAT_LIBRARY_WM5_DEBUG,expat.lib,wm5/Debug
-dnl MSWIN_FIND_FILE  expat,P_EXPAT_LIBRARY_WM5_RELEASE,expat.lib,wm5/Release
-dnl MSWIN_FIND_FILE  expat,P_EXPAT_LIBRARY_WM6_DEBUG,expat.lib,wm6/Debug
-dnl MSWIN_FIND_FILE  expat,P_EXPAT_LIBRARY_WM6_RELEASE,expat.lib,wm6/Release
-dnl MSWIN_FIND_FILE  expat,P_EXPAT_LIBRARY_W64_DEBUG,expat.lib,x64/Debug
-dnl MSWIN_FIND_FILE  expat,P_EXPAT_LIBRARY_W64_RELEASE,expat.lib,x64/Release
-dnl MSWIN_CHECK_DIR  expat,%EXPATDIR%\expat
-dnl MSWIN_CHECK_DIR  expat,..\expat\
-dnl MSWIN_CHECK_DIR  expat,..\external\expat\
-dnl MSWIN_CHECK_DIR  expat,..\..\external\expat\
-dnl MSWIN_CHECK_DIR  expat,..\Expat\expat\
-dnl MSWIN_CHECK_DIR  expat,..\external\Expat\expat\
-dnl MSWIN_CHECK_DIR  expat,..\..\external\Expat\expat\
-dnl MSWIN_CHECK_DIR  expat,c:\Expat\expat\
-dnl MSWIN_CHECK_DIR  expat,\libs\Expat\expat\
+dnl MSWIN_DISPLAY    expatlocal,Expat XML (local build)
+dnl MSWIN_CHECK_FILE expatlocal,lib\expat.h,P_EXPAT_BUILD=1
+dnl MSWIN_DIR_SYMBOL expatlocal,EXPAT_BUILD_DIR
+dnl MSWIN_FIND_FILE  expatlocal,P_EXPAT_LIBRARY_W32_DEBUG,expat.lib,Debug
+dnl MSWIN_FIND_FILE  expatlocal,P_EXPAT_LIBRARY_W32_RELEASE,expat.lib,Release
+dnl MSWIN_FIND_FILE  expatlocal,P_EXPAT_LIBRARY_W32_DEBUG,libexpat.lib,win32/bin/Debug
+dnl MSWIN_FIND_FILE  expatlocal,P_EXPAT_LIBRARY_W32_RELEASE,libexpat.lib,win32/bin/Release
+dnl MSWIN_FIND_FILE  expatlocal,P_EXPAT_LIBRARY_W32_DEBUG,libexpatMT.lib,win32/bin/Debug
+dnl MSWIN_FIND_FILE  expatlocal,P_EXPAT_LIBRARY_W32_RELEASE,libexpatMT.lib,win32/bin/Release
+dnl MSWIN_FIND_FILE  expatlocal,P_EXPAT_LIBRARY_W64_DEBUG,libexpatMT.lib,win32/bin64/Debug
+dnl MSWIN_FIND_FILE  expatlocal,P_EXPAT_LIBRARY_W64_RELEASE,libexpatMT.lib,win32/bin64/Release
+dnl MSWIN_FIND_FILE  expatlocal,P_EXPAT_LIBRARY_WM5_DEBUG,expat.lib,wm5/Debug
+dnl MSWIN_FIND_FILE  expatlocal,P_EXPAT_LIBRARY_WM5_RELEASE,expat.lib,wm5/Release
+dnl MSWIN_FIND_FILE  expatlocal,P_EXPAT_LIBRARY_WM6_DEBUG,expat.lib,wm6/Debug
+dnl MSWIN_FIND_FILE  expatlocal,P_EXPAT_LIBRARY_WM6_RELEASE,expat.lib,wm6/Release
+dnl MSWIN_FIND_FILE  expatlocal,P_EXPAT_LIBRARY_W64_DEBUG,expat.lib,x64/Debug
+dnl MSWIN_FIND_FILE  expatlocal,P_EXPAT_LIBRARY_W64_RELEASE,expat.lib,x64/Release
+dnl MSWIN_CHECK_DIR  expatlocal,%EXPATDIR%\expat
+dnl MSWIN_CHECK_DIR  expatlocal,..\expat\
+dnl MSWIN_CHECK_DIR  expatlocal,..\external\expat\
+dnl MSWIN_CHECK_DIR  expatlocal,..\..\external\expat\
+dnl MSWIN_CHECK_DIR  expatlocal,..\Expat\expat\
+dnl MSWIN_CHECK_DIR  expatlocal,..\external\Expat\expat\
+dnl MSWIN_CHECK_DIR  expatlocal,..\..\external\Expat\expat\
+dnl MSWIN_CHECK_DIR  expatlocal,c:\Expat\expat\
+dnl MSWIN_CHECK_DIR  expatlocal,\libs\Expat\expat\
 
 dnl MSWIN_DISPLAY    expat32,Expat XML (32 bit)
 dnl MSWIN_CHECK_FILE expat32,Source\lib\expat.h,P_EXPAT_WIN32=1
@@ -1535,6 +1498,27 @@ dnl MSWIN_CHECK_DIR  expat64,..\..\external\expat\
 dnl MSWIN_CHECK_DIR  expat64,%ProgramFiles%\Expat 2.*
 dnl MSWIN_CHECK_DIR  expat64,%ProgramW6432%\Expat 2.*
 
+dnl MSWIN_DISPLAY    expatvc32,Expat XML (vcpkg 32 bit)
+dnl MSWIN_CHECK_FILE expatvc32,include\expat.h,P_EXPAT_VCPKG32=1
+dnl MSWIN_CHECK_DIR  expatvc32,..\external\vcpkg\installed\x86-windows\
+dnl MSWIN_CHECK_DIR  expatvc32,..\..\external\vcpkg\installed\x86-windows\
+dnl MSWIN_CHECK_DIR  expatvc32,%ProgramFiles%\vcpkg\installed\x86-windows\
+dnl MSWIN_CHECK_DIR  expatvc32,%ProgramW6432%\vcpkg\installed\x86-windows\
+
+dnl MSWIN_DISPLAY    expatvc64,Expat XML (vcpkg 64 bit)
+dnl MSWIN_CHECK_FILE expatvc64,include\expat.h,P_EXPAT_VCPKG64=1
+dnl MSWIN_CHECK_DIR  expatvc64,..\external\vcpkg\installed\x64-windows\
+dnl MSWIN_CHECK_DIR  expatvc64,..\..\external\vcpkg\installed\x64-windows\
+dnl MSWIN_CHECK_DIR  expatvc64,%ProgramFiles%\vcpkg\installed\x64-windows\
+dnl MSWIN_CHECK_DIR  expatvc64,%ProgramW6432%\vcpkg\installed\x64-windows\
+
+dnl MSWIN_DISPLAY    expat,Expat XML
+dnl MSWIN_IF_FEATURE expat,expatlocal
+dnl MSWIN_IF_FEATURE expat,expat32
+dnl MSWIN_IF_FEATURE expat,expat64
+dnl MSWIN_IF_FEATURE expat,expatvc32
+dnl MSWIN_IF_FEATURE expat,expatvc64
+
 PTLIB_MODULE_OPTION(
    [EXPAT],
    [expat],
@@ -1551,23 +1535,25 @@ dnl ########################################################################
 dnl look for Lua library
 dnl MSWIN_DISPLAY    lua32,Lua interpreter (32 bit)
 dnl MSWIN_CHECK_FILE lua32,include\lua.h,P_LUA_WIN32=1
+dnl MSWIN_FIND_FILE  lua32,P_LUA_LIBRARY32,liblua53.a,lib
 dnl MSWIN_DIR_SYMBOL lua32,LUA_DIR_WIN32
 dnl MSWIN_CHECK_DIR  lua32,%LUA32DIR%
 dnl MSWIN_CHECK_DIR  lua32,..\Lua-win32\
 dnl MSWIN_CHECK_DIR  lua32,..\external\Lua-win32\
 dnl MSWIN_CHECK_DIR  lua32,..\..\external\Lua-win32\
-dnl MSWIN_CHECK_DIR  lua32,c:\Expat\Lua-win32\
-dnl MSWIN_CHECK_DIR  lua32,\libs\Expat\Lua-win32\
+dnl MSWIN_CHECK_DIR  lua32,c:\external\Lua-win32\
+dnl MSWIN_CHECK_DIR  lua32,\libs\external\Lua-win32\
 
 dnl MSWIN_DISPLAY    lua64,Lua interpreter (64 bit)
 dnl MSWIN_CHECK_FILE lua64,include\lua.h,P_LUA_WIN64=1
+dnl MSWIN_FIND_FILE  lua64,P_LUA_LIBRARY64,liblua53.a,lib
 dnl MSWIN_DIR_SYMBOL lua64,LUA_DIR_WIN64
 dnl MSWIN_CHECK_DIR  lua64,%LUA64DIR%
 dnl MSWIN_CHECK_DIR  lua64,..\Lua-win64\
 dnl MSWIN_CHECK_DIR  lua64,..\external\Lua-win64\
 dnl MSWIN_CHECK_DIR  lua64,..\..\external\Lua-win64\
-dnl MSWIN_CHECK_DIR  lua64,c:\Expat\Lua-win64\
-dnl MSWIN_CHECK_DIR  lua64,\libs\Expat\Lua-win64\
+dnl MSWIN_CHECK_DIR  lua64,c:\external\Lua-win64\
+dnl MSWIN_CHECK_DIR  lua64,\libs\external\Lua-win64\
 
 
 AC_LANG_PUSH(C)
@@ -1577,10 +1563,20 @@ PTLIB_MODULE_OPTION(
    [LUA],
    [lua],
    [Lua script support],
-   [$LUA_PKG], 
+   [lua], 
    [],[],
    [#include <lua.h>],
-   [lua_newstate(NULL, NULL)]
+   [lua_newstate(NULL, NULL)],
+   [],
+   [PTLIB_MODULE_OPTION(
+      [LUA],
+      [lua],
+      [Lua script support],
+      [lua5.3], 
+      [],[],
+      [#include <lua.h>],
+      [lua_newstate(NULL, NULL)]
+   )]
 )
 
 AC_LANG_POP(C)
@@ -1589,8 +1585,7 @@ AC_LANG_POP(C)
 dnl ########################################################################
 dnl look for V8 library
 dnl MSWIN_DISPLAY    v8,V8 Javascript interpreter
-dnl MSWIN_CHECK_FILE v8,out.gn/ia32.release/natives_blob.bin,P_V8_WIN32
-dnl MSWIN_CHECK_FILE v8,out.gn/x64.release/natives_blob.bin,P_V8_WIN64
+dnl MSWIN_CHECK_FILE v8,include/v8.h,P_V8_WINDOWS=1
 dnl MSWIN_DIR_SYMBOL v8,V8_DIR
 dnl MSWIN_CHECK_DIR  v8,%V8DIR%\
 dnl MSWIN_CHECK_DIR  v8,..\v8
@@ -1600,79 +1595,135 @@ dnl MSWIN_CHECK_DIR  v8,..\..\external\v8
 dnl MSWIN_CHECK_DIR  v8,..\external\v8\v8
 dnl MSWIN_CHECK_DIR  v8,..\..\external\v8\v8
 
-dnl MSWIN_FIND_FILE  v8,P_V8_BASE0_DEBUG32,v8_base_0.lib,out.gn/ia32.debug/...
-dnl MSWIN_FIND_FILE  v8,P_V8_BASE0_RELEASE32,v8_base_0.lib,out.gn/ia32.release/...
-dnl MSWIN_FIND_FILE  v8,P_V8_BASE0_DEBUG64,v8_base_0.lib,out.gn/x64.debug/...
-dnl MSWIN_FIND_FILE  v8,P_V8_BASE0_RELEASE64,v8_base_0.lib,out.gn/x64.release/...
-dnl MSWIN_FIND_FILE  v8,P_V8_BASE1_DEBUG32,v8_base_1.lib,out.gn/ia32.debug/...
-dnl MSWIN_FIND_FILE  v8,P_V8_BASE1_RELEASE32,v8_base_1.lib,out.gn/ia32.release/...
-dnl MSWIN_FIND_FILE  v8,P_V8_BASE1_DEBUG64,v8_base_1.lib,out.gn/x64.debug/...
-dnl MSWIN_FIND_FILE  v8,P_V8_BASE1_RELEASE64,v8_base_1.lib,out.gn/x64.release/...
-dnl MSWIN_FIND_FILE  v8,P_V8_LIBBASE_DEBUG32,v8_libbase.lib,out.gn/ia32.debug/...
-dnl MSWIN_FIND_FILE  v8,P_V8_LIBBASE_RELEASE32,v8_libbase.lib,out.gn/ia32.release/...
-dnl MSWIN_FIND_FILE  v8,P_V8_LIBBASE_DEBUG64,v8_libbase.lib,out.gn/x64.debug/...
-dnl MSWIN_FIND_FILE  v8,P_V8_LIBBASE_RELEASE64,v8_libbase.lib,out.gn/x64.release/...
-dnl MSWIN_FIND_FILE  v8,P_V8_SNAPSHOT_DEBUG32,v8_external_snapshot.lib,out.gn/ia32.debug/...
-dnl MSWIN_FIND_FILE  v8,P_V8_SNAPSHOT_RELEASE32,v8_external_snapshot.lib,out.gn/ia32.release/...
-dnl MSWIN_FIND_FILE  v8,P_V8_SNAPSHOT_DEBUG64,v8_external_snapshot.lib,out.gn/x64.debug/...
-dnl MSWIN_FIND_FILE  v8,P_V8_SNAPSHOT_RELEASE64,v8_external_snapshot.lib,out.gn/x64.release/...
-dnl MSWIN_FIND_FILE  v8,P_V8_LIBPLATFORM_DEBUG32,v8_libplatform.lib,out.gn/ia32.debug/...
-dnl MSWIN_FIND_FILE  v8,P_V8_LIBPLATFORM_RELEASE32,v8_libplatform.lib,out.gn/ia32.release/...
-dnl MSWIN_FIND_FILE  v8,P_V8_LIBPLATFORM_DEBUG64,v8_libplatform.lib,out.gn/x64.debug/...
-dnl MSWIN_FIND_FILE  v8,P_V8_LIBPLATFORM_RELEASE64,v8_libplatform.lib,out.gn/x64.release/...
-dnl MSWIN_FIND_FILE  v8,P_V8_LIBSAMPLER_DEBUG32,v8_libsampler.lib,out.gn/ia32.debug/...
-dnl MSWIN_FIND_FILE  v8,P_V8_LIBSAMPLER_RELEASE32,v8_libsampler.lib,out.gn/ia32.release/...
-dnl MSWIN_FIND_FILE  v8,P_V8_LIBSAMPLER_DEBUG64,v8_libsampler.lib,out.gn/x64.debug/...
-dnl MSWIN_FIND_FILE  v8,P_V8_LIBSAMPLER_RELEASE64,v8_libsampler.lib,out.gn/x64.release/...
-dnl MSWIN_FIND_FILE  v8,P_V8_ICUI18N_DEBUG32,icui18n.lib,out.gn/ia32.debug/...
-dnl MSWIN_FIND_FILE  v8,P_V8_ICUI18N_RELEASE32,icui18n.lib,out.gn/ia32.release/...
-dnl MSWIN_FIND_FILE  v8,P_V8_ICUI18N_DEBUG64,icui18n.lib,out.gn/x64.debug/...
-dnl MSWIN_FIND_FILE  v8,P_V8_ICUI18N_RELEASE64,icui18n.lib,out.gn/x64.release/...
-dnl MSWIN_FIND_FILE  v8,P_V8_ICUUC_DEBUG32,icuuc.lib,out.gn/ia32.debug/...
-dnl MSWIN_FIND_FILE  v8,P_V8_ICUUC_RELEASE32,icuuc.lib,out.gn/ia32.release/...
-dnl MSWIN_FIND_FILE  v8,P_V8_ICUUC_DEBUG64,icuuc.lib,out.gn/x64.debug/...
-dnl MSWIN_FIND_FILE  v8,P_V8_ICUUC_RELEASE64,icuuc.lib,out.gn/x64.release/...
+dnl MSWIN_FIND_FILE  v8,P_V8_LIB_DEBUG32,v8_monolith.lib,out.gn/ia32.debug/...
+dnl MSWIN_FIND_FILE  v8,P_V8_LIB_RELEASE32,v8_monolith.lib,out.gn/ia32.release/...
+dnl MSWIN_FIND_FILE  v8,P_V8_LIB_DEBUG64,v8_monolith.lib,out.gn/x64.debug/...
+dnl MSWIN_FIND_FILE  v8,P_V8_LIB_RELEASE64,v8_monolith.lib,out.gn/x64.release/...
 
+# Needs at least C++17
 oldCXXFLAGS="$CXXFLAGS"
-CXXFLAGS="$CXXFLAGS $CPLUSPLUS_STD"
- 
-AS_VAR_IF([target_os], [Darwin],
-   [
-      V8_EXTRA_CFLAGS="-I/usr/local/include/node"
-      V8_EXTRA_LIBS="-lv8_libplatform -lv8_libbase"
-   ]
-)
+CXXFLAGS="$CXXFLAGS -std=c++17"
 
 PTLIB_MODULE_OPTION(
    [V8],
    [v8],
    [V8 Javascript script support],
    [v8],
-   [$V8_EXTRA_CFLAGS],
-   [-lv8 $V8_EXTRA_LIBS],
-   [
-      #include <v8.h>
-   ],
-   [
-      v8::V8::Initialize();
-   ]
+   [],
+   [],
+   [#include <v8.h>],
+   [v8::V8::Initialize()],
+   [AC_SUBST(CPLUSPLUS_STD,"-std=c++17")],
+   [MY_MODULE_OPTION(
+      [V8],
+      [v8],
+      [V8 Javascript script support (Ubuntu)],
+      [],
+      [-I/usr/include/v8],
+      [-lv8 -lv8_libplatform -lv8_libbase],
+      [#include <v8.h>],
+      [v8::V8::Initialize()],
+      [AC_SUBST(CPLUSPLUS_STD,"-std=c++17")],
+      [MY_MODULE_OPTION(
+         [V8],
+         [v8],
+         [V8 Javascript script support (Homebrew)],
+         [],
+         [-I/opt/homebrew/opt/v8/include],
+         [-L/opt/homebrew/opt/v8/lib -lv8 -lv8_libplatform -lv8_libbase],
+         [#include <v8.h>],
+         [v8::V8::Initialize()],
+         [AC_SUBST(CPLUSPLUS_STD,"-std=c++17")]
+      )]
+   )]
 )
- 
+
 CXXFLAGS="$oldCXXFLAGS"
+
+
+dnl ########################################################################
+dnl check for AWS SDK library
+
+dnl MSWIN_DISPLAY    aws,AWS SDK (local build)
+dnl MSWIN_CHECK_FILE aws,install/x86-Debug/include/aws/core/Aws.h,P_AWS_SDK_DEBUG32=1
+dnl MSWIN_CHECK_FILE aws,install/x86-Release/include/aws/core/Aws.h,P_AWS_SDK_RELEASE32=1
+dnl MSWIN_CHECK_FILE aws,install/x64-Debug/include/aws/core/Aws.h,P_AWS_SDK_DEBUG64=1
+dnl MSWIN_CHECK_FILE aws,install/x64-Release/include/aws/core/Aws.h,P_AWS_SDK_RELEASE64=1
+dnl MSWIN_DIR_SYMBOL aws,AWS_SDK_DIR
+dnl MSWIN_CHECK_DIR  aws,%AWS_SDK%\
+dnl MSWIN_CHECK_DIR  aws,..\external\aws-sdk-cpp\out
+dnl MSWIN_CHECK_DIR  aws,..\external\aws-sdk-cpp\build
+dnl MSWIN_CHECK_DIR  aws,..\..\external\aws-sdk-cpp\out
+dnl MSWIN_CHECK_DIR  aws,..\..\external\aws-sdk-cpp\build
+dnl MSWIN_CHECK_DIR  aws,\aws-sdk-cpp\out
+dnl MSWIN_CHECK_DIR  aws,\aws-sdk-cpp\build
+dnl MSWIN_CHECK_DIR  aws,%ProgramFiles%\aws-sdk-cpp
+dnl MSWIN_CHECK_DIR  aws,%ProgramW6432%\aws-sdk-cpp
+
+dnl MSWIN_DISPLAY    awsvc,AWS SDK (vcpkg)
+dnl MSWIN_IF_FEATURE awsvc,!aws
+dnl MSWIN_CHECK_FILE awsvc,include/aws/core/Aws.h,P_AWS_SDK_VCPKG=1
+dnl MSWIN_CHECK_DIR  awsvc,..\external\vcpkg\installed
+dnl MSWIN_CHECK_DIR  awsvc,..\..\external\vcpkg\installed
+dnl MSWIN_CHECK_DIR  awsvc,\vcpkg\installed
+dnl MSWIN_CHECK_DIR  awsvc,%ProgramFiles%\vcpkg\installed
+dnl MSWIN_CHECK_DIR  awsvc,%ProgramW6432%\vcpkg\installed
+
+PTLIB_MODULE_OPTION(
+   [AWS_SDK], 
+   [aws],
+   [AWS SDK support],
+   [aws-sdk], 
+   [],[],
+   [#include <aws/core/Aws.h>],
+   [Aws::InitAPI(Aws::SDKOptions())],
+   [],
+   [PTLIB_MODULE_OPTION(
+      [AWS_SDK],
+      [aws],
+      [AWS SDK core support],
+      [aws-cpp-sdk-core],
+      [],[],
+      [#include <aws/core/Aws.h>],
+      [Aws::InitAPI(Aws::SDKOptions())],
+      [
+         AS_VAR_IF([CPLUSPLUS_STD], ["-std=c++03"],[AC_SUBST(CPLUSPLUS_STD,"-std=c++11")])
+         AS_VAR_IF([target_os], [Darwin],[MY_ADD_FLAGS([-laws-crt-cpp -laws-c-common])])
+         MY_PKG_CHECK_MODULE(
+            [AWS_SDK_POLLY],
+            [aws-cpp-sdk-polly],
+            [#include <aws/polly/PollyClient.h>],
+            [Aws::Polly::PollyClient x],
+            [],
+            [AC_SUBST(AWS_SDK_USABLE, 0)]
+         )
+         MY_PKG_CHECK_MODULE(
+            [AWS_SDK_TRANSCRIBE],
+            [aws-cpp-sdk-transcribe],
+            [#include <aws/transcribe/TranscribeServiceClient.h>],
+            [Aws::TranscribeService::TranscribeServiceClient x],
+            [],
+            [AC_SUBST(AWS_SDK_USABLE, 0)]
+         )
+      ]
+   )]
+)
 
 
 dnl ########################################################################
 dnl Text to Speech
 
-PTLIB_SIMPLE_OPTION([tts], [TTS], [Text-To-Speech server support])
+PTLIB_SIMPLE_OPTION([tts], [TEXT_TO_SPEECH], [Text-To-Speech support])
 
-dnl MSWIN_DISPLAY    sapi,Speech API
-dnl MSWIN_CHECK_FILE sapi,sphelper.h,P_SAPI=1
-dnl MSWIN_CHECK_FILE sapi,include\sphelper.h,P_SAPI=1
-dnl MSWIN_CHECK_FILE sapi,include\um\sphelper.h,P_SAPI=1
-dnl MSWIN_DEFINE     sapi,P_TTS
-dnl MSWIN_CHECK_DIR  sapi,%ProgramFiles%\Windows Kits\8.*
-dnl MSWIN_CHECK_DIR  sapi,%ProgramW6432%\Windows Kits\8.*
+
+dnl ########################################################################
+dnl Speech Recognition
+
+PTLIB_SIMPLE_OPTION([sr], [SPEECH_RECOGNITION], [Speech Recognition support])
+
+
+dnl ########################################################################
+dnl Festival Text to Speech
 
 MY_LINK_IFELSE(
    [for Festival support],
@@ -1687,6 +1738,19 @@ MY_LINK_IFELSE(
       PTLIB_SUBST(FESTIVAL, 1)
    ]
 )
+
+
+dnl ########################################################################
+dnl Windows Speech API
+
+dnl MSWIN_DISPLAY    sapi,Speech API
+dnl MSWIN_CHECK_FILE sapi,sphelper.h,P_SAPI=1
+dnl MSWIN_CHECK_FILE sapi,include\sphelper.h,P_SAPI=1
+dnl MSWIN_CHECK_FILE sapi,include\um\sphelper.h,P_SAPI=1
+dnl MSWIN_DEFINE     sapi,P_TEXT_TO_SPEECH
+dnl MSWIN_DEFINE     sapi,P_SPEECH_RECOGNITION
+dnl MSWIN_CHECK_DIR  sapi,%ProgramFiles%\Windows Kits\8.*
+dnl MSWIN_CHECK_DIR  sapi,%ProgramW6432%\Windows Kits\8.*
 
 
 dnl ########################################################################
@@ -1811,7 +1875,6 @@ dnl Jabber
 dnl MSWIN_DISPLAY    jabber,Jabber
 dnl MSWIN_DEFINE     jabber,P_JABBER
 dnl MSWIN_IF_FEATURE jabber,expat
-dnl MSWIN_IF_FEATURE jabber,expat32
 
 PTLIB_SIMPLE_OPTION([jabber], [JABBER], [Jabber support], [HAS_EXPAT])
 
@@ -1819,14 +1882,13 @@ dnl ########################################################################
 dnl VXML 
 dnl MSWIN_DISPLAY    vxml,VXML Support
 dnl MSWIN_DEFINE     vxml,P_VXML
-dnl MSWIN_IF_FEATURE vxml,http&sapi&expat
-dnl MSWIN_IF_FEATURE vxml,http&sapi&expat32
+dnl MSWIN_IF_FEATURE vxml,http&scripts&expat
 
 dnl MSWIN_DISPLAY    vxmlvideo,VXML (video) Support
 dnl MSWIN_DEFINE     vxmlvideo,P_VXML_VIDEO
 dnl MSWIN_IF_FEATURE vxmlvideo,vxml
 
-PTLIB_SIMPLE_OPTION([vxml], [VXML], [VXML support], [HAS_EXPAT], [HAS_HTTP], [HAS_TTS])
+PTLIB_SIMPLE_OPTION([vxml], [VXML], [VXML support], [HAS_EXPAT], [HAS_HTTP], [HAS_SCRIPTS])
 PTLIB_SIMPLE_OPTION([vxmlvideo], [VXML_VIDEO], [VXML (video) support], [HAS_VXML])
 
 dnl ########################################################################
@@ -1834,7 +1896,6 @@ dnl XMLRPC
 dnl MSWIN_DISPLAY    xmlrpc,XMLRPC Support
 dnl MSWIN_DEFINE     xmlrpc,P_XMLRPC
 dnl MSWIN_IF_FEATURE xmlrpc,http&expat
-dnl MSWIN_IF_FEATURE xmlrpc,http&expat32
 
 PTLIB_SIMPLE_OPTION([xmlrpc], [XMLRPC], [XMLRPC support], [HAS_EXPAT], [HAS_HTTP])
 
@@ -1843,7 +1904,6 @@ dnl SOAP
 dnl MSWIN_DISPLAY    soap,SOAP Support
 dnl MSWIN_DEFINE     soap,P_SOAP
 dnl MSWIN_IF_FEATURE soap,http&expat
-dnl MSWIN_IF_FEATURE soap,http&expat32
 
 PTLIB_SIMPLE_OPTION([soap], [SOAP], [SOAP support], [HAS_EXPAT], [HAS_HTTP])
 
@@ -2107,15 +2167,24 @@ PTLIB_MODULE_OPTION(
    [#include <gst/gst.h>],
    [gst_version_string()],
    [],
-   [PTLIB_MODULE_OPTION(
-      [GSTREAMER],
-      [gstreamer],
-      [GStreamer 1.0 support],
-      [gio-2.0 gstreamer-app-1.0],
-      [],[],
-      [#include <gst/gst.h>],
-      [gst_version_string()],
-      [AC_DEFINE(P_GSTREAMER_1_0_API, 1)]
+   [MY_MODULE_OPTION(
+      [GLIB],
+      [glib],
+      [GLib support],
+      [gio-2.0],
+      [], [],
+      [#include <glib.h>],
+      [guint v = glib_major_version],
+      [PTLIB_MODULE_OPTION(
+         [GSTREAMER],
+         [gstreamer],
+         [GStreamer 1.0 support],
+         [gstreamer-app-1.0],
+         [],[],
+         [#include <gst/gst.h>],
+         [gst_version_string()],
+         [AC_DEFINE(P_GSTREAMER_1_0_API, 1)]
+      )]
    )]
 )
 
@@ -2168,6 +2237,104 @@ AC_LANG_POP(C)
 
 
 dnl ########################################################################
+dnl check for iostream::set_rdbuf
+
+dnl MSWIN_DISPLAY    set_rdbuf,iostream has set_rdbuf
+dnl MSWIN_DEFINE     set_rdbuf,P_HAS_SET_RDBUF
+dnl MSWIN_IF_FEATURE set_rdbuf,!android
+
+MY_COMPILE_IFELSE(
+   [if has iostream::set_rdbuf],
+   [$CPLUSPLUS_STD],
+   [#include <iostream>],
+   [
+      struct MyStream : public std::iostream {
+        MyStream()
+          : std::iostream(NULL)
+        {
+          set_rdbuf(NULL);
+        }
+      };
+   ],
+   [AC_DEFINE(P_HAS_SET_RDBUF, 1, "set_rdbuf found")]
+)
+
+
+dnl ########################################################################
+dnl see if using GNU glibc++, because then we have atomic integer operations
+
+dnl MSWIN_DISPLAY    atomic,Has std::atomic
+dnl MSWIN_DEFINE     atomic,P_STD_ATOMIC
+
+MY_COMPILE_IFELSE(
+   [if has std::atomic],
+   [$CPLUSPLUS_STD],
+   [#include <atomic>],
+   [
+      std::atomic<unsigned> val;
+      val.exchange(1);
+   ],
+   [
+      AC_DEFINE(P_STD_ATOMIC, 1)
+   ],
+   [
+   MY_LINK_IFELSE(
+      [if has builtin atomic],
+      [],
+      [],
+      [],
+      [
+         int val;
+         __sync_fetch_and_add(&val, 1);
+      ],
+      [
+         AC_DEFINE(P_ATOMICITY_BUILTIN,1)
+      ],
+      MY_COMPILE_IFELSE(
+         [if has bits/atomicity.h],
+         [],
+         [#include <bits/atomicity.h>],
+         [_Atomic_word val],
+         [P_ATOMICITY_HEADER="<bits/atomicity.h>"],
+         MY_COMPILE_IFELSE(
+            [if has ext/atomicity.h],
+            [],
+            [#include <ext/atomicity.h>],
+            [_Atomic_word val],
+            [P_ATOMICITY_HEADER="<ext/atomicity.h>"],
+            [AC_MSG_RESULT([no (SIMULATING!)])]
+         )
+      )
+   )
+
+   if test -n "$P_ATOMICITY_HEADER" ; then
+      AC_MSG_RESULT(yes $P_ATOMICITY_HEADER)
+      AC_DEFINE_UNQUOTED(P_ATOMICITY_HEADER, $P_ATOMICITY_HEADER)
+
+      AC_MSG_CHECKING(if atomic __exchange_and_add is in __gnu_cxx namespace)
+      AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include P_ATOMICITY_HEADER]], [[
+            _Atomic_word val;
+            __gnu_cxx::__exchange_and_add(&val, 1);
+         ]])],[
+            AC_MSG_RESULT(yes)
+            AC_DEFINE_UNQUOTED(P_ATOMICITY_NAMESPACE, __gnu_cxx::)
+         ],[AC_MSG_RESULT(no)
+      ])
+   fi
+   ]
+)
+
+
+dnl ########################################################################
+dnl dynamic libraries
+
+MY_CHECK_DLFCN([
+   MY_ADD_FLAGS([$DLFCN_LIBS], [$DLFCN_CFLAGS])
+   PTLIB_SUBST([DYNALINK], 1)
+])
+
+
+dnl ########################################################################
 dnl check for Windows video capture support.
 
 PTLIB_SIMPLE_OPTION([vfw], [VFW_CAPTURE], [enable video for windows capture], [HAS_VIDEO])
@@ -2208,15 +2375,6 @@ fi
 
 AC_SUBST(HAS_DIRECTSHOW)
 AC_SUBST(HAS_DIRECTSOUND)
-
-
-dnl ########################################################################
-dnl dynamic libraries
-
-MY_CHECK_DLFCN([
-   MY_ADD_MODULE_FLAGS([DLFCN])
-   PTLIB_SUBST([DYNALINK], 1)
-])
 
 
 dnl ########################################################################
@@ -2680,7 +2838,7 @@ AC_CONFIG_COMMANDS(
 dnl ########################################################################
 dnl Do it!
 
-AC_OUTPUT()
+AC_OUTPUT
 
 
 dnl ########################################################################
@@ -2703,6 +2861,7 @@ MY_OUTPUT_SUMMARY(
    [                     Festival TTS], PTLIB_FESTIVAL,
    [                           Curses], PTLIB_CURSES,
    [                        GStreamer], PTLIB_GSTREAMER,
+   [                          AWS SDK], PTLIB_AWS_SDK,
    [], [],
    [                            Audio], PTLIB_AUDIO,
    [                             ALSA], PTLIB_ALSA,

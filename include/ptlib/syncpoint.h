@@ -73,7 +73,7 @@ class PSyncPoint : public PSync
 
     /**Block until the synchronisation object is available.
      */
-    virtual void Wait();
+    virtual void Wait() override;
 
     /**Block, for a time, until the synchronisation object is available.
 
@@ -82,11 +82,11 @@ class PSyncPoint : public PSync
      */
     virtual bool Wait(
       const PTimeInterval & timeout // Amount of time to wait.
-    );
+    ) override;
 
     /**Signal that the synchronisation object is available.
      */
-    virtual void Signal();
+    virtual void Signal() override;
 
   protected:
     std::mutex              m_mutex;

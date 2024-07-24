@@ -53,7 +53,7 @@ class PColourPair : public PObject
       , m_dstColourFormat(dst)
     { }
 
-    Comparison Compare(const PObject & other) const;
+    Comparison Compare(const PObject & other) const override;
 
     /**Get the source colour format.
     */
@@ -85,7 +85,7 @@ class PColourConverter : public PColourPair
     /// Print description of converter
     virtual void PrintOn(
       ostream & strm
-    ) const;
+    ) const override;
 
     /**Get the video conversion vertical flip state
      */

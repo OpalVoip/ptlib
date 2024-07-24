@@ -256,10 +256,14 @@ class SRVRecord : public PObject
   PCLASSINFO(SRVRecord, PObject);
   public:
     SRVRecord()
-    { used = false; }
+      : used(false)
+      , port(0)
+      , priority(0)
+      , weight(0)
+    { }
 
-    Comparison Compare(const PObject & obj) const;
-    void PrintOn(ostream & strm) const;
+    Comparison Compare(const PObject & obj) const override;
+    void PrintOn(ostream & strm) const override;
 
     PString            hostName;
     PIPSocket::Address hostAddress;
@@ -272,7 +276,11 @@ class SRVRecord : public PObject
 class SRVRecordList : public PSortedList<PDNS::SRVRecord>
 {
   public:
-    void PrintOn(ostream & strm) const;
+    SRVRecordList()
+      : priPos(0)
+    { }
+
+    void PrintOn(ostream & strm) const override;
 
     SRVRecord * GetFirst();
     SRVRecord * GetNext();
@@ -344,20 +352,28 @@ class MXRecord : public PObject
   PCLASSINFO(MXRecord, PObject);
   public:
     MXRecord()
-    { used = false; }
-    Comparison Compare(const PObject & obj) const;
-    void PrintOn(ostream & strm) const;
+      : used(false)
+      , preference(0)
+    { }
+    Comparison Compare(const PObject & obj) const override;
+    void PrintOn(ostream & strm) const override;
 
     PString            hostName;
     PIPSocket::Address hostAddress;
     bool               used;
-    uint16_t               preference;
+    WORD               preference;
+    bool               used;
+    uint16_t           preference;
 };
 
 class MXRecordList : public PSortedList<PDNS::MXRecord>
 {
   public:
-    void PrintOn(ostream & strm) const;
+    MXRecordList()
+      : lastIndex(0)
+    { }
+
+    void PrintOn(ostream & strm) const override;
 
     MXRecord * GetFirst();
     MXRecord * GetNext();

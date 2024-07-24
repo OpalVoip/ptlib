@@ -48,7 +48,7 @@ class SNMPSrv : public PProcess
   PCLASSINFO(SNMPSrv, PProcess)
   public:
     SNMPSrv();
-    void Main();
+    virtual void Main() override;
 
   protected:
     MySNMPServer srv;

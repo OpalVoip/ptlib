@@ -23,7 +23,7 @@ class Serial : public PProcess
 public:    
     Serial();
 
-    void Main();
+    virtual void Main() override;
     
     bool Initialise(PConfigArgs & args);
 

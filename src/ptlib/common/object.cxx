@@ -27,7 +27,7 @@
  * Contributor(s): ______________________________________.
  */
 
-#ifdef __GNUC__
+#ifdef P_USE_PRAGMA
 #pragma implementation "pfactory.h"
 #endif // __GNUC__
 
@@ -233,7 +233,7 @@ bool PAssertFunc(const PDebugLocation & location, PStandardAssertMessage msg)
     "Invalid or closed operating system window"
   };
 
-  if (msg < PMaxStandardAssertMessage)
+  if (msg >= 0 && msg < PMaxStandardAssertMessage)
     InternalAssertFunc(location, textmsg[msg]);
   else {
     char msgbuf[20];
@@ -1483,7 +1483,7 @@ namespace PProfiling
     e_SystemExit
   };
 
-  struct FunctionRawData
+  struct FunctionRawData : PNonCopyable
   {
     PPROFILE_EXCLUDE(FunctionRawData(FunctionType type, void * function, void * caller));
     PPROFILE_EXCLUDE(FunctionRawData(FunctionType type, const PDebugLocation * location));
@@ -1515,10 +1515,6 @@ namespace PProfiling
     PUniqueThreadIdentifier m_threadUniqueId;
     uint64_t                m_when;
     FunctionRawData       * m_link;
-
-  private:
-    FunctionRawData(const FunctionRawData &) { }
-    void operator=(const FunctionRawData &) { }
   };
 
 
@@ -2191,13 +2187,13 @@ namespace PProfiling
         trace << m_location.m_extra << '(' << ptr << "):"
                   " since=" << m_lastOutputTime.AsString(PTime::TodayFormat, PTrace::GetTimeZone()) << ","
               << setprecision(3) << scientific << showbase << m_mma << noshowbase
-              << " thresh=" << m_thresholdTime.AsString(3, PTimeInterval::SecondsSI) << "s;" << m_thresholdPercent << "%,"
+              << " thresh=" << PScaleSI(m_thresholdTime) << ';' << m_thresholdPercent << "%,"
                    " slow=" << m_countTimesOverThreshold << '/' << m_mma.GetCount() << ' ' << percentOver << '%';
         if (location)
           location->PrintOn(trace, " where=");
         for (list<History>::iterator it = m_history.begin(); it != m_history.end(); ++it) {
           trace << "\n    when=" << it->m_when.AsString(PTime::TodayFormat, PTrace::GetTimeZone()) << ","
-                   " duration=" << it->m_duration.AsString(3, PTimeInterval::SecondsSI) << 's';
+                   " duration=" << PScaleSI(it->m_duration);
           it->m_location.PrintOn(trace, "where=");
         }
         trace << PTrace::End;
@@ -2295,6 +2291,88 @@ namespace PProfiling
     return m_implementation->m_lastDuration;
   }
 #endif // PTRACING
+
+  /// /////////////////////////////////////////////////////////////////
+
+  class HighWaterMarks
+  {
+    typedef std::map<std::string, HighWaterMarkData*> DataMap;
+    DataMap          m_data;
+    PCriticalSection m_mutex;
+
+
+  public:
+    ~HighWaterMarks()
+    {
+      for (DataMap::const_iterator it = m_data.begin(); it != m_data.end(); ++it)
+        delete it->second;
+    }
+
+
+    HighWaterMarkData & Get(const type_info & ti)
+    {
+      std::string name = ti.name();
+      if (name.compare(0, 6, "class ") == 0)
+        name.erase(0, 6);
+      else if (name.compare(0, 7, "struct ") == 0)
+        name.erase(0, 7);
+
+      PWaitAndSignal lock(m_mutex);
+      DataMap::iterator it = m_data.find(name);
+      if (it == m_data.end())
+        it = m_data.insert(make_pair(name, new HighWaterMarkData(name))).first;
+      return *it->second;
+    }
+
+
+    std::map<std::string, unsigned> Get() const
+    {
+      std::map<std::string, unsigned> data;
+      PWaitAndSignal lock(m_mutex);
+      for (DataMap::const_iterator it = m_data.begin(); it != m_data.end(); ++it)
+        data[it->first] = it->second->m_highWaterMark;
+      return data;
+    }
+  };
+
+
+  static HighWaterMarks & GetHighWaterMarks()
+  {
+    static HighWaterMarks s_highWaterMarks;
+    return s_highWaterMarks;
+  }
+
+
+  HighWaterMarkData::HighWaterMarkData(const std::string & name)
+    : m_name(name)
+    , m_totalCount(0)
+    , m_highWaterMark(0)
+  {
+  }
+
+
+  void HighWaterMarkData::NewInstance()
+  {
+    unsigned totalCount = ++m_totalCount;
+    unsigned highWaterMark = m_highWaterMark;
+    while (totalCount > highWaterMark) {
+      if (m_highWaterMark.compare_exchange_strong(highWaterMark, totalCount))
+        break;
+      highWaterMark = m_highWaterMark;
+    }
+  }
+
+
+  HighWaterMarkData & HighWaterMarkData::Get(const type_info & ti)
+  {
+    return GetHighWaterMarks().Get(ti);
+  }
+
+
+  std::map<std::string, unsigned> HighWaterMarkData::Get()
+  {
+    return GetHighWaterMarks().Get();
+  }
 
 }; // namespace PProfiling
 

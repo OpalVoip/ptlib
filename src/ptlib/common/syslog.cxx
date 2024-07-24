@@ -26,7 +26,7 @@
 
 #include <ptlib.h>
 
-#ifdef __GNUC__
+#ifdef P_USE_PRAGMA
 #pragma implementation "syslog.h"
 #endif
 
@@ -88,19 +88,6 @@ PSystemLog::PSystemLog(Level level)   ///< only messages at this level or higher
   , m_logLevel(level)
 { 
   m_buffer.m_log = this;
-}
-
-
-PSystemLog::PSystemLog(const PSystemLog & other)
-  : PObject(other)
-  , std::ostream(&m_buffer)
-{
-}
-
-
-PSystemLog & PSystemLog::operator=(const PSystemLog &)
-{ 
-  return *this; 
 }
 
 
@@ -206,18 +193,6 @@ PSystemLogTarget::PSystemLogTarget()
   : m_thresholdLevel(PSystemLog::Warning)
   , m_outputLevelName(true)
 {
-}
-
-
-PSystemLogTarget::PSystemLogTarget(const PSystemLogTarget & other)
-  : PObject(other)
-{
-}
-
-
-PSystemLogTarget & PSystemLogTarget::operator=(const PSystemLogTarget &)
-{ 
-  return *this; 
 }
 
 

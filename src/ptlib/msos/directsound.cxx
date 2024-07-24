@@ -243,7 +243,7 @@ PSoundChannelDirectSound::PSoundChannelDirectSound()
   m_triggerEvent[SOUNDEVENT_SOUND] = CreateEvent(NULL, false, false, NULL);// auto-reset
   m_triggerEvent[SOUNDEVENT_ABORT] = CreateEvent(NULL, false, false, NULL);// auto-reset
 
-  SetBuffers(4000, 4); // 1 second at 8kHz
+  SetBufferSections(4000, 4); // 1 second at 8kHz
 }
 
 
@@ -427,6 +427,13 @@ bool PSoundChannelDirectSound::Close () // public
 }
 
 
+bool PSoundChannelDirectSound::IsOpen() const
+{
+  return (m_activeDirection == Player)
+            ? (m_playbackBuffer != NULL && m_playbackDevice != NULL)
+            : (m_captureBuffer  != NULL && m_captureDevice  != NULL);
+}
+
 PString PSoundChannelDirectSound::GetName() const
 {
   return PConstString("DirectSound") + PPluginServiceDescriptor::SeparatorChar + m_deviceName;
@@ -517,6 +524,8 @@ bool PSoundChannelDirectSound::SetBuffers (PINDEX size, PINDEX count) // public
   }
   else
     SetBufferSections(size, count);
+
+  m_isStreaming = false;
 
 #if PTRACING
   if (PTrace::CanTrace(4)) {

@@ -59,10 +59,10 @@ class PSecureHTTPServiceProcess : public PHTTPServiceProcess
 
     virtual bool InitialiseBase(
       PHTTPServiceProcess::Params & params
-    );
+    ) override;
 
-    virtual PChannel * CreateChannelForHTTP(PChannel * channel);
-    virtual void OnHTTPStarted(PHTTPServer & server);
+    virtual PChannel * CreateChannelForHTTP(PChannel * channel) override;
+    virtual void OnHTTPStarted(PHTTPServer & server) override;
 
     /** Set/Create the server certificate to use.
         Must be called before ListenForHTTP() or https will not be supported.

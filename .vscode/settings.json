@@ -1,0 +1,15 @@
+{
+    "files.associations": {
+        "*.mak": "makefile",
+        "__bit_reference": "cpp",
+        "__hash_table": "cpp",
+        "__tree": "cpp",
+        "deque": "cpp",
+        "iterator": "cpp",
+        "hash_map": "cpp",
+        "filesystem": "cpp",
+        "list": "cpp",
+        "map": "cpp",
+        "unordered_map": "cpp"
+    }
+}

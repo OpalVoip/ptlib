@@ -69,7 +69,7 @@ class XMPPTest : public wxApp, public PProcess
 public:
   XMPPTest();
 
-  void Main() { }
+  virtual void Main() override { }
 
 protected:
   // Initialise wxWidgets

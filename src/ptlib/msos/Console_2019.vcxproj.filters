@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="..\..\ptclib\cli.cxx">
@@ -10,40 +10,16 @@
     <ClCompile Include="..\common\contain.cxx">
       <Filter>Source Files\Console</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\ptclib\cypher.cxx">
-      <Filter>Source Files\Components</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\ptclib\delaychan.cxx">
       <Filter>Source Files\Components</Filter>
     </ClCompile>
     <ClCompile Include="..\..\ptclib\guid.cxx">
       <Filter>Source Files\Components</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\ptclib\lua.cxx">
-      <Filter>Source Files\Components</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\ptclib\memfile.cxx">
       <Filter>Source Files\Components</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\ptclib\pasn.cxx">
-      <Filter>Source Files\Components</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\ptclib\pldap.cxx">
-      <Filter>Source Files\Components</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\ptclib\pdns.cxx">
-      <Filter>Source Files\Components</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\ptclib\podbc.cxx">
-      <Filter>Source Files\Components</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\ptclib\psockbun.cxx">
-      <Filter>Source Files\Components</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\ptclib\pssl.cxx">
-      <Filter>Source Files\Components</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\ptlib\msos\ptts.cxx">
       <Filter>Source Files\Components</Filter>
     </ClCompile>
     <ClCompile Include="..\..\ptclib\pxml.cxx">
@@ -85,13 +61,7 @@
     <ClCompile Include="..\..\ptclib\threadpool.cxx">
       <Filter>Source Files\Components</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\ptclib\url.cxx">
-      <Filter>Source Files\Components</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\ptclib\vartype.cxx">
-      <Filter>Source Files\Components</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\ptclib\vxml.cxx">
       <Filter>Source Files\Components</Filter>
     </ClCompile>
     <ClCompile Include="..\common\videoio.cxx">
@@ -187,23 +157,11 @@
     <ClCompile Include="..\unix\udll.cxx">
       <Filter>Source Files\Android</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\ptclib\script.cxx">
-      <Filter>Source Files\Components</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\ptclib\jscript.cxx">
-      <Filter>Source Files\Components</Filter>
-    </ClCompile>
     <ClCompile Include="..\unix\opensl_es.cxx">
       <Filter>Source Files\Android</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\ptclib\modem.cxx">
-      <Filter>Source Files\Components</Filter>
-    </ClCompile>
     <ClCompile Include="..\common\pethsock.cxx">
       <Filter>Source Files\Console</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\ptclib\pnat.cxx">
-      <Filter>Source Files\Components</Filter>
     </ClCompile>
     <ClCompile Include="..\..\ptclib\rfc1155.cxx">
       <Filter>Source Files\Components</Filter>
@@ -212,9 +170,6 @@
       <Filter>Source Files\Components</Filter>
     </ClCompile>
     <ClCompile Include="..\..\ptclib\random.cxx">
-      <Filter>Source Files\Components</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\ptclib\socks.cxx">
       <Filter>Source Files\Components</Filter>
     </ClCompile>
     <ClCompile Include="..\..\ptclib\enum.cxx">
@@ -365,7 +320,67 @@
       <Filter>Source Files\Components\Media</Filter>
     </ClCompile>
     <ClCompile Include="..\..\ptclib\textdata.cxx">
-      <Filter>Source Files\Components</Filter>
+      <Filter>Source Files\Components\Wrappers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ptclib\modem.cxx">
+      <Filter>Source Files\Components\Protocols</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ptclib\pasn.cxx">
+      <Filter>Source Files\Components\Protocols</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ptclib\pdns.cxx">
+      <Filter>Source Files\Components\Protocols</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ptclib\pldap.cxx">
+      <Filter>Source Files\Components\Protocols</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ptclib\pnat.cxx">
+      <Filter>Source Files\Components\Protocols</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ptclib\jscript.cxx">
+      <Filter>Source Files\Components\Wrappers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ptclib\podbc.cxx">
+      <Filter>Source Files\Components\Wrappers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ptclib\pssl.cxx">
+      <Filter>Source Files\Components\Wrappers</Filter>
+    </ClCompile>
+    <ClCompile Include="speech_sapi.cxx">
+      <Filter>Source Files\Components\Wrappers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ptclib\script.cxx">
+      <Filter>Source Files\Components\Wrappers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ptclib\lua.cxx">
+      <Filter>Source Files\Components\Wrappers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ptclib\url.cxx">
+      <Filter>Source Files\Components\Protocols</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ptclib\cypher.cxx">
+      <Filter>Source Files\Components\Wrappers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ptclib\socks.cxx">
+      <Filter>Source Files\Components\Protocols</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ptclib\vxml.cxx">
+      <Filter>Source Files\Components\Media</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ptclib\simplescript.cxx">
+      <Filter>Source Files\Components\Wrappers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\unix\speech_festival.cxx">
+      <Filter>Source Files\Android</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ptclib\aws_sdk.cxx">
+      <Filter>Source Files\Components\Wrappers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ptclib\speech_aws.cxx">
+      <Filter>Source Files\Components\Wrappers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\speech.cxx">
+      <Filter>Source Files\Components\Wrappers</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -580,9 +595,6 @@
       <Filter>Header Files\Components</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\include\ptlib\pluginmgr.h">
-      <Filter>Header Files\Components</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\include\ptclib\ptts.h">
       <Filter>Header Files\Components</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\include\ptclib\pxml.h">
@@ -901,7 +913,16 @@
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\platform.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\include\ptlib\psharedptr.h">
+      <Filter>Header Files\Common</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\..\include\ptclib\textdata.h">
+      <Filter>Header Files\Components</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\ptclib\psr.h">
+      <Filter>Header Files\Components</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\ptclib\aws_sdk.h">
       <Filter>Header Files\Components</Filter>
     </ClInclude>
   </ItemGroup>
@@ -981,6 +1002,9 @@
     </Filter>
     <Filter Include="Source Files\Components\Media">
       <UniqueIdentifier>{8acbe72a-b725-49d6-a81c-070e3e2ecf91}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Components\Wrappers">
+      <UniqueIdentifier>{3f704506-7691-4ae3-a960-7e5bb168a2e7}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

@@ -278,8 +278,19 @@ ifeq ($(HAS_DNS_RESOLVER),1)
              $(COMPONENT_SRC_DIR)/enum.cxx 
 endif
 
-ifeq ($(HAS_TTS),1)
-  SOURCES += $(PLATFORM_SRC_DIR)/ptts.cxx 
+ifneq ($(HAS_AWS_SDK),)
+  SOURCES += $(COMPONENT_SRC_DIR)/aws_sdk.cxx 
+endif
+
+ifneq ($(HAS_TEXT_TO_SPEECH)$(HAS_SPEECH_RECOGNITION),)
+  SOURCES += $(PLATFORM_SRC_DIR)/speech.cxx
+  ifneq ($(HAS_AWS_SDK),)
+    SOURCES += $(COMPONENT_SRC_DIR)/speech_aws.cxx 
+  endif
+endif
+
+ifeq ($(HAS_TEXT_TO_SPEECH),1)
+  SOURCES += $(PLATFORM_SRC_DIR)/speech_festival.cxx 
 endif
 
 ifeq ($(HAS_ASN),1)
@@ -426,7 +437,8 @@ ifeq ($(HAS_GUID),1)
 endif
 
 ifeq ($(HAS_SCRIPTS),1)
-  SOURCES += $(COMPONENT_SRC_DIR)/script.cxx
+  SOURCES += $(COMPONENT_SRC_DIR)/script.cxx \
+             $(COMPONENT_SRC_DIR)/simplescript.cxx
 endif
 
 ifeq ($(HAS_SPOOLDIR),1)
@@ -508,7 +520,7 @@ $(OBJDIR)/getdate.o: $(GETDATE_SOURCE)
 	$(Q_CC)$(CC) $(CPPFLAGS) -Wno-write-strings $(CFLAGS) -c $< -o $@
 
 $(DEPDIR)/getdate.dep: $(GETDATE_SOURCE)
-	$(Q_CC)$(CC) $(CPPFLAGS) -M $< >> $@
+	$(Q_CC)$(CC) $(CPPFLAGS) -M $< > $@
 
 GETDATE_TAB_C := $(COMMON_SRC_DIR)/getdate.tab.c
 

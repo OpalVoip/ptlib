@@ -35,7 +35,7 @@ class Test : public PProcess
 {
   PCLASSINFO(Test, PProcess)
   public:
-    void Main();
+    virtual void Main() override;
 };
 
 

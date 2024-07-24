@@ -2,7 +2,7 @@
  * Implementation of RFC 5389 - Session Traversal Utilities for NAT (STUN)
  */
 
-#ifdef __GNUC__
+#ifdef P_USE_PRAGMA
 #pragma implementation "pstunsrvr.h"
 #endif
 

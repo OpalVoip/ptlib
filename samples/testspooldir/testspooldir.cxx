@@ -14,7 +14,7 @@ class TestSpoolDir : public PProcess
 {
   PCLASSINFO(TestSpoolDir, PProcess)
   public:
-    void Main();
+    virtual void Main() override;
 
     bool m_verbose;
 };

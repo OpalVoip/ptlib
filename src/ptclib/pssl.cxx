@@ -23,6 +23,8 @@
  *
  * Contributor(s): ______________________________________.
  *
+ * Get windows binaries from http://slproweb.com/products/Win32OpenSSL.html
+ * 
  * Portions bsed upon the file crypto/buffer/bss_sock.c 
  * Original copyright notice appears below
  */
@@ -74,7 +76,7 @@
  * [including the GNU Public Licence.]
  */
 
-#ifdef __GNUC__
+#ifdef P_USE_PRAGMA
 #pragma implementation "pssl.h"
 #endif
 
@@ -82,12 +84,14 @@
 
 #include <ptclib/pssl.h>
 #include <ptclib/mime.h>
+#include <ptclib/random.h>
 
 #if P_SSL
 
 #define USE_SOCKETS
 
 extern "C" {
+#define OPENSSL_SUPPRESS_DEPRECATED 1
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -95,19 +99,18 @@ extern "C" {
 #include <openssl/sha.h>
 #include <openssl/x509v3.h>
 #include <openssl/evp.h>
-
-#ifdef P_SSL_AES
-  #include <openssl/aes.h>
-#endif
+#include <openssl/aes.h>
 };
 
-#if (OPENSSL_VERSION_NUMBER < 0x0090819fL)
-  #error OpenSSL too old!
+#if (OPENSSL_VERSION_NUMBER < 0x10101000L)
+  #error OpenSSL too old! Use at least 1.1.1
 #endif
 
-#ifdef _MSC_VER
-  #pragma comment(lib, P_SSL_LIB1)
-  #pragma comment(lib, P_SSL_LIB2)
+#ifdef P_SSL_LIB1
+#pragma comment(lib, P_SSL_LIB1)
+#endif
+#ifdef P_SSL_LIB2
+#pragma comment(lib, P_SSL_LIB2)
 #endif
 
 
@@ -118,68 +121,20 @@ extern "C" {
   #undef X509_NAME
   #pragma comment (lib, "crypt32.lib")
   #pragma comment (lib, "cryptui.lib")
-
-  #ifdef SSL_OP_NO_QUERY_MTU
-    #define P_SSL_USE_CONST 1
-  #endif
 #endif
 
 #define PTraceModule() "SSL"
 
-#if (OPENSSL_VERSION_NUMBER < 0x10100000L)
-  __inline unsigned char * EVP_CIPHER_CTX_iv(EVP_CIPHER_CTX * ctx) { return ctx->iv; }
-  __inline void DH_get0_pqg(const DH *dh, const BIGNUM **p, const BIGNUM **q, const BIGNUM **g) { if(p)*p=dh->p; if(q)*q=dh->q; if(g)*g=dh->g; }
-  __inline void DH_set0_pqg(DH *dh, BIGNUM *p, BIGNUM *q, BIGNUM *g) { dh->p = p; dh->q = q; dh->g = g; }
-  __inline void DH_get0_key(const DH *dh, const BIGNUM **pub_key, const BIGNUM **priv_key) { if(pub_key)*pub_key=dh->pub_key; if(priv_key)*priv_key=dh->priv_key; }
-  __inline void DH_set0_key(DH *dh, BIGNUM *pub_key, BIGNUM *priv_key) { dh->pub_key = pub_key; dh->priv_key = priv_key; }
-  typedef BIO_METHOD * BIO_METHOD_PTR;
-  __inline BIO_METHOD *BIO_meth_new(int type, const char *name) { BIO_METHOD * biom = new BIO_METHOD(); memset(biom, 0, sizeof(*biom)); biom->type = type; biom->name = name; return biom; }
-  __inline void BIO_meth_free(BIO_METHOD *biom) { delete biom; }
-  __inline void BIO_meth_set_write(BIO_METHOD *biom, int (*write) (BIO *, const char *, int)) { biom->bwrite = write; }
-  __inline void BIO_meth_set_read(BIO_METHOD *biom, int (*read) (BIO *, char *, int)) { biom->bread = read;  }
-  __inline void BIO_meth_set_ctrl(BIO_METHOD *biom, long (*ctrl) (BIO *, int, long, void *)) { biom->ctrl = ctrl;  }
-  __inline void BIO_meth_set_destroy(BIO_METHOD *biom, int (*destroy) (BIO *)) { biom->destroy = destroy;  }
-  __inline int BIO_get_init(const BIO * bio) { return bio->init; }
-  __inline void BIO_set_init(BIO * bio, int init) { bio->init = init; }
-  __inline int BIO_get_shutdown(const BIO * bio) { return bio->shutdown; }
-  __inline void BIO_set_shutdown(BIO * bio, int shutdown) { bio->shutdown = shutdown; }
-  __inline void * BIO_get_data(const BIO * bio) { return bio->ptr; }
-  __inline void BIO_set_data(BIO * bio, void * data) { bio->ptr = data; }
-#else
-  typedef BIO_METHOD const * BIO_METHOD_PTR;
-#endif
+typedef BIO_METHOD const * BIO_METHOD_PTR;
 
 class PSSLInitialiser : public PProcessStartup
 {
   PCLASSINFO(PSSLInitialiser, PProcessStartup)
   public:
-    virtual void OnStartup();
-    virtual void OnShutdown();
+    virtual void OnStartup() override;
+    virtual void OnShutdown() override;
 
     PFACTORY_GET_SINGLETON(PProcessStartupFactory, PSSLInitialiser);
-
-#if (OPENSSL_VERSION_NUMBER < 0x10100000L)
-    static unsigned long ThreadIdCallback()
-    {
-      return PThread::GetCurrentUniqueIdentifier();
-    }
-
-    static void StaticLockingCallback(int mode, int n, const char *, int)
-    {
-      PSSLInitialiser::GetInstance().LockingCallback(mode, n);
-    }
-
-    void LockingCallback(int mode, int n)
-    {
-      if ((mode & CRYPTO_LOCK) != 0)
-        mutexes[n].Wait();
-      else
-        mutexes[n].Signal();
-    }
-
-  private:
-    vector<PMutex> mutexes;
-#endif
 };
 
 PFACTORY_CREATE_SINGLETON(PProcessStartupFactory, PSSLInitialiser);
@@ -375,12 +330,7 @@ bool PSSLPrivateKey::SetData(const PBYTEArray & keyData)
   FreePrivateKey();
 
   const uint8_t * keyPtr = keyData;
-#if P_SSL_USE_CONST
   m_pkey = d2i_AutoPrivateKey(NULL, &keyPtr, keyData.GetSize());
-#else
-  m_pkey = d2i_AutoPrivateKey(NULL, (uint8_t **)&keyPtr, keyData.GetSize());
-#endif
-
   return m_pkey != NULL;
 }
 
@@ -624,7 +574,7 @@ bool PSSLCertificate::CreateRoot(const PString & subject,
 
   const EVP_MD * pDigest;
   if (digest == NULL)
-    pDigest = EVP_sha1();
+    pDigest = EVP_sha256();
   else {
     pDigest = EVP_get_digestbyname(digest);
     if (pDigest == NULL) {
@@ -706,11 +656,7 @@ bool PSSLCertificate::SetData(const PBYTEArray & certData)
   FreeCertificate();
 
   const uint8_t * certPtr = certData;
-#if P_SSL_USE_CONST
   m_certificate = d2i_X509(NULL, &certPtr, certData.GetSize());
-#else
-  m_certificate = d2i_X509(NULL, (unsigned char **)&certPtr, certData.GetSize());
-#endif
   return m_certificate != NULL;
 }
 
@@ -1063,7 +1009,6 @@ bool PSSLCertificateFingerprint::FromString(const PString & str)
 
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifdef P_SSL_AES
 PAESContext::PAESContext()
   : m_key(new AES_KEY)
 {
@@ -1108,7 +1053,6 @@ void PAESContext::Decrypt(const void * in, void * out)
 {
   AES_decrypt((const unsigned char *)in, (unsigned char *)out, m_key);
 }
-#endif // P_SSL_AES
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1804,21 +1748,6 @@ PSSLDiffieHellman::~PSSLDiffieHellman()
     DH_free(m_dh);
 }
 
-#ifdef P_d2i_DHparams_bio_OLD
-// 2/21/04 Yuri Kiryanov - fix for compiler choke on BeOS for usage of
-// SSL function d2i_DHparams_bio below in PSSLDiffieHellman::Load
-// 5/26/06 Hannes Friederich - Mac OS X seems to need that fix too...
-// 3/15/08 Hannes Friederich - Mac OS X 10.5 (Darwin 9.X) no longer needs this
-#undef  d2i_DHparams_bio
-#define d2i_DHparams_bio(bp,x) \
- (DH *)ASN1_d2i_bio( \
-         (char *(*)(...))(void *)DH_new, \
-         (char *(*)(...))(void *)d2i_DHparams, \
-         (bp), \
-         (unsigned char **)(x) \
-)
-#endif
-
 bool PSSLDiffieHellman::Load(const PFilePath & dhFile, PSSLFileTypes fileType)
 {
   if (m_dh != NULL) {
@@ -1872,11 +1801,7 @@ PINDEX PSSLDiffieHellman::GetNumBits() const
   if (m_dh == NULL)
     return 0;
 
-#if (OPENSSL_VERSION_NUMBER < 0x10100000L)
-  return BN_num_bits(m_dh->p);
-#else
   return DH_size(m_dh)*8;
-#endif
 }
 
 
@@ -1959,75 +1884,70 @@ void PSSLInitialiser::OnStartup()
 
   // Seed the random number generator
   uint8_t seed[128];
-  for (size_t i = 0; i < sizeof(seed); i++)
-    seed[i] = (uint8_t)rand();
+  PRandom::Octets(seed, sizeof(seed));
   RAND_seed(seed, sizeof(seed));
-
-#if (OPENSSL_VERSION_NUMBER < 0x10100000L)
-  // set up multithread stuff
-  for (int i = 0; i < CRYPTO_num_locks(); ++i)
-    mutexes.push_back(PMutex(PDebugLocation(__FILE__, __LINE__, "SSLMutex")));
-  CRYPTO_set_locking_callback(StaticLockingCallback);
-  CRYPTO_set_id_callback(ThreadIdCallback);
-#endif
 }
 
 
 void PSSLInitialiser::OnShutdown()
 {
-  CRYPTO_set_locking_callback(NULL);
   ERR_free_strings();
-#if (OPENSSL_VERSION_NUMBER < 0x10100000L)
-  mutexes.clear();
-#endif
 }
 
 
-static void InfoCallback(const SSL * PTRACE_PARAM(ssl), int PTRACE_PARAM(location), int PTRACE_PARAM(ret))
+#if PTRACING
+static void InfoCallback(const SSL * ssl, int location, int ret)
 {
-#if PTRACING
   static const unsigned Level = 4;
-  if (PTrace::GetLevel() >= Level) {
-    ostream & trace = PTRACE_BEGIN(Level);
+  if (PTrace::GetLevel() < Level)
+    return;
 
-    if (location & SSL_CB_ALERT) {
-      trace << "Alert "
-            << ((location & SSL_CB_READ) ? "read" : "write")
-            << ' ' << SSL_alert_type_string_long(ret)
-            << ": " << SSL_alert_desc_string_long(ret);
-    }
-    else {
-      if (location & SSL_ST_CONNECT)
-        trace << "Connect";
-      else if (location & SSL_ST_ACCEPT)
-        trace << "Accept";
-      else
-        trace << "General";
+  ostream & trace = PTRACE_BEGIN(Level);
 
-      trace << ": ";
+  if (location & SSL_ST_CONNECT)
+    trace << "Connect";
+  else if (location & SSL_ST_ACCEPT)
+    trace << "Accept";
+  else
+    trace << "General";
 
-      if (location & SSL_CB_EXIT) {
-        if (ret == 0)
-          trace << "failed in ";
-        else if (ret < 0)
-          trace << "error in ";
-      }
+  if (location & SSL_CB_HANDSHAKE_START)
+    trace << ": Handshake start";
+  else if (location & SSL_CB_HANDSHAKE_DONE)
+    trace << ": Handshake done";
 
-      trace << "state=" << SSL_state_string_long(ssl);
-    }
-    trace << PTrace::End;
+  if (location & SSL_CB_READ)
+    trace << ": Read";
+  else if (location & SSL_CB_WRITE)
+    trace << ": Write";
+
+  if (location & SSL_CB_ALERT)
+    trace << ": Alert " << SSL_alert_type_string_long(ret) << '/' << SSL_alert_desc_string_long(ret);
+  else if (location & SSL_CB_EXIT) {
+    if (ret == 0)
+      trace << ": Exit failed";
+    else if (ret < 0)
+      trace << ": Exit error=" << ret;
+    else
+      trace << ": Exit success=" << ret;
   }
-#endif // PTRACING
+
+  trace << ": state=" << SSL_state_string_long(ssl)
+        << PTrace::End;
 }
 
+#define SetInfoCallback(ctx) SSL_CTX_set_info_callback(ctx, InfoCallback);
 
-#if PTRACING
-static void TraceVerifyCallback(int ok, X509_STORE_CTX * ctx)
+
+static void TraceVerifyCallback(int ok, X509_STORE_CTX * ctx, PSSLChannel * channel)
 {
   const unsigned Level = ok ? 5 : 2;
   if (PTrace::CanTrace(Level)) {
     ostream & trace = PTRACE_BEGIN(Level);
-    trace << "Verify callback: depth=" << X509_STORE_CTX_get_error_depth(ctx);
+    trace << "Verify callback: channel=" << (void *)channel;
+    if (channel != NULL)
+      trace << ' ' << channel->GetClassName();
+    trace << " depth=" << X509_STORE_CTX_get_error_depth(ctx);
 
     int err = X509_STORE_CTX_get_error(ctx);
     if (err != 0)
@@ -2058,20 +1978,152 @@ static void TraceVerifyCallback(int ok, X509_STORE_CTX * ctx)
   }
 }
 #else
-  #define TraceVerifyCallback(ok, ctx)
+  #define SetInfoCallback(ctx)
+  #define TraceVerifyCallback(ok, ctx, channel)
 #endif // PTRACING
 
 static int VerifyCallback(int ok, X509_STORE_CTX * ctx)
 {
   PSSLChannel::VerifyInfo info(ok, X509_STORE_CTX_get_current_cert(ctx), X509_STORE_CTX_get_error(ctx));
 
-  PSSLChannel * channel;
-  SSL * ssl = reinterpret_cast<SSL *>(X509_STORE_CTX_get_app_data(ctx));
+  PSSLChannel * channel = NULL;
+  SSL * ssl = reinterpret_cast<SSL *>(X509_STORE_CTX_get_ex_data(ctx, SSL_get_ex_data_X509_STORE_CTX_idx()));
   if (ssl != NULL && (channel = reinterpret_cast<PSSLChannel *>(SSL_get_app_data(ssl))) != NULL)
     channel->OnVerify(info);
 
-  TraceVerifyCallback(ok, ctx);
+  TraceVerifyCallback(ok, ctx, channel);
   return info.m_ok;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+
+PSSLCertificateInfo::PSSLCertificateInfo(bool withDefaults)
+  : m_sslAutoCreateCertificate(true)
+{
+  if (withDefaults) {
+    const PProcess & process = PProcess::Current();
+    PString prefix = process.GetHomeDirectory() + process.GetName();
+    m_sslCertificateAuthority = "*";
+    m_sslCertificate = prefix + "_certificate.pem";
+    m_sslPrivateKey = prefix + "_private_key.pem";
+  }
+}
+
+
+PSSLCertificateInfo::PSSLCertificateInfo(const PString & ca,
+                                         const PString & certificate,
+                                         const PString & privateKey,
+                                         bool autoCreate)
+  : m_sslCertificateAuthority(ca)
+  , m_sslCertificate(certificate)
+  , m_sslPrivateKey(privateKey)
+  , m_sslAutoCreateCertificate(autoCreate)
+{
+}
+
+
+bool PSSLCertificateInfo::ApplySSLCredentials(PSSLContext & context, bool create) const
+{
+  return context.SetCredentials(*this, create);
+}
+
+
+PString PSSLCertificateInfo::GetSSLCertificateAuthority() const
+{
+  PWaitAndSignal lock(m_sslInfoMutex);
+  return m_sslCertificateAuthority.c_str();
+}
+
+
+void PSSLCertificateInfo::SetSSLCertificateAuthority(const PString & ca)
+{
+  PWaitAndSignal lock(m_sslInfoMutex);
+  m_sslCertificateAuthority = ca.c_str();
+}
+
+
+PString PSSLCertificateInfo::GetSSLCertificate() const
+{
+  PWaitAndSignal lock(m_sslInfoMutex);
+  return m_sslCertificate.c_str();
+}
+
+
+void PSSLCertificateInfo::SetSSLCertificate(const PString & cert)
+{
+  PWaitAndSignal lock(m_sslInfoMutex);
+  m_sslCertificate = cert.c_str();
+}
+
+
+PString PSSLCertificateInfo::GetSSLPrivateKey() const
+{
+  PWaitAndSignal lock(m_sslInfoMutex);
+  return m_sslPrivateKey.c_str();
+}
+
+
+void PSSLCertificateInfo::SetSSLPrivateKey(const PString & key)
+{
+  PWaitAndSignal lock(m_sslInfoMutex);
+  m_sslPrivateKey = key.c_str();
+}
+
+
+void PSSLCertificateInfo::SetSSLAutoCreateCertificate(bool yes)
+{
+  m_sslAutoCreateCertificate = yes;
+}
+
+
+bool PSSLCertificateInfo::GetSSLAutoCreateCertificate() const
+{
+  PWaitAndSignal lock(m_sslInfoMutex);
+  return m_sslAutoCreateCertificate;
+}
+
+
+void PSSLCertificateInfo::SetSSLCredentials(const PString & authority,
+                                            const PString & certificate,
+                                            const PString & privateKey,
+                                            bool autoCreate)
+{
+  PWaitAndSignal lock(m_sslInfoMutex);
+  m_sslCertificateAuthority = authority;
+  m_sslCertificate = certificate;
+  m_sslPrivateKey = privateKey;
+  m_sslAutoCreateCertificate = autoCreate;
+}
+
+
+void PSSLCertificateInfo::GetSSLCredentials(PString & authority,
+                                            PString & certificate,
+                                            PString & privateKey,
+                                            bool & autoCreate) const
+{
+  PWaitAndSignal lock(m_sslInfoMutex);
+  authority = m_sslCertificateAuthority;
+  certificate = m_sslCertificate;
+  privateKey = m_sslPrivateKey;
+  autoCreate = m_sslAutoCreateCertificate;
+}
+
+
+void PSSLCertificateInfo::SetSSLCredentials(const PSSLCertificateInfo & info)
+{
+  if (this == &info)
+    return;
+
+  PWaitAndSignal lock(m_sslInfoMutex);
+  info.GetSSLCredentials(m_sslCertificateAuthority, m_sslCertificate, m_sslPrivateKey, m_sslAutoCreateCertificate);
+}
+
+
+bool PSSLCertificateInfo::HasSSLCertificates() const
+{
+  PWaitAndSignal lock(m_sslInfoMutex);
+  return !m_sslCertificateAuthority.empty() || (!m_sslCertificate.empty() && !m_sslPrivateKey.empty());
 }
 
 
@@ -2092,62 +2144,41 @@ PSSLContext::PSSLContext(const void * sessionId, PINDEX idSize)
 
 void PSSLContext::Construct(const void * sessionId, PINDEX idSize)
 {
-  // create the new SSL context
-  const SSL_METHOD * meth;
-
-  switch (m_method) {
-    case SSLv3:
-#ifndef OPENSSL_NO_SSL3
-      // fall through to SSLv23_method if unsupported
-      meth = SSLv3_method();
-      break;
-#endif
-    case SSLv23:
-      meth = SSLv23_method();
-      break;
-
-#if OPENSSL_VERSION_NUMBER > 0x0090819fL
-    case TLSv1_1 :
-      meth = TLSv1_1_method(); 
-      break;
-    case TLSv1_2 :
-      meth = TLSv1_2_method(); 
-      break;
-#else
-  #pragma message ("Using " OPENSSL_VERSION_TEXT " - TLS 1.1 & 1.2 not available, using 1.0")
-    case TLSv1_1 :
-    case TLSv1_2 :
-#endif
-    case TLSv1:
-      meth = TLSv1_method(); 
-      break;
-
-#if OPENSSL_VERSION_NUMBER > 0x10002000L
-    case DTLSv1_2 :
-      meth = DTLSv1_2_method(); 
-      break;
-    case DTLSv1_2_v1_0 :
-      meth = DTLS_method(); 
-      break;
-#else
-  #pragma message ("Using " OPENSSL_VERSION_TEXT " - DTLS 1.2 not available, using 1.0")
-    case DTLSv1_2 :
-    case DTLSv1_2_v1_0 :
-#endif
-    case DTLSv1:
-      meth = DTLSv1_method();
-      break;
-    default :
-      PAssertAlways("Unsupported TLS/DTLS version");
-      m_context = NULL;
-      return;
-  }
-
-  m_context = SSL_CTX_new(meth);
+  m_context = SSL_CTX_new(TLS_method());
   if (m_context == NULL) {
     PSSLAssert("Error creating context: ");
     return;
   }
+  if (m_method == DTLSv1_2_v1_0) {
+    SSL_CTX_set_min_proto_version(m_context, DTLS1_VERSION);
+    SSL_CTX_set_max_proto_version(m_context, DTLS1_2_VERSION);
+  }
+  else {
+    static int ssl_versions[] = { SSL3_VERSION, TLS1_VERSION, TLS1_1_VERSION, TLS1_2_VERSION, TLS1_3_VERSION, DTLS1_VERSION, DTLS1_2_VERSION };
+    SSL_CTX_set_min_proto_version(m_context, 0);
+    SSL_CTX_set_max_proto_version(m_context, ssl_versions[m_method]);
+  }
+
+#if (OPENSSL_VERSION_NUMBER >= 0x10100000L)
+  if (m_method >= DTLSv1) {
+    PTRACE(5, "Changing security level to zero, was " << SSL_CTX_get_security_level(m_context));
+    SSL_CTX_set_security_level(m_context, 0);
+    
+    switch (m_method) {
+      case DTLSv1_2 :
+        SSL_CTX_set_min_proto_version(m_context, DTLS1_2_VERSION);
+        SSL_CTX_set_max_proto_version(m_context, DTLS1_2_VERSION);
+        break;
+      case DTLSv1:
+        SSL_CTX_set_min_proto_version(m_context, DTLS1_VERSION);
+        SSL_CTX_set_max_proto_version(m_context, DTLS1_VERSION);
+        break;
+      default:
+        SSL_CTX_set_min_proto_version(m_context, DTLS1_VERSION);
+        SSL_CTX_set_max_proto_version(m_context, DTLS1_2_VERSION);
+    }
+  }
+#endif
 
   if (sessionId != NULL) {
     if (idSize == 0)
@@ -2156,22 +2187,13 @@ void PSSLContext::Construct(const void * sessionId, PINDEX idSize)
     SSL_CTX_sess_set_cache_size(m_context, 128);
   }
 
-  SSL_CTX_set_info_callback(m_context, InfoCallback);
+  SetInfoCallback(m_context);
   SetVerifyMode(VerifyNone);
 
   /* Specify an ECDH group for ECDHE ciphers, otherwise they cannot be
      negotiated when acting as the server. Use NIST's P-256 which is commonly
      supported. */
-#if OPENSSL_VERSION_NUMBER >= 0x10002000L
   SSL_CTX_set_ecdh_auto(m_context, 1);
-#else
-  EC_KEY* ecdh = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
-  if (ecdh != NULL) {
-    SSL_CTX_set_options(m_context, SSL_OP_SINGLE_ECDH_USE);
-    SSL_CTX_set_tmp_ecdh(m_context, ecdh);
-    EC_KEY_free(ecdh);
-  }
-#endif
 
   PTRACE(4, "Constructed context: method=" << m_method << " ctx=" << m_context);
 }
@@ -2348,19 +2370,11 @@ bool PSSLContext::UseCertificate(const PSSLCertificate & certificate)
 
   const PSSLCertificate::X509_Chain & chain = certificate.GetChain();
 
-#if OPENSSL_VERSION_NUMBER >= 0x10002000L
   SSL_CTX_clear_chain_certs(m_context);
-#else
-  SSL_CTX_clear_extra_chain_certs(m_context);
-#endif
 
   for (PSSLCertificate::X509_Chain::const_iterator it = chain.begin(); it != chain.end(); ++it) {
     X509 * ca = X509_dup(*it);
-#if OPENSSL_VERSION_NUMBER >= 0x10002000L
     if (!SSL_CTX_add0_chain_cert(m_context, ca)) {
-#else
-    if (!SSL_CTX_add_extra_chain_cert(m_context, ca)) {
-#endif
       PTRACE(2, "Could not use certificate chain: " << PSSLError());
       X509_free(ca);
       return false;
@@ -2396,6 +2410,15 @@ bool PSSLContext::SetCipherList(const PString & ciphers)
 }
 
 
+bool PSSLContext::SetCredentials(const PSSLCertificateInfo & info, bool create)
+{
+  PString authority, certificate, privateKey;
+  bool autoCreate;
+  info.GetSSLCredentials(authority, certificate, privateKey, autoCreate);
+  return SetCredentials(authority, certificate, privateKey, create && autoCreate);
+}
+
+
 bool PSSLContext::SetCredentials(const PString & authority,
                                  const PString & certificate,
                                  const PString & privateKey,
@@ -2418,11 +2441,15 @@ bool PSSLContext::SetCredentials(const PString & authority,
       PTRACE(2, "Could not find/parse certificate authority \"" << authority << '"');
       return false;
     }
+    PTRACE(4, "Set certificate authority to \"" << authority << '"');
     SetVerifyMode(VerifyPeerMandatory);
   }
 
-  if (certificate.IsEmpty() && privateKey.IsEmpty())
+  
+  if (certificate.IsEmpty() && privateKey.IsEmpty()) {
+    PTRACE(4, "No certificate in use.");
     return true;
+  }
 
   PSSLCertificate cert;
   PSSLPrivateKey key;
@@ -2452,7 +2479,7 @@ bool PSSLContext::SetCredentials(const PString & authority,
     }
 
     if (!create) {
-      PTRACE(2, "Require certificate and private key");
+      PTRACE(2, "Require certificate and private key, not creating.");
       return false;
     }
 
@@ -2491,6 +2518,7 @@ bool PSSLContext::SetCredentials(const PString & authority,
     return false;
   }
 
+  PTRACE(4, "Using certificate \"" << certificate << "\" and key \"" << privateKey << '"');
   return true;
 }
 
@@ -2512,13 +2540,9 @@ void PSSLContext::SetPasswordNotifier(const PSSLPasswordNotifier & notifier)
 
 bool PSSLContext::SetExtension(const char * extension)
 {
-#if P_SSL_SRTP
   return PAssertNULL(m_context) != NULL &&
          extension != NULL && *extension != '\0' &&
          SSL_CTX_set_tlsext_use_srtp(m_context, extension) == 0;
-#else
-  return false;
-#endif
 }
 
 
@@ -2757,6 +2781,7 @@ int PSSLChannel::BioClose(bio_st * bio)
 
 int PSSLChannel::BioClose()
 {
+#if (OPENSSL_VERSION_NUMBER < 0x30000000L)
   if (BIO_get_shutdown(m_bio)) {
     if (BIO_get_init(m_bio)) {
       Shutdown(PSocket::ShutdownReadAndWrite);
@@ -2765,6 +2790,9 @@ int PSSLChannel::BioClose()
     BIO_set_init(m_bio, 0);
     BIO_set_flags(m_bio, 0);
   }
+#else
+  PIndirectChannel::Close();
+#endif
 
   return 1;
 }
@@ -3089,13 +3117,11 @@ PCaselessString PSSLChannelDTLS::GetSelectedProfile() const
   if (PAssertNULL(m_ssl) == NULL)
     return PString::Empty();
 
-#if P_SSL_SRTP
   SRTP_PROTECTION_PROFILE *p = SSL_get_selected_srtp_profile(m_ssl);
   if (p != NULL)
     return p->name;
 
   PTRACE(2, "SSL_get_selected_srtp_profile returned NULL: " << PSSLError());
-#endif
   return PString::Empty();
 }
 
@@ -3105,7 +3131,6 @@ PBYTEArray PSSLChannelDTLS::GetKeyMaterial(PINDEX materialSize, const char * nam
   if (PAssertNULL(m_ssl) == NULL)
     return PBYTEArray();
 
-#if P_SSL_SRTP
   if (PAssert(materialSize > 0 && name != NULL && *name != '\0', PInvalidParameter)) {
     PBYTEArray result;
     if (SSL_export_keying_material(m_ssl,
@@ -3116,7 +3141,6 @@ PBYTEArray PSSLChannelDTLS::GetKeyMaterial(PINDEX materialSize, const char * nam
 
     PTRACE(2, "SSL_export_keying_material failed: " << PSSLError());
   }
-#endif
 
   return PBYTEArray();
 }
@@ -3140,4 +3164,7 @@ bool PSSLChannelDTLS::InternalConnect()
   SSL_set_connect_state(m_ssl);
   return true;
 }
+
+#else
+  #pragma message("OpenSSL is not available")
 #endif // P_SSL

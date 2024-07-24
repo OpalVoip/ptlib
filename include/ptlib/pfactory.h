@@ -108,7 +108,7 @@
     only global variable (inside the GetFactories() function) is initialised
     before any other factory related instances of classes.
   */
-class PFactoryBase
+class PFactoryBase : PNonCopyable
 {
   protected:
     PFactoryBase()
@@ -139,11 +139,7 @@ class PFactoryBase
     }
 
   protected:
-    PDECLARE_MUTEX(m_mutex, "PFactoryBase");
-
-  private:
-    PFactoryBase(const PFactoryBase &) {}
-    void operator=(const PFactoryBase &) {}
+    PCriticalSection m_mutex;
 };
 
 
@@ -169,7 +165,7 @@ class PFactoryTemplate : public PFactoryBase
     typedef std::map<Key_T, WorkerWrap>    WorkerMap_T;
     typedef typename WorkerMap_T::iterator WorkerIter_T;
 
-    class WorkerBase
+    class WorkerBase : ::PNonCopyable
     {
       public:
         enum Types {
@@ -224,10 +220,6 @@ class PFactoryTemplate : public PFactoryBase
 
         Types        m_type;
         Abstract_T * m_singletonInstance;
-
-      private:
-        WorkerBase(const WorkerBase &) { }
-        void operator=(const WorkerBase &) { }
 
       friend class PFactoryTemplate;
     };
@@ -363,10 +355,6 @@ class PFactoryTemplate : public PFactoryBase
   protected:
     WorkerMap_T m_workers;
 
-  private:
-    PFactoryTemplate(const PFactoryTemplate &) {}
-    void operator=(const PFactoryTemplate &) {}
-
   friend class PFactoryBase;
 };
 
@@ -386,7 +374,6 @@ typedef std::string PDefaultPFactoryKey;
   static bool IsRegistered(const Key_T & k)                            { return GetFactory().InternalIsRegistered(k); } \
   static bool IsSingleton(const Key_T & k)                             { return GetFactory().InternalIsSingleton(k); } \
   static typename Base_T::KeyList_T GetKeyList()                       { return GetFactory().InternalGetKeyList(); } \
-  static PMutex & GetMutex()                                           { return GetFactory().m_mutex; } \
 
 
 /** Class for a factory to create concrete class instances without parameters

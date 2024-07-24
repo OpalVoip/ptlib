@@ -30,7 +30,7 @@
 
 #define _PVIDEOIO1394AVC
 
-#ifdef __GNUC__
+#ifdef P_USE_PRAGMA
 #pragma interface
 #endif
 

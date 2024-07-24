@@ -157,8 +157,8 @@ class PSOAPServerResource : public PHTTPResource
     );
 
     // overrides from PHTTPResource
-    bool LoadHeaders( PHTTPRequest & request );
-    bool OnPOSTData( PHTTPRequest & request, const PStringToString & data );
+    bool LoadHeaders( PHTTPRequest & request ) override;
+    bool OnPOSTData( PHTTPRequest & request, const PStringToString & data ) override;
 
     // new functions
     virtual bool OnSOAPRequest( const PString & body, PString & reply );

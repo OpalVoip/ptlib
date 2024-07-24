@@ -20,7 +20,7 @@ class PxmlTest : public PProcess
 
   public:
     PxmlTest();
-    void Main();
+    virtual void Main() override;
 };
 
 #endif  // _PxmlTest_MAIN_H

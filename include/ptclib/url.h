@@ -87,7 +87,7 @@ class PURL : public PObject
      */
     virtual Comparison Compare(
       const PObject & obj   ///< Object to compare against.
-    ) const;
+    ) const override;
 
     /**This function yields a hash value required by the <code>PDictionary</code>
        class. A descendent class that is required to be the key of a dictionary
@@ -100,20 +100,20 @@ class PURL : public PObject
        @return
        hash function value for class instance.
      */
-    virtual PINDEX HashFunction() const;
+    virtual PINDEX HashFunction() const override;
 
     /**Output the contents of the URL to the stream as a string.
      */
     virtual void PrintOn(
       ostream &strm   ///< Stream to print the object into.
-    ) const;
+    ) const override;
 
     /**Input the contents of the URL from the stream. The input is a URL in
        string form.
      */
     virtual void ReadFrom(
       istream &strm   ///< Stream to read the objects contents from.
-    );
+    ) override;
   //@}
  
   /**@name New functions for class. */
@@ -165,6 +165,8 @@ class PURL : public PObject
       PathTranslation,
       /// Translate the query variable field for a URL.
       QueryTranslation,
+      /// Translate the fragment variable field for a URL.
+      FragmentTranslation,
       /// Translate the parameter variables field for a URL.
       ParameterTranslation,
       /// Translate the quoted parameter variables field for a URL.
@@ -259,7 +261,9 @@ class PURL : public PObject
     bool GetPortSupplied() const { return m_portSupplied; }
 
     /// Get the hostname and optional port fields of the URL.
-    PString GetHostPort() const;
+    PString GetHostPort(
+      bool alwaysWithPort = false
+    ) const;
 
     /// Get if path is relative or absolute
     bool GetRelativePath() const { return m_relativePath; }
@@ -276,8 +280,17 @@ class PURL : public PObject
     /// Set the path field of the URL as a string array.
     void SetPath(const PStringArray & path);
 
+    /// Set the path as being relative.
+    void SetRelativePath(bool relative);
+
     /// Append segment to the path field of the URL.
     void AppendPath(const PString & segment);
+
+    /// Append segments to the path field of the URL.
+    void AppendPathSegments(const PStringArray & segments);
+
+    /// Append segments to the path field of the URL.
+    void AppendPathStr(const PString & segments);
 
     /// Change segment in the path field of the URL.
     void ChangePath(
@@ -312,6 +325,9 @@ class PURL : public PObject
 
     /// Get the fragment (\#) field of the URL.
     const PString & GetFragment() const { return m_fragment; }
+
+    /// Set the fragment (\#) field of the URL.
+    void SetFragment(const PString & fragment);
 
     /// Get the Query (?) field of the URL as a string.
     PString GetQuery() const;
@@ -396,7 +412,7 @@ class PURL : public PObject
     );
   //@}
 
-    bool LegacyParse(const char * str, const PURLLegacyScheme * schemeInfo);
+    bool LegacyParse(const char * str, const PURLLegacyScheme & schemeInfo);
     PString LegacyAsString(PURL::UrlFormat fmt, const PURLLegacyScheme * schemeInfo) const;
 
   protected:
@@ -474,7 +490,7 @@ class PURLLegacyScheme : public PURLScheme
 
     bool Parse(const char * cstr, PURL & url) const
     {
-      return url.LegacyParse(cstr, this);
+      return url.LegacyParse(cstr, *this);
     }
 
     PString AsString(PURL::UrlFormat fmt, const PURL & url) const

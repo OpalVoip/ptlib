@@ -862,7 +862,7 @@ void PProcess::PlatformResetRunTimeSignalHandler(int signum, PRunTimeSignalHandl
 
 
 #define SIG_NAME(s) { s, #s }
-POrdinalToString::Initialiser const PProcess::InternalSigNames[] = {
+std::unordered_map<int, std::string> const PProcess::InternalSigNames{
   SIG_NAME(SIGABRT),
   SIG_NAME(SIGBREAK),
   SIG_NAME(SIGFPE),

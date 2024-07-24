@@ -341,7 +341,7 @@
         <object class="wxBoxSizer" name="sizer_3" base="EditBoxSizer">
             <orient>wxHORIZONTAL</orient>
             <object class="sizeritem">
-                <flag>wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL</flag>
+                <flag>wxALIGN_CENTER_VERTICAL</flag>
                 <border>0</border>
                 <option>1</option>
                 <object class="wxStaticText" name="label_1" base="EditStaticText">

@@ -25,7 +25,7 @@
  *                 Snark at GnomeMeeting
  */
 
-#ifdef __GNUC__
+#ifdef P_USE_PRAGMA
 #pragma implementation "sound.h"
 #endif
 
@@ -58,12 +58,12 @@ class PSoundChannelNull : public PSoundChannelEmulation
   public:
     PSoundChannelNull();
     static PStringArray GetDeviceNames(PSoundChannel::Directions = Player);
-    bool Open(const Params & params);
-    virtual PString GetName() const;
-    bool Close();
-    bool IsOpen() const;
-    bool Write(const void *, PINDEX len);
-    bool Read(void * buf, PINDEX len);
+    bool Open(const Params & params) override;
+    virtual PString GetName() const override;
+    bool Close() override;
+    bool IsOpen() const override;
+    bool Write(const void *, PINDEX len) override;
+    bool Read(void * buf, PINDEX len) override;
 };
 
 
@@ -180,7 +180,7 @@ PSoundChannel * PSoundChannel::CreateOpenedChannel(const Params & params)
     if (adjustedParams.m_driver.IsEmpty())
       adjustedParams.m_device = PSoundChannel::GetDefaultDevice(params.m_direction);
     else {
-      PStringArray devices = PSoundChannel::GetDriversDeviceNames(adjustedParams.m_driver, PSoundChannel::Player);
+      PStringArray devices = PSoundChannel::GetDriversDeviceNames(adjustedParams.m_driver, params.m_direction);
       if (!devices.IsEmpty())
         adjustedParams.m_device = devices[0];
     }
@@ -840,11 +840,26 @@ PSoundChannelEmulation::PSoundChannelEmulation()
   , m_channels(1)
   , m_bytesPerSample(2)
   , m_bufferSize(320)
+  , m_bufferCount(1)
   , m_bufferPos(0)
+  , m_buffer(320)
   , m_autoRepeat(false)
   , m_Pacing(1000)
   , m_muted(false)
 {
+}
+
+
+bool PSoundChannelEmulation::Close()
+{
+  if (CheckNotOpen())
+    return false;
+
+  PWaitAndSignal lock(m_writeMutex);
+
+  InternalFlush();
+  os_handle = -1;
+  return true;
 }
 
 
@@ -868,6 +883,8 @@ bool PSoundChannelEmulation::Rewind()
 
 bool PSoundChannelEmulation::InternalFlush()
 {
+  // m_writeMutex already held
+
   if (m_bufferPos == 0)
     return true;
 
@@ -882,36 +899,42 @@ bool PSoundChannelEmulation::InternalFlush()
 
 bool PSoundChannelEmulation::Write(const void * data, PINDEX size)
 {
-  if (m_muted) {
-    if (!InternalFlush())
-      return false;
+  {
+    PWaitAndSignal lock(m_writeMutex);
 
-    memset(m_buffer.GetPointer(size), 0, size);
-    if (!RawWrite(m_buffer.GetPointer(), size))
-      return false;
-  }
-  else if (m_bufferPos + size < m_buffer.GetSize()) {
-    memcpy(m_buffer.GetPointer() + m_bufferPos, data, size);
-    m_bufferPos += size;
-    SetLastWriteCount(size);
-  }
-  else {
-    if (!InternalFlush())
-      return false;
+    if (m_muted) {
+      if (!InternalFlush())
+        return false;
 
-    if (size < m_buffer.GetSize()) {
-      memcpy(m_buffer.GetPointer(), data, size);
-      m_bufferPos = size;
+      memset(m_buffer.GetPointer(size), 0, size);
+      if (!RawWrite(m_buffer.GetPointer(), size))
+        return false;
+    }
+    else if (m_bufferPos + size <= m_buffer.GetSize()) {
+      memcpy(m_buffer.GetPointer() + m_bufferPos, data, size);
+      m_bufferPos += size;
       SetLastWriteCount(size);
     }
     else {
-      if (!RawWrite(data, size))
+      if (!InternalFlush())
         return false;
-      m_bufferPos = 0;
+
+      if (size < m_buffer.GetSize()) {
+        memcpy(m_buffer.GetPointer(), data, size);
+        m_bufferPos = size;
+        SetLastWriteCount(size);
+      }
+      else {
+        if (!RawWrite(data, size))
+          return false;
+        m_bufferPos = 0;
+      }
     }
   }
 
-  m_Pacing.Delay(1000LL*GetLastWriteCount()/m_sampleRate/m_bytesPerSample);
+  // Pacing delay outside of mutex
+  if (m_bufferSize > 1)
+    m_Pacing.Delay(1000LL*GetLastWriteCount()/m_sampleRate/m_bytesPerSample);
   return true;
 }
 
@@ -923,7 +946,8 @@ bool PSoundChannelEmulation::Read(void * data, PINDEX size)
       PINDEX count = GetLastReadCount();
       if (m_muted)
         memset(data, 0, count);
-      m_Pacing.Delay(1000LL*count/m_sampleRate/m_bytesPerSample);
+      if (m_bufferSize > 1)
+        m_Pacing.Delay(1000LL*count/m_sampleRate/m_bytesPerSample);
       return true;
     }
 
@@ -983,6 +1007,8 @@ unsigned PSoundChannelEmulation::GetSampleSize() const
 
 bool PSoundChannelEmulation::SetBuffers(PINDEX size, PINDEX count)
 {
+  PWaitAndSignal lock(m_writeMutex);
+
   m_bufferSize = size;
   m_bufferCount = count;
   if (!PAssert(m_buffer.SetSize(size*count), POutOfMemory))
@@ -996,6 +1022,8 @@ bool PSoundChannelEmulation::SetBuffers(PINDEX size, PINDEX count)
 
 bool PSoundChannelEmulation::GetBuffers(PINDEX & size, PINDEX & count)
 {
+  PWaitAndSignal lock(m_writeMutex);
+
   size = m_bufferSize;
   count = m_bufferCount;
   return true;
@@ -1114,7 +1142,8 @@ bool PSoundChannelNull::Write(const void *, PINDEX len)
     return false;
 
   SetLastWriteCount(len);
-  m_Pacing.Delay(1000*len/m_sampleRate/m_bytesPerSample);
+  if (m_bufferSize > 1)
+    m_Pacing.Delay(1000*len/m_sampleRate/m_bytesPerSample);
   return true;
 }
 
@@ -1125,7 +1154,8 @@ bool PSoundChannelNull::Read(void * buf, PINDEX len)
 
   memset(buf, 0, len);
   SetLastReadCount(len);
-  m_Pacing.Delay(1000*len/m_sampleRate/m_bytesPerSample);
+  if (m_bufferSize > 1)
+    m_Pacing.Delay(1000*len/m_sampleRate/m_bytesPerSample);
   return true;
 }
 

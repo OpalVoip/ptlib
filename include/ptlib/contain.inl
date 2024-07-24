@@ -32,27 +32,6 @@
 
 ///////////////////////////////////////////////////////////////////////////////
 
-PINLINE PContainer & PContainer::operator=(const PContainer & cont)
-  { AssignContents(cont); return *this; }
-
-PINLINE void PContainer::CloneContents(const PContainer *)
-  { }
-
-PINLINE void PContainer::CopyContents(const PContainer &)
-  { }
-
-PINLINE PINDEX PContainer::GetSize() const
-  { return PAssertNULL(reference)->size; }
-
-PINLINE bool PContainer::IsEmpty() const
-  { return GetSize() == 0; }
-
-PINLINE bool PContainer::IsUnique() const
-  { return PAssertNULL(reference)->count <= 1; }
-
-
-///////////////////////////////////////////////////////////////////////////////
-
 PINLINE PString & PString::operator=(const PString & str)
   { std::string::operator=(str); return *this; }
 
@@ -203,43 +182,11 @@ PINLINE PCaselessString & PCaselessString::operator=(char ch)
 
 ///////////////////////////////////////////////////////////////////////////////
 
-PINLINE PCollection::PCollection(PINDEX initialSize)
-  : PContainer(initialSize) { }
-
-PINLINE PCollection::PCollection(int dummy, const PCollection * c)
-  : PContainer(dummy, c) { }
-
-PINLINE void PCollection::AllowDeleteObjects(bool yes)
-  { reference->deleteObjects = yes; }
-
-PINLINE void PCollection::DisallowDeleteObjects()
-  { AllowDeleteObjects(false); }
-
-
-///////////////////////////////////////////////////////////////////////////////
-
-PINLINE PArrayObjects::PArrayObjects(PINDEX initialSize)
-  : theArray(PNEW PBaseArray<PObject *>(initialSize)) { }
-
-
-///////////////////////////////////////////////////////////////////////////////
-
 PINLINE PINDEX PStringArray::AppendString(const PString & str)
   { return Append(str.Clone()); }
 
-PINLINE PStringArray PStringArray::operator + (const PStringArray & v)
-  { PStringArray arr = *this; arr += v; return arr; }
-
-PINLINE PStringArray PStringArray::operator + (const PString & v)
-  { PStringArray arr = *this; arr += v; return arr; }
-
 PINLINE PINDEX PStringArray::GetStringsIndex(const PString & str) const
   { return GetValuesIndex(str); }
-
-///////////////////////////////////////////////////////////////////////////////
-
-PINLINE PAbstractList::PAbstractList()
-  : m_info(new PListInfo) { PAssert(m_info != NULL, POutOfMemory); }
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -266,41 +213,6 @@ PINLINE PINDEX PSortedStringList::AppendString(const PString & str)
 
 PINLINE PINDEX PSortedStringList::GetStringsIndex(const PString & str) const
   { return GetValuesIndex(str); }
-
-
-///////////////////////////////////////////////////////////////////////////////
-
-PINLINE bool PHashTable::AbstractContains(const PObject & key) const
-  { return hashTable->GetElementAt(key) != NULL; }
-
-
-///////////////////////////////////////////////////////////////////////////////
-
-PINLINE PAbstractSet::PAbstractSet()
-  { hashTable->deleteKeys = reference->deleteObjects; }
-  
-
-PINLINE void PStringSet::Include(const PString & str)
-  { PAbstractSet::Append(str.Clone()); }
-
-PINLINE PStringSet & PStringSet::operator+=(const PString & str)
-  { PAbstractSet::Append(str.Clone()); return *this; }
-
-PINLINE void PStringSet::Exclude(const PString & str)
-  { PAbstractSet::Remove(&str); }
-
-PINLINE PStringSet & PStringSet::operator-=(const PString & str)
-  { PAbstractSet::Remove(&str); return *this; }
-
-
-///////////////////////////////////////////////////////////////////////////////
-
-PINLINE PAbstractDictionary::PAbstractDictionary()
-  { hashTable->deleteKeys = true; }
-  
-PINLINE PAbstractDictionary::PAbstractDictionary(int dummy,
-                                                 const PAbstractDictionary * c)
-  : PHashTable(dummy, c) { }
 
 
 // End Of File ///////////////////////////////////////////////////////////////

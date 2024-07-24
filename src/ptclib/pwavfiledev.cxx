@@ -27,7 +27,7 @@
  * Contributor(s): ______________________________________.
  */
 
-#ifdef __GNUC__
+#ifdef P_USE_PRAGMA
 #pragma implementation "pwavfiledev.h"
 #endif
 
@@ -158,14 +158,8 @@ bool PSoundChannel_WAVFile::IsOpen() const
 
 bool PSoundChannel_WAVFile::Close()
 {
-  if (CheckNotOpen())
-    return false;
-
-  if (m_bufferPos > 0)
-    m_WAVFile.Write(m_buffer, m_bufferPos);
-  m_WAVFile.Close();
-  os_handle = -1;
-  return true;
+  bool closed = PSoundChannelEmulation::Close();  // Flushes buffer
+  return m_WAVFile.Close() && closed;             // Then we can close file
 }
 
 

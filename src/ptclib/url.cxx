@@ -24,7 +24,7 @@
  * Contributor(s): ______________________________________.
  */
 
-#ifdef __GNUC__
+#ifdef P_USE_PRAGMA
 #pragma implementation "url.h"
 #endif
 
@@ -250,6 +250,10 @@ PString PURL::TranslateString(const PString & str, TranslationType type)
 
       return str.ToLiteral();
 
+    case FragmentTranslation :
+      safeChars += ";/?:@&=+$,"; // Section 4.1
+      break;
+
     default :
       break;    // Section 3.4, no reserved characters may be used
   }
@@ -257,7 +261,7 @@ PString PURL::TranslateString(const PString & str, TranslationType type)
   for (PINDEX pos = 0; (pos = xlat.FindSpan(safeChars, pos)) != P_MAX_INDEX; ++pos) {
     char buf[10];
     sprintf_s(buf, sizeof(buf), "%%%02X", (uint8_t)xlat[pos]);
-    xlat.Splice(buf, pos, 1);
+    xlat.Splice(buf, pos++, 1);
   }
 
   return xlat;
@@ -481,7 +485,7 @@ bool PURL::InternalParse(const char * cstr, const char * defaultScheme)
 }
 
 
-bool PURL::LegacyParse(const char * cstr, const PURLLegacyScheme * schemeInfo)
+bool PURL::LegacyParse(const char * cstr, const PURLLegacyScheme & schemeInfo)
 {
   const PConstCaselessString str(cstr);
   PINDEX start = 0;
@@ -489,28 +493,28 @@ bool PURL::LegacyParse(const char * cstr, const PURLLegacyScheme * schemeInfo)
   PINDEX pos;
 
   // if the URL should have leading slash, then remove it if it has one
-  if (schemeInfo != NULL && schemeInfo->hasHostPort && schemeInfo->hasPath) {
+  if (schemeInfo.hasHostPort && schemeInfo.hasPath) {
     if (str.GetLength() > 2 && str[0] == '/' && str[1] == '/')
       start = 2;
     else
-      m_relativePath = schemeInfo->relativeImpliesScheme || str[0] != '/';
+      m_relativePath = schemeInfo.relativeImpliesScheme || str[0] != '/';
   }
 
   // parse user/password/host/port
-  if (!m_relativePath && schemeInfo->hasHostPort) {
+  if (!m_relativePath && schemeInfo.hasHostPort) {
     PString endHostChars;
-    if (schemeInfo->hasPath)
+    if (schemeInfo.hasPath)
       endHostChars += '/';
-    if (schemeInfo->hasQuery)
+    if (schemeInfo.hasQuery)
       endHostChars += '?';
-    if (schemeInfo->hasParameters)
+    if (schemeInfo.hasParameters)
       endHostChars += ';';
-    if (schemeInfo->hasFragments)
+    if (schemeInfo.hasFragments)
       endHostChars += '#';
 
     if (endHostChars.IsEmpty())
       pos = P_MAX_INDEX;
-    else if (schemeInfo->hasUsername) {
+    else if (schemeInfo.hasUsername) {
       //';' showing in the username field should be valid.
       // Looking for ';' after the '@' for the parameters.
       PINDEX posAt = str.Find('@', start);
@@ -529,16 +533,16 @@ bool PURL::LegacyParse(const char * cstr, const PURLLegacyScheme * schemeInfo)
     }
 
     // if the URL is of type UserPasswordHostPort, then parse it
-    if (schemeInfo->hasUsername) {
+    if (schemeInfo.hasUsername) {
       // extract username and password
       PINDEX pos2 = uphp.Find('@');
       PINDEX pos3 = P_MAX_INDEX;
-      if (schemeInfo->hasPassword)
+      if (schemeInfo.hasPassword)
         pos3 = uphp.Find(':');
       if (pos2 == 0)
         uphp.Delete(0, 1);
       else if (pos2 == P_MAX_INDEX) {
-        if (schemeInfo->defaultToUserIfNoAt) {
+        if (schemeInfo.defaultToUserIfNoAt) {
           if (pos3 == P_MAX_INDEX)
             m_username = UntranslateString(uphp, LoginTranslation);
           else {
@@ -560,7 +564,7 @@ bool PURL::LegacyParse(const char * cstr, const PURLLegacyScheme * schemeInfo)
     }
 
     // if the URL does not have a port, then this is the hostname
-    if (schemeInfo->defaultPort == 0)
+    if (schemeInfo.defaultPort == 0)
       m_hostname = UntranslateString(uphp, LoginTranslation);
     else {
       // determine if the URL has a port number
@@ -579,26 +583,26 @@ bool PURL::LegacyParse(const char * cstr, const PURLLegacyScheme * schemeInfo)
         m_portSupplied = true;
       }
 
-      if (m_hostname.IsEmpty() && schemeInfo->defaultHostToLocal)
+      if (m_hostname.IsEmpty() && schemeInfo.defaultHostToLocal)
         m_hostname = PIPSocket::GetHostName();
     }
   }
 
   // chop off any trailing query
-  if (schemeInfo->hasQuery && (pos = str.Find('?', start)) < end) {
+  if (schemeInfo.hasQuery && (pos = str.Find('?', start)) < end) {
     SplitQueryVars(str(pos+1, end), m_queryVars);
     end = pos-1;
   }
 
   // chop off any trailing parameters
-  if (schemeInfo->hasParameters && (pos = str.Find(';', start)) < end) {
+  if (schemeInfo.hasParameters && (pos = str.Find(';', start)) < end) {
     SplitVars(str(pos+1, end), m_paramVars);
     end = pos-1;
   }
 
   // chop off any trailing fragment
-  if (schemeInfo->hasFragments && (pos = str.Find('#', start)) < end) {
-    m_fragment = UntranslateString(str(pos+1, end), PathTranslation);
+  if (schemeInfo.hasFragments && (pos = str.Find('#', start)) < end) {
+    m_fragment = UntranslateString(str(pos+1, end), FragmentTranslation);
     end = pos-1;
   }
 
@@ -607,11 +611,11 @@ bool PURL::LegacyParse(const char * cstr, const PURLLegacyScheme * schemeInfo)
     if (m_scheme == "h323" && m_paramVars("type") == "gk")
       m_port = DEFAULT_H323RAS_PORT;
     else
-      m_port = schemeInfo->defaultPort;
+      m_port = schemeInfo.defaultPort;
   }
 
-  if (schemeInfo->hasPath) {
-    if (start < (PINDEX)str.length() && str[start] == '/')
+  if (schemeInfo.hasPath) {
+    if (str[start] == '/')
       ++start;
     SetPathStr(str(start, end));   // the hierarchy is what is left
   }
@@ -731,11 +735,10 @@ PString PURL::LegacyAsString(PURL::UrlFormat fmt, const PURLLegacyScheme * schem
     str << TranslateString(m_contents, PathTranslation);
 
   if (fmt == FullURL || fmt == RelativeOnly) {
-    if (!m_fragment.IsEmpty())
-      str << "#" << TranslateString(m_fragment, PathTranslation);
-
     OutputVars(str, m_paramVars, ';', ';', '=', ParameterTranslation);
     OutputVars(str, m_queryVars, '?', '&', '=', QueryTranslation);
+    if (!m_fragment.IsEmpty())
+      str << "#" << TranslateString(m_fragment, FragmentTranslation);
   }
 
   return str;
@@ -797,11 +800,11 @@ void PURL::SetPort(uint16_t newPort)
 }
 
 
-PString PURL::GetHostPort() const
+PString PURL::GetHostPort(bool alwaysWithPort) const
 {
   PStringStream strm;
   strm << m_hostname;
-  if (m_portSupplied)
+  if (alwaysWithPort || m_portSupplied)
     strm << ':' << m_port;
   return strm;
 }
@@ -809,20 +812,8 @@ PString PURL::GetHostPort() const
 
 void PURL::SetPathStr(const PString & pathStr)
 {
-  m_path = pathStr.Tokenise("/", true);
-
-  if (m_path.GetSize() > 0 && m_path[0].IsEmpty()) 
-    m_path.RemoveAt(0);
-
-  for (PINDEX i = 0; i < m_path.GetSize(); i++) {
-    m_path[i] = UntranslateString(m_path[i], PathTranslation);
-    if (i > 0 && m_path[i] == ".." && m_path[i-1] != "..") {
-      m_path.RemoveAt(i--);
-      m_path.RemoveAt(i--);
-    }
-  }
-
-  Recalculate();
+  m_path = PStringArray();
+  AppendPathStr(pathStr);
 }
 
 
@@ -846,10 +837,35 @@ void PURL::SetPath(const PStringArray & p)
 }
 
 
+void PURL::SetRelativePath(bool relative)
+{
+  m_relativePath = relative;
+  Recalculate();
+}
+
+
 void PURL::AppendPath(const PString & segment)
 {
   m_path.MakeUnique();
   m_path.AppendString(segment);
+  Recalculate();
+}
+
+
+void PURL::AppendPathSegments(const PStringArray & segments)
+{
+  m_path.MakeUnique();
+  m_path += segments;
+  Recalculate();
+}
+
+
+void PURL::AppendPathStr(const PString & segments)
+{
+  m_path.MakeUnique();
+  PStringArray segmentStrings = segments.Tokenise("/", true);
+  for (PINDEX i = 0; i < segmentStrings.GetSize(); ++i)
+    m_path.AppendString(UntranslateString(segmentStrings[i], PathTranslation));
   Recalculate();
 }
 
@@ -908,6 +924,13 @@ void PURL::SetParamVar(const PString & key, const PString & data, bool emptyData
     m_paramVars.RemoveAt(key);
   else
     m_paramVars.SetAt(key, data);
+  Recalculate();
+}
+
+
+void PURL::SetFragment(const PString & fragment)
+{
+  m_fragment = fragment;
   Recalculate();
 }
 
@@ -989,6 +1012,18 @@ bool PURL::OpenBrowser(const PString & url)
 
 void PURL::Recalculate()
 {
+  if (!m_path.empty() && m_path[0].IsEmpty())
+    m_path.RemoveAt(0);
+
+  for (PINDEX i = 1; i < m_path.GetSize(); i++) {    
+    if (m_path[i] == ".")
+      m_path.RemoveAt(i--);
+    else if (m_path[i] == ".." && m_path[i-1] != "..") {
+      m_path.RemoveAt(i--);
+      m_path.RemoveAt(i--);
+    }
+  }
+
   if (m_schemeInfo != NULL)
     m_urlString = m_schemeInfo->AsString(FullURL, *this);
   else
@@ -1004,7 +1039,7 @@ class PURL_CalltoScheme : public PURLScheme
 {
     PCLASSINFO(PURL_CalltoScheme, PURLScheme);
   public:
-    virtual bool Parse(const char * cstr, PURL & url) const
+    virtual bool Parse(const char * cstr, PURL & url) const override
     {
       const PConstCaselessString str(cstr);
 
@@ -1076,7 +1111,7 @@ class PURL_CalltoScheme : public PURLScheme
       return true;
     }
 
-    virtual PString AsString(PURL::UrlFormat fmt, const PURL & url) const
+    virtual PString AsString(PURL::UrlFormat fmt, const PURL & url) const override
     {
       if (fmt == PURL::LocationOnly)
         return PString::Empty();
@@ -1099,7 +1134,7 @@ class PURL_TelScheme : public PURLScheme
 {
     PCLASSINFO(PURL_TelScheme, PURLScheme);
   public:
-    virtual bool Parse(const char * cstr, PURL & url) const
+    virtual bool Parse(const char * cstr, PURL & url) const override
     {
       const PConstCaselessString str(cstr);
 
@@ -1132,7 +1167,7 @@ class PURL_TelScheme : public PURLScheme
       return url.GetUserName() != "+";
     }
 
-    virtual PString AsString(PURL::UrlFormat fmt, const PURL & url) const
+    virtual PString AsString(PURL::UrlFormat fmt, const PURL & url) const override
     {
       if (fmt == PURL::LocationOnly)
         return PString::Empty();
@@ -1155,13 +1190,13 @@ class PURL_URNScheme : public PURLScheme
 {
     PCLASSINFO(PURL_URNScheme, PURLScheme);
   public:
-    virtual bool Parse(const char * cstr, PURL & url) const
+    virtual bool Parse(const char * cstr, PURL & url) const override
     {
       url.SetContents(cstr);
       return true;
     }
 
-    virtual PString AsString(PURL::UrlFormat fmt, const PURL& url) const
+    virtual PString AsString(PURL::UrlFormat fmt, const PURL& url) const override
     {
       switch (fmt) {
         case PURL::FullURL :
@@ -1185,7 +1220,7 @@ class PURL_DataScheme : public PURLScheme
 {
     PCLASSINFO(PURL_DataScheme, PURLScheme);
   public:
-    virtual bool Parse(const char * cstr, PURL & url) const
+    virtual bool Parse(const char * cstr, PURL & url) const override
     {
       const PConstCaselessString str(cstr);
 
@@ -1206,7 +1241,7 @@ class PURL_DataScheme : public PURLScheme
       return true;
     }
 
-    virtual PString AsString(PURL::UrlFormat fmt, const PURL & purl) const
+    virtual PString AsString(PURL::UrlFormat fmt, const PURL & purl) const override
     {
       if (fmt == PURL::LocationOnly)
         return PString::Empty();
@@ -1239,7 +1274,7 @@ class PURL_DataScheme : public PURLScheme
       if (base64)
         strm << ";base64";
 
-      strm << ',' << PURL::TranslateString(purl.GetContents(), PURL::ParameterTranslation);
+      strm << ',' << PURL::TranslateString(purl.GetContents(), PURL::FragmentTranslation);
 
       return strm;
     }
@@ -1254,7 +1289,7 @@ class PURL_FileLoader : public PURLLoader
 {
     PCLASSINFO(PURL_FileLoader, PURLLoader);
   public:
-    virtual bool Load(PString & str, const PURL & url, const PURL::LoadParams &) const
+    virtual bool Load(PString & str, const PURL & url, const PURL::LoadParams &) const override
     {
       PFile file;
       if (!file.Open(url.AsFilePath(), PFile::ReadOnly))
@@ -1263,7 +1298,7 @@ class PURL_FileLoader : public PURLLoader
       return true;
     }
 
-    virtual bool Load(PBYTEArray & data, const PURL & url, const PURL::LoadParams &) const
+    virtual bool Load(PBYTEArray & data, const PURL & url, const PURL::LoadParams &) const override
     {
       PFile file;
       if (!file.Open(url.AsFilePath(), PFile::ReadOnly))
@@ -1283,7 +1318,7 @@ class PURL_DataLoader : public PURLLoader
 {
     PCLASSINFO(PURL_FileLoader, PURLLoader);
   public:
-    virtual bool Load(PString & str, const PURL & url, const PURL::LoadParams & params) const
+    virtual bool Load(PString & str, const PURL & url, const PURL::LoadParams & params) const override
     {
       if (!params.m_requiredContentType.IsEmpty()) {
         PCaselessString actualContentType = url.GetParamVars()("type");
@@ -1295,7 +1330,7 @@ class PURL_DataLoader : public PURLLoader
       return true;
     }
 
-    virtual bool Load(PBYTEArray & data, const PURL & url, const PURL::LoadParams & params) const
+    virtual bool Load(PBYTEArray & data, const PURL & url, const PURL::LoadParams & params) const override
     {
       if (!params.m_requiredContentType.IsEmpty()) {
         PCaselessString actualContentType = url.GetParamVars()("type");

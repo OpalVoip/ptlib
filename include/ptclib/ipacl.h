@@ -70,14 +70,14 @@ class PIpAccessControlEntry : public PObject
      */
     virtual Comparison Compare(
       const PObject & obj   ///< Object to compare against.
-    ) const;
+    ) const override;
 
     /** Output the contents of the object to the stream. This outputs the same
        format as the AsString() function.
      */
     virtual void PrintOn(
       ostream &strm   ///< Stream to print the object into.
-    ) const;
+    ) const override;
 
     /** Input the contents of the object from the stream. This expects the
        next space delimited entry in the stream to be as described in the
@@ -85,7 +85,7 @@ class PIpAccessControlEntry : public PObject
      */
     virtual void ReadFrom(
       istream &strm   ///< Stream to read the objects contents from.
-    );
+    ) override;
 
     /** Convert the specification to a string, that can be processed by the
        Parse() function.

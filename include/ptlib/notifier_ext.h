@@ -335,6 +335,13 @@ class PNotifierListTemplate : public PObject
     {
       this->m_list.remove_if([target](const Notifier & test) { return test.GetTarget() == target; });
     }
+#else
+    /// Remove all notifiers that use the specified target object.
+    void RemoveTarget(PObject * obj)
+    {
+      this->m_list.remove_if([obj](Notifier & test) { return  obj == test.GetTarget(); });
+    }
+#endif
 
     /// Execute all notifiers in the list.
     bool operator()(NotifierType & obj, ParamType param)

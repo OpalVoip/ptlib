@@ -19,7 +19,7 @@ class PluginTest : public PProcess
 
   public:
     PluginTest();
-    void Main();
+    virtual void Main() override;
 };
 
 

@@ -24,7 +24,7 @@
 #ifndef PTLIB_VIDEOIO1394DC_H
 #define PTLIB_VIDEOIO1394DC_H
 
-#ifdef __GNUC__
+#ifdef P_USE_PRAGMA
 #pragma interface
 #endif
 

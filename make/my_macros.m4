@@ -37,8 +37,7 @@ AC_DEFUN([MY_ARG_ENABLE],[
 
    AC_ARG_ENABLE(
       [$1],
-      AC_HELP_STRING([--m4_bmatch([$2],[enable.*],[enable],[disable])-$1],
-                         m4_bmatch([$2],[enable.*],[],[disable ])[$2]),
+      AS_HELP_STRING([--m4_bmatch([$2],[enable.*],[enable],[disable])-$1],[m4_bmatch($2,enable.*,,disable )$2]),
       AS_VAR_IF([enableval], [no], AC_MSG_RESULT([disabled by user])),
       [
          enableval=m4_default([$3],m4_bmatch([$2],[enable.*],[no],[yes]))
@@ -55,6 +54,32 @@ AC_DEFUN([MY_ARG_ENABLE],[
    MY_IFELSE([enableval], [$4], [$5])
 
    enable_$1="$enableval"
+])
+
+
+dnl MY_ADD_FLAGS
+dnl Prepend to CPPFLAGS, CFLAGS, CXXFLAGS & LIBS new flags
+dnl $1 new LIBS
+dnl $2 new CPPFLAGS
+dnl $3 new CFLAGS
+dnl $4 new CXXFLAGS
+AC_DEFUN([MY_ADD_FLAGS],[
+   m4_ifnblank([$2], [
+      AC_MSG_NOTICE([Adding CPPFLAGS: $2])
+      CPPFLAGS="$2 $CPPFLAGS"
+   ])
+   m4_ifnblank([$3], [
+      AC_MSG_NOTICE([Adding CFLAGS: $3])
+      CFLAGS="$3 $CFLAGS"
+   ])
+   m4_ifnblank([$4], [
+      AC_MSG_NOTICE([Adding CXXFLAGS: $4])
+      CXXFLAGS="$4 $CXXFLAGS"
+   ])
+   m4_ifnblank([$1], [
+      AC_MSG_NOTICE([Adding LIBS: $1])
+      LIBS="$1 $LIBS"
+   ])
 ])
 
 
@@ -127,47 +152,14 @@ AC_DEFUN([MY_PKG_CHECK_MODULE],[
          [$3],
          [$4],
          [
-            CPPFLAGS="$CPPFLAGS $$1[_CFLAGS]"
-            LIBS="$$1[_LIBS] $LIBS"
+            $1[_CPPFLAGS]=`$PKG_CONFIG --cflags-only-I "$2"`
+            $1[_CFLAGS]=`$PKG_CONFIG --cflags-only-other "$2"`
+            MY_ADD_FLAGS([$$1[_LIBS]], [$$1[_CPPFLAGS]], [], [$$1[_CFLAGS]])
          ]
       )],
       [usable=no]
    )
    MY_IFELSE([usable], [$5], [$6])
-])
-
-
-dnl MY_ADD_FLAGS
-dnl Prepend to CPPFLAGS, CFLAGS, CXXFLAGS & LIBS new flags
-dnl $1 new LIBS
-dnl $2 new CPPFLAGS
-dnl $3 new CFLAGS
-dnl $4 new CXXFLAGS
-AC_DEFUN([MY_ADD_FLAGS],[
-   m4_ifnblank([$2], [
-      AC_MSG_NOTICE([Adding CPPFLAGS: $2])
-      CPPFLAGS="$2 $CPPFLAGS"
-   ])
-   m4_ifnblank([$3], [
-      AC_MSG_NOTICE([Adding CFLAGS: $3])
-      CFLAGS="$3 $CFLAGS"
-   ])
-   m4_ifnblank([$4], [
-      AC_MSG_NOTICE([Adding CXXFLAGS: $4])
-      CXXFLAGS="$4 $CXXFLAGS"
-   ])
-   m4_ifnblank([$1], [
-      AC_MSG_NOTICE([Adding LIBS: $1])
-      LIBS="$1 $LIBS"
-   ])
-])
-
-
-dnl MY_ADD_MODULE_FLAGS
-dnl Add to CPPFLAGS, & LIBS new flags from xxx_CFLAGS, xxx_LIBS
-dnl $1 module name
-AC_DEFUN([MY_ADD_MODULE_FLAGS],[
-   MY_ADD_FLAGS($$1[_LIBS], $$1[_CFLAGS])
 ])
 
 
@@ -196,7 +188,7 @@ AC_DEFUN([MY_MODULE_OPTION],[
       m4_bmatch([$4], [.*local-source.*], [
          AC_ARG_ENABLE(
             [local$2],
-            [AC_HELP_STRING([--enable-local$2],[force use internal source for $3])],
+            [AS_HELP_STRING([--enable-local$2],[force use internal source for $3])],
             AS_VAR_IF([enableval], [yes], [
                $1[_SYSTEM]="no"
                AC_MSG_NOTICE(Forced use of internal source for $3)
@@ -216,34 +208,36 @@ AC_DEFUN([MY_MODULE_OPTION],[
                   $1[_CFLAGS]="-I$withval/include $5"
                   $1[_LIBS]="-L$withval/lib $6"
                ],
-               [PKG_CHECK_MODULES(
+               [MY_PKG_CHECK_MODULE(
                   [$1],
                   [m4_bpatsubsts([$4],[local-source], [])],
+                  [$7],
+                  [$8],
                   [],
                   [
-                     $1[_CFLAGS]="$5"
-                     $1[_LIBS]="$6"
+                     MY_LINK_IFELSE(
+                        [for $3 usability],
+                        [$5],
+                        [$6],
+                        [$7],
+                        [$8],
+                        [
+                           MY_ADD_FLAGS([$6], [$5])
+                           usable=yes
+                        ],
+                        [usable=no]
+                     )
                   ]
                )]
             )],
-            [PKG_CHECK_MODULES(
+            [MY_PKG_CHECK_MODULE(
                [$1],
                [m4_bpatsubsts([$4],[local-source], [])],
+               [$7],
+               [$8],
                [],
                [usable=no]
             )]
-         )
-
-         AS_VAR_IF([usable], [yes],
-            MY_LINK_IFELSE(
-               [for $3 usability],
-               [$$1[_CFLAGS]],
-               [$$1[_LIBS]],
-               [$7],
-               [$8],
-               [MY_ADD_MODULE_FLAGS([$1])],
-               [usable=no]
-            )
          )
 
          m4_bmatch([$4], [.*local-source.*], [
@@ -405,7 +399,7 @@ AS_CASE([$enable_ios],
       target_release=`xcodebuild -showsdks | sed -n 's/.*iphonesimulator\(.*\)/\1/p' | sort | tail -n 1`
    ],
    dnl default
-      AC_MSG_ERROR([Unknown iOS variant \"${enable_ios}\" - use either iphone or simulator])
+      AC_MSG_ERROR([Unknown iOS variant ${enable_ios} - use either iphone or simulator])
 )
 
 
@@ -474,7 +468,7 @@ AC_SUBST(DEBUGINFOEXT, "debug")
 AC_SUBST(ARFLAGS, "rc")
 
 
-dnl C++17 is defaullt, but check for latest and greatest
+dnl C++17 is the default, but check for latest and greatest
 AC_SUBST(CPLUSPLUS_STD,"-std=c++17")
 AC_ARG_ENABLE(cpp20, AS_HELP_STRING([--enable-cpp20],[Enable C++20 build]),AC_SUBST(CPLUSPLUS_STD,"-std=c++20"))
 
@@ -487,9 +481,8 @@ case "$target_os" in
       AR="libtool"
       ARFLAGS="-static -o"
       RANLIB=
-      CPPFLAGS="-stdlib=libc++ $CPPFLAGS"
-      LDFLAGS="${LDFLAGS} -stdlib=libc++"
-      LIBS="-framework AudioToolbox -framework CoreAudio -framework SystemConfiguration -framework Foundation -lobjc $LIBS"
+      LDFLAGS="${LDFLAGS} -framework AudioToolbox -framework CoreAudio -framework SystemConfiguration -framework Foundation"
+      LIBS="-lobjc $LIBS"
    ;;
 
    cygwin* | mingw* )
@@ -516,10 +509,25 @@ case "$target_os" in
       target_os=Darwin
       target_release=`xcodebuild -showsdks | sed -n 's/.* macosx\(.*\)/\1/p' | sort | tail -n 1`
       AS_VAR_SET_IF([target_release], , AC_MSG_ERROR([Unable to determine iOS release number]))
+      AS_VAR_IF([target_cpu],[arm],[target_cpu=arm64])
 
       CPPFLAGS="-mmacosx-version-min=$target_release $CPPFLAGS"
-      LDFLAGS="-mmacosx-version-min=$target_release $LDFLAGS"
-      LIBS="-framework AVFoundation -framework CoreVideo -framework CoreMedia -framework AudioUnit $LIBS"
+      LDFLAGS="-mmacosx-version-min=$target_release -framework AVFoundation -framework CoreVideo -framework CoreMedia -framework AudioUnit $LDFLAGS"
+
+      dnl Where "port" libraries live
+      if test -d /opt/local/include; then
+        CPPFLAGS="$CPPFLAGS -I/opt/local/include"
+      fi
+      if test -d /opt/local/lib; then
+        LIBS="-L/opt/local/lib $LIBS"
+      fi
+      if test -d /opt/homebrew/include; then
+        CPPFLAGS="$CPPFLAGS -I/opt/homebrew/include"
+      fi
+      if test -d /opt/homebrew/lib; then
+        LIBS="-L/opt/homebrew/lib $LIBS"
+      fi
+
    ;;
 
    linux* | Linux* | uclibc* )
@@ -566,7 +574,7 @@ case "$target_os" in
    ;;
 
    * )
-      AC_MSG_WARN([Operating system \"$target_os\" not recognized - proceed with caution!])
+      AC_MSG_WARN([Operating system $target_os not recognized - proceed with caution!])
    ;;
 esac
 
@@ -621,6 +629,10 @@ AS_CASE([$target_cpu],
       target_64bit=1
    ],
 
+   arm*64*, [
+      target_64bit=1
+   ],
+
    arm*, [
       target_64bit=0
    ],
@@ -637,7 +649,7 @@ AS_CASE([$target_cpu],
    mips64 | mips64el, [
       target_64bit=1
    ],
-      AC_MSG_WARN([CPU \"$target_cpu\" not recognized - assuming 32 bit])
+      AC_MSG_WARN([CPU $target_cpu not recognized - assuming 32 bit])
       target_64bit=0
 )
 
@@ -662,7 +674,7 @@ AS_VAR_IF([enable_force32], [yes], [
 
 target=${target_os}_${target_cpu}
 
-AC_MSG_NOTICE([Platform: \"$target_os\" release \"$target_release\" on \"$target_cpu\"])
+AC_MSG_NOTICE([Platform: $target_os release $target_release on $target_cpu])
 
 
 dnl add additional information for the debugger to ensure the user can indeed
@@ -768,9 +780,16 @@ MY_COMPILE_IFELSE(
 
 AC_LANG_POP(C++)
 
-AC_ARG_ENABLE(deprecated, AS_HELP_STRING([--disable-deprecated],[Stop compiler warning about deprecated functions]))
-
-if test "${enable_deprecated}" != "yes" ; then
+AC_ARG_ENABLE(deprecated, AS_HELP_STRING([--enable-deprecated],[Generate compiler warnings about deprecated functions]))
+AS_VAR_IF([enable_deprecated], [yes], [
+   MY_COMPILE_IFELSE(
+      [compiler -Wdeprecated-declarations],
+      [-Werror -Wdeprecated-declarations],
+      [],
+      [],
+      [CPPFLAGS="$CPPFLAGS -Wdeprecated-declarations"]
+   )
+   ],[
    MY_COMPILE_IFELSE(
       [compiler -Wno-deprecated-declarations],
       [-Werror -Wno-deprecated-declarations],
@@ -778,7 +797,7 @@ if test "${enable_deprecated}" != "yes" ; then
       [],
       [CPPFLAGS="$CPPFLAGS -Wno-deprecated-declarations"]
    )
-fi
+])
 
 MY_COMPILE_IFELSE(
    [warnings (-Wall)],
@@ -786,6 +805,14 @@ MY_COMPILE_IFELSE(
    [],
    [],
    [CPPFLAGS="-Wall $CPPFLAGS"]
+)
+
+MY_COMPILE_IFELSE(
+   [warnings on unknown warnings (-Wno-unknown-warning-option)],
+   [-Wno-unknown-warning-option],
+   [],
+   [],
+   [CPPFLAGS="-Wno-unknown-warning-option $CPPFLAGS"]
 )
 
 
@@ -806,7 +833,7 @@ dnl Check for profiling
 
 AC_ARG_WITH(
    [profiling],
-   AC_HELP_STRING([--with-profiling], [Enable profiling: gprof, eccam, raw or manual]),
+   AS_HELP_STRING([--with-profiling],[Enable profiling: gprof, eccam, raw or manual]),
    [
       AS_CASE([$with_profiling],
          [gprof], [
@@ -848,7 +875,7 @@ AC_ARG_WITH(
          [manual], [
             AC_DEFINE(P_PROFILING, 2)
          ],
-         AC_MSG_ERROR([Unknown profile method \"$with_profiling\"])
+         AC_MSG_ERROR([Unknown profile method: $with_profiling])
       )
 
       AC_SUBST(P_PROFILING, $with_profiling)

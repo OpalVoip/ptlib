@@ -19,7 +19,7 @@ class DNSTest : public PProcess
 
   public:
     DNSTest();
-    void Main();
+    virtual void Main() override;
 };
 
 

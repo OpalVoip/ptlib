@@ -155,14 +155,14 @@ class PStandardColourConverter : public PColourConverter
       sws_freeContext(m_swsContext); // NULL is OK
     }
 
-    virtual bool SetSrcFrameSize(unsigned width, unsigned height)
+    virtual bool SetSrcFrameSize(unsigned width, unsigned height) override
     {
       sws_freeContext(m_swsContext);
       m_swsContext = NULL;
       return PColourConverter::SetSrcFrameSize(width, height);
     }
 
-    virtual bool SetDstFrameSize(unsigned width, unsigned height)
+    virtual bool SetDstFrameSize(unsigned width, unsigned height) override
     {
       sws_freeContext(m_swsContext);
       m_swsContext = NULL;

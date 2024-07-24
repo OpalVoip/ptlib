@@ -51,16 +51,16 @@ class PVideoFile : public PFile
     PVideoFile();
 
   public:
-    virtual off_t GetLength() const;
+    virtual off_t GetLength() const override;
     virtual bool SetLength(
       off_t len   // New length of file in frames.
-    );
+    ) override;
 
-    virtual off_t GetPosition() const;
+    virtual off_t GetPosition() const override;
     virtual bool SetPosition(
       off_t pos,                                       ///< New position to set.
       PFile::FilePositionOrigin origin = PFile::Start  ///< Origin for position change.
-    );
+    ) override;
 
     virtual bool WriteFrame(const void * frame);
     virtual bool ReadFrame(void * frame);
@@ -108,11 +108,11 @@ class PYUVFile : public PVideoFile
   public:
     PYUVFile();
 
-    virtual bool WriteFrame(const void * frame);
-    virtual bool ReadFrame(void * frame);
+    virtual bool WriteFrame(const void * frame) override;
+    virtual bool ReadFrame(void * frame) override;
 
   protected:
-    virtual bool InternalOpen(OpenMode mode, OpenOptions opts, PFileInfo::Permissions permissions);
+    virtual bool InternalOpen(OpenMode mode, OpenOptions opts, PFileInfo::Permissions permissions) override;
 
     bool m_y4mMode;
 };

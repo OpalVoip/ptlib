@@ -24,7 +24,7 @@
  * Contributor(s): ______________________________________.
  */
 
-#ifdef __GNUC__
+#ifdef P_USE_PRAGMA
 #pragma implementation "pstun.h"
 #endif
 
@@ -58,8 +58,6 @@
 #define IS_INDICATION(msg_type)    (((msg_type) & 0x0110) == 0x0010)
 #define IS_SUCCESS_RESP(msg_type)  (((msg_type) & 0x0110) == 0x0100)
 #define IS_ERR_RESP(msg_type)      (((msg_type) & 0x0110) == 0x0110)
-
-static atomic<bool> Crc32Table_initialised;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -813,28 +811,7 @@ bool PSTUNMessage::CheckFingerprint(bool required) const
 
 uint32_t PSTUNMessage::CalculateFingerprint(PSTUNFingerprint * fp) const
 {
-  static uint32_t Crc32Table[256];
-
-  if (!Crc32Table_initialised.exchange(true)) {
-    for (PINDEX i = 0; i < PARRAYSIZE(Crc32Table); ++i) {
-      uint32_t c = i;
-      for (PINDEX j = 0; j < 8; ++j) {
-        if (c & 1)
-          c = 0xEDB88320 ^ (c >> 1);
-        else
-          c >>= 1;
-      }
-      Crc32Table[i] = c;
-    }
-  }
-
-  // calculate hash up to, but not including, FINGERPRINT attribute
-  DWORD c = 0xFFFFFFFF;
-  const BYTE * ptr = GetPointer();
-  while (ptr < (BYTE *)fp)
-    c = Crc32Table[(c ^ *ptr++) & 0xFF] ^ (c >> 8);
-
-  return c ^ 0xffffffff ^ 0x5354554e;
+  return PCRC32::Calculate(GetPointer(), reinterpret_cast<const BYTE *>(fp) - GetPointer()) ^ 0x5354554e;
 }
 
 

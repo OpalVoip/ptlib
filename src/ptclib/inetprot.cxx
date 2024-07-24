@@ -24,7 +24,7 @@
  * Contributor(s): ______________________________________.
  */
 
-#ifdef __GNUC__
+#ifdef P_USE_PRAGMA
 #pragma implementation "inetprot.h"
 #pragma implementation "mime.h"
 #endif
@@ -675,6 +675,9 @@ bool PMIMEInfo::AddMIME(const PString & line)
 
 bool PMIMEInfo::InternalAddMIME(const PString & fieldName, const PString & fieldValue)
 {
+  if (fieldValue.empty())
+    return false;
+
   PString * str = GetAt(fieldName);
   if (str == NULL)
     return SetAt(fieldName, fieldValue);

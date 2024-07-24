@@ -397,8 +397,8 @@ bool PIpAccessControlList::LoadHostsAccess(const char * daemonName)
   else
     daemon = PProcess::Current().GetName();
 
-  return InternalLoadHostsAccess(daemon, "hosts.allow", true) &  // Really is a single &
-         InternalLoadHostsAccess(daemon, "hosts.deny", false);
+  bool done = InternalLoadHostsAccess(daemon, "hosts.allow", true);
+  return InternalLoadHostsAccess(daemon, "hosts.deny", false) && done;
 }
 
 #ifdef P_CONFIG_LIST

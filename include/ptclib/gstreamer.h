@@ -43,15 +43,11 @@
 
 
 /// GLib object base wrapper class.
-class PGBaseObject : public PObject
+class PGBaseObject : public PObject, PNonCopyable
 {
     PCLASSINFO(PGBaseObject, PObject)
   protected:
     PGBaseObject();
-
-  private:
-    PGBaseObject(const PGBaseObject &) { }
-    void operator=(const PGBaseObject &) { }
 
   public:
     ~PGBaseObject();
@@ -89,10 +85,10 @@ class PGObject : public PGBaseObject
     ~PGObject() { SetNULL(); }
 
   protected:
-    virtual void Unreference();
+    virtual void Unreference() override;
 
   public:
-    virtual bool IsValid() const;
+    virtual bool IsValid() const override;
 
     bool Set(
       const char * attribute,
@@ -146,10 +142,10 @@ class PGstMiniObject : public PGBaseObject
   public:
     ~PGstMiniObject() { SetNULL(); }
 
-    virtual bool IsValid() const;
+    virtual bool IsValid() const override;
 
   protected:
-    virtual void Unreference();
+    virtual void Unreference() override;
 };
 
 
@@ -270,7 +266,7 @@ class PGstBaseIterator : public PGBaseObject
   public:
     ~PGstBaseIterator() { SetNULL(); }
 
-    virtual bool Attach(void * object);
+    virtual bool Attach(void * object) override;
 
     P_DECLARE_TRACED_ENUM(Result,
       Done,
@@ -287,7 +283,7 @@ class PGstBaseIterator : public PGBaseObject
   protected:
     PGstBaseIterator(PGBaseObject & valueRef);
 
-    virtual void Unreference();
+    virtual void Unreference() override;
     Result InternalNext();
 
     PGBaseObject & m_valueRef;
@@ -410,7 +406,7 @@ class PGstMessage : public PGstMiniObject
 
     PString GetType() const;
 
-    void PrintOn(ostream & strm) const;
+    void PrintOn(ostream & strm) const override;
 };
 
 

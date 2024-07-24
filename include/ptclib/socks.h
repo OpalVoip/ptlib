@@ -59,13 +59,13 @@ class PSocksProtocol
       uint16_t port
     );
 
-    /** Set the username and password for the SOCKS server authentication. This
+    /** Set the username and passuint16_t for the SOCKS server authentication. This
        is for the cleartext authentication only, GSSAPI, Kerberos etc is not
        yet supported.
      */
     void SetAuthentication(
       const PString & username,
-      const PString & password
+      const PString & passuint16_t
     );
 
   protected:
@@ -85,7 +85,7 @@ class PSocksProtocol
     PString            serverHost;
     uint16_t               serverPort;
     PString            authenticationUsername;
-    PString            authenticationPassword;
+    PString            authenticationPassuint16_t;
     PIPSocket::Address remoteAddress;
     uint16_t               remotePort;
     PIPSocket::Address localAddress;
@@ -118,10 +118,10 @@ class PSocksSocket : public PTCPSocket, public PSocksProtocol
      */
     virtual bool Connect(
       const PString & address   ///< Address of remote machine to connect to.
-    );
+    ) override;
     virtual bool Connect(
       const Address & addr      ///< Address of remote machine to connect to.
-    );
+    ) override;
 
     /** Listen on a socket for a remote host on the specified port number. This
        may be used for server based applications. A "connecting" socket begins
@@ -142,7 +142,7 @@ class PSocksSocket : public PTCPSocket, public PSocksProtocol
       unsigned queueSize = 5,  ///< Number of pending accepts that may be queued.
       uint16_t port = 0,           ///< Port number to use for the connection.
       Reusability reuse = AddressIsExclusive ///< Can/Cant listen more than once.
-    );
+    ) override;
 
     /** Open a socket to a remote host on the specified port number. This is an
        "accepting" socket. When a "listening" socket has a pending connection
@@ -166,7 +166,7 @@ class PSocksSocket : public PTCPSocket, public PSocksProtocol
     bool Accept();
     virtual bool Accept(
       PSocket & socket          ///< Listening socket making the connection.
-    );
+    ) override;
 
 
   // Overrides from class PIPSocket.
@@ -199,11 +199,11 @@ class PSocksSocket : public PTCPSocket, public PSocksProtocol
 
 
   protected:
-    virtual void SetErrorCodes(PChannel::Errors errCode, int osErr);
+    virtual void SetErrorCodes(PChannel::Errors errCode, int osErr) override;
     intptr_t TransferHandle(PSocksSocket & destination);
 
   private:
-    virtual bool Connect(uint16_t localPort, const Address & addr);
+    virtual bool Connect(uint16_t localPort, const Address & addr) override;
 };
 
 
@@ -235,17 +235,17 @@ class PSocks4Socket : public PSocksSocket
        @return
        pointer to new copy of the class instance.
      */
-    virtual PObject * Clone() const;
+    virtual PObject * Clone() const override;
 
 
   protected:
     virtual bool SendSocksCommand(PTCPSocket & socket,
                                   uint8_t command,
                                   const char * hostname,
-                                  PIPSocket::Address addr);
+                                  PIPSocket::Address addr) override;
     virtual bool ReceiveSocksResponse(PTCPSocket & socket,
                                       PIPSocket::Address & addr,
-                                      uint16_t & port);
+                                      uint16_t & port) override;
 };
 
 
@@ -277,7 +277,7 @@ class PSocks5Socket : public PSocksSocket
        @return
        pointer to new copy of the class instance.
      */
-    virtual PObject * Clone() const;
+    virtual PObject * Clone() const override;
 };
 
 
@@ -310,7 +310,7 @@ class PSocksUDPSocket : public PUDPSocket, public PSocksProtocol
        @return
        pointer to new copy of the class instance.
      */
-    virtual PObject * Clone() const;
+    virtual PObject * Clone() const override;
 
 
   // Overrides from class PSocket.
@@ -327,10 +327,10 @@ class PSocksUDPSocket : public PUDPSocket, public PSocksProtocol
      */
     virtual bool Connect(
       const PString & address   // Address of remote machine to connect to.
-    );
+    ) override;
     virtual bool Connect(
       const Address & addr      // Address of remote machine to connect to.
-    );
+    ) override;
 
     /** Listen on a socket for a remote host on the specified port number. This
        may be used for server based applications. A "connecting" socket begins
@@ -351,7 +351,7 @@ class PSocksUDPSocket : public PUDPSocket, public PSocksProtocol
       unsigned queueSize = 5,  // Number of pending accepts that may be queued.
       uint16_t port = 0,           // Port number to use for the connection.
       Reusability reuse = AddressIsExclusive // Can/Cant listen more than once.
-    );
+    ) override;
 
   // Overrides from class PIPSocket.
     /** Get the Internet Protocol address for the local host.
@@ -393,7 +393,7 @@ class PSocksUDPSocket : public PUDPSocket, public PSocksProtocol
       PINDEX len,     // Number of bytes pointed to by <CODE>buf</CODE>.
       Address & addr, // Address from which the datagram was received.
       uint16_t & port     // Port from which the datagram was received.
-    );
+    ) override;
 
     /** Write a datagram to a remote computer.
 
@@ -405,17 +405,17 @@ class PSocksUDPSocket : public PUDPSocket, public PSocksProtocol
       PINDEX len,         // Number of bytes pointed to by <CODE>buf</CODE>.
       const Address & addr, // Address to which the datagram is sent.
       uint16_t port           // Port to which the datagram is sent.
-    );
+    ) override;
 
 
   protected:
-    virtual void SetErrorCodes(PChannel::Errors errCode, int osErr);
+    virtual void SetErrorCodes(PChannel::Errors errCode, int osErr) override;
 
     PTCPSocket socksControl;
     Address    serverAddress;
 
   private:
-    virtual bool Connect(uint16_t localPort, const Address & addr);
+    virtual bool Connect(uint16_t localPort, const Address & addr) override;
 };
 
 

@@ -36,7 +36,7 @@ class ODBCtest : public PProcess
 {
   PCLASSINFO(ODBCtest, PProcess)
 public:
-  void Main();
+  virtual void Main() override;
 };
 
 PCREATE_PROCESS(ODBCtest)

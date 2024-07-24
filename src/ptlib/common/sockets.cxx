@@ -288,10 +288,10 @@ class PIPCacheKey : public PObject
     PIPCacheKey(const PIPSocket::Address & a)
       { addr = a; }
 
-    PObject * Clone() const
+    PObject * Clone() const override
       { return new PIPCacheKey(*this); }
 
-    PINDEX HashFunction() const
+    PINDEX HashFunction() const override
       { return (addr[1] + addr[2] + addr[3])%41; }
 
   private:
@@ -922,6 +922,7 @@ bool PSocket::ConvertOSError(intptr_t libcReturnValue, ErrorGroup group)
     case ECONNREFUSED :
     case EHOSTUNREACH :
     case ENETUNREACH :
+    case ENETRESET :
       SetErrorValues(Unavailable, err, group);
       break;
 
@@ -2821,8 +2822,14 @@ bool PIPSocket::PortRange::Connect(PIPSocket & socket, const Address & addr, con
   do {
     if (socket.Connect(binding, nextPort, addr))
       return true;
-    if (socket.GetErrorNumber() != EADDRINUSE && socket.GetErrorNumber() != EADDRNOTAVAIL)
-      return false;
+    switch (socket.GetErrorNumber()) {
+      case EADDRINUSE:
+      case EADDRNOTAVAIL:
+      case EACCES:
+        break;
+      default:
+        return false;
+    }
     PTRACE(5, &socket, PTraceModule(), "Could not connect using local port " << nextPort);
     if (++nextPort >= maxPort)
       nextPort = basePort;

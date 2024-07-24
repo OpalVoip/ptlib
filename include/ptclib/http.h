@@ -43,6 +43,8 @@
 
 
 #include <ptclib/html.h>
+#include <ptclib/pssl.h>
+
 
 //////////////////////////////////////////////////////////////////////////////
 // PHTTPSpace
@@ -144,7 +146,7 @@ class PHTTPSpace : public PContainer
     } * root;
 
   private:
-    bool SetSize(PINDEX) { return false; }
+    bool SetSize(PINDEX) override { return false; }
 };
 
 #ifdef TRACE
@@ -180,6 +182,7 @@ class PHTTP : public PInternetProtocol
       TransportConnectError,       ///< Could not connect transport
       TransportWriteError,         ///< Could not write transport
       TransportReadError,          ///< Could not read transport
+      ProxyAuthOnCONNECT,          ///< Proxy authenication on CONNECT command
       Continue = 100,              ///< 100 - Continue
       SwitchingProtocols,          ///< 101 - upgrade allowed
       RequestOK = 200,             ///< 200 - request has succeeded
@@ -258,7 +261,51 @@ class PHTTP : public PInternetProtocol
 
     static const PCaselessString & FormUrlEncoded();
 
-  protected:
+    enum SelectProxyResult
+    {
+      e_NoProxy,
+      e_BadProxy,
+      e_HasProxy
+    };
+
+    static const PString & HttpProxyKey();
+    static const PString & HttpsProxyKey();
+    static const PString & NoProxyKey();
+
+    ///  Proxy information
+    struct Proxies
+    {
+      PString m_httpProxy;
+      PString m_httpsProxy;
+      PString m_noProxy;
+
+      Proxies() { }
+      Proxies(const PString & httpProxy, const PString & httpsProxy, const PString & noProxy)
+        : m_httpProxy(httpProxy)
+        , m_httpsProxy(httpsProxy)
+        , m_noProxy(noProxy)
+      { }
+      /**Get active proxy from config or environment variables.
+        */
+      Proxies(const PConfig & cfg);
+      /**Get active proxy from options dictionary.
+        */
+      Proxies(const PStringOptions & options);
+
+      /// Set string options to pxoxy values
+      void ToOptions(PStringToString & options) const;
+
+      /// Return true if no proxies set
+      bool IsEmpty() const { return m_httpProxy.empty() && m_httpsProxy.empty(); }
+
+      /// Select the proxy given the destination
+      SelectProxyResult Select(
+        PURL & proxyURL,
+        const PURL & destURL
+      ) const;
+    };
+
+protected:
     /** Create a TCP/IP HTTP protocol channel.
      */
     PHTTP();
@@ -279,7 +326,47 @@ class PHTTP : public PInternetProtocol
      */
     virtual PINDEX ParseResponse(
       const PString & line    ///< Input response line to be parsed
-    );
+    ) override;
+};
+
+
+/** Represent cookies recieved via HTTP as per RFC6265
+ */
+class PHTTPCookies
+{
+  public:
+    PHTTPCookies() { }
+
+    bool Parse(const PString & cookies, const PURL & url, const PTime & now = PTime());
+    bool Parse(const PMIMEInfo & mime, const PURL & url, const PTime & now = PTime());
+
+    PString GetCookie(const PURL & url, const PTime & now = PTime()) const;
+    void AddCookie(PMIMEInfo & mime, const PURL & url, const PTime & now = PTime()) const;
+
+    PString AsString() const;
+    friend ostream & operator<<(ostream & strm, const PHTTPCookies & cookies) { return strm << cookies.AsString(); }
+
+    void Clear() { m_cookies.clear(); }
+
+  protected:
+    // as per RFC6265
+    struct Info
+    {
+      Info();
+      bool operator<(const Info & other) const;
+      PString m_name;
+      PString m_value;
+      PTime   m_expiryTime;
+      PString m_domain;
+      PString m_path;
+      bool    m_peristent;
+      bool    m_hostOnly;
+      bool    m_secureOnly;
+      bool    m_httpOnly;
+      PTime   m_creationTime;
+      mutable PTime m_lastAccessTime;
+    };
+    std::set<Info> m_cookies;
 };
 
 
@@ -314,7 +401,7 @@ class PHTTPClientAuthentication : public PObject
 
     virtual Comparison Compare(
       const PObject & other
-    ) const;
+    ) const override;
 
     virtual bool Parse(
       const PString & auth,
@@ -380,16 +467,16 @@ class PHTTPClientBasicAuthentication : public PHTTPClientAuthentication
 
     virtual Comparison Compare(
       const PObject & other
-    ) const;
+    ) const override;
 
     virtual bool Parse(
       const PString & auth,
       bool proxy
-    );
+    ) override;
 
     virtual bool Authorise(
       AuthObject & pdu
-    ) const;
+    ) const override;
 };
 
 ///////////////////////////////////////////////////////////////////////
@@ -406,19 +493,19 @@ class PHTTPClientDigestAuthentication : public PHTTPClientAuthentication
 
     virtual Comparison Compare(
       const PObject & other
-    ) const;
+    ) const override;
 
     virtual bool Parse(
       const PString & auth,
       bool proxy
-    );
+    ) override;
 
     virtual bool Authorise(
       AuthObject & pdu
-    ) const;
+    ) const override;
 
-    virtual PString GetAuthRealm() const         { return authRealm; }
-    virtual void SetAuthRealm(const PString & r) { authRealm = r; }
+    virtual PString GetAuthRealm() const override         { return authRealm; }
+    virtual void SetAuthRealm(const PString & r) override { authRealm = r; }
 
     enum Algorithm {
       Algorithm_MD5,
@@ -466,7 +553,7 @@ class PHTTPClientDigestAuthentication : public PHTTPClientAuthentication
          PError << "HTTP conection failed." << endl;
       </CODE></PRE>
  */
-class PHTTPClient : public PHTTP
+class PHTTPClient : public PHTTP, public PSSLCertificateInfo
 {
   PCLASSINFO(PHTTPClient, PHTTP)
 
@@ -634,13 +721,26 @@ class PHTTPClient : public PHTTP
       const PStringToString & data  ///< Information posted to the HTTP server.
     );
 
-	/** Post the "application/x-www-form-urlencoded" data specified to the URL.
+    /** Post the "application/x-www-form-urlencoded" data specified to the URL.
         The body of the reply is returned.
 
         @return true if document is being transferred.
      */
     bool PostData(
       const PURL & url,              ///< Universal Resource Locator for document.
+      const PStringToString & data,  ///< Information posted to the HTTP server.
+      PMIMEInfo & replyMIME,         ///< MIME info in response
+      PString & replyBody            ///< Body of response
+    );
+
+    /** Post the "application/x-www-form-urlencoded" data specified to the URL.
+        The body of the reply is returned.
+
+        @return true if document is being transferred.
+     */
+    bool PostData(
+      const PURL & url,              ///< Universal Resource Locator for document.
+      PMIMEInfo & outMIME,           ///< MIME info in request
       const PStringToString & data,  ///< Information posted to the HTTP server.
       PMIMEInfo & replyMIME,         ///< MIME info in response
       PString & replyBody            ///< Body of response
@@ -732,20 +832,32 @@ class PHTTPClient : public PHTTP
       const PURL & url        ///< Universal Resource Locator for document.
     );
 
-    /** Set authentication paramaters to be use for retreiving documents
+    /**Set proxy for connections.
+      */
+    void SetProxies(
+      const Proxies & proxies ///< Proxy in host:port form
+    ) { m_proxies = proxies; }
+
+    /**Get proxy for connections.
+      */
+    const Proxies & GetProxies() const { return m_proxies; }
+
+    /**Set cookies for connections.
+      */
+    void SetCookies(
+      const PHTTPCookies & cookies ///< Cookies
+    ) { m_cookies = cookies; }
+
+    /**Get proxy for connections.
+      */
+    const PHTTPCookies & GetCookies() const { return m_cookies; }
+
+/** Set authentication paramaters to be use for retreiving documents
     */
     void SetAuthenticationInfo(
-      const PString & userName,
-      const PString & password
+      const PString & username,   ///< Authentication user (non-proxy)
+      const PString & password    ///< Authentication password (non-proxy)
     );
-
-#if P_SSL
-    void SetSSLCredentials(
-      const PString & authority,
-      const PString & certificate,
-      const PString & privateKey
-    );
-#endif
 
     /// Set persistent connection mode
     void SetPersistent(
@@ -767,18 +879,21 @@ class PHTTPClient : public PHTTP
     static PINDEX MaxTraceContentSize;
 #endif
 
+    virtual SelectProxyResult SelectProxy(const PURL & url, PURL & proxy);
+    virtual bool HandleAuthorisation(bool isProxy, PMIMEInfo & replyMIME);
+
   protected:
-    PString  m_userAgentName;
-    bool     m_persist;
-    unsigned m_maxRedirects;
-    PString  m_userName;
-    PString  m_password;
-#if P_SSL
-    PString  m_authority;    // Directory, file or data
-    PString  m_certificate;  // File or data
-    PString  m_privateKey;   // File or data
-#endif
+    PString      m_userAgentName;
+    bool         m_persist;
+    unsigned     m_maxRedirects;
+    Proxies      m_proxies;
+    PHTTPCookies m_cookies;
+    struct {
+      PString  m_userName;
+      PString  m_password;
+    } m_auth[2];
     PHTTPClientAuthentication * m_authentication;
+    PURL::UrlFormat m_commandUrlFormat;
 };
 
 
@@ -788,7 +903,7 @@ class PHTTPClient : public PHTTP
 /**A class for a pool of PHTTPClient instances/threads for efficient high
    volume access. e.g. for REST API access.
  */
-class PHTTPClientPool : public PObject
+class PHTTPClientPool : public PObject, public PSSLCertificateInfo
 {
     PCLASSINFO(PHTTPClientPool, PObject);
   public:
@@ -806,14 +921,6 @@ class PHTTPClientPool : public PObject
       , m_readTimeout(readTimeout)
     { }
     ~PHTTPClientPool() { ShutDown(); }
-
-#if P_SSL
-    void SetSSLCredentials(
-      const PString & authority,
-      const PString & certificate,
-      const PString & privateKey
-    );
-#endif
 
     void ShutDown();
 
@@ -868,11 +975,6 @@ class PHTTPClientPool : public PObject
     PTimeInterval m_timeToLive;
     PTimeInterval m_connectTimeout;
     PTimeInterval m_readTimeout;
-#if P_SSL
-    PString  m_authority;    // Directory, file or data
-    PString  m_certificate;  // File or data
-    PString  m_privateKey;   // File or data
-#endif
 
     PDECLARE_MUTEX(m_mutex);
 
@@ -905,7 +1007,7 @@ class PHTTPClientPool : public PObject
     Note the WebSocket handshake is assumed to have already occurred.
 */
 
-class PWebSocket : public PIndirectChannel
+class PWebSocket : public PIndirectChannel, public PSSLCertificateInfo
 {
     PCLASSINFO(PWebSocket, PIndirectChannel)
   public:
@@ -922,7 +1024,7 @@ class PWebSocket : public PIndirectChannel
     virtual bool Read(
       void * buf,   ///< Pointer to a block of memory to receive the read bytes.
       PINDEX len    ///< Maximum number of bytes to read into the buffer.
-    );
+    ) override;
 
     /** Low level write to the channel.
         This function will always write a single WebSocket "frame".
@@ -938,7 +1040,7 @@ class PWebSocket : public PIndirectChannel
     virtual bool Write(
       const void * buf, ///< Pointer to a block of memory to write.
       PINDEX len        ///< Number of bytes to write.
-    );
+    ) override;
 
 
     /** Connect to the WebSocket.
@@ -946,7 +1048,7 @@ class PWebSocket : public PIndirectChannel
       */
     virtual bool Connect(
       const PURL & url,                  ///< Base URL for connection ("ws:" or "wss:")
-      const PStringArray & protocols,    ///< WebSocket sub-protocol to use.
+      const PStringArray & protocols = PStringArray(),    ///< WebSocket sub-protocol to use.
       PString * selectedProtocol = NULL  ///< Selected protocol by server
     );
 
@@ -984,17 +1086,16 @@ class PWebSocket : public PIndirectChannel
       bool txt = true
     ) { m_binaryWrite = !txt; }
 
-    /// Set security credentials
-    void SetSSLCredentials(
-      const PString & authority,    ///< Authority directory/filename/data
-      const PString & certificate,  ///< Certificate filename/data
-      const PString & privateKey    ///< Private key filename/data
-    );
-
   ///  Set maximum possible frame size. Defaults to 1GB.
     void SetMaxFrameSize(
       uint64_t maxFrameSize  ///< New maximum size.
     ) { maxFrameSize = m_maxFrameSize; }
+
+    /**Set proxy for connections.
+      */
+    void SetProxies(
+      const PHTTP::Proxies & proxies ///< Proxy in host:port form
+    ) { m_proxies = proxies; }
 
   protected:
     enum OpCodes
@@ -1027,6 +1128,8 @@ class PWebSocket : public PIndirectChannel
     bool InternalWrite(OpCodes  opCode, bool fragmenting, const void * data, PINDEX len);
     bool WriteMasked(const uint32_t * data, PINDEX len, uint32_t mask);
 
+    PHTTP::Proxies m_proxies;
+
     bool     m_client;
     bool     m_fragmentingWrite;
     bool     m_binaryWrite;
@@ -1038,10 +1141,6 @@ class PWebSocket : public PIndirectChannel
     bool     m_fragmentedRead;
 
     bool     m_recursiveRead;
-
-    PString  m_authority;    // Directory, file or data
-    PString  m_certificate;  // File or data
-    PString  m_privateKey;   // File or data
 };
 
 #endif // P_SSL
@@ -1056,11 +1155,9 @@ class PHTTPServer;
    Protocol request. This information is required by handler functions on
    <code>PHTTPResource</code> descendant classes to manage the connection correctly.
 */
-class PHTTPConnectionInfo : public PObject
+class PHTTPConnectionInfo : public PObject, PNonCopyable
 {
   PCLASSINFO(PHTTPConnectionInfo, PObject)
-  private:
-    void operator=(const PHTTPConnectionInfo &) { }
   public:
     PHTTPConnectionInfo();
     PHTTPConnectionInfo(const PHTTPConnectionInfo &);
@@ -1700,7 +1797,7 @@ class PHTTPSimpleAuth : public PHTTPAuthority
        @return
        pointer to new copy of the class instance.
      */
-    virtual PObject * Clone() const;
+    virtual PObject * Clone() const override;
 
 
   // Overrides from class PHTTPAuthority.
@@ -1712,7 +1809,7 @@ class PHTTPSimpleAuth : public PHTTPAuthority
      */
     virtual PString GetRealm(
       const PHTTPRequest & request   ///< Request information.
-    ) const;
+    ) const override;
 
     /** Validate the user and password provided by the remote HTTP client for
        the realm specified by the class instance.
@@ -1723,7 +1820,7 @@ class PHTTPSimpleAuth : public PHTTPAuthority
     virtual bool Validate(
       const PHTTPRequest & request,  ///< Request information.
       const PString & authInfo       ///< Authority information string.
-    ) const;
+    ) const override;
 
     /** Determine if the authorisation is to be applied. This could be used to
        distinguish between net requiring authorisation and requiring autorisation
@@ -1734,7 +1831,7 @@ class PHTTPSimpleAuth : public PHTTPAuthority
        @return
        true if the authorisation in the realm is to be applied.
      */
-    virtual bool IsActive() const;
+    virtual bool IsActive() const override;
 
     /** Get the realm or name space for the user authorisation name and
        password as required by the basic authorisation system of HTTP/1.0.
@@ -1795,7 +1892,7 @@ class PHTTPMultiSimpAuth : public PHTTPAuthority
        @return
        pointer to new copy of the class instance.
      */
-    virtual PObject * Clone() const;
+    virtual PObject * Clone() const override;
 
 
   // Overrides from class PHTTPAuthority.
@@ -1807,7 +1904,7 @@ class PHTTPMultiSimpAuth : public PHTTPAuthority
      */
     virtual PString GetRealm(
       const PHTTPRequest & request   ///< Request information.
-    ) const;
+    ) const override;
 
     /** Validate the user and password provided by the remote HTTP client for
        the realm specified by the class instance.
@@ -1818,7 +1915,7 @@ class PHTTPMultiSimpAuth : public PHTTPAuthority
     virtual bool Validate(
       const PHTTPRequest & request,  ///< Request information.
       const PString & authInfo       ///< Authority information string.
-    ) const;
+    ) const override;
 
     /** Determine if the authirisation is to be applied. This could be used to
        distinguish between net requiring authorisation and requiring autorisation
@@ -1829,7 +1926,7 @@ class PHTTPMultiSimpAuth : public PHTTPAuthority
        @return
        true if the authorisation in the realm is to be applied.
      */
-    virtual bool IsActive() const;
+    virtual bool IsActive() const override;
 
     /** Get the user name allocated to this simple authorisation.
 
@@ -2267,7 +2364,7 @@ class PHTTPString : public PHTTPResource
      */
     virtual bool LoadHeaders(
       PHTTPRequest & request    // Information on this request.
-    );
+    ) override;
 
     /** Get a block of text data (eg HTML) that the resource contains.
 
@@ -2279,7 +2376,7 @@ class PHTTPString : public PHTTPResource
      */
     virtual PString LoadText(
       PHTTPRequest & request    // Information on this request.
-    );
+    ) override;
 
   // New functions for class.
     /** Get the string for this resource.
@@ -2358,7 +2455,7 @@ class PHTTPFile : public PHTTPResource
     virtual PHTTPRequest * CreateRequest(
       PHTTPServer & server,                   ///< socket used for request
       const PHTTPConnectionInfo & connectInfo  ///< HTTP connection information
-    );
+    ) override;
 
     /** Get the headers for block of data (eg HTML) that the resource contains.
        This will fill in all the fields of the <CODE>outMIME</CODE> parameter
@@ -2369,7 +2466,7 @@ class PHTTPFile : public PHTTPResource
      */
     virtual bool LoadHeaders(
       PHTTPRequest & request    // Information on this request.
-    );
+    ) override;
 
     /** Get a block of data that the resource contains.
 
@@ -2379,7 +2476,7 @@ class PHTTPFile : public PHTTPResource
     virtual bool LoadData(
       PHTTPRequest & request,    // Information on this request.
       PCharArray & data          // Data used in reply.
-    );
+    ) override;
 
     /** Get a block of text data (eg HTML) that the resource contains.
 
@@ -2391,7 +2488,7 @@ class PHTTPFile : public PHTTPResource
      */
     virtual PString LoadText(
       PHTTPRequest & request    // Information on this request.
-    );
+    ) override;
 
 
   protected:
@@ -2481,7 +2578,7 @@ class PHTTPTailFile : public PHTTPFile
      */
     virtual bool LoadHeaders(
       PHTTPRequest & request    // Information on this request.
-    );
+    ) override;
 
     /** Get a block of data that the resource contains.
 
@@ -2491,7 +2588,7 @@ class PHTTPTailFile : public PHTTPFile
     virtual bool LoadData(
       PHTTPRequest & request,    // Information on this request.
       PCharArray & data          // Data used in reply.
-    );
+    ) override;
 };
 
 
@@ -2536,7 +2633,7 @@ class PHTTPDirectory : public PHTTPFile
     virtual PHTTPRequest * CreateRequest(
       PHTTPServer & server,                   ///< socket used for request
       const PHTTPConnectionInfo & connectInfo  ///< HTTP connection information
-    );
+    ) override;
 
     /** Get the headers for block of data (eg HTML) that the resource contains.
        This will fill in all the fields of the <CODE>outMIME</CODE> parameter
@@ -2547,7 +2644,7 @@ class PHTTPDirectory : public PHTTPFile
      */
     virtual bool LoadHeaders(
       PHTTPRequest & request    ///< Information on this request.
-    );
+    ) override;
 
     /** Get a block of text data (eg HTML) that the resource contains.
 
@@ -2559,7 +2656,7 @@ class PHTTPDirectory : public PHTTPFile
      */
     virtual PString LoadText(
       PHTTPRequest & request    ///< Information on this request.
-    );
+    ) override;
 
     /** Enable or disable access control using .access files. A directory tree containing
        a _access file will require authorisation to allow access. This file has 
@@ -2580,7 +2677,7 @@ class PHTTPDirectory : public PHTTPFile
       PHTTPServer & server,               // Server to send response to.
       const PHTTPRequest & request,       // Information on this request.
       const PHTTPConnectionInfo & conInfo // Information on the connection
-    );
+    ) override;
 
     bool FindAuthorisations(const PDirectory & dir, PString & realm, PStringToString & authorisations);
 

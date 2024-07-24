@@ -35,203 +35,9 @@
 #endif
 
 #include <vector>
+#include <span>
 
 #include <ptlib/contain.h>
-
-///////////////////////////////////////////////////////////////////////////////
-// The abstract array class
-
-/**This class contains a variable length array of arbitrary memory blocks.
-   These can be anything from individual bytes to large structures. Note that
-   that does \b not include class objects that require construction or
-   destruction. Elements in this array will not execute the contructors or
-   destructors of objects.
-
-   An abstract array consists of a linear block of memory sufficient to hold
-   PContainer::GetSize() elements of <code>elementSize</code> bytes
-   each. The memory block itself will automatically be resized when required
-   and freed when no more references to it are present.
- */
-class PAbstractArray : public PContainer
-{
-    PCONTAINERINFO(PAbstractArray, PContainer);
-  public:
-  /**@name Construction */
-  //@{
-    /**Create a new dynamic array of \p initalSize elements of
-       \p elementSizeInBytes bytes each. The array memory is
-       initialised to zeros.
-     */
-    PAbstractArray(
-      PINDEX elementSizeInBytes,  ///< Size of each element in the array. This must be > 0 or the
-                                  ///< constructor will assert.
-      PINDEX initialSize = 0      ///< Number of elements to allocate initially.
-    );
-
-    /**Create a new dynamic array of \p bufferSizeInElements
-       elements of \p elementSizeInBytes bytes each. The contents of
-       the memory pointed to by buffer is then used to initialise the newly
-       allocated array.
-
-       If the \p dynamicAllocation parameter is <code>false</code> then the
-       pointer is used directly by the container. It will not be copied to a
-       dynamically allocated buffer. If the <code>SetSize()</code> function is used to
-       change the size of the buffer, the object will be converted to a
-       dynamic form with the contents of the static buffer copied to the
-       allocated buffer.
-     */
-    PAbstractArray(
-      PINDEX elementSizeInBytes,   ///< Size of each element in the array. This must be > 0 or the
-                                   ///< constructor will assert.
-      const void *buffer,          ///< Pointer to an array of elements.
-      PINDEX bufferSizeInElements, ///< Number of elements pointed to by buffer.
-      bool dynamicAllocation   ///< Buffer is copied and dynamically allocated.
-    );
-  //@}
-
-  /**@name Overrides from class PObject */
-  //@{
-    /**Output the contents of the object to the stream. The exact output is
-       dependent on the exact semantics of the descendent class. This is
-       primarily used by the standard <code>operator<<</code> function.
-
-       The default behaviour is to print the class name.
-     */
-    virtual void PrintOn(
-      ostream &strm   // Stream to print the object into.
-    ) const;
-
-    /**Input the contents of the object from the stream. The exact input is
-       dependent on the exact semantics of the descendent class. This is
-       primarily used by the standard <code>operator>></code> function.
-
-       The default behaviour is to do nothing.
-     */
-    virtual void ReadFrom(
-      istream &strm   // Stream to read the objects contents from.
-    );
-
-    /**Get the relative rank of the two arrays. The following algorithm is
-       employed for the comparison:
-          \li <code>EqualTo</code>        if the two array memory blocks are identical in
-                              length and contents.
-          \li <code>LessThan</code>       if the array length is less than the
-                              \p obj parameters array length.
-          \li <code>GreaterThan</code>    if the array length is greater than the
-                              \p obj parameters array length.
-
-
-       If the array sizes are identical then the memcmp()
-       function is used to rank the two arrays.
-
-       @return
-       Comparison of the two objects, <code>EqualTo</code> for same,
-       <code>LessThan</code> for \p obj logically less than the
-       object and <code>GreaterThan</code> for \p obj logically
-       greater than the object.
-     */
-    virtual Comparison Compare(
-      const PObject & obj   ///< Other <code>PAbstractArray</code> to compare against.
-    ) const;
-  //@}
-
-  /**@name Overrides from class PContainer */
-  //@{
-    /**Set the size of the array in elements. A new array may be allocated to
-       accomodate the new number of elements. If the array increases in size
-       then the new bytes are initialised to zero. If the array is made smaller
-       then the data beyond the new size is lost.
-
-       @return
-       <code>true</code> if the memory for the array was allocated successfully.
-     */
-    virtual bool SetSize(
-      PINDEX newSize  ///< New size of the array in elements.
-    );
-  //@}
-
-  /**@name New functions for class */
-  //@{
-    /**Attach a pointer to a static block to the base array type. The pointer
-       is used directly and will not be copied to a dynamically allocated
-       buffer. If the <code>SetSize()</code> function is used to change the size of the
-       buffer, the object will be converted to a dynamic form with the
-       contents of the static buffer copied to the allocated buffer.
-
-       Any dynamically allocated buffer will be freed.
-     */
-    void Attach(
-      const void *buffer, ///< Pointer to an array of elements.
-      PINDEX bufferSize   ///< Number of elements pointed to by buffer.
-    );
-
-    /**Get a pointer to the internal array and assure that it is of at least
-       the specified size. This is useful when the array contents are being
-       set by some external or system function eg file read.
-
-       It is unsafe to assume that the pointer is valid for very long after
-       return from this function. The array may be resized or otherwise
-       changed and the pointer returned invalidated. It should be used for
-       simple calls to atomic functions, or very careful examination of the
-       program logic must be performed.
-
-       @return
-       Pointer to the array memory.
-     */
-    void * GetPointer(
-      PINDEX minSize = 1  ///< Minimum size the array must be.
-    );
-    const void * GetPointer() const { return m_theArray; }
-
-    /// Retrun the length in bytes for the array
-    virtual PINDEX GetLength() const;
-
-    /**Concatenate one array to the end of this array.
-       This function will allocate a new array large enough for the existing
-       contents and the contents of the parameter. The parameters contents is then
-       copied to the end of the existing array.
-
-       Note this does nothing and returns <code>false</code> if the target array is not
-       dynamically allocated, or if the two arrays are of base elements of
-       different sizes.
-
-       @return
-       <code>true</code> if the memory allocation succeeded.
-     */
-    bool Concatenate(
-      const PAbstractArray & array  ///< Array to concatenate.
-    );
-  //@}
-
-  protected:
-    bool InternalSetSize(PINDEX newSize, bool force);
-
-    virtual void PrintElementOn(
-      ostream & stream,
-      PINDEX index
-    ) const;
-    virtual void ReadElementFrom(
-      istream & stream,
-      PINDEX index
-    );
-
-    PAbstractArray(
-      PContainerReference & reference,
-      PINDEX elementSizeInBytes
-    );
-
-    /// Size of an element in bytes.
-    PINDEX elementSize;
-
-    /// Pointer to the allocated block of memory.
-    char * m_theArray;
-
-    /// Flag indicating the array was allocated on the heap.
-    bool allocatedDynamically;
-
-  friend class PArrayObjects;
-};
-
 
 ///////////////////////////////////////////////////////////////////////////////
 // An array of some base type
@@ -250,9 +56,11 @@ class PAbstractArray : public PContainer
    \li <code>PLongArray</code>
    \li <code>PDWORDArray</code>
  */
-template <class T> class PBaseArray : public PAbstractArray
+template <class T> class PBaseArray : public PObject, public std::vector<T>
 {
-    PCLASSINFO(PBaseArray, PAbstractArray);
+    typedef T value_type;
+    typedef std::vector<value_type> vector_type;
+    PCLASSINFO(PBaseArray, PObject);
   public:
   /**@name Construction */
   //@{
@@ -263,29 +71,116 @@ template <class T> class PBaseArray : public PAbstractArray
      */
     PBaseArray(
       PINDEX initialSize = 0  ///< Initial number of elements in the array.
-    ) : PAbstractArray(sizeof(T), initialSize) { }
+    ) : vector_type(initialSize) { }
 
     /**Construct a new dynamic array of elements of the specified type.
      */
     PBaseArray(
       T const * buffer,   ///< Pointer to an array of the elements of type \b T.
-      PINDEX length,      ///< Number of elements pointed to by \p buffer.
-      bool dynamic = true ///< Buffer is copied and dynamically allocated.
-    ) : PAbstractArray(sizeof(T), buffer, length, dynamic) { }
+      PINDEX length       ///< Number of elements pointed to by \p buffer.
+    ) : vector_type(buffer, buffer+length) { }
   //@}
 
   /**@name Overrides from class PObject */
   //@{
     /** Clone the object.
      */
-    virtual PObject * Clone() const
+    /**Get the relative rank of the two arrays. The following algorithm is
+       employed for the comparison:
+
+       \arg \c EqualTo if the two arrays are identical in length
+       and each objects values, not pointer, are equal.
+
+       \arg \c LessThan if the instances object value at an
+       ordinal position is less than the corresponding objects value in the
+       <code>obj</code> parameters list.
+
+       This is also returned if all objects are equal and the instances list
+       length is less than the <code>obj</code> parameters list length.
+
+       \arg \c GreaterThan if the instances object value at an
+       ordinal position is greater than the corresponding objects value in the
+       <code>obj</code> parameters list.
+
+       This is also returned if all objects are equal and the instances list
+       length is greater than the <code>obj</code> parameters list length.
+
+       @return
+       comparison of the two objects, <code>EqualTo</code> for same,
+       <code>LessThan</code> for <code>obj</code> logically less than the
+       object and <code>GreaterThan</code> for <code>obj</code> logically
+       greater than the object.
+     */
+    virtual Comparison Compare(
+      const PObject & obj   ///< Object being compared to
+    ) const override
     {
-      return PNEW PBaseArray<T>(*this, GetSize());
+      const PBaseArray & t1 = *this;
+      const PBaseArray & t2 = dynamic_cast<const PBaseArray &>(obj);
+      const auto & it1 = t1.begin();
+      const auto & it2 = t2.begin();
+      while (it1 != t1.end() && it2 != t2.end()) {
+        if (*it1 < *it2)
+          return PObject::LessThan;
+        if (*it1 > *it2)
+          return PObject::GreaterThan;
+      }
+      if (it2 != t2.end())
+        return PObject::LessThan;
+      if (it1 != t1.end())
+        return PObject::GreaterThan;
+      return PObject::EqualTo;
+    }
+
+    virtual PObject * Clone() const override
+    {
+      return PNEW PBaseArray(*this);
+    }
+
+    /// Print the array
+    virtual void PrintOn(
+      ostream & strm ///< Stream to output to.
+    ) const override
+    {
+      for (const auto & it : *this)
+        strm << it;
+    }
+    /// Read the array
+    virtual void ReadFrom(
+      istream & strm   ///< Stream to read the objects contents from.
+    ) override
+    {
+      for (size_t index = 0; ;++index) {
+        T v;
+        strm >> v;
+        if (strm.fail())
+          break;
+        this->SetAt(index, v);
+      }
     }
   //@}
 
-  /**@name Overrides from class PContainer */
+  /**@name New functions for class */
   //@{
+    PINDEX GetSize() const
+    {
+      return this->size();
+    }
+
+    bool SetSize(PINDEX newSize)
+    {
+      this->resize(newSize);
+      return true;
+    }
+
+    bool SetMinSize(PINDEX newSize)
+    {
+      if (this->GetSize() < newSize)
+        this->SetSize(newSize);
+    }
+
+    bool IsEmpty() const { return this->m_collection.empty(); }
+
     /**Set the specific element in the array. The array will automatically
        expand, if necessary, to fit the new element in.
 
@@ -315,21 +210,6 @@ template <class T> class PBaseArray : public PAbstractArray
       return index < GetSize() ? GetPointer()[index] : T();
     }
 
-    /**Attach a pointer to a static block to the base array type. The pointer
-       is used directly and will not be copied to a dynamically allocated
-       buffer. If the <code>SetSize()</code> function is used to change the size of the
-       buffer, the object will be converted to a dynamic form with the
-       contents of the static buffer copied to the allocated buffer.
-
-       Any dynamically allocated buffer will be freed.
-     */
-    void Attach(
-      const T * buffer,   ///< Pointer to an array of elements.
-      PINDEX bufferSize   ///< Number of elements pointed to by buffer.
-    ) {
-      PAbstractArray::Attach(buffer, bufferSize);
-    }
-
     /**Get a pointer to the internal array and assure that it is of at least
        the specified size. This is useful when the array contents are being
        set by some external or system function eg file read.
@@ -346,45 +226,11 @@ template <class T> class PBaseArray : public PAbstractArray
     T * GetPointer(
       PINDEX minSize = 0    ///< Minimum size for returned buffer pointer.
     ) {
-      return (T *)PAbstractArray::GetPointer(minSize);
+      SetMinSize(minSize);
+      return const_cast<T *>(this->data());
     }
     const T * GetPointer() const {
-      return (const T *)PAbstractArray::GetPointer();
-    }
-  //@}
-
-  /**@name New functions for class */
-  //@{
-    /**Get a value from the array. If the \p index is beyond the end
-       of the allocated array then a zero value is returned.
-
-       This is functionally identical to the PContainer::GetAt()
-       function.
-
-       @return
-       Value at the array position.
-     */
-    T operator[](
-      PINDEX index  ///< Position on the array to get value from.
-    ) const {
-      return GetAt(index);
-    }
-
-    /**Get a reference to value from the array. If \p index is
-       beyond the end of the allocated array then the array is expanded. If a
-       memory allocation failure occurs the function asserts.
-
-       This is functionally similar to the <code>SetAt()</code> function and allows
-       the array subscript to be an lvalue.
-
-       @return
-       Reference to value at the array position.
-     */
-    T & operator[](
-      PINDEX index  ///< Position on the array to get value from.
-    ) {
-      PASSERTINDEX(index);
-      return GetPointer(index+1)[index];
+      return this->data();
     }
 
     /**Get a pointer to the internal array. The user may not modify the
@@ -401,7 +247,7 @@ template <class T> class PBaseArray : public PAbstractArray
        Constant pointer to the array memory.
      */
     operator T const *() const {
-      return GetPointer();
+      return this->data();
     }
 
     /**Concatenate one array to the end of this array.
@@ -418,72 +264,10 @@ template <class T> class PBaseArray : public PAbstractArray
     bool Concatenate(
       const PBaseArray & array  ///< Other array to concatenate
     ) {
-      return PAbstractArray::Concatenate(array);
+      return this->insert(this->end(), array.begin(), array.end());
     }
   //@}
-
-  protected:
-    virtual void PrintElementOn(
-      ostream & stream,
-      PINDEX index
-    ) const {
-      stream << GetAt(index);
-    }
-
-    PBaseArray(PContainerReference & reference_) : PAbstractArray(reference_, sizeof(T)) { }
 };
-
-/**This template class maps the <code>PAbstractArray</code> to a specific element type. The
-   functions in this class primarily do all the appropriate casting of types.
-
-   Note that if templates are not used the <code>PSCALAR_ARRAY</code> macro will
-   simulate the template instantiation.
-
-   The following classes are instantiated automatically for the basic scalar
-   types:
-   \li <code>PBYTEArray</code>
-   \li <code>PShortArray</code>
-   \li <code>PWORDArray</code>
-   \li <code>PIntArray</code>
-   \li <code>PUnsignedArray</code>
-   \li <code>PLongArray</code>
-   \li <code>PDWORDArray</code>
- */
-template <class T> class PScalarArray : public PBaseArray<T>
-{
-  public:
-  /**@name Construction */
-  //@{
-    /**Construct a new dynamic array of elements of the specified type. The
-       array is initialised to all zero bytes. Note that this may not be
-       logically equivalent to the zero value for the type, though this would
-       be very rare.
-     */
-    PScalarArray(
-      PINDEX initialSize = 0  ///< Initial number of elements in the array.
-    ) : PBaseArray<T>(initialSize) { }
-
-    /**Construct a new dynamic array of elements of the specified type.
-     */
-    PScalarArray(
-      T const * buffer,   ///< Pointer to an array of the elements of type <b>T</b>.
-      PINDEX length,      ///< Number of elements pointed to by <code>buffer</code>.
-      bool dynamic = true ///< Buffer is copied and dynamically allocated.
-    ) : PBaseArray<T>(buffer, length, dynamic) { }
-  //@}
-
-  protected:
-    virtual void ReadElementFrom(
-      istream & stream,
-      PINDEX index
-    ) {
-      T t;
-      stream >> t;
-      if (!stream.fail())
-        this->SetAt(index, t);
-    }
-};
-
 
 /// Array of characters.
 class PCharArray : public PBaseArray<char>
@@ -504,12 +288,8 @@ class PCharArray : public PBaseArray<char>
      */
     PCharArray(
       char const * buffer,   ///< Pointer to an array of chars.
-      PINDEX length,      ///< Number of elements pointed to by \p buffer.
-      bool dynamic = true ///< Buffer is copied and dynamically allocated.
-    ) : ParentClass(buffer, length, dynamic) { }
-
-    PCharArray(PContainerReference & reference_)
-      : ParentClass(reference_) { }
+      PINDEX length       ///< Number of elements pointed to by \p buffer.
+    ) : ParentClass(buffer, length) { }
   //@}
 
   /**@name Overrides from class PObject */
@@ -517,26 +297,22 @@ class PCharArray : public PBaseArray<char>
     /// Print the array
     virtual void PrintOn(
       ostream & strm ///< Stream to output to.
-    ) const;
+    ) const override;
     /// Read the array
     virtual void ReadFrom(
       istream &strm   // Stream to read the objects contents from.
-    );
-    virtual PObject * Clone() const
-    {
-      return PNEW PCharArray(*this, GetSize());
-    }
+    ) override;
   //@}
 };
 
 /// Array of short integers.
-typedef PScalarArray<short> PShortArray;
+typedef PBaseArray<short> PShortArray;
 
 /// Array of integers.
-typedef PScalarArray<int> PIntArray;
+typedef PBaseArray<int> PIntArray;
 
 /// Array of long integers.
-typedef PScalarArray<long> PLongArray;
+typedef PBaseArray<long> PLongArray;
 
 /// Array of unsigned characters.
 class PBYTEArray : public PBaseArray<uint8_t>
@@ -557,28 +333,32 @@ class PBYTEArray : public PBaseArray<uint8_t>
      */
     PBYTEArray(
       uint8_t const * buffer,   ///< Pointer to an array of BYTEs.
-      PINDEX length,      ///< Number of elements pointed to by \p buffer.
-      bool dynamic = true ///< Buffer is copied and dynamically allocated.
-    ) : ParentClass(buffer, length, dynamic) { }
+      PINDEX length       ///< Number of elements pointed to by \p buffer.
+    ) : ParentClass(buffer, length) { }
 
-    PBYTEArray(PContainerReference & reference_)
-      : ParentClass(reference_) { }
+    /**Construct a new dynamic array of unsigned chars.
+     */
+    PBYTEArray(
+      const std::string & str  ///< String to copy to BYTE array
+    ) : ParentClass(reinterpret_cast<const BYTE *>(str.data()), str.length()) { }
   //@}
 
   /**@name Overrides from class PObject */
   //@{
+    /** Clone the object.
+     */
+    virtual PObject * Clone() const override
+    {
+      return PNEW PBYTEArray(*this);
+    }
     /// Print the array
     virtual void PrintOn(
       ostream & strm ///< Stream to output to.
-    ) const;
+    ) const override;
     /// Read the array
     virtual void ReadFrom(
       istream &strm   ///< Stream to read the objects contents from.
-    );
-    virtual PObject * Clone() const
-    {
-      return PNEW PBYTEArray(*this, GetSize());
-    }
+    ) override;
   //@}
 
     /**Function to cast block of memory in PBYTEArray to another structure.
@@ -603,21 +383,22 @@ class PBYTEArray : public PBaseArray<uint8_t>
 
 /**Helper class for outputting a block of memory in hex
   */
-class PHexDump : public PBYTEArray
+class PHexDump : public PObject, public std::span<uint8_t>
 {
-  PCLASSINFO(PHexDump, PBYTEArray)
+  typedef std::span<uint8_t> ParentClass;
+  PCLASSINFO(PHexDump, PObject)
 public:
-  PHexDump(const void * data, PINDEX length, bool compact = true)
-    : PBYTEArray(static_cast<const uint8_t *>(data), length, false)
+  PHexDump(const void * data, size_t length, bool compact = true)
+    : ParentClass(const_cast<uint8_t*>(static_cast<const uint8_t *>(data)), length)
     , m_compact(compact)
   { }
 
   explicit PHexDump(const PBYTEArray & data, bool compact = true)
-    : PBYTEArray(data, data.GetSize(), false)
+    : ParentClass(const_cast<uint8_t *>(data.data()), data.size())
     , m_compact(compact)
   { }
 
-  virtual void PrintOn(ostream & strm) const;
+  virtual void PrintOn(ostream & strm) const override;
 
 protected:
   bool m_compact;
@@ -625,13 +406,13 @@ protected:
 
 
 /// Array of unsigned short integers.
-typedef PScalarArray<uint16_t> PWORDArray;
+typedef PBaseArray<uint16_t> PWORDArray;
 
 /// Array of unsigned integers.
-typedef PScalarArray<unsigned> PUnsignedArray;
+typedef PBaseArray<unsigned> PUnsignedArray;
 
 /// Array of unsigned long integers.
-typedef PScalarArray<uint32_t> PDWORDArray;
+typedef PBaseArray<uint32_t> PDWORDArray;
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -649,9 +430,13 @@ as all other objects must be moved to accommodate the change.
 An array of objects may have "gaps" in it. These are array entries that
 contain NULL as the object pointer.
 */
-class PArrayObjects : public PCollection
+template <class T> class PArray : public PCollection<T, std::vector<std::shared_ptr<T>>>
 {
-    PCONTAINERINFO(PArrayObjects, PCollection);
+    typedef T value_type;
+    typedef std::shared_ptr<value_type> pointer_type;
+    typedef std::vector<pointer_type> vector_type;
+    typedef PCollection<value_type, vector_type> base_type;
+    PCLASSINFO(PArray, base_type);
   public:
   /**@name Construction */
   //@{
@@ -661,74 +446,52 @@ class PArrayObjects : public PCollection
        Note that by default, objects placed into the list will be deleted when
        removed or when all references to the list are destroyed.
      */
-    PINLINE PArrayObjects(
+    PINLINE PArray(
       PINDEX initialSize = 0  ///< Initial number of objects in the array.
-    );
+    )
+    {
+      this->m_collection.resize(initialSize);
+    }
   //@}
 
   /**@name Overrides from class PObject */
   //@{
-    /**Get the relative rank of the two arrays. The following algorithm is
-       employed for the comparison:
-
-       \li <code>EqualTo</code>         if the two array memory blocks are identical in
-                            length and each objects values, not pointer, are
-                            equal.
-
-       \li <code>LessThan</code>        if the instances object value at an ordinal
-                            position is less than the corresponding objects
-                            value in the \p obj parameters array.
-                            This is also returned if all objects are equal and
-                            the instances array length is less than the
-                            \p obj parameters array length.
-
-       \li <code>GreaterThan</code>     if the instances object value at an ordinal
-                            position is greater than the corresponding objects
-                            value in the \p obj parameters array.
-                            This is also returned if all objects are equal and
-                            the instances array length is greater than the
-                            \p obj parameters array length.
-
-       @return
-       Comparison of the two objects, <code>EqualTo</code> for same,
-       <code>LessThan</code> for \p obj logically less than the
-       object and <code>GreaterThan</code> for \p obj logically
-       greater than the object.
+    /**Make a complete duplicate of the array. Note that all objects in the
+       array are also cloned, so this will make a complete copy of the array.
      */
-    virtual Comparison Compare(
-      const PObject & obj   ///< Other <code>PAbstractArray</code> to compare against.
-    ) const;
-  //@}
-
-  /**@name Overrides from class PContainer */
-  //@{
-    /// Get size of array
-    virtual PINDEX GetSize() const;
-
-    /**Set the size of the array in objects. A new array may be allocated to
-       accomodate the new number of objects. If the array increases in size
-       then the new object pointers are initialised to NULL. If the array is
-       made smaller then the data beyond the new size is lost.
-
-       @return
-       true if the memory for the array was allocated successfully.
-     */
-    virtual bool SetSize(
-      PINDEX newSize  ///< New size of the array in objects.
-    );
+    virtual PObject * Clone() const override
+    {
+      return this->CloneContents(PNEW PArray());
+    }
   //@}
 
   /**@name Overrides from class PCollection */
   //@{
+    bool SetSize(PINDEX newSize)
+    {
+      this->m_collection.resize(newSize);
+      return true;
+    }
+
+    bool SetMinSize(PINDEX newSize)
+    {
+      const auto & c = this->m_collection;
+      if (c.size() < newSize)
+        c.resize(newSize);
+    }
+
     /**Append a new object to the collection. This will increase the size of
        the array by one and place the new object at that position.
 
        @return
        Index of the newly added object.
      */
-    virtual PINDEX Append(
-      PObject * obj   ///< New object to place into the collection.
-    );
+    virtual void Append(
+      value_type * obj   ///< New object to place into the collection.
+    )
+    {
+      this->m_collection.emplace_back(pointer_type(obj));
+    }
 
     /**Insert a new object immediately before the specified object. If the
        object to insert before is not in the collection then the equivalent of
@@ -746,9 +509,21 @@ class PArrayObjects : public PCollection
        index of the newly inserted object.
      */
     virtual PINDEX Insert(
-      const PObject & before,   ///< Object value to insert before.
-      PObject * obj             ///< New object to place into the collection.
-    );
+      const value_type & before,   ///< Object value to insert before.
+      value_type * obj             ///< New object to place into the collection.
+    )
+    {
+      PINDEX index = 0;
+      auto & c = this->m_collection;
+      for (auto it = c.begin(); it != c.end(); ++it, ++index) {
+        if (**it >= before) {
+          c.emplace(it, obj);
+          return index;
+        }
+      }
+      c.emplace_back(obj);
+      return c.size();
+    }
 
     /** Insert a new object at the specified ordinal index. If the index is
        greater than the number of objects in the collection then the
@@ -762,47 +537,51 @@ class PArrayObjects : public PCollection
      */
     virtual PINDEX InsertAt(
       PINDEX index,   ///< Index position in collection to place the object.
-      PObject * obj   ///< New object to place into the collection.
-    );
-
-    /**Remove the object from the collection. If the <code>AllowDeleteObjects</code> option
-       is set then the object is also deleted.
-
-       All objects are shifted down to fill the vacated position.
-
-       @return
-       <code>true</code> if the object was in the collection.
-     */
-    virtual bool Remove(
-      const PObject * obj   ///< Existing object to remove from the collection.
-    );
+      value_type * obj   ///< New object to place into the collection.
+    )
+    {
+      auto & c = this->m_collection;
+      if (index >= c.size()) {
+        c.resize(index);
+        c.emplace_back(obj);
+        return c.size();
+      }
+      auto it = c.begin();
+      std::advance(it, index);
+      c.emplace(it, obj);
+      return index;
+    }
 
     /**Remove the object at the specified ordinal index from the collection.
-       If the <code>AllowDeleteObjects</code> option is set then the object is also deleted.
-
        All objects are shifted down to fill the vacated position.
 
        Note if the \p index is beyond the size of the collection then the
        function will assert.
-
-       @return
-       Pointer to the object being removed, or NULL if it was deleted.
      */
-    virtual PObject * RemoveAt(
+    virtual void RemoveAt(
       PINDEX index   ///< Index position in collection of object to remove.
-    );
+    )
+    {
+      auto & c = this->m_collection;
+      c.erase(c.begin() + index);
+    }
 
     /**Set the object at the specified ordinal position to the new value. This
-       will overwrite the existing entry. If the <code>AllowDeleteObjects</code> option is
-       set then the old object is also deleted.
+       will overwrite the existing entry.
 
        @return
        <code>true</code> if the object was successfully added.
      */
     virtual bool SetAt(
       PINDEX index,   ///< Index position in collection to set.
-      PObject * val   ///< New value to place into the collection.
-    );
+      value_type * val   ///< New value to place into the collection.
+    )
+    {
+      auto & c = this->m_collection;
+      if (index >= c.size())
+        c.resize(index+1);
+      c[index].reset(val);
+    }
 
     /**Get the object at the specified ordinal position. If the index was
        greater than the size of the collection then NULL is returned.
@@ -810,81 +589,13 @@ class PArrayObjects : public PCollection
        @return
        Pointer to object at the specified index.
      */
-    virtual PObject * GetAt(
+    virtual value_type * GetAt(
       PINDEX index  ///< Index position in the collection of the object.
-    ) const;
+    )
+    {
+      return this->m_collection[index].get();
+    }
 
-    /**Search the collection for the specific instance of the object. The
-       object pointers are compared, not the values. A simple linear search
-       from ordinal position zero is performed.
-
-       @return
-       Ordinal index position of the object, or <code>P_MAX_INDEX</code>.
-     */
-    virtual PINDEX GetObjectsIndex(
-      const PObject * obj  ///< Object to find.
-    ) const;
-
-    /**Search the collection for the specified value of the object. The object
-       values are compared, not the pointers.  So the objects in the
-       collection must correctly implement the PObject::Compare()
-       function. A simple linear search from ordinal position zero is
-       performed.
-
-       @return
-       Ordinal index position of the object, or <code>P_MAX_INDEX</code>.
-     */
-    virtual PINDEX GetValuesIndex(
-      const PObject & obj   // Object to find equal of.
-    ) const;
-
-    /**Remove all of the elements in the collection. This operates by
-       continually calling <code>RemoveAt()</code> until there are no objects left.
-
-       The objects are removed from the last, at index
-       (GetSize()-1) toward the first at index zero.
-     */
-    virtual void RemoveAll();
-  //@}
-
-  protected:
-    // The type below cannot be nested as DevStudio 2005 AUTOEXP.DAT doesn't like it
-    PBaseArray<PObject *> * theArray;
-};
-
-
-/**\class PArray
-   This template class maps the <code>PArrayObjects</code> to a specific object type.
-   The functions in this class primarily do all the appropriate casting of types.
-*/
-template <class T> class PArray : public PArrayObjects
-{
-    PCLASSINFO(PArray, PArrayObjects);
-  public:
-  /**@name Construction */
-  //@{
-    /**Create a new array of objects. The array is initially set to the
-       specified size with each entry having NULL as is pointer value.
-
-       Note that by default, objects placed into the list will be deleted when
-       removed or when all references to the list are destroyed.
-     */
-    PArray(
-      PINDEX initialSize = 0  ///< Initial number of objects in the array.
-    ) : PArrayObjects(initialSize) { }
-  //@}
-
-  /**@name Overrides from class PObject */
-  //@{
-    /**Make a complete duplicate of the array. Note that all objects in the
-       array are also cloned, so this will make a complete copy of the array.
-     */
-    virtual PObject * Clone() const
-      { return PNEW PArray(0, this); }
-  //@}
-
-  /**@name New functions for class */
-  //@{
     /**Retrieve a reference  to the object in the array. If there was not an
        object at that ordinal position or the index was beyond the size of the
        array then the function asserts.
@@ -895,29 +606,28 @@ template <class T> class PArray : public PArrayObjects
     T & operator[](
       PINDEX index  ///< Index position in the collection of the object.
     ) const {
-      PObject * obj = this->GetAt(index);
-      PAssert(obj != NULL, PInvalidArrayElement);
-      return dynamic_cast<T &>(*obj);
+      auto * obj = this->GetAt(index);
+      if (obj != NULL)
+        return *obj;
+      PAssertAlways(PInvalidArrayElement);
+      std::abort();
     }
   //@}
-
-  protected:
-    PArray(int dummy, const PArray * c) : PArrayObjects(dummy, c) { }
 };
 
 
 template <class T> class PVector : public PObject, public std::vector<T>
 {
-    PCLASSINFO(PVector, PObject);
-  public:
-    PVector() { }
+  PCLASSINFO(PVector, PObject);
+public:
+  PVector() { }
 
-    virtual void PrintOn(std::ostream & strm) const
-    {
-      strm << PPrintValues(*this);
-    }
+  virtual void PrintOn(std::ostream & strm) const
+  {
+    strm << PPrintValues(*this);
+  }
 
-    __inline PINDEX GetSize() const { return size(); }
+  __inline PINDEX GetSize() const { return this->size(); }
 };
 
 

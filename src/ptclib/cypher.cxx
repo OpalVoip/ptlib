@@ -24,7 +24,7 @@
  * Contributor(s): ______________________________________.
  */
 
-#ifdef __GNUC__
+#ifdef P_USE_PRAGMA
 #pragma implementation "cypher.h"
 #endif
 
@@ -38,6 +38,40 @@
 #include <ptclib/mime.h>
 #include <ptclib/random.h>
 
+
+
+///////////////////////////////////////////////////////////////////////////////
+
+namespace PCRC32 {
+  static vector<uint32_t> InitCrc32Table()
+  {
+    vector<uint32_t> table(256);
+    for (size_t i = 0; i < table.size(); ++i) {
+      DWORD c = i;
+      for (PINDEX j = 0; j < 8; ++j) {
+        if (c & 1)
+          c = 0xEDB88320UL ^ (c >> 1);
+        else
+          c >>= 1;
+      }
+      table[i] = c;
+    }
+    return table;
+  }
+
+  uint32_t Update(const void * data, size_t size, uint32_t crc)
+  {
+    static vector<uint32_t> Crc32Table = InitCrc32Table();
+
+    // calculate CRC-32 for buffer
+    crc ^= 0xFFFFFFFF;
+    const BYTE * ptr = static_cast<const uint8_t *>(data);
+    while (size-- > 0)
+      crc = Crc32Table[(crc ^ *ptr++) & 0xFF] ^ (crc >> 8);
+
+    return crc ^ 0xffffffff;
+  }
+};
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -839,45 +873,63 @@ void PMessageDigest5::InternalCompleteDigest(Result & result)
 // PMessageDigestSHA1
 
 #if P_SSL
+#define OPENSSL_SUPPRESS_DEPRECATED 1
 
-#include <openssl/sha.h>
+#include <openssl/evp.h>
 
-#ifdef _MSC_VER
-
-#pragma comment(lib, P_SSL_LIB1)
-#pragma comment(lib, P_SSL_LIB2)
-
+#if (OPENSSL_VERSION_NUMBER < 0x10101000L)
+#error OpenSSL too old! Use at least 1.1.1
 #endif
+
+#if (OPENSSL_VERSION_NUMBER < 0x30000000L)
+#define EVP_MD_CTX_get_size EVP_MD_CTX_size
+#endif
+
+#ifdef P_SSL_LIB1
+#pragma comment(lib, P_SSL_LIB1)
+#endif
+#ifdef P_SSL_LIB2
+#pragma comment(lib, P_SSL_LIB2)
+#endif
+
 
 struct PMessageDigestSHA::Context
 {
-  virtual ~Context() { }
-  virtual bool Init() = 0;
-  virtual bool Update(const void *, PINDEX) = 0;
-  virtual bool Final(PBYTEArray & digest) = 0;
-};
+  EVP_MD_CTX * m_ctx;
+  const EVP_MD * m_type;
 
-template <
-  typename CtxType,
-  unsigned DigestSize,
-  int (*InitFn)(CtxType *),
-  int (*UpdateFn)(CtxType *c, const void *, size_t),
-  int (*FinalFn)(unsigned char *, CtxType *)
-> struct PMessageDigestContextTemplate : PMessageDigestSHA::Context
-{
-  CtxType m_ctx;
-  virtual bool Init() { return InitFn(&m_ctx) != 0; }
-  virtual bool Update(const void * dataPtr, PINDEX length) { return UpdateFn(&m_ctx, dataPtr, length) != 0; }
-  virtual bool Final(PBYTEArray & digest) { return digest.SetSize(DigestSize) && FinalFn(digest.GetPointer(), &m_ctx) != 0; }
-};
+  Context(const EVP_MD * type)
+    : m_ctx(EVP_MD_CTX_new())
+    , m_type(type)
+  { }
 
+  ~Context()
+  {
+    EVP_MD_CTX_free(m_ctx);
+  }
+
+  bool Init()
+  {
+    return EVP_DigestInit(m_ctx, m_type) != 0;
+  }
+
+  bool Update(const void * buf, PINDEX len)
+  {
+    return EVP_DigestUpdate(m_ctx, buf, len) != 0;
+  }
+
+  bool Final(PBYTEArray & digest)
+  {
+    unsigned int dummy;
+    return EVP_DigestFinal(m_ctx, digest.GetPointer(EVP_MD_CTX_get_size(m_ctx)), &dummy) != 0;
+  }
+};
 
 
 PMessageDigestSHA::PMessageDigestSHA(Context * context)
   : m_context(context)
   , m_state(e_Uninitialised)
-{
-}
+{ }
 
 PMessageDigestSHA::~PMessageDigestSHA()
 {
@@ -925,28 +977,23 @@ void PMessageDigestSHA::InternalCompleteDigest(Result & result)
 
 
 PMessageDigestSHA1::PMessageDigestSHA1()
-  : PMessageDigestSHA(new PMessageDigestContextTemplate<SHA_CTX, SHA_DIGEST_LENGTH, SHA1_Init, SHA1_Update, SHA1_Final>())
-{
-}
+  : PMessageDigestSHA(new Context(EVP_sha1()))
+{ }
 
 
 PMessageDigestSHA256::PMessageDigestSHA256()
-  : PMessageDigestSHA(new PMessageDigestContextTemplate<SHA256_CTX, SHA256_DIGEST_LENGTH, SHA256_Init, SHA256_Update, SHA256_Final>())
-{
-}
+  : PMessageDigestSHA(new Context(EVP_sha256()))
+{ }
 
 
 PMessageDigestSHA384::PMessageDigestSHA384()
-  : PMessageDigestSHA(new PMessageDigestContextTemplate<SHA512_CTX, SHA384_DIGEST_LENGTH, SHA384_Init, SHA384_Update, SHA384_Final>())
-{
-}
+  : PMessageDigestSHA(new Context(EVP_sha384()))
+{ }
 
 
 PMessageDigestSHA512::PMessageDigestSHA512()
-  : PMessageDigestSHA(new PMessageDigestContextTemplate<SHA512_CTX, SHA512_DIGEST_LENGTH, SHA512_Init, SHA512_Update, SHA512_Final>())
-{
-}
-
+  : PMessageDigestSHA(new Context(EVP_sha512()))
+{ }
 
 #endif // P_SSL
 
@@ -1198,7 +1245,8 @@ void PTEACypher::DecodeBlock(const void * in, void * out)
 
 void PHMAC::InitKey(const void * key, PINDEX len)
 {
-  memcpy(m_key.GetPointer(len), key,  len);
+  m_key.SetSize(len);
+  memcpy(m_key.GetPointer(), key,  len);
 }
 
 
@@ -1267,12 +1315,6 @@ void PHMAC_MD5::InternalProcess(const void * data, PINDEX len, PHMAC::Result & r
 #if P_SSL
 
 #include <openssl/hmac.h>
-
-#if (OPENSSL_VERSION_NUMBER < 0x10100000L)
-  __inline HMAC_CTX * HMAC_CTX_new()           { return new HMAC_CTX(); }
-  __inline void HMAC_CTX_reset(HMAC_CTX * ctx) { HMAC_CTX_init(ctx); }
-  __inline void HMAC_CTX_free(HMAC_CTX * ctx)  { HMAC_CTX_cleanup(ctx); delete ctx; }
-#endif
 
 PHMAC_SHA::PHMAC_SHA(Algorithm algo)
   : m_algorithm(algo)

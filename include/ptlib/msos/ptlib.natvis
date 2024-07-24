@@ -29,25 +29,29 @@
   </Type>
 
   <Type Name="PAbstractArray">
-    <DisplayString>{{size={reference-&gt;size} ref={reference-&gt;count._Storage._Value} ptr={(void *)theArray}}}</DisplayString>
+    <DisplayString>{{size={reference-&gt;size} ref={reference-&gt;count._Storage._Value} ptr={(void *)m_theArray}}}</DisplayString>
   </Type>
 
   <Type Name="PBaseArray&lt;*&gt;">
-    <DisplayString>{{size={((PAbstractArray *)this)-&gt;reference-&gt;size} ref={((PAbstractArray *)this)-&gt;reference-&gt;count._Storage._Value} ptr={(void *)((PAbstractArray *)this)-&gt;theArray}}}</DisplayString>
+    <DisplayString>{{size={((PAbstractArray *)this)-&gt;reference-&gt;size} ref={((PAbstractArray *)this)-&gt;reference-&gt;count._Storage._Value} ptr={(void *)((PAbstractArray *)this)-&gt;m_theArray}}}</DisplayString>
     <Expand>
       <ArrayItems>
         <Size>((PAbstractArray *)this)-&gt;reference-&gt;size</Size>
-        <ValuePointer>($T1 *)((PAbstractArray *)this)-&gt;theArray</ValuePointer>
+        <ValuePointer>($T1 *)((PAbstractArray *)this)-&gt;m_theArray</ValuePointer>
       </ArrayItems>
     </Expand>
   </Type>
 
+  <Type Name="PArrayObjects">
+    <DisplayString>{*m_objectArray}</DisplayString>
+  </Type>
+
   <Type Name="PArray&lt;*&gt;">
-    <DisplayString>{*theArray}</DisplayString>
+    <DisplayString>{*m_objectArray}</DisplayString>
     <Expand>
       <ArrayItems>
-        <Size>((PContainer *)theArray)-&gt;reference-&gt;size</Size>
-        <ValuePointer>($T1 **)((PAbstractArray*)theArray)-&gt;theArray</ValuePointer>
+        <Size>((PAbstractArray *)m_objectArray)-&gt;reference-&gt;size</Size>
+        <ValuePointer>($T1 **)((PAbstractArray *)m_objectArray)-&gt;m_theArray</ValuePointer>
       </ArrayItems>
     </Expand>
   </Type>
@@ -95,11 +99,11 @@
   </Type>
 
   <Type Name="PHashTable">
-    <DisplayString>{{size={reference-&gt;size} ref={reference-&gt;count._Storage._Value} hash={(void *)hashTable-&gt;theArray}}}</DisplayString>
+    <DisplayString>{{size={reference-&gt;size} ref={reference-&gt;count._Storage._Value} hash={(void *)hashTable-&gt;m_theArray}}}</DisplayString>
     <Expand>
       <IndexListItems>
         <Size>hashTable-&gt;reference-&gt;size</Size>
-        <ValueNode>(((PHashTableList*)(hashTable-&gt;theArray))[$i])</ValueNode>
+        <ValueNode>(((PHashTableList*)(hashTable-&gt;m_theArray))[$i])</ValueNode>
       </IndexListItems>
     </Expand>
   </Type>

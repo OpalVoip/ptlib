@@ -74,20 +74,20 @@ class PUDPSocket : public PIPDatagramSocket
     bool Read(
       void * buf,   ///< Pointer to a block of memory to read.
       PINDEX len    ///< Number of bytes to read.
-    );
+    ) override;
 
     /** Override of PChannel functions to allow connectionless writes
      */
     bool Write(
       const void * buf, ///< Pointer to a block of memory to write.
       PINDEX len        ///< Number of bytes to write.
-    );
+    ) override;
 
     /** Override of PSocket functions to allow connectionless writes
      */
     bool Connect(
       const PString & address   ///< Address of remote machine to connect to.
-    );
+    ) override;
   //@}
 
   /**@name New functions for class */
@@ -140,7 +140,7 @@ class PUDPSocket : public PIPDatagramSocket
 
     // Normally, one would expect these to be protected, but they are just so darn
     // useful that it's just easier if they are public
-    virtual bool InternalReadFrom(Slice * slices, size_t sliceCount, PIPSocketAddressAndPort & ipAndPort);
+    virtual bool InternalReadFrom(Slice * slices, size_t sliceCount, PIPSocketAddressAndPort & ipAndPort) override;
     virtual bool InternalSetSendAddress(const PIPSocketAddressAndPort & addr, int mtuDiscovery = -1);
     virtual void InternalGetSendAddress(PIPSocketAddressAndPort & addr) const;
     virtual void InternalSetLastReceiveAddress(const PIPSocketAddressAndPort & addr);
@@ -148,16 +148,16 @@ class PUDPSocket : public PIPDatagramSocket
 
   protected:
     // Open an IPv4 socket (for backward compatibility)
-    virtual bool OpenSocket();
+    virtual bool OpenSocket() override;
 
     // Open an IPv4 or IPv6 socket
     virtual bool OpenSocket(
       int ipAdressFamily
-    );
+    ) override;
 
-    virtual bool InternalListen(const Address & bind, unsigned queueSize, uint16_t port, Reusability reuse);
+    virtual bool InternalListen(const Address & bind, unsigned queueSize, uint16_t port, Reusability reuse) override;
 
-    virtual const char * GetProtocolName() const;
+    virtual const char * GetProtocolName() const override;
 
   private:
     AddressAndPort m_sendAddressAndPort;

@@ -26,7 +26,7 @@ class DNSTest : public PProcess
 
   public:
     DNSTest();
-    void Main();
+    virtual void Main() override;
 };
 
 PCREATE_PROCESS(DNSTest);

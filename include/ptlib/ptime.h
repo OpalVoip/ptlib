@@ -43,8 +43,8 @@ class PTimeInterval;
 
 /**This class defines an absolute time and date. It has a number of time and
    date rendering and manipulation functions. It is based on the standard C
-   library functions for time. Thus it is based on a number of seconds since
-   1 January 1970.
+   library functions for time. Thus it's internal representation is the
+   number of microseconds seconds since 1 January 1970 UTC.
  */
 class PTime : public PObject
 {
@@ -123,7 +123,7 @@ class PTime : public PObject
        @return
        pointer to new time.
      */
-    PObject * Clone() const;
+    PObject * Clone() const override;
 
     /**Determine the relative rank of the specified times. This ranks the
        times as you would expect.
@@ -133,7 +133,7 @@ class PTime : public PObject
      */
     virtual Comparison Compare(
       const PObject & obj   ///< Other time to compare against.
-    ) const;
+    ) const override;
 
     /**Output the time to the stream.
        This uses the <code>AsString()</code> function with the default
@@ -143,7 +143,7 @@ class PTime : public PObject
      */
     virtual void PrintOn(
       ostream & strm    ///< Stream to output the time to.
-    ) const;
+    ) const override;
 
     /**Input the time from the specified stream. If a parse error occurs the
        time is set to the current time. The string may be in many different
@@ -163,14 +163,14 @@ class PTime : public PObject
      */
     virtual void ReadFrom(
       istream & strm    ///< Stream to input the time from.
-    );
+    ) override;
   //@}
 
   /**@name Access functions */
   //@{
     /**Determine if the timestamp is valid.
        This will return true if the timestamp can be represented as a time
-       in the epoch. The epoch is the 1st January 1970.
+       in the epoch. The epoch is the 1st January 1970 UTC.
 
        In practice this means the time is > 13 hours to allow for time zones.
       */
@@ -198,7 +198,7 @@ class PTime : public PObject
     );
 
     /**Get the total microseconds since the epoch. The epoch is the 1st
-       January 1970.
+       January 1970 UTC.
 
        @return
        microseconds.
@@ -219,7 +219,7 @@ class PTime : public PObject
     );
 
     /**Get the total seconds since the epoch. The epoch is the 1st
-       January 1970.
+       January 1970 UTC.
 
        @return
        seconds.

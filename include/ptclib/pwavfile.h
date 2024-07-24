@@ -46,6 +46,7 @@ class PWAVFile;
 namespace PWAV {
 
 #pragma pack(1)
+P_PUSH_MSVC_WARNINGS(26495)
 
   struct ChunkHeader
   {
@@ -82,6 +83,7 @@ namespace PWAV {
     PInt32l data1;      // 0   Should be number of samples.
   };
 
+P_POP_MSVC_WARNINGS()
 #pragma pack()
 
 }; // namespace PWAV
@@ -277,7 +279,7 @@ public:
   virtual bool Read(
     void * buf,   ///< Pointer to a block of memory to receive the read bytes.
     PINDEX len    ///< Maximum number of bytes to read into the buffer.
-  );
+  ) override;
 
   /**Call PFile::Write() to write out audio data and perform necessary
      processing such as byte-order swaping.
@@ -289,21 +291,21 @@ public:
   virtual bool Write(
     const void * buf,   ///< Pointer to a block of memory to receive the write bytes.
     PINDEX len    ///< Maximum number of bytes to write to the channel.
-  );
+  ) override;
 
   /** Close the file channel.
       If a WAV file has been written to, this will update the header
       to contain the correct size information.
       @return true if close was OK.
   */
-  virtual bool Close();
+  virtual bool Close() override;
 
   /**Get the current size of the file.
 
       @return
       length of file in bytes.
     */
-  virtual off_t GetLength() const;
+  virtual off_t GetLength() const override;
       
   /**Set the size of the file, padding with 0 bytes if it would require
       expanding the file, or truncating it if being made shorter.
@@ -313,7 +315,7 @@ public:
     */
   virtual bool SetLength(
     off_t len   // New length of file.
-  );
+  ) override;
 
   /**Set the current active position in the file for the next read or write
      operation. The \p pos variable is a signed number which is
@@ -332,7 +334,7 @@ public:
   virtual bool SetPosition(
     off_t pos,                         ///< New position to set.
     FilePositionOrigin origin = Start  ///< Origin for position change.
-  );
+  ) override;
 
   /**Get the current active position in the file for the next read
      or write operation. The WAV header is excluded from calculation
@@ -341,7 +343,7 @@ public:
      @return
      current file position relative to the end of the WAV header.
   */
-  virtual off_t GetPosition() const;
+  virtual off_t GetPosition() const override;
   //@}
 
   /**@name Member variable access */
@@ -425,7 +427,7 @@ public:
 
 
 protected:
-  virtual bool InternalOpen(OpenMode mode, OpenOptions opts, PFileInfo::Permissions permissions);
+  virtual bool InternalOpen(OpenMode mode, OpenOptions opts, PFileInfo::Permissions permissions) override;
   void Construct(OpenMode mode);
   bool SelectFormat(PWAVFileFormat * handler);
 

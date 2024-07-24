@@ -23,8 +23,8 @@ class TestObject : public PSafeObject
     TestObject(ThreadSafe & process, unsigned val);
     ~TestObject();
 
-    Comparison Compare(const PObject & obj) const;
-    void PrintOn(ostream & strm) const;
+    Comparison Compare(const PObject & obj) const override;
+    void PrintOn(ostream & strm) const override;
 
     ThreadSafe & process;
     unsigned value;
@@ -38,7 +38,7 @@ class ThreadSafe : public PProcess
   public:
     ThreadSafe();
     ~ThreadSafe();
-    void Main();
+    virtual void Main() override;
 
   private:
     void Usage();

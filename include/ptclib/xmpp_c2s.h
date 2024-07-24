@@ -61,8 +61,8 @@ namespace XMPP
       const PString&  GetServerHost() const   { return m_Hostname; }
       uint16_t            GetServerPort() const   { return m_Port; }
 
-      virtual bool Open();
-      virtual bool Close();
+      virtual bool Open() override;
+      virtual bool Close() override;
 
     protected:
       PString         m_Hostname;
@@ -84,7 +84,7 @@ namespace XMPP
 
       virtual bool IsEstablished() const        { return m_State == Established; }
 
-      virtual bool Start(Transport * transport = 0);
+      virtual bool Start(Transport * transport = 0) override;
 
       /** Request the delivery of the specified stanza
       NOTE: the StreamHandler takes ownership of the stanza
@@ -147,14 +147,14 @@ namespace XMPP
       );
 
     protected:
-      virtual void    OnOpen(Stream& stream, intptr_t);
-      virtual void    OnClose(Stream& stream, intptr_t);
+      virtual void    OnOpen(Stream& stream, intptr_t) override;
+      virtual void    OnClose(Stream& stream, intptr_t) override;
       virtual void    StartRegistration();
       virtual void    StartAuthNegotiation();
 
       virtual void    OnSessionEstablished();
       virtual void    OnSessionReleased();
-      virtual void    OnElement(PXMLElement & pdu);
+      virtual void    OnElement(PXMLElement & pdu) override;
       virtual void    OnError(PXMLElement & pdu);
 
       virtual void    OnMessage(XMPP::Message& pdu);

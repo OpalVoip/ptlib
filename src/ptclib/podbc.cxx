@@ -61,7 +61,7 @@
 #endif // _MSC_VER
 
 
-class PODBC::Statement : public PObject
+class PODBC::Statement : public PObject, PNonCopyable
 {
     PCLASSINFO(Statement, PObject);
   public:
@@ -169,10 +169,6 @@ class PODBC::Statement : public PObject
     PODBC   & m_odbc;
     HSTMT     m_hStmt;
     SQLRETURN m_lastResult;
-
-  private:
-    Statement(const Statement & other) : PObject(other), m_odbc(other.m_odbc) { }
-    void operator=(const Statement &) { }
 };
 
 
@@ -189,7 +185,7 @@ struct PODBC::FieldExtra
 
   SQLLEN bindLenOrInd;
 
-  FieldExtra() { memset(this, 0, sizeof(*this)); }
+  FieldExtra() { P_DISABLE_GCC_WARNING("-Wclass-memaccess", memset(this, 0, sizeof(*this))); }
 };
 
 
@@ -238,9 +234,7 @@ static bool SQLFailed(PODBC & odbc, SQLSMALLINT type, SQLHANDLE handle, SQLRETUR
 #define new PNEW
 
 
-#ifdef _MSC_VER
-#pragma warning(disable:4244)
-#endif
+P_PUSH_MSVC_WARNINGS(4244)
 
 
 /////////////////////////////////////////////////////////////////
@@ -1519,14 +1513,6 @@ PODBC::RecordSet::RecordSet(PODBC * odbc, const PString & query)
   , P_DISABLE_MSVC_WARNINGS(4355, m_cursor(*this))
 {
   Query(query);
-}
-
-
-PODBC::RecordSet::RecordSet(const RecordSet & other)
-  : PObject(other)
-  , m_statement(NULL)
-  , P_DISABLE_MSVC_WARNINGS(4355, m_cursor(*this))
-{
 }
 
 

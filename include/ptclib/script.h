@@ -45,6 +45,7 @@ class PScriptLanguage : public PObject
   PCLASSINFO(PScriptLanguage, PObject)
   public:
     static PScriptLanguage * Create(const PString & language);
+    static PScriptLanguage * CreateOne(const PStringArray & languages);
     static PStringArray GetLanguages();
 
   /**@name Construction */
@@ -69,7 +70,7 @@ class PScriptLanguage : public PObject
       */
     virtual bool LoadFile(
       const PFilePath & filename  ///< Name of script file to load
-    ) = 0;
+    );
 
     /** Load script text.
       */
@@ -94,19 +95,59 @@ class PScriptLanguage : public PObject
     ) = 0;
 
     /**Create a composite structure.
-       The exact semantics is language dependant. For Lua this is a table.
+       The exact semantics is language dependant.
+       For Lua this is always a table.
+       For JavaScript it is either an object or an array.
 
        See class description for how \p name is parsed.
       */
     virtual bool CreateComposite(
-      const PString & name   ///< Name of new composite structure
+      const PString & name,       ///< Name of new composite structure
+      unsigned sequenceSize = 0   ///< Size of sequence, 0 means object
+    ) = 0;
+
+    /**Push a composite name space to the scope chain.
+      */
+    virtual bool PushScopeChain(
+      const PString & name,  ///< Name of composite structure
+      bool create            ///< Create the composite
+    );
+
+    /**Pop a composite name space from the scope chain.
+       @return The composite name that was popped.
+      */
+    virtual PString PopScopeChain(
+      bool release  ///< Release the composite
+    );
+
+    /**Get the composite name space scope chain.
+       @return The composite names in reverse scope order.
+      */
+    virtual PStringList GetScopeChain() const { return m_scopeChain; }
+
+    P_DECLARE_ENUM(
+      VarTypes,
+      NullType,
+      BooleanType,
+      IntegerType,
+      NumberType,
+      StringType,
+      CompositeType,
+      SequenceType,
+      UndefinedType
+    );
+
+    /**Get the type of the variable.
+      */
+    virtual VarTypes GetVarType(
+      const PString & name  ///< Name of variable
     ) = 0;
 
     /**Get a variable in the script 
        See class description for how \p name is parsed.
       */
     virtual bool GetVar(
-      const PString & name,  ///< Name of global
+      const PString & name,  ///< Name of variable
       PVarType & var
     ) = 0;
 
@@ -114,7 +155,7 @@ class PScriptLanguage : public PObject
        See class description for how \p name is parsed.
       */
     virtual bool SetVar(
-      const PString & name, ///< Name of global
+      const PString & name, ///< Name of variable
       const PVarType & var
     ) = 0;
 
@@ -122,61 +163,61 @@ class PScriptLanguage : public PObject
        See class description for how \p name is parsed.
       */
     virtual bool GetBoolean(
-      const PString & name  ///< Name of global
-    ) = 0;
+      const PString & name  ///< Name of variable
+    );
 
     /**Set a variable in the script as a string value.
        See class description for how \p name is parsed.
       */
     virtual bool SetBoolean(
-      const PString & name, ///< Name of global
+      const PString & name, ///< Name of variable
       bool value            ///< New value
-    ) = 0;
+    );
 
     /**Get a variable in the script as an integer value.
        See class description for how \p name is parsed.
       */
     virtual int GetInteger(
-      const PString & name  ///< Name of global
-    ) = 0;
+      const PString & name  ///< Name of variable
+    );
 
     /**Set a variable in the script as an integer value.
        See class description for how \p name is parsed.
       */
     virtual bool SetInteger(
-      const PString & name, ///< Name of global
+      const PString & name, ///< Name of variable
       int value             ///< New value
-    ) = 0;
+    );
 
     /**Get a variable in the script as a number value.
        See class description for how \p name is parsed.
       */
     virtual double GetNumber(
-      const PString & name  ///< Name of global
-    ) = 0;
+      const PString & name  ///< Name of variable
+    );
 
     /**Set a variable in the script as a number value.
        See class description for how \p name is parsed.
       */
     virtual bool SetNumber(
-      const PString & name, ///< Name of global
+      const PString & name, ///< Name of variable
       double value          ///< New value
-    ) = 0;
+    );
 
     /**Get a variable in the script as a string value.
        See class description for how \p name is parsed.
       */
     virtual PString GetString(
-      const PString & name  ///< Name of global
-    ) = 0;
+      const PString & name  ///< Name of variable
+    );
 
     /**Set a variable in the script as a string value.
        See class description for how \p name is parsed.
       */
     virtual bool SetString(
-      const PString & name, ///< Name of global
+      const PString & name, ///< Name of variable
       const char * value    ///< New value
-    ) = 0;
+    );
 
     /**Release a variable name.
        Note the exact semantics is language dependant. It generally applies
@@ -276,11 +317,13 @@ class PScriptLanguage : public PObject
     PString m_lastErrorText;
     typedef map<PString, FunctionNotifier> FunctionMap;
     FunctionMap m_functions;
+    PStringList m_scopeChain;
 
     PDECLARE_MUTEX(m_mutex);
 };
 
 
+PFACTORY_LOAD(PSimpleScript);
 #if P_LUA
   PFACTORY_LOAD(PLua);
 #endif

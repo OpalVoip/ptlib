@@ -39,7 +39,7 @@
     <None Include="resource.wxg">
       <Filter>Resource Files</Filter>
     </None>
-    <None Include="app.ico">
+    <None Include="wxSample.ico">
       <Filter>Resource Files</Filter>
     </None>
   </ItemGroup>

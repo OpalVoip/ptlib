@@ -94,14 +94,14 @@ class PArgList : public PObject
      */
     virtual void PrintOn(
       ostream & strm  ///< I/O stream to output to.
-    ) const;
+    ) const override;
 
     /**Input the string from the specified stream. This will read all
        characters until a end of line is reached, then parsing the arguments.
      */
     virtual void ReadFrom(
       istream & strm  ///< I/O stream to input from. 
-    );
+    ) override;
   //@}
 
   /**@name Setting & Parsing */
@@ -409,15 +409,15 @@ class PConfigArgs : public PArgList
      */
     virtual PINDEX GetOptionCount(
       char optionChar  ///< Character letter code for the option
-    ) const;
+    ) const override;
     /** Get the count of option */
     virtual PINDEX GetOptionCount(
       const char * optionStr ///< String code for the option
-    ) const;
+    ) const override;
     /** Get the count of option */
     virtual PINDEX GetOptionCount(
       const PString & optionName ///< String code for the option
-    ) const;
+    ) const override;
 
     /** Get option string.
        Gets the string associated with an option e.g. -ofile or -o file
@@ -430,19 +430,19 @@ class PConfigArgs : public PArgList
     virtual PString GetOptionString(
       char optionChar,          ///< Character letter code for the option 
       const char * dflt = NULL  ///< Default value of the option string 
-    ) const;
+    ) const override;
 
     /** Get option string. */
     virtual PString GetOptionString(
       const char * optionStr,   ///< String letter code for the option 
       const char * dflt = NULL  ///< Default value of the option string 
-    ) const;
+    ) const override;
 
     /** Get option string. */
     virtual PString GetOptionString(
       const PString & optionName, ///< String code for the option 
       const char * dflt = NULL    ///< Default value of the option string 
-    ) const;
+    ) const override;
   //@}
 
   /**@name Overrides from class PArgList */

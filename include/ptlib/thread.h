@@ -63,7 +63,7 @@ class PSyncPoint;
    Previous versions of PTLib/PWLib have some support for co-operative
    threads, but this has been removed.
  */
-class PThread : public PObject
+class PThread : public PObject, PProfiling::HighWaterMark<PThread>, PNonCopyable
 {
   PCLASSINFO(PThread, PObject);
 
@@ -143,7 +143,7 @@ class PThread : public PObject
       */
     void PrintOn(
       ostream & strm    ///< Stream to output text representation
-    ) const;
+    ) const override;
   //@}
 
   /**@name Control functions */
@@ -461,8 +461,8 @@ class PThread : public PObject
     friend class PExternalThread;
     // So a PProcess can get at PThread() constructor but nothing else.
 
-    PThread(const PThread&) = delete;
-    PThread& operator=(const PThread&) = delete;
+    PThread & operator=(const PThread &) { return *this; }
+    // Empty assignment operator to prevent copying of thread instances.
 
   protected:
     void InternalThreadStarted();
@@ -550,7 +550,7 @@ class PThreadMain : public PThread
         WaitForTermination();
     }
 
-    virtual void Main()
+    virtual void Main() override
     {
       (*m_function)();
     }
@@ -594,7 +594,7 @@ class PThreadFunctor : public PThread
         WaitForTermination();
     }
 
-    virtual void Main()
+    virtual void Main() override
     {
       m_funct(*this);
     }
@@ -641,7 +641,7 @@ class PThread1Arg : public PThread
         WaitForTermination();
     }
 
-    virtual void Main()
+    virtual void Main() override
     {
       (*m_function)(m_arg1);
     }
@@ -690,7 +690,7 @@ class PThread2Arg : public PThread
         WaitForTermination();
     }
 
-    virtual void Main()
+    virtual void Main() override
     {
       (*m_function)(m_arg1, m_arg2);
     }
@@ -741,7 +741,7 @@ class PThread3Arg : public PThread
         WaitForTermination();
     }
 
-    virtual void Main()
+    virtual void Main() override
     {
       (*m_function)(m_arg1, m_arg2, m_arg3);
     }
@@ -794,7 +794,7 @@ class PThreadObj : public PThread
         WaitForTermination();
     }
 
-    void Main()
+    void Main() override
     {
       (m_object.*m_function)();
     }
@@ -848,7 +848,7 @@ class PThreadObj1Arg : public PThread
         WaitForTermination();
     }
 
-    void Main()
+    void Main() override
     {
       (m_object.*m_function)(m_arg1);
     }
@@ -888,7 +888,7 @@ class PThreadObj2Arg : public PThread
         WaitForTermination();
     }
 
-    void Main()
+    void Main() override
     {
       (m_object.*m_function)(m_arg1, m_arg2);
     }

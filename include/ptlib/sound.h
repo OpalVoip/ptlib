@@ -499,8 +499,12 @@ class PSoundChannel : public PIndirectChannel
 
     /**Set the internal buffers for the sound channel I/O. 
 
-       Note that with Linux OSS, the size is always rounded up to the nearest
-       power of two, so 20000 => 32768. 
+       Note that with some Linux OS drivers, the size is always rounded up to
+       the nearest power of two, so 20000 => 32768.
+
+       Another special case is for emulated sound devices, e.g. writing to a
+       WAV file. Setting the size parameter to 1 will disable the "pacing"
+       feature where reads/writes are delayed in real time.
 
        @return
        true if the sound device is valid for playing/recording.
@@ -765,28 +769,29 @@ class PSoundChannelEmulation : public PSoundChannel
   public:
     PSoundChannelEmulation();
 
-    bool Write(const void * buf, PINDEX len);
-    bool Read(void * buf, PINDEX len);
+    virtual bool Close() override;
+    virtual bool Write(const void * buf, PINDEX len) override;
+    virtual bool Read(void * buf, PINDEX len) override;
 
-    virtual bool SetFormat(unsigned numChannels, unsigned sampleRate, unsigned bitsPerSample);
-    virtual unsigned GetChannels() const;
-    virtual unsigned GetSampleRate() const;
-    virtual unsigned GetSampleSize() const;
-    virtual bool SetBuffers(PINDEX size, PINDEX);
-    virtual bool GetBuffers(PINDEX & size, PINDEX & count);
+    virtual bool SetFormat(unsigned numChannels, unsigned sampleRate, unsigned bitsPerSample) override;
+    virtual unsigned GetChannels() const override;
+    virtual unsigned GetSampleRate() const override;
+    virtual unsigned GetSampleSize() const override;
+    virtual bool SetBuffers(PINDEX size, PINDEX) override;
+    virtual bool GetBuffers(PINDEX & size, PINDEX & count) override;
 
-    virtual bool HasPlayCompleted();
-    virtual bool WaitForPlayCompletion();
-    virtual bool StartRecording();
-    virtual bool IsRecordBufferFull();
-    virtual bool AreAllRecordBuffersFull();
-    virtual bool WaitForRecordBufferFull();
-    virtual bool WaitForAllRecordBuffersFull();
+    virtual bool HasPlayCompleted() override;
+    virtual bool WaitForPlayCompletion() override;
+    virtual bool StartRecording() override;
+    virtual bool IsRecordBufferFull() override;
+    virtual bool AreAllRecordBuffersFull() override;
+    virtual bool WaitForRecordBufferFull() override;
+    virtual bool WaitForAllRecordBuffersFull() override;
 
-    virtual bool SetVolume(unsigned volume);
-    virtual bool GetVolume(unsigned & volume);
-    virtual bool SetMute(bool mute);
-    virtual bool GetMute(bool & mute);
+    virtual bool SetVolume(unsigned volume) override;
+    virtual bool GetVolume(unsigned & volume) override;
+    virtual bool SetMute(bool mute) override;
+    virtual bool GetMute(bool & mute) override;
 
   protected:
     virtual bool RawWrite(const void * data, PINDEX size);
@@ -804,6 +809,7 @@ class PSoundChannelEmulation : public PSoundChannel
     bool           m_autoRepeat;
     PAdaptiveDelay m_Pacing;
     bool           m_muted;
+    PDECLARE_MUTEX(m_writeMutex);
 };
 
 

@@ -353,7 +353,7 @@ class TypeBase : public PObject
 {
     PCLASSINFO(TypeBase, PObject);
   public:
-    Comparison Compare(const PObject & obj) const;
+    Comparison Compare(const PObject & obj) const override;
     void PrintOn(ostream &) const;
 
     virtual int GetIdentifierTokenContext() const;
@@ -668,7 +668,7 @@ class AnyType : public TypeBase
     PCLASSINFO(AnyType, TypeBase);
   public:
     AnyType(PString * ident);
-    void PrintOn(ostream & strm) const;
+    void PrintOn(ostream & strm) const override;
     virtual const char * GetAncestorClass() const;
   protected:
     PString identifier;

@@ -24,7 +24,7 @@
  * Contributor(s): Federico Pinna and Reitek S.p.A. (SASL authentication)
  */
 
-#ifdef __GNUC__
+#ifdef P_USE_PRAGMA
 #pragma implementation "inetmail.h"
 #endif
 

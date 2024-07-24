@@ -172,8 +172,8 @@ class PLDAPSession : public PObject
           const PString & value
         );
       protected:
-        virtual bool IsBinary() const;
-        virtual void SetLDAPModVars(struct ldapmod & mod);
+        virtual bool IsBinary() const override;
+        virtual void SetLDAPModVars(struct ldapmod & mod) override;
 
         PStringArray m_values;
         PBaseArray<const char *> m_pointers;
@@ -203,8 +203,8 @@ class PLDAPSession : public PObject
           const PBYTEArray & value
         );
       protected:
-        virtual bool IsBinary() const;
-        virtual void SetLDAPModVars(struct ldapmod & mod);
+        virtual bool IsBinary() const override;
+        virtual void SetLDAPModVars(struct ldapmod & mod) override;
 
         PArray<PBYTEArray> m_values;
         PBaseArray<struct berval *> m_pointers;
@@ -460,7 +460,7 @@ class PLDAPStructBase : public PObject {
     PLDAPStructBase(const PLDAPStructBase & obj) : PObject(obj) { }
 
   public:
-    void PrintOn(ostream & strm) const;
+    void PrintOn(ostream & strm) const override;
 
     typedef PDictionary<PString, PLDAPAttributeBase> AttribDict;
     AttribDict & GetAttributes() { return m_attributes; }

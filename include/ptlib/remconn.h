@@ -45,7 +45,7 @@
 
 /** Remote Access Connection class.
 */
-class PRemoteConnection : public PObject
+class PRemoteConnection : public PObject, PNonCopyable
 {
   PCLASSINFO(PRemoteConnection, PObject);
 
@@ -73,12 +73,12 @@ class PRemoteConnection : public PObject
      */
     virtual Comparison Compare(
       const PObject & obj     ///< Another connection instance.
-    ) const;
+    ) const override;
 
     /** Get has value for the connection
         @return Hash value of the connection name string.
       */
-    virtual PINDEX HashFunction() const;
+    virtual PINDEX HashFunction() const override;
   //@}
 
   /**@name Dial/Hangup functions */
@@ -277,8 +277,6 @@ class PRemoteConnection : public PObject
     uint32_t osError;
 
   private:
-    PRemoteConnection(const PRemoteConnection &) { }
-    void operator=(const PRemoteConnection &) { }
     void Construct();
 
 

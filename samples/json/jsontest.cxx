@@ -8,7 +8,7 @@ class JSONTest : public PProcess
   PCLASSINFO(JSONTest, PProcess);
  public:
   JSONTest();
-  void Main();
+  virtual void Main() override;
 };
 
 PCREATE_PROCESS(JSONTest);
