@@ -970,6 +970,98 @@ template <class T> class PArray : public PArrayObjects
       { return PNEW PArray(0, this); }
   //@}
 
+  /**@name Iterators */
+  //@{
+    typedef T value_type;
+
+    class iterator_base
+    {
+    protected:
+      const PArray * m_array;
+      PINDEX         m_position;
+
+      explicit iterator_base(const PArray * a = NULL, PINDEX p = P_MAX_INDEX) : m_array(a), m_position(p) { }
+
+      void Next()
+      {
+        if (m_array != NULL && ++this->m_position >= m_array->GetSize())
+          *this = iterator_base();
+      }
+
+      void Prev()
+      {
+        if (m_array != NULL && this->m_position-- == 0)
+          *this = iterator_base();
+      }
+
+      value_type * Ptr() const { return &(*this->m_array)[this->m_position]; }
+
+    public:
+      bool operator==(const iterator_base & it) const { return this->m_array == it.m_array && this->m_position == it.m_position; }
+      bool operator!=(const iterator_base & it) const { return !operator==(it); }
+    };
+
+    class iterator : public iterator_base, public std::iterator<std::bidirectional_iterator_tag, value_type>
+    {
+    protected:
+      iterator(const PArray * a, PINDEX p) : iterator_base(a, p) { }
+
+    public:
+      iterator() { }
+
+      iterator & operator++() { this->Next(); return *this; }
+      iterator & operator--() { this->Prev(); return *this; }
+      iterator   operator++(int) { iterator it = *this; this->Next(); return it; }
+      iterator   operator--(int) { iterator it = *this; this->Prev(); return it; }
+
+      value_type * operator->() const { return  this->Ptr(); }
+      value_type & operator* () const { return *this->Ptr(); }
+
+      friend class PArray;
+    };
+
+    iterator begin() { return empty() ? end() : iterator(this, 0); }
+    iterator end() { return iterator(NULL, P_MAX_INDEX); }
+    iterator rbegin() { return empty() ? end() : iterator(this, this->GetSize()-1); }
+    iterator rend() { return iterator(NULL, P_MAX_INDEX); }
+    void insert(const iterator & it, value_type * obj) { this->InsertAt(it.m_position, obj); }
+    void insert(const iterator & it, const value_type & obj) { this->InsertAt(it.m_position, obj.Clone()); }
+
+    class const_iterator : public iterator_base, public std::iterator<std::bidirectional_iterator_tag, const value_type>
+    {
+    protected:
+      const_iterator(const PArray * a, PINDEX p) : iterator_base(a, p) { }
+
+    public:
+      const_iterator() { }
+      const_iterator(const PArray::iterator & it) : iterator_base(it) { }
+
+      const_iterator & operator++() { this->Next(); return *this; }
+      const_iterator & operator--() { this->Prev(); return *this; }
+      const_iterator   operator++(int) { const_iterator it = *this; this->Next(); return it; }
+      const_iterator   operator--(int) { const_iterator it = *this; this->Prev(); return it; }
+
+      const value_type * operator->() const { return  this->Ptr(); }
+      const value_type & operator* () const { return *this->Ptr(); }
+
+      friend class PArray;
+    };
+
+    const_iterator begin()  const { return empty() ? end() : const_iterator(this, 0); }
+    const_iterator end()    const { return const_iterator(NULL, P_MAX_INDEX); }
+    const_iterator rbegin() const { return empty() ? end() : const_iterator(this, this->GetSize()-1); }
+    const_iterator rend()   const { return const_iterator(NULL, P_MAX_INDEX); }
+
+    value_type & front() const { return this->GetAt(0); }
+    value_type & back() const { return this->GetAt(GetSize()-1); }
+    void erase(const iterator & it) { this->RemoveAt(it.m_position); }
+    void erase(const const_iterator & it) { this->RemoveAt(it.m_position); }
+    void push_front(const value_type & value) { this->InsertAt(0, new value_type(value)); }
+    void push_back(const value_type & value) { this->Append(new value_type(value)); }
+    void pop_front() { this->RemoveAt(0); }
+    void pop_back() { this->SetSize(this->GetSize()-1); }
+  //@}
+
   /**@name New functions for class */
   //@{
     /**Retrieve a reference  to the object in the array. If there was not an
