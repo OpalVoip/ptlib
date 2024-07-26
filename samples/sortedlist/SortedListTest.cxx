@@ -15,14 +15,19 @@ class Fred : public PObject
     {
     }
 
-    Comparison Compare(const PObject & obj) const
+    Comparison Compare(const PObject & obj) const override
     {
-      const Fred & other = dynamic_cast<const Fred &>(obj);
-      if (m_character < other.m_character)
-        return GreaterThan;
-      if (m_character > other.m_character)
-        return LessThan;
-      return EqualTo;
+      return Compare2(m_character, dynamic_cast<const Fred &>(obj).m_character);
+    }
+
+    void PrintOn(ostream & strm) const override
+    {
+      strm << m_character;
+    }
+
+    PINDEX HashFunction() const override
+    {
+      return std::abs(128-m_character)%23;
     }
 };
 
@@ -37,27 +42,94 @@ SortedListTest::SortedListTest()
 
 void SortedListTest::Main()
 {
-#ifdef _MSC_VER
-  // Tests for Visual Studio debugger autoexp.dat
   {
     PString str("fred");
     PCharArray chars("fred", 4);
     PBYTEArray bytes((const BYTE *)"fred", 4);
     PShortArray shorts((const short *)L"fred", 4);
     PWORDArray words((const WORD *)L"fred", 4);
-    PArray<Fred> a_fred; a_fred.Append(new Fred('f')); a_fred.Append(new Fred('r')); a_fred.Append(new Fred('e')); a_fred.Append(new Fred('d'));
-    PStringArray a_strings; a_strings.AppendString('f'); a_strings.AppendString('r'); a_strings.AppendString('e'); a_strings.AppendString('d');
-    PList<Fred> l_fred; l_fred.Append(new Fred('f')); l_fred.Append(new Fred('r')); l_fred.Append(new Fred('e')); l_fred.Append(new Fred('d'));
-    PStringList l_strings; l_strings.AppendString('f'); l_strings.AppendString('r'); l_strings.AppendString('e'); l_strings.AppendString('d');
-    PSortedList<Fred> sl_fred; sl_fred.Append(new Fred('f')); sl_fred.Append(new Fred('r')); sl_fred.Append(new Fred('e')); sl_fred.Append(new Fred('d'));
-    PSortedStringList ls_strings; ls_strings.AppendString('f'); ls_strings.AppendString('r'); ls_strings.AppendString('e'); ls_strings.AppendString('d');
-    PSet<Fred> s_fred; s_fred.Append(new Fred('f')); s_fred.Append(new Fred('r')); s_fred.Append(new Fred('e')); s_fred.Append(new Fred('d'));
-    PStringSet s_strings; s_strings+='f'; s_strings+='r'; s_strings+='e'; s_strings+='d';
-    PStringToString ssd_strings; ssd_strings.SetAt('f','F'); ssd_strings.SetAt('r','R'); ssd_strings.SetAt('e','E'); ssd_strings.SetAt('d','D');
 
+    PArray<Fred> a_fred;
+    a_fred.Append(new Fred('f'));
+    a_fred.Append(new Fred('r'));
+    a_fred.Append(new Fred('e'));
+    a_fred.Append(new Fred('d'));
+    cout << "PArray<Fred> ";
+    for (PArray<Fred>::iterator it = a_fred.begin(); it != a_fred.end(); ++it)
+      cout << *it;
+    cout << endl;
+
+    PStringArray a_strings;
+    a_strings.AppendString('f');
+    a_strings.AppendString('r');
+    a_strings.AppendString('e');
+    a_strings.AppendString('d');
+    cout << "PStringArray ";
+    for (PStringArray::iterator it = a_strings.begin(); it != a_strings.end(); ++it)
+      cout << *it;
+    cout << endl;
+
+    PList<Fred> l_fred;
+    l_fred.Append(new Fred('f'));
+    l_fred.Append(new Fred('r'));
+    l_fred.Append(new Fred('e'));
+    l_fred.Append(new Fred('d'));
+    cout << "PList<Fred> ";
+    for (PList<Fred>::iterator it = l_fred.begin(); it != l_fred.end(); ++it)
+      cout << *it;
+    cout << endl;
+
+    PStringList l_strings;
+    l_strings.AppendString('f');
+    l_strings.AppendString('r');
+    l_strings.AppendString('e');
+    l_strings.AppendString('d');
+    cout << "PStringList ";
+    for (PStringList::iterator it = l_strings.begin(); it != l_strings.end(); ++it)
+      cout << *it;
+    cout << endl;
+
+    PSortedList<Fred> sl_fred;
+    sl_fred.Append(new Fred('f'));
+    sl_fred.Append(new Fred('r'));
+    sl_fred.Append(new Fred('e'));
+    sl_fred.Append(new Fred('d'));
+    cout << "PSortedList<Fred> ";
+    for (PSortedList<Fred>::iterator it = sl_fred.begin(); it != sl_fred.end(); ++it)
+      cout << *it;
+    cout << endl;
+
+    PSet<Fred> s_fred;
+    s_fred.Append(new Fred('f'));
+    s_fred.Append(new Fred('r'));
+    s_fred.Append(new Fred('e'));
+    s_fred.Append(new Fred('d'));
+    cout << "PSet<Fred> ";
+    for (PSet<Fred>::iterator it = s_fred.begin(); it != s_fred.end(); ++it)
+      cout << *it;
+    cout << endl;
+
+    PStringSet s_strings;
+    s_strings += 'f';
+    s_strings += 'r';
+    s_strings += 'e';
+    s_strings += 'd';
+    cout << "PStringSet ";
+    for (PStringSet::iterator it = s_strings.begin(); it != s_strings.end(); ++it)
+      cout << *it;
+    cout << endl;
+
+    PStringToString ssd_strings;
+    ssd_strings.SetAt('f','F');
+    ssd_strings.SetAt('r','R');
+    ssd_strings.SetAt('e','E');
+    ssd_strings.SetAt('d','D');
+    cout << "PStringToString ";
+    for (PStringToString::iterator it = ssd_strings.begin(); it != ssd_strings.end(); ++it)
+      cout << it->first << '=' << it->second << ' ';
     cout << endl;
   }
-#endif
+  cin.get();
 
   {
     PSortedStringList ss;
