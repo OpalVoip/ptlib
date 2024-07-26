@@ -1100,7 +1100,7 @@ template <class Collection> class PSafeColl : public PSafeCollection
 
       public:
         const_iterator() { }
-        const_iterator(const typename iterator & it) : iterator_base(it) { }
+        const_iterator(const iterator & it) : iterator_base(it) { }
 
         const_iterator & operator++()    {                      this->Next(); return *this; }
         const_iterator   operator++(int) { iterator it = *this; this->Next(); return it;    }

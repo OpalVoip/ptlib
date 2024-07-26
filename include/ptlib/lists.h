@@ -410,7 +410,7 @@ template <class T> class PList : public PAbstractList
 
       public:
         const_iterator() : iterator_base(NULL) { }
-        const_iterator(const typename iterator & it) : iterator_base(it) { }
+        const_iterator(const iterator & it) : iterator_base(it) { }
 
         const_iterator & operator++()    {                            this->Next(); return *this; }
         const_iterator & operator--()    {                            this->Prev(); return *this; }
@@ -1114,7 +1114,7 @@ template <class T> class PSortedList : public PAbstractSortedList
 
       public:
         const_iterator() : iterator_base(NULL, NULL) { }
-        const_iterator(const typename iterator & it) : iterator_base(it) { }
+        const_iterator(const iterator & it) : iterator_base(it) { }
 
         const_iterator & operator++()    {                            this->Next(); return *this; }
         const_iterator & operator--()    {                            this->Prev(); return *this; }
