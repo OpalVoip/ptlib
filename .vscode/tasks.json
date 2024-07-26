@@ -10,7 +10,7 @@
             "options": {
                 "env": {
                     "PTLIBDIR": "${workspaceFolder}",
-                    "PKG_CONFIG_PATH": "/usr/local/opt/openssl/lib/pkgconfig"
+                    "CONFIG_PARMS": "--enable-samples"
                 }
             },
             "args": [
@@ -22,7 +22,7 @@
                 "$gcc"
             ],
             "group": {
-                "kind": "build",
+                "kind": "build"
             }
         },
         {
@@ -32,7 +32,7 @@
             "options": {
                 "env": {
                     "PTLIBDIR": "${workspaceFolder}",
-                    "PKG_CONFIG_PATH": "/usr/local/opt/openssl/lib/pkgconfig"
+                    "CONFIG_PARMS": "--enable-samples"
                 }
             },
             "args": [
@@ -56,7 +56,7 @@
             "options": {
                 "env": {
                     "PTLIBDIR": "${workspaceFolder}",
-                    "PKG_CONFIG_PATH": "/usr/local/opt/openssl/lib/pkgconfig"
+                    "CONFIG_PARMS": "--enable-samples"
                 }
             },
             "args": [
@@ -69,7 +69,7 @@
                 "$gcc"
             ],
             "group": {
-                "kind": "build",
+                "kind": "build"
             }
         },
         {
@@ -79,7 +79,7 @@
             "options": {
                 "env": {
                     "PTLIBDIR": "${workspaceFolder}",
-                    "PKG_CONFIG_PATH": "/usr/local/opt/openssl/lib/pkgconfig"
+                    "CONFIG_PARMS": "--enable-samples"
                 }
             },
             "args": [
@@ -91,7 +91,7 @@
                 "$gcc"
             ],
             "group": {
-                "kind": "build",
+                "kind": "build"
             }
         }
     ]
