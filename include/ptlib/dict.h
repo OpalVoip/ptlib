@@ -625,15 +625,13 @@ template <class T> class PSet : public PAbstractSet
 
   /**@name Iterators */
   //@{
-    class iterator;
-    class const_iterator;
-    class iterator_base {
+    typedef T value_type;
+
+    class iterator_base
+    {
       public:
         typedef std::forward_iterator_tag iterator_category;
-        typedef T value_type;
         typedef ptrdiff_t difference_type;
-        typedef value_type * pointer;
-        typedef value_type & reference;
 
       protected:
         iterator_base()
@@ -655,14 +653,20 @@ template <class T> class PSet : public PAbstractSet
         void Next() { if (PAssertNULL(this->table)) this->element = this->table->NextElement(this->element); }
         void Prev() { if (PAssertNULL(this->table)) this->element = this->table->PrevElement(this->element); }
 
-        T * Ptr() const { return PAssertNULL(this->element) ? dynamic_cast<T *>(this->element->m_key) : NULL; }
+        value_type * Ptr() const { return PAssertNULL(this->element) ? dynamic_cast<value_type *>(this->element->m_key) : NULL; }
 
       public:
         bool operator==(const iterator_base & it) const { return this->element == it.element; }
         bool operator!=(const iterator_base & it) const { return !operator==(it); }
     };
 
-    class iterator : public iterator_base  {
+    class iterator : public iterator_base
+    {
+      public:
+        typedef T value_type;
+        typedef value_type * pointer;
+        typedef value_type & reference;
+
       protected:
         iterator(PHashTableInfo * t) : iterator_base(t) { }
         iterator(PHashTableInfo * t, const T & k) : iterator_base(t, k) { }
@@ -683,10 +687,16 @@ template <class T> class PSet : public PAbstractSet
 
     iterator begin() { return iterator(this->hashTable); }
     iterator end()   { return iterator(); }
-    iterator find(const T & k) { return iterator(this->hashTable, k); }
+    iterator find(const value_type & k) { return iterator(this->hashTable, k); }
 
 
-    class const_iterator : public iterator_base {
+    class const_iterator : public iterator_base
+    {
+      public:
+        typedef const T value_type;
+        typedef value_type * pointer;
+        typedef value_type & reference;
+
       protected:
         const_iterator(PHashTableInfo * t) : iterator_base(t) { }
         const_iterator(PHashTableInfo * t, const T & k) : iterator_base(t, k) { }
@@ -707,7 +717,7 @@ template <class T> class PSet : public PAbstractSet
 
     const_iterator begin() const { return const_iterator(this->hashTable); }
     const_iterator end()   const { return const_iterator(); }
-    const_iterator find(const T & k) const { return const_iterator(this->hashTable, k); }
+    const_iterator find(const value_type & k) const { return const_iterator(this->hashTable, k); }
 
     void erase(const iterator & it) { this->Remove(&*it); }
     void erase(const const_iterator & it) { this->Remove(&*it); }
@@ -1131,12 +1141,15 @@ template <class K, class D> class PDictionary : public PAbstractDictionary
 
   /**@name Iterators */
   //@{
-    class iterator;
-    class const_iterator;
-    class iterator_base {
+    class iterator_base
+    {
+      public:
+        typedef std::forward_iterator_tag iterator_category;
+        typedef ptrdiff_t difference_type;
+
       protected:
-        K * m_internal_first;  // Must be first two members
-        D * m_internal_second;
+        key_type * m_internal_first;  // Must be first two members
+        data_type * m_internal_second;
 
         PHashTableInfo    * m_table;
         PHashTableElement * m_element;
@@ -1194,14 +1207,18 @@ template <class K, class D> class PDictionary : public PAbstractDictionary
         iterator_pair() : first(reinterpret_cast<CK&>(0)), second(reinterpret_cast<CD&>(0)) { }
     };
 
-    class iterator : public iterator_base {
+    class iterator : public iterator_base
+    {
       public:
-        typedef std::forward_iterator_tag iterator_category;
-        typedef iterator_pair<const K, const D> value_type;
-        typedef ptrdiff_t difference_type;
+        typedef iterator_pair<const K, D> value_type;
         typedef value_type * pointer;
         typedef value_type & reference;
 
+      protected:
+        iterator(dict_type * dict) : iterator_base(dict) { }
+        iterator(dict_type * dict, const K & key) : iterator_base(dict, key) { }
+
+      public:
         iterator() { }
 
         iterator operator++()    {                      this->Next(); return *this; }
@@ -1213,10 +1230,6 @@ template <class K, class D> class PDictionary : public PAbstractDictionary
         const pair * operator->() const { return  reinterpret_cast<const pair *>(this); }
         const pair & operator* () const { return *reinterpret_cast<const pair *>(this); }
 
-      protected:
-        iterator(dict_type * dict) : iterator_base(dict) { }
-        iterator(dict_type * dict, const K & key) : iterator_base(dict, key) { }
-
       friend class PDictionary<K, D>;
     };
 
@@ -1225,16 +1238,20 @@ template <class K, class D> class PDictionary : public PAbstractDictionary
     iterator find(const K & key) { return iterator(this, key); }
 
 
-    class const_iterator : public iterator_base {
+    class const_iterator : public iterator_base
+    {
       public:
-        typedef std::forward_iterator_tag iterator_category;
         typedef iterator_pair<const K, const D> value_type;
-        typedef ptrdiff_t difference_type;
         typedef value_type * pointer;
         typedef value_type & reference;
 
+      protected:
+        const_iterator(const dict_type * dict) : iterator_base(dict) { }
+        const_iterator(const dict_type * dict, const K & key) : iterator_base(dict, key) { }
+
+      public:
         const_iterator() { }
-        const_iterator(iterator it) : iterator_base(it) { }
+        const_iterator(const typename iterator & it) : iterator_base(it) { }
 
         const_iterator operator++()    {                            this->Next(); return *this; }
         const_iterator operator--()    {                            this->Prev(); return *this; }
@@ -1244,10 +1261,6 @@ template <class K, class D> class PDictionary : public PAbstractDictionary
         typedef iterator_pair<const K, const D> pair;
         const pair * operator->() const { return  reinterpret_cast<const pair *>(this); }
         const pair & operator* () const { return *reinterpret_cast<const pair *>(this); }
-
-      protected:
-        const_iterator(const dict_type * dict) : iterator_base(dict) { }
-        const_iterator(const dict_type * dict, const K & key) : iterator_base(dict, key) { }
 
       friend class PDictionary<K, D>;
     };

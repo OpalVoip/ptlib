@@ -31,6 +31,30 @@ class Fred : public PObject
     }
 };
 
+class Safe : public PSafeObject
+{
+  char m_character;
+public:
+  Safe(char c)
+    : m_character(c)
+  { }
+
+  Comparison Compare(const PObject & obj) const override
+  {
+    return Compare2(m_character, dynamic_cast<const Safe &>(obj).m_character);
+  }
+
+  void PrintOn(ostream & strm) const override
+  {
+    strm << m_character;
+  }
+
+  PINDEX HashFunction() const override
+  {
+    return std::abs(128-m_character)%23;
+  }
+};
+
 
 PMutex coutMutex;
 
@@ -128,6 +152,46 @@ void SortedListTest::Main()
     for (PStringToString::iterator it = ssd_strings.begin(); it != ssd_strings.end(); ++it)
       cout << it->first << '=' << it->second << ' ';
     cout << endl;
+
+    PSafeArray<Safe> safe_array;
+    safe_array.Append(new Safe('f'));
+    safe_array.Append(new Safe('r'));
+    safe_array.Append(new Safe('e'));
+    safe_array.Append(new Safe('d'));
+    cout << "PSafeArray<Safe> ";
+    for (PSafeArray<Safe>::iterator it = safe_array.begin(); it != safe_array.end(); ++it)
+      cout << *it;
+    cout << endl;
+
+    PSafeList<Safe> safe_list;
+    safe_list.Append(new Safe('f'));
+    safe_list.Append(new Safe('r'));
+    safe_list.Append(new Safe('e'));
+    safe_list.Append(new Safe('d'));
+    cout << "PSafeList<Safe> ";
+    for (PSafeList<Safe>::iterator it = safe_list.begin(); it != safe_list.end(); ++it)
+      cout << *it;
+    cout << endl;
+
+    PSafeSortedList<Safe> safe_sl;
+    safe_sl.Append(new Safe('f'));
+    safe_sl.Append(new Safe('r'));
+    safe_sl.Append(new Safe('e'));
+    safe_sl.Append(new Safe('d'));
+    cout << "PSafeSortedList<Safe> ";
+    for (PSafeSortedList<Safe>::iterator it = safe_sl.begin(); it != safe_sl.end(); ++it)
+      cout << *it;
+    cout << endl;
+
+    PSafeDictionary<PString, Safe> safe_dict;
+    safe_dict.SetAt('f', new Safe('F'));
+    safe_dict.SetAt('r', new Safe('R'));
+    safe_dict.SetAt('e', new Safe('E'));
+    safe_dict.SetAt('d', new Safe('D'));
+    cout << "PSafeDictionary<PString, Safe> ";
+    for (PSafeDictionary<PString, Safe>::iterator it = safe_dict.begin(); it != safe_dict.end(); ++it)
+      cout << it->first << '=' << *it->second << ' ';
+    cout << endl;
   }
   cin.get();
 
@@ -162,8 +226,6 @@ void SortedListTest::Main()
     else
       new DoSomeThing2(i);
   }
-
-  Suspend();
 }
 
 

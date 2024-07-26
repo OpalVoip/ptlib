@@ -348,13 +348,11 @@ template <class T> class PList : public PAbstractList
   //@{
     typedef T value_type;
 
-    class iterator_base {
+    class iterator_base
+    {
       public:
         typedef std::bidirectional_iterator_tag iterator_category;
         typedef ptrdiff_t difference_type;
-        typedef value_type * pointer;
-        typedef value_type & reference;
-
       protected:
         iterator_base(PListElement * e) : element(e) { }
         PListElement * element;
@@ -366,13 +364,20 @@ template <class T> class PList : public PAbstractList
       public:
         bool operator==(const iterator_base & it) const { return this->element == it.element; }
         bool operator!=(const iterator_base & it) const { return !operator==(it); }
-
-      friend class PList<T>;
     };
 
-    class iterator : public iterator_base {
+    class iterator : public iterator_base
+    {
       public:
-        iterator(PListElement * e = NULL) : iterator_base(e) { }
+        typedef T value_type;
+        typedef value_type * pointer;
+        typedef value_type & reference;
+
+      protected:
+        iterator(PListElement * e) : iterator_base(e) { }
+
+      public:
+        iterator() : iterator_base(NULL) { }
 
         iterator & operator++()    {                      this->Next(); return *this; }
         iterator & operator--()    {                      this->Prev(); return *this; }
@@ -381,6 +386,8 @@ template <class T> class PList : public PAbstractList
 
         value_type * operator->() const { return  this->Ptr(); }
         value_type & operator* () const { return *this->Ptr(); }
+
+      friend class PList<T>;
     };
 
     iterator begin()  { return this->m_info->head; }
@@ -391,9 +398,19 @@ template <class T> class PList : public PAbstractList
     void insert(const iterator & pos, value_type * obj) { this->InsertElement(pos.element, obj); }
     void insert(const iterator & pos, const value_type & obj) { this->InsertElement(pos.element, obj.Clone()); }
 
-    class const_iterator : public iterator_base {
+    class const_iterator : public iterator_base
+    {
       public:
-        const_iterator(PListElement * e = NULL) : iterator_base(e) { }
+        typedef const T value_type;
+        typedef value_type * pointer;
+        typedef value_type & reference;
+
+      protected:
+        const_iterator(PListElement * e) : iterator_base(e) { }
+
+      public:
+        const_iterator() : iterator_base(NULL) { }
+        const_iterator(const typename iterator & it) : iterator_base(it) { }
 
         const_iterator & operator++()    {                            this->Next(); return *this; }
         const_iterator & operator--()    {                            this->Prev(); return *this; }
@@ -402,6 +419,8 @@ template <class T> class PList : public PAbstractList
 
         const value_type * operator->() const { return  this->Ptr(); }
         const value_type & operator* () const { return *this->Ptr(); }
+
+      friend class PList<T>;
     };
 
     const_iterator begin()  const { return this->m_info->head; }
@@ -1029,14 +1048,8 @@ template <class T> class PSortedList : public PAbstractSortedList
         element = NULL;
     }
 
-    class iterator_base {
-      public:
-        typedef std::bidirectional_iterator_tag iterator_category;
-        typedef T value_type;
-        typedef ptrdiff_t difference_type;
-        typedef value_type * pointer;
-        typedef value_type & reference;
-
+    class iterator_base
+    {
       protected:
         const PSortedList<T> * m_list;
         PSortedListElement   * m_element;
@@ -1056,10 +1069,20 @@ template <class T> class PSortedList : public PAbstractSortedList
     };
 
   public:
-    class iterator : public iterator_base {
+    class iterator : public iterator_base
+    {
+      public:
+        typedef std::bidirectional_iterator_tag iterator_category;
+        typedef T value_type;
+        typedef ptrdiff_t difference_type;
+        typedef value_type * pointer;
+        typedef value_type & reference;
+
+      protected:
+        iterator(PSortedList<T> * l, PSortedListElement * e) : iterator_base(l, e) { }
+
       public:
         iterator() : iterator_base(NULL, NULL) { }
-        iterator(PSortedList<T> * l, PSortedListElement * e) : iterator_base(l, e) { }
 
         iterator & operator++()    {                      this->Next(); return *this; }
         iterator & operator--()    {                      this->Prev(); return *this; }
@@ -1068,6 +1091,8 @@ template <class T> class PSortedList : public PAbstractSortedList
 
         value_type * operator->() const { return  this->Ptr(); }
         value_type & operator* () const { return *this->Ptr(); }
+
+      friend class PSortedList<T>;
     };
 
     iterator begin()  { return IsEmpty() ? iterator() : iterator(this, this->m_info->OrderSelect(1));                 }
@@ -1075,10 +1100,21 @@ template <class T> class PSortedList : public PAbstractSortedList
     iterator rbegin() { return IsEmpty() ? iterator() : iterator(this, this->m_info->OrderSelect(this->GetSize())); }
     iterator rend()   { return             iterator();                                                                }
 
-    class const_iterator : public iterator_base {
+    class const_iterator : public iterator_base
+    {
+      public:
+        typedef std::bidirectional_iterator_tag iterator_category;
+        typedef const T value_type;
+        typedef ptrdiff_t difference_type;
+        typedef value_type * pointer;
+        typedef value_type & reference;
+
+      protected:
+        const_iterator(const PSortedList<T> * l, PSortedListElement * e) : iterator_base(l, e) { }
+
       public:
         const_iterator() : iterator_base(NULL, NULL) { }
-        const_iterator(const PSortedList<T> * l, PSortedListElement * e) : iterator_base(l, e) { }
+        const_iterator(const typename iterator & it) : iterator_base(it) { }
 
         const_iterator & operator++()    {                            this->Next(); return *this; }
         const_iterator & operator--()    {                            this->Prev(); return *this; }
@@ -1087,6 +1123,8 @@ template <class T> class PSortedList : public PAbstractSortedList
 
         const value_type * operator->() const { return  this->Ptr(); }
         const value_type & operator* () const { return *this->Ptr(); }
+
+      friend class PSortedList<T>;
     };
 
     const_iterator begin()  const { return IsEmpty() ? const_iterator() : const_iterator(this, this->m_info->OrderSelect(1));                 }

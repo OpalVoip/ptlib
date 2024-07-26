@@ -976,48 +976,56 @@ template <class T> class PArray : public PArrayObjects
 
     class iterator_base
     {
-    protected:
-      const PArray * m_array;
-      PINDEX         m_position;
+      public:
+        typedef std::bidirectional_iterator_tag iterator_category;
+        typedef ptrdiff_t difference_type;
+      protected:
+        const PArray * m_array;
+        PINDEX         m_position;
 
-      explicit iterator_base(const PArray * a = NULL, PINDEX p = P_MAX_INDEX) : m_array(a), m_position(p) { }
+        explicit iterator_base(const PArray * a = NULL, PINDEX p = P_MAX_INDEX) : m_array(a), m_position(p) { }
 
-      void Next()
-      {
-        if (m_array != NULL && ++this->m_position >= m_array->GetSize())
-          *this = iterator_base();
-      }
+        void Next()
+        {
+          if (m_array != NULL && ++this->m_position >= m_array->GetSize())
+            *this = iterator_base();
+        }
 
-      void Prev()
-      {
-        if (m_array != NULL && this->m_position-- == 0)
-          *this = iterator_base();
-      }
+        void Prev()
+        {
+          if (m_array != NULL && this->m_position-- == 0)
+            *this = iterator_base();
+        }
 
-      value_type * Ptr() const { return &(*this->m_array)[this->m_position]; }
+        value_type * Ptr() const { return &(*this->m_array)[this->m_position]; }
 
-    public:
-      bool operator==(const iterator_base & it) const { return this->m_array == it.m_array && this->m_position == it.m_position; }
-      bool operator!=(const iterator_base & it) const { return !operator==(it); }
+      public:
+        bool operator==(const iterator_base & it) const { return this->m_array == it.m_array && this->m_position == it.m_position; }
+        bool operator!=(const iterator_base & it) const { return !operator==(it); }
     };
 
-    class iterator : public iterator_base, public std::iterator<std::bidirectional_iterator_tag, value_type>
+    class iterator : public iterator_base
     {
-    protected:
-      iterator(const PArray * a, PINDEX p) : iterator_base(a, p) { }
+      public:
+        typedef T value_type;
+        typedef value_type * pointer;
+        typedef value_type & reference;
 
-    public:
-      iterator() { }
+      protected:
+        iterator(const PArray * a, PINDEX p) : iterator_base(a, p) { }
 
-      iterator & operator++() { this->Next(); return *this; }
-      iterator & operator--() { this->Prev(); return *this; }
-      iterator   operator++(int) { iterator it = *this; this->Next(); return it; }
-      iterator   operator--(int) { iterator it = *this; this->Prev(); return it; }
+      public:
+        iterator() { }
 
-      value_type * operator->() const { return  this->Ptr(); }
-      value_type & operator* () const { return *this->Ptr(); }
+        iterator & operator++() { this->Next(); return *this; }
+        iterator & operator--() { this->Prev(); return *this; }
+        iterator   operator++(int) { iterator it = *this; this->Next(); return it; }
+        iterator   operator--(int) { iterator it = *this; this->Prev(); return it; }
 
-      friend class PArray;
+        value_type * operator->() const { return  this->Ptr(); }
+        value_type & operator* () const { return *this->Ptr(); }
+
+      friend class PArray<T>;
     };
 
     iterator begin() { return empty() ? end() : iterator(this, 0); }
@@ -1027,24 +1035,29 @@ template <class T> class PArray : public PArrayObjects
     void insert(const iterator & it, value_type * obj) { this->InsertAt(it.m_position, obj); }
     void insert(const iterator & it, const value_type & obj) { this->InsertAt(it.m_position, obj.Clone()); }
 
-    class const_iterator : public iterator_base, public std::iterator<std::bidirectional_iterator_tag, const value_type>
+    class const_iterator : public iterator_base
     {
-    protected:
-      const_iterator(const PArray * a, PINDEX p) : iterator_base(a, p) { }
+      public:
+        typedef const T value_type;
+        typedef value_type * pointer;
+        typedef value_type & reference;
 
-    public:
-      const_iterator() { }
-      const_iterator(const PArray::iterator & it) : iterator_base(it) { }
+      protected:
+        const_iterator(const PArray * a, PINDEX p) : iterator_base(a, p) { }
 
-      const_iterator & operator++() { this->Next(); return *this; }
-      const_iterator & operator--() { this->Prev(); return *this; }
-      const_iterator   operator++(int) { const_iterator it = *this; this->Next(); return it; }
-      const_iterator   operator--(int) { const_iterator it = *this; this->Prev(); return it; }
+      public:
+        const_iterator() { }
+        const_iterator(const typename iterator & it) : iterator_base(it) { }
 
-      const value_type * operator->() const { return  this->Ptr(); }
-      const value_type & operator* () const { return *this->Ptr(); }
+        const_iterator & operator++() { this->Next(); return *this; }
+        const_iterator & operator--() { this->Prev(); return *this; }
+        const_iterator   operator++(int) { const_iterator it = *this; this->Next(); return it; }
+        const_iterator   operator--(int) { const_iterator it = *this; this->Prev(); return it; }
 
-      friend class PArray;
+        const value_type * operator->() const { return  this->Ptr(); }
+        const value_type & operator* () const { return *this->Ptr(); }
+
+      friend class PArray<T>;
     };
 
     const_iterator begin()  const { return empty() ? end() : const_iterator(this, 0); }
