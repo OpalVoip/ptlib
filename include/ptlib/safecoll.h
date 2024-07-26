@@ -756,23 +756,11 @@ class PSafePtrMultiThreaded : public PSafePtrBase
   //@}
 
     virtual void Assign(const PSafePtrMultiThreaded & ptr);
-<<<<<<< HEAD
-    virtual void Assign(const PSafePtrBase & ptr);
-    virtual void Assign(PSafeObject * obj);
-
-  protected:
-    virtual void DeleteObject(PSafeObject * obj);
-=======
     virtual void Assign(const PSafePtrBase & ptr) override;
-    virtual void Assign(const PSafeCollection & safeCollection) override;
     virtual void Assign(PSafeObject * obj) override;
-    virtual void Assign(PINDEX idx) override;
 
   protected:
-    virtual void Next() override;
-    virtual void Previous() override;
     virtual void DeleteObject(PSafeObject * obj) override;
->>>>>>> v2_20
 
     virtual void LockPtr() override { m_mutex.Wait(); }
     virtual void UnlockPtr() override;
