@@ -1611,8 +1611,13 @@ void PASN_BMPString::PrintOn(ostream & strm) const
     strm << setw(indent) << " " << hex << setfill('0');
     PINDEX j;
     for (j = 0; j < 8; j++)
-      if (i+j < sz)
+      if (i+j < sz) {
+#if __cplusplus >= 202002L
+        ;
+#else
         strm << setw(4) << value[i+j] << ' ';
+#endif       
+      }
       else
         strm << "     ";
     strm << "  ";

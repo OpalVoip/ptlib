@@ -143,14 +143,14 @@ license:
 4. SVN Access
 -------------
 
-There is a public SVN archive available at svn.sourceforge.net. To extract the
+There is a public Git archive available at Sourceforge. To extract the
 latest version, use a command line like the following:
 
-    svn co http://opalvoip.svn.sourceforge.net/svnroot/opalvoip/ptlib/trunk
+    git clone git://git.code.sf.net/p/opalvoip/ptlib opalvoip-ptlib
 
-More information on stable branches is available at:
+More information on git access is available at:
 
-    http://wiki.opalvoip.org/index.php?n=Main.Subversion
+    http://wiki.opalvoip.org/index.php?n=Main.Git
 
 ================================================================================
 

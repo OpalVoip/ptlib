@@ -450,7 +450,21 @@ template <class T> class PBaseArray : public PAbstractArray
       ostream & stream,
       PINDEX index
     ) const override {
+#if __cplusplus >= 202002L
+      if constexpr (std::is_same<wchar_t, T>::value) {
+        char buffer[11];
+        int length = wctomb(buffer, GetAt(index));
+        if (length > 0) {
+          buffer[length] = '\0';
+          stream << buffer;
+        }
+      }
+      else {
+        stream << GetAt(index);
+      }
+#else
       stream << GetAt(index);
+#endif
     }
 
     PBaseArray(PContainerReference & reference_) : PAbstractArray(reference_, sizeof(T)) { }
