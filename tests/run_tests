@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+OS=`uname -o`
+ARCH=`uname -m`
+
+if [ "$OS" == "Darwin" ]; then
+  export DYLD_LIBRARY_PATH=${PTLIBDIR}/lib_Darwin_${ARCH}
+fi
+
+OBJ="obj_${OS}_${ARCH}"
+
+SAMPLE_TESTS="strtest asntest"
+
+for dir in $SAMPLE_TESTS; do
+  pushd ../samples/$dir > /dev/null
+  make > /dev/null
+  echo "running $dir"
+  ./${OBJ}/$dir 2>1 | grep FINAL
+  popd > /dev/null
+done

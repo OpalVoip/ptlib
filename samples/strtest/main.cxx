@@ -11,6 +11,39 @@
 #include <ptlib/pprocess.h>
 #include <string>
 
+unsigned g_totalTests= 0;
+unsigned g_errorCount = 0;
+
+#define REQUIRE_QUIET(cond) \
+do { \
+  g_totalTests++; \
+  if (!(cond)) { \
+    cerr << "FAIL: " __FILE__ << "(" << __LINE__ << "): " << #cond << endl; \
+    g_errorCount++; \
+  } \
+} while (0)
+
+#define REQUIRE(cond) \
+do { \
+  g_totalTests++; \
+  if (!(cond)) { \
+    cerr << "FAIL: " __FILE__ << "(" << __LINE__ << "): " << #cond << endl; \
+    g_errorCount++; \
+  } \
+  else { \
+    cout << "PASS: " __FILE__ << "(" << __LINE__ << "): " << #cond << endl; \
+  } \
+} while (0)
+
+void DISPLAY_RESULT()
+{
+  if (g_errorCount == 0)
+    cout << "FINAL PASS: " << g_totalTests << " passed" << endl;
+  else
+    cout << "FINAL FAIL: " << g_errorCount << " failed of " << g_totalTests << endl;
+}
+
+
 ////////////////////////////////////////////////
 //
 // test #1 - PString test
@@ -24,8 +57,8 @@ void Test1()
 
     strcpy((char *)(const char *)pstring2, "overwrite");
 
-    cout << pstring1 << endl;
-    cout << pstring2 << endl;
+    REQUIRE(pstring1 == "overwrite");
+    REQUIRE(pstring1 == "overwrite");
   }
   {
     PString pstring1("hello world");
@@ -33,41 +66,43 @@ void Test1()
 
     strcpy(pstring2.GetPointerAndSetLength(9), "overwrite");
 
-    cout << pstring1 << endl;
-    cout << pstring2 << endl;
+    REQUIRE(pstring1 == "hello world");
+    REQUIRE(pstring2 == "overwrite");
   }
 #ifdef P_HAS_WCHAR
   {
     wchar_t widestr[] = L"Hell� world";
-    PString pstring(widestr, sizeof(widestr)/2-1);
-    cout << pstring << endl;
+    PString pstring(widestr, sizeof(widestr)/sizeof(wchar_t)-1);
+    REQUIRE(pstring == widestr);
     PWCharArray wide = pstring.AsWide();
-    cout << boolalpha << (wide.GetSize() == PARRAYSIZE(widestr) && memcmp(wide, widestr, sizeof(widestr)) == 0) << endl;
+    REQUIRE(wide.GetSize() == PARRAYSIZE(widestr));
+    REQUIRE(memcmp(wide, widestr, sizeof(widestr)) == 0);
   }
 #endif
 
   {
     PCaselessString caseless("hello world");
     PString cased("Hello World");
-    cout << cased.ToLiteral() << " == \"Hello\" " << boolalpha << (cased == "Hello") << endl;
-    cout << cased.ToLiteral() << " == \"hello\" " << boolalpha << (cased == "hello") << endl;
-    cout << cased.ToLiteral() << " == \"Hello World\" " << boolalpha << (cased == "Hello World") << endl;
-    cout << cased.ToLiteral() << " == " << caseless.ToLiteral() << ' ' << boolalpha << (cased == caseless) << endl;
-    cout << cased.ToLiteral() << " == \"Hello\" " << boolalpha << (cased.NumCompare("Hello") == PObject::EqualTo) << endl;
-    cout << cased.ToLiteral() << " == \"hello\" " << boolalpha << (cased.NumCompare("hello") == PObject::EqualTo) << endl;
-    cout << caseless.ToLiteral() << " == " << cased.ToLiteral() << ' ' << boolalpha << (caseless == cased) << endl;
-    cout << caseless.ToLiteral() << " == \"Hello\" " << boolalpha << (caseless == "Hello") << endl;
-    cout << caseless.ToLiteral() << " == \"Hello\" " << boolalpha << (caseless.NumCompare("Hello") == PObject::EqualTo) << endl;
+
+    REQUIRE(cased != "Hello");
+    REQUIRE(cased != "hello");
+    REQUIRE(cased == "Hello World");
+    REQUIRE(cased != caseless);
+    REQUIRE(cased.NumCompare("Hello") == PObject::EqualTo);
+    REQUIRE(cased.NumCompare("hello") != PObject::EqualTo);
+    REQUIRE(caseless == cased);
+    REQUIRE(caseless != "Hello");
+    REQUIRE(caseless.NumCompare("Hello") == PObject::EqualTo);
   }
 
   {
+    #define ELLIPSIS "\xE2\x80\xA6"
     wchar_t widestr[] = L"Hell� world";
     PString pstring(widestr, sizeof(widestr)/2-1);
-    cout << pstring.Ellipsis(6) << endl;
-    cout << pstring.Ellipsis(9, 4) << endl;
+    REQUIRE(pstring.Ellipsis(6)    == L"Hell�…");
+    REQUIRE(pstring.Ellipsis(9, 4) == L"Hell…");
   }
 }
-
 
 ////////////////////////////////////////////////
 //
@@ -76,15 +111,15 @@ void Test1()
 
 void Test2()
 {
-  for (PINDEX i = 0; i < 2000; ++i) 
-  {
+  for (PINDEX i = 0; i < 2000; ++i) {
     PStringStream str;
-    str << "Test #" << 2;
+    str   << "Test #" << 2;
+    REQUIRE_QUIET(str == "Test #2");
   }
 
   PStringStream s;
-  s << "This is a test of the string stream, integer: " << 5 << ", real: " << 5.6;
-  cout << '"' << s << '"' << endl;
+  s     << "This is a test of the string stream, integer: " << 5 << ", real: " << 5.6;
+  REQUIRE(s == "This is a test of the string stream, integer: 5, real: 5.6");
 }
 
 
@@ -99,8 +134,7 @@ void Test3()
     PBYTEArray buffer1(1024);
     PBYTEArray buffer2(buffer1);
 
-    cout << "base address of PBYTEArray 1 = " << (void *)(buffer1.GetPointer()) << endl;
-    cout << "base address of PBYTEArray 2 = " << (void *)(buffer1.GetPointer()) << endl;
+    REQUIRE((void *)(buffer1.GetPointer() == (void *)buffer2.GetPointer()));
   }
 
   {
@@ -109,11 +143,9 @@ void Test3()
 
     str2 = "world";
 
-    cout << "base address of PString 1 = " << (void *)(str1.GetPointer()) << endl;
-    cout << "base address of PString 2 = " << (void *)(str2.GetPointer()) << endl;
+    REQUIRE((void *)(str1.GetPointer() != (void *)str2.GetPointer()));
   }
 }
-
 
 ////////////////////////////////////////////////
 //
@@ -150,13 +182,9 @@ class StringHolder
       char buffer[20];
       strncpy(buffer, ptr, 20);
 
-      if (strcmp((const char *)buffer, SPECIALNAME)) {
-        finishFlag = true;
-        cerr << "String compare failed at " << count << " in " << label << " thread" << endl;
-        return;
-      }
-      if (count % 10000 == 0)
-        cout << "tested " << count << " in " << label << " thread" << endl;
+      REQUIRE_QUIET(strcmp((const char *)buffer, SPECIALNAME) == 0);
+      //if (count % 10000 == 0)
+      //  cout << "tested " << count << " in " << label << " thread" << endl;
     }
 
     class TestThread : public PThread
@@ -167,7 +195,7 @@ class StringHolder
         : PThread(1000,NoAutoDeleteThread), holder(_holder)
         { Resume(); }
 
-        void Main() 
+        void Main() override
         { int count = 0; while (!finishFlag && count < COUNT_MAX) holder.TestString(count++, "sub"); }
 
         StringHolder & holder;
@@ -195,6 +223,8 @@ void Test4()
   
   // uncomment this to test PString
   StringHolder<PString, PStringConv> holder(SPECIALNAME);
+
+  cerr << "testing string concurrency for " << COUNT_MAX << " iterations" << endl;
 
   PThread * thread = holder.StartThread();
   finishFlag = false;
@@ -228,4 +258,6 @@ void StringTest::Main()
   Test2(); cout << "End of test #2\n" << endl;
   Test3(); cout << "End of test #3\n" << endl;
   Test4(); cout << "End of test #4\n" << endl;
+
+  DISPLAY_RESULT();
 }
