@@ -426,7 +426,7 @@ bool PSoundChannel::PlayFile(const PFilePath & filename, bool wait, unsigned vol
   if (!SetFormat(wavFile.GetChannels(), wavFile.GetSampleRate(), wavFile.GetSampleSize()))
     return false;
 
-  PBYTEArray buffer(std::min(wavFile.GetLength(), (off_t)(1024*1024))); // Max of a megabyte
+  PBYTEArray buffer(std::min(wavFile.GetLength(), (off_t)65536));
 
   if (!SetBuffers(buffer.GetSize()))
     return false;
