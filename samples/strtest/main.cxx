@@ -35,14 +35,6 @@ do { \
   } \
 } while (0)
 
-void DISPLAY_RESULT()
-{
-  if (g_errorCount == 0)
-    cout << "FINAL PASS: " << g_totalTests << " passed" << endl;
-  else
-    cout << "FINAL FAIL: " << g_errorCount << " failed of " << g_totalTests << endl;
-}
-
 
 ////////////////////////////////////////////////
 //
@@ -71,9 +63,10 @@ void Test1()
   }
 #ifdef P_HAS_WCHAR
   {
-    wchar_t widestr[] = L"Hell� world";
+    wchar_t widestr[] = L"Hell\x1D2 world";
     PString pstring(widestr, sizeof(widestr)/sizeof(wchar_t)-1);
     REQUIRE(pstring == widestr);
+    REQUIRE(pstring == "Hell\xC7\x92 world");
     PWCharArray wide = pstring.AsWide();
     REQUIRE(wide.GetSize() == PARRAYSIZE(widestr));
     REQUIRE(memcmp(wide, widestr, sizeof(widestr)) == 0);
@@ -96,11 +89,11 @@ void Test1()
   }
 
   {
-    #define ELLIPSIS "\xE2\x80\xA6"
-    wchar_t widestr[] = L"Hell� world";
-    PString pstring(widestr, sizeof(widestr)/2-1);
-    REQUIRE(pstring.Ellipsis(6)    == L"Hell�…");
-    REQUIRE(pstring.Ellipsis(9, 4) == L"Hell…");
+    // Use UTF-8 with special character so eillipsis counts are based on the
+    // number of characters, not the number of bytes.
+    PString pstring("Hell\xC7\x92 world");
+    REQUIRE(pstring.Ellipsis(6)    == "Hell\xC7\x92\xE2\x80\xA6");
+    REQUIRE(pstring.Ellipsis(9, 4) == "Hell\xE2\x80\xA6orld");
   }
 }
 
@@ -171,20 +164,16 @@ class StringHolder
     S GetString() const { return str; }
     S str;
 
-    void TestString(int count, const char * label)
+    void TestString()
     {
       if (finishFlag)
         return;
 
       S s = GetString();
-      const char * ptr = C::ToConstCharStar(s);
-      //const char * ptr = s.c_str();
-      char buffer[20];
-      strncpy(buffer, ptr, 20);
+      char buffer[20] = {};
+      strncpy(buffer, C::ToConstCharStar(s), sizeof(buffer)-1);
 
       REQUIRE_QUIET(strcmp((const char *)buffer, SPECIALNAME) == 0);
-      //if (count % 10000 == 0)
-      //  cout << "tested " << count << " in " << label << " thread" << endl;
     }
 
     class TestThread : public PThread
@@ -196,7 +185,11 @@ class StringHolder
         { Resume(); }
 
         void Main() override
-        { int count = 0; while (!finishFlag && count < COUNT_MAX) holder.TestString(count++, "sub"); }
+        {
+          int count = 0;
+          while (!finishFlag && count < COUNT_MAX)
+            holder.TestString();
+        }
 
         StringHolder & holder;
     };
@@ -230,7 +223,7 @@ void Test4()
   finishFlag = false;
   int count = 0;
   while (!finishFlag && count < COUNT_MAX) 
-    holder.TestString(count++, "main");
+    holder.TestString();
   finishFlag = true;
   thread->WaitForTermination(9000);
   cerr << "finish" << endl;
@@ -259,5 +252,8 @@ void StringTest::Main()
   Test3(); cout << "End of test #3\n" << endl;
   Test4(); cout << "End of test #4\n" << endl;
 
-  DISPLAY_RESULT();
+  if (g_errorCount == 0)
+    cout << "FINAL PASS: " << g_totalTests << " passed" << endl;
+  else
+    cout << "FINAL FAIL: " << g_errorCount << " failed of " << g_totalTests << endl;
 }
