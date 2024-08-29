@@ -41,39 +41,39 @@
 #include <langinfo.h>
 #endif
 
-PINLINE PProcessIdentifier PProcess::GetCurrentProcessID()
+__inline PProcessIdentifier PProcess::GetCurrentProcessID()
 {
   return getpid();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
-PINLINE bool PDirectory::IsRoot() const
+__inline bool PDirectory::IsRoot() const
   { return IsSeparator((*this)[0]) && ((*this)[1] == '\0'); }
 
-PINLINE PDirectory PDirectory::GetRoot() const
+__inline PDirectory PDirectory::GetRoot() const
   { return PString(PDIR_SEPARATOR); }
 
-PINLINE bool PDirectory::IsSeparator(char ch)
+__inline bool PDirectory::IsSeparator(char ch)
   { return ch == PDIR_SEPARATOR; }
 
-PINLINE bool PDirectory::Change(const PString & p)
+__inline bool PDirectory::Change(const PString & p)
   { return chdir((char *)(const char *)p) == 0; }
 
 ///////////////////////////////////////////////////////////////////////////////
 
-PINLINE PString PFilePath::GetVolume() const
+__inline PString PFilePath::GetVolume() const
   { return PString::Empty(); }
 
-PINLINE PString PFilePath::GetPath() const
+__inline PString PFilePath::GetPath() const
   { return GetDirectory(); }
 
 ///////////////////////////////////////////////////////////////////////////////
 
-PINLINE bool PFile::Remove(const PFilePath & name, bool)
+__inline bool PFile::Remove(const PFilePath & name, bool)
   { return unlink((char *)(const char *)name) == 0; }
 
-PINLINE bool PFile::Remove(const PString & name, bool)
+__inline bool PFile::Remove(const PString & name, bool)
   { return unlink((char *)(const char *)name) == 0; }
 
 

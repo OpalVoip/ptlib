@@ -837,8 +837,6 @@ PLDAPStructBase * PLDAPStructBase::m_initialiserInstance;
 
 PLDAPStructBase::PLDAPStructBase()
 {
-  m_attributes.DisallowDeleteObjects();
-
   m_initialiserMutex.Wait();
   m_initialiserStack = m_initialiserInstance;
   m_initialiserInstance = this;

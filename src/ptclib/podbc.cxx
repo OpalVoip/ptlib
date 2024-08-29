@@ -931,7 +931,7 @@ PStringArray PODBC::Statement::TableList(const PString & options)
       char entry[1000];
       SQLLEN cb = SQL_NULL_DATA;
       if (SQL_OK(SQLGetData(m_hStmt, column, SQL_C_CHAR, entry, sizeof(entry), &cb)) && cb > 0)
-        list.Append(new PCaselessString(entry));
+        list.push_back(PCaselessString(entry));
     }
   }
 

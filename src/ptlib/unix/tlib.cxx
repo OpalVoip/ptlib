@@ -1345,11 +1345,7 @@ void PThread::Terminate()
   #endif
 
   if (m_threadId != PNullThreadIdentifier) {
-    #if P_USE_THREAD_CANCEL
-    pthread_cancel(m_nativeHandle);
-    #else
     pthread_kill(m_nativeHandle, SIGKILL);
-    #endif
     WaitForTermination(100);
   }
 }

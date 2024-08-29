@@ -1290,7 +1290,7 @@ bool PSoundChannelDirectSound::SetVolume (unsigned newVal) // public
   else
     volume.dwValue = m_volumeControl.Bounds.dwMinimum +
             (DWORD)((m_volumeControl.Bounds.dwMaximum - m_volumeControl.Bounds.dwMinimum) *
-                                                   log10(9.0 * newVal / MaxVolume + 1.0));
+                    log10(9.0 * newVal / int(MaxVolume) + 1.0));
   MIXERCONTROLDETAILS details;
   details.cbStruct = sizeof(details);
   details.dwControlID = m_volumeControl.dwControlID;

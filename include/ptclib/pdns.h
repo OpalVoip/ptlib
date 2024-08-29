@@ -361,17 +361,13 @@ class MXRecord : public PObject
     PString            hostName;
     PIPSocket::Address hostAddress;
     bool               used;
-    WORD               preference;
-    bool               used;
     uint16_t           preference;
 };
 
 class MXRecordList : public PSortedList<PDNS::MXRecord>
 {
   public:
-    MXRecordList()
-      : lastIndex(0)
-    { }
+    MXRecordList();
 
     void PrintOn(ostream & strm) const override;
 
@@ -381,7 +377,7 @@ class MXRecordList : public PSortedList<PDNS::MXRecord>
     PDNS::MXRecord * HandleDNSRecord(PDNS_RECORD dnsRecord, PDNS_RECORD results);
 
   protected:
-    PINDEX lastIndex;
+    iterator m_nextIndex;
 };
 
 /**

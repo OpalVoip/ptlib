@@ -72,9 +72,9 @@ bool PXMLRPCServerResource::SetMethod(const PString & methodName, const PNotifie
 
   // find the method, or create a new one
   PXMLRPCServerMethod * methodInfo;
-  PINDEX pos = methodList.GetValuesIndex(methodName);
-  if (pos != P_MAX_INDEX)
-    methodInfo = (PXMLRPCServerMethod *)methodList.GetAt(pos);
+  auto pos = methodList.find(methodName);
+  if (pos != methodList.end())
+    methodInfo = &*pos;
   else {
     methodInfo = new PXMLRPCServerMethod(methodName);
     methodList.Append(methodInfo);
@@ -156,14 +156,13 @@ void PXMLRPCServerResource::OnXMLRPCRequest(const PString & methodName,
   methodMutex.Wait();
 
   // find the method information
-  PINDEX pos = methodList.GetValuesIndex(methodName);
-  if (pos == P_MAX_INDEX) {
+  auto pos = methodList.find(methodName);
+  if (pos == methodList.end()) {
     reply = FormatFault(PXMLRPC::UnknownMethod, "unknown method " + methodName);
     methodMutex.Signal();
     return;
   }
-  PXMLRPCServerMethod * methodInfo = (PXMLRPCServerMethod *)methodList.GetAt(pos);
-  PNotifier notifier = methodInfo->methodFunc;
+  PNotifier notifier = pos->methodFunc;
   methodMutex.Signal();
 
   // create paramaters

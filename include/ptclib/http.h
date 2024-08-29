@@ -55,12 +55,13 @@ class PHTTPResource;
    in. Each section of the hierarchy field of the URL points to a leg in the
    tree specified by this class.
  */
-class PHTTPSpace : public PContainer
+class PHTTPSpace : public PObject, PNonCopyable
 {
-  PCONTAINERINFO(PHTTPSpace, PContainer)
+    PCLASSINFO(PHTTPSpace, PObject)
   public:
     /// Constructor for HTTP URL Name Space
-    PHTTPSpace();
+    PHTTPSpace() : m_root(PString::Empty()) { }
+    PHTTPSpace(const PHTTPSpace & other);
 
 
   // New functions for class.
@@ -107,46 +108,53 @@ class PHTTPSpace : public PContainer
       const PURL & url   ///< URL to search for in the name space.
     );
 
+    bool IsEmpty() const { return m_root.m_children.empty(); }
+
     /** This function attempts to acquire the mutex for reading.
      */
-    void StartRead() const
-      { mutex->StartRead(); }
+    void StartRead()
+    {
+      m_mutex.StartRead();
+    }
 
-    /** This function attempts to release the mutex for reading.
-     */
-    void EndRead() const
-      { mutex->EndRead(); }
+/** This function attempts to release the mutex for reading.
+ */
+    void EndRead()
+    {
+      m_mutex.EndRead();
+    }
 
-    /** This function attempts to acquire the mutex for writing.
-     */
-    void StartWrite() const
-      { mutex->StartWrite(); }
+/** This function attempts to acquire the mutex for writing.
+ */
+    void StartWrite()
+    {
+      m_mutex.StartWrite();
+    }
 
-    /** This function attempts to release the mutex for writing.
-     */
-    void EndWrite() const
-      { mutex->EndWrite(); }
+/** This function attempts to release the mutex for writing.
+ */
+    void EndWrite()
+    {
+      m_mutex.EndWrite();
+    }
 
-
-  protected:
-    PReadWriteMutex * mutex;
+protected:
+    PReadWriteMutex m_mutex;
 
     class Node;
-    typedef PSortedList<Node> ChildList;
+    typedef std::set<Node> ChildList;
     class Node : public PString
     {
-      PCLASSINFO(Node, PString)
       public:
-        Node(const PString & name, Node * parentNode);
-        ~Node();
+        Node(PString name, Node * parent = nullptr)
+          : PString(name)
+          , m_parent(parent)
+        { }
 
-        Node          * parent;
-        ChildList       children;
-        PHTTPResource * resource;
-    } * root;
-
-  private:
-    bool SetSize(PINDEX) override { return false; }
+        Node * m_parent;
+        ChildList m_children;
+        std::shared_ptr<PHTTPResource> m_resource;
+    } m_root;
 };
 
 #ifdef TRACE
@@ -592,7 +600,7 @@ class PHTTPClient : public PHTTP, public PSSLCertificateInfo
       Commands cmd,
       const PURL & url,
       PMIMEInfo & outMIME,
-      const PBYTEArray & dataBody,
+      const PBYTEView & dataBody,
       PMIMEInfo & replyMime
     );
     StatusCode ExecuteCommand(
@@ -802,7 +810,7 @@ class PHTTPClient : public PHTTP, public PSSLCertificateInfo
      */
     bool PutDocument(
       const PURL & url,             ///< Universal Resource Locator for document.
-      const PBYTEArray & document,  ///< Body to write
+      const PBYTEView & document,  ///< Body to write
       const PString & contentType,  ///< Content-Type header to use
       const PMIMEInfo & mime = PMIMEInfo()   ///< Extra MIME fields to be sent
     );
@@ -1293,19 +1301,6 @@ class PHTTPServer : public PHTTP
      */
     virtual PString GetServerName() const;
 
-    /** Get the name space being used by the HTTP server socket.
-
-       @return
-       URL name space tree.
-     */
-    PHTTPSpace & GetURLSpace() { return m_urlSpace; }
-
-    /// Use a new URL name space for this HTTP socket.
-    void SetURLSpace(
-      const PHTTPSpace & space   ///< New URL name space to use.
-    );
-
-
     /** Process commands, dispatching to the appropriate virtual function. This
        is used when the socket is acting as a server.
 
@@ -1543,6 +1538,7 @@ class PHTTPServer : public PHTTP
     PTime               m_serviceStartTime;
     PTime               m_lastCommandTime;
     PHTTPSpace          m_urlSpace;
+    std::shared_mutex   m_urlSpaceMutex;
     PHTTPConnectionInfo m_connectInfo;
     unsigned            m_transactionCount;
     PTimeInterval       m_nextTimeout;
@@ -1594,10 +1590,10 @@ public:
   void ShutdownListeners();
 
   /// Indicate is currently listening and processing requests.
-  bool IsListening() const { return !m_httpListeningSockets.IsEmpty() && m_httpListeningSockets.front().IsOpen(); }
+  bool IsListening() const { return !m_httpListeningSockets.empty() && m_httpListeningSockets.front().IsOpen(); }
 
   /// Get the port we are lkstening on.
-  uint16_t GetPort() const { return m_httpListeningSockets.IsEmpty() ? 0 : m_httpListeningSockets.front().GetPort(); }
+  uint16_t GetPort() const { return m_httpListeningSockets.empty() ? 0 : m_httpListeningSockets.front().GetPort(); }
 
   /** Call back to create transport socket, or TLS, channel.
     */
@@ -1638,7 +1634,7 @@ protected:
 
   PHTTPSpace         m_httpNameSpace;
   PString            m_listenerInterfaces;
-  uint16_t               m_listenerPort;
+  uint16_t           m_listenerPort;
   PThread          * m_listenerThread;
   PSocketList        m_httpListeningSockets;
   PList<PHTTPServer> m_httpServers;

@@ -120,12 +120,13 @@ public:
   }
   //@}
 
+    bool IsEmpty() const { return this->m_collection.empty(); }
+    bool empty() const { return this->m_collection.empty(); }
+
     /** Get the number of elements in the collection.
      */
-    PINDEX GetSize() const
-    {
-      return this->m_collection.size();
-    }
+    PINDEX GetSize() const { return this->m_collection.size(); }
+    size_t size() const { return this->m_collection.size(); }
 
     /**Search the collection for the specific instance of the object. The
        object pointers are compared, not the values. A simple linear search
@@ -190,31 +191,54 @@ public:
 
   /**@name Iterators */
   //@{
-  class iterator : public collection_type::iterator
+  class iterator
   {
     friend class PCollection;
-    iterator(const collection_type::iterator & it) : collection_type::iterator(it) { }
+    typedef typename collection_type::iterator base_iterator;
+    base_iterator m_iterator;
+    iterator(const base_iterator & it) : m_iterator(it) { }
   public:
-    iterator() : collection_type::iterator() { }
-    value_type * operator->() const { return  this->collection_type::iterator::operator->(); }
-    value_type & operator* () const { return *this->collection_type::iterator::operator* (); }
+    using iterator_category = std::bidirectional_iterator_tag;
+    using value_type = T;
+
+    iterator() { }
+    value_type * operator->() const { return   this->m_iterator->get(); }
+    value_type & operator* () const { return **this->m_iterator; }
+    iterator & operator++() { ++this->m_iterator; return *this; }
+    iterator operator++(int) { iterator prev = *this; ++this->m_iterator; return prev; }
+    iterator & operator--() { --this->m_iterator; return *this; }
+    iterator operator--(int) { iterator prev = *this; --this->m_iterator; return prev; }
+    bool operator==(const iterator & it) const { return this->m_iterator == it.m_iterator; }
+    bool operator!=(const iterator & it) const { return this->m_iterator != it.m_iterator; }
   };
 
   iterator begin() { return this->m_collection.begin(); }
   iterator end() { return this->m_collection.end(); }
   iterator rbegin() { return this->m_collection.rbegin(); }
   iterator rend() { return this->m_collection.rend(); }
-  void insert(const iterator & it, value_type * obj) { this->InsertAt(it.m_position, obj); }
-  void insert(const iterator & it, const value_type & obj) { this->InsertAt(it.m_position, obj.Clone()); }
+  void insert(const iterator & it, value_type * obj) { this->m_collection.emplace(it, obj); }
+  void insert(const iterator & it, const value_type & obj) { this->m_collection.emplace(it, obj.Clone()); }
 
-  class const_iterator : public collection_type::const_iterator
+  class const_iterator
   {
     friend class PCollection;
-    const_iterator(const collection_type::const_iterator & it) : collection_type::const_iterator(it) { }
+    typedef typename collection_type::const_iterator base_iterator;
+    base_iterator m_iterator;
+    const_iterator(const base_iterator & it) : m_iterator(it) { }
   public:
-    const_iterator() : collection_type::const_iterator() { }
-    const value_type * operator->() const { return  this->collection_type::const_iterator::operator->(); }
-    const value_type & operator* () const { return *this->collection_type::const_iterator::operator* (); }
+    using iterator_category = std::bidirectional_iterator_tag;
+    using value_type = const T;
+
+    const_iterator() { }
+    const_iterator(const iterator & it) : m_iterator(it.m_iterator) { }
+    const value_type * operator->() const { return   this->m_iterator->get(); }
+    const value_type & operator* () const { return **this->m_iterator; }
+    const_iterator & operator++() { ++this->m_iterator; return *this; }
+    const_iterator operator++(int) { const_iterator prev = *this; ++this->m_iterator; return prev; }
+    const_iterator & operator--() { --this->m_iterator; return *this; }
+    const_iterator operator--(int) { const_iterator prev = *this; --this->m_iterator; return prev; }
+    bool operator==(const const_iterator & it) const { return this->m_iterator == it.m_iterator; }
+    bool operator!=(const const_iterator & it) const { return this->m_iterator != it.m_iterator; }
   };
 
   const_iterator begin()  const { return this->m_collection.begin(); }
@@ -222,14 +246,19 @@ public:
   const_iterator rbegin() const { return this->m_collection.rbegin(); }
   const_iterator rend()   const { return this->m_collection.rend(); }
 
-  value_type & front() const { return this->m_collection.front(); }
-  value_type & back() const { return this->m_collection.back(); }
-  void erase(const iterator & it) { this->m_collection.erase(it); }
-  void erase(const const_iterator & it) { this->m_collection.erase(it); }
+  iterator find(const value_type & obj) { return this->m_collection.find(obj); }
+  const_iterator find(const value_type & obj) const { return this->m_collection.find(obj); }
+  value_type & front() { return *this->m_collection.front(); }
+  value_type & back() { return *this->m_collection.back(); }
+  const value_type & front() const { return *this->m_collection.front(); }
+  const value_type & back() const { return *this->m_collection.back(); }
+  void erase(const iterator & it) { this->m_collection.erase(it.m_iterator); }
+  void erase(const const_iterator & it) { this->m_collection.erase(it.m_iterator); }
   void push_front(const value_type & value) { this->m_collection.push_front(value); }
   void push_back(const value_type & value) { this->m_collection.push_back(value); }
   void pop_front() { this->m_collection.pop_front(); }
   void pop_back() { this->m_collection.pop_back(); }
+  void clear() { this->m_collection.clear(); }
 //@}
 
 protected:
@@ -264,15 +293,6 @@ protected:
 // PString class
 
 #include <ptlib/pstring.h>
-
-
-
-///////////////////////////////////////////////////////////////////////////////
-// Fill in all the inline functions
-
-#if P_USE_INLINES
-#include <ptlib/contain.inl>
-#endif
 
 
 #endif // PTLIB_CONTAIN_H

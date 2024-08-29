@@ -430,7 +430,7 @@ class PXMLElement : public PXMLObject
       { return !m_subObjects.IsEmpty(); }
 
     virtual PXMLObject * AddSubObject(PXMLObject * elem, bool dirty = true);
-    bool RemoveSubObject(PINDEX idx, bool dispose = true);
+    bool RemoveSubObject(PINDEX idx);
 
     virtual PXMLElement * CreateElement(const PCaselessString & name, const char * data = NULL);
 
@@ -587,7 +587,7 @@ class PXMLParser : public PXMLBase, public PXMLParserBase
   protected:
     PXML & m_document;
 
-    PXMLElement   * m_currentElement;
+    std::shared_ptr<PXMLElement> m_currentElement;
     PXMLData      * m_lastData;
     PStringToString m_nameSpaces;
 };
@@ -602,10 +602,10 @@ class PXMLStreamParser : public PXMLParser
     PXMLStreamParser(PXML & doc, Options options = NoOptions);
 
     virtual void EndElement(const char * name) override;
-    virtual PXMLElement * Read(PChannel * channel);
+    virtual std::shared_ptr<PXMLElement> Read(PChannel * channel);
 
   protected:
-    PQueue<PXMLElement> messages;
+    std::queue<std::shared_ptr<PXMLElement>> m_messages;
 };
 
 

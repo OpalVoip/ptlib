@@ -374,34 +374,31 @@ PDNS::SRVRecord * PDNS::SRVRecordList::HandleDNSRecord(PDNS_RECORD dnsRecord, PD
 
 void PDNS::SRVRecordList::PrintOn(ostream & strm) const
 {
-  PINDEX i;
-  for (i = 0; i < GetSize(); i++) 
-    strm << (*this)[i] << endl;
+  for (auto & it : *this) 
+    strm << it << '\n';
 }
 
 PDNS::SRVRecord * PDNS::SRVRecordList::GetFirst()
 {
-  if (GetSize() == 0)
+  if (empty())
     return NULL;
 
   // create a list of all prioities, to save time
   priPos = 0;
   priList.SetSize(0);
 
-  PINDEX i;
-  if (GetSize() > 0) {
-    priList.SetSize(1);
-    uint16_t lastPri = (*this)[0].priority;
-    priList[0] = lastPri;
-    (*this)[0].used = false;
-    for (i = 1; i < GetSize(); i++) {
-      (*this)[i].used = false;
-      if ((*this)[i].priority != lastPri) {
-        priPos++;
-        priList.SetSize(priPos);
-        lastPri = (*this)[i].priority;
-        priList[priPos] = lastPri;
-      }
+  priList.SetSize(1);
+  auto & front = *begin();
+  uint16_t lastPri = front.priority;
+  priList[0] = lastPri;
+  front.used = false;
+  for (auto & entry : *this) {
+    entry.used = false;
+    if (entry.priority != lastPri) {
+      priPos++;
+      priList.SetSize(priPos);
+      lastPri = entry.priority;
+      priList[priPos] = lastPri;
     }
   }
   
@@ -419,22 +416,21 @@ PDNS::SRVRecord * PDNS::SRVRecordList::GetNext()
     uint16_t currentPri = priList[priPos];
 
     // find first record at current priority
-    PINDEX firstPos;
-    for (firstPos = 0; (firstPos < GetSize()) && ((*this)[firstPos].priority != currentPri); firstPos++) 
+    iterator firstPos;
+    for (firstPos = begin(); firstPos != end() && firstPos->priority != currentPri; ++firstPos) 
       ;
-    if (firstPos == GetSize())
+    if (firstPos == end())
       return NULL;
 
     // calculate total of all unused weights at this priority
-    unsigned totalWeight = (*this)[firstPos].weight;
-    PINDEX i = firstPos + 1;
+    unsigned totalWeight = firstPos->weight;
+    iterator it = firstPos;
     PINDEX count = 1;
-    while (i < GetSize() && ((*this)[i].priority == currentPri)) {
-      if (!(*this)[i].used) {
-        totalWeight += (*this)[i].weight;
+    while (++it != end() && it->priority == currentPri) {
+      if (!it->used) {
+        totalWeight += it->weight;
         count ++;
       }
-      ++i;
     }
 
     // if no matches found, go to the next priority level
@@ -447,25 +443,25 @@ PDNS::SRVRecord * PDNS::SRVRecordList::GetNext()
     if (totalWeight > 0) {
       unsigned targetWeight = PRandom::Number() % (totalWeight+1);
       totalWeight = 0;
-      for (i = 0; i < GetSize() && ((*this)[i].priority == currentPri); i++) {
-        if (!(*this)[i].used) {
-          totalWeight += (*this)[i].weight;
+      for (it = begin(); it != end() && it->priority == currentPri; ++it) {
+        if (!it->used) {
+          totalWeight += it->weight;
           if (totalWeight >= targetWeight) {
-            (*this)[i].used = true;
-            return &(*this)[i];
+            it->used = true;
+            return &*it;
           }
         }
       }
     }
 
     // pick a random item at this priority
-    PINDEX j = (count <= 1) ? 0 : (PRandom::Number() % count);
+    PINDEX rnd = (count <= 1) ? 0 : (PRandom::Number() % count);
     count = 0;
-    for (i = firstPos; i < GetSize() && ((*this)[i].priority == currentPri); i++) {
-      if (!(*this)[i].used) {
-        if (count == j) {
-          (*this)[i].used = true;
-          return &(*this)[i];
+    for (it = firstPos; it != end() && (it->priority == currentPri); ++it) {
+      if (!it->used) {
+        if (count == rnd) {
+          it->used = true;
+          return &*it;
         }
         count++;
       }
@@ -643,33 +639,33 @@ PDNS::MXRecord * PDNS::MXRecordList::HandleDNSRecord(PDNS_RECORD dnsRecord, PDNS
   return record;
 }
 
+PDNS::MXRecordList::MXRecordList()
+  : m_nextIndex(end())
+{ }
+
 void PDNS::MXRecordList::PrintOn(ostream & strm) const
 {
-  PINDEX i;
-  for (i = 0; i < GetSize(); i++) 
-    strm << (*this)[i] << endl;
+  for (const auto & it : *this)
+    strm << it << endl;
 }
 
 PDNS::MXRecord * PDNS::MXRecordList::GetFirst()
 {
-  PINDEX i;
-  for (i = 0; i < GetSize(); i++) 
-    (*this)[i].used = false;
+  for (auto & it : *this)
+    it.used = false;
 
-  lastIndex = 0;
+  m_nextIndex = begin();
 
   return GetNext();
 }
 
 PDNS::MXRecord * PDNS::MXRecordList::GetNext()
 {
-  if (GetSize() == 0)
+  if (empty() || m_nextIndex == end())
     return NULL;
 
-  if (lastIndex >= GetSize())
-    return NULL;
-
-  return (PDNS::MXRecord *)GetAt(lastIndex++);
+  MXRecord & record = *m_nextIndex;
+  return &record;
 }
 
 /////////////////////////////////////////////////////////////////

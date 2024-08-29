@@ -56,81 +56,42 @@ static const PConstString WebSocketGUID("258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
 //////////////////////////////////////////////////////////////////////////////
 // PHTTPSpace
 
-PHTTPSpace::PHTTPSpace()
+PHTTPSpace::PHTTPSpace(const PHTTPSpace & other)
+  : m_root(other.m_root)
 {
-  mutex = new PReadWriteMutex("HTTP Space");
-  root = new Node(PString(), NULL);
-}
-
-
-void PHTTPSpace::DestroyContents()
-{
-  delete mutex;
-  delete root;
-}
-
-
-void PHTTPSpace::CloneContents(const PHTTPSpace * c)
-{
-  mutex = new PReadWriteMutex("HTTP Space");
-  root = new Node(*c->root);
-}
-
-
-void PHTTPSpace::CopyContents(const PHTTPSpace & c)
-{
-  mutex = c.mutex;
-  root = c.root;
-}
-
-
-PHTTPSpace::Node::Node(const PString & nam, Node * parentNode)
-  : PString(nam)
-{
-  parent = parentNode;
-  resource = NULL;
-}
-
-
-PHTTPSpace::Node::~Node()
-{
-  delete resource;
 }
 
 
 bool PHTTPSpace::AddResource(PHTTPResource * res, AddOptions overwrite)
 {
-  PAssert(res != NULL, PInvalidParameter);
+  if (res == NULL)
+    return false;
+
   const PStringArray & path = res->GetURL().GetPath();
-  Node * node = root;
-  for (PINDEX i = 0; i < path.GetSize(); i++) {
-    if (path[i].IsEmpty())
+  Node * node = &m_root;
+  for (const auto & name : path) {
+    if (name.empty())
       break;
 
-    if (node->resource != NULL) {
+    if (node->m_resource) {
       delete res;
       return false;   // Already a resource in tree in partial path
     }
 
-    PINDEX pos = node->children.GetValuesIndex(path[i]);
-    if (pos == P_MAX_INDEX)
-      pos = node->children.Append(new Node(path[i], node));
-
-    node = &node->children[pos];
+    node = const_cast<Node *>(&*node->m_children.emplace(name, node).first);
   }
 
-  if (!node->children.IsEmpty()) {
+  if (!node->m_children.empty()) {
     delete res;
     return false;   // Already a resource in tree further down path.
   }
 
-  if (overwrite == ErrorOnExist && node->resource != NULL) {
+  if (overwrite == ErrorOnExist && node->m_resource) {
     delete res;
     return false;   // Already a resource in tree at leaf
   }
 
-  delete node->resource;
-  node->resource = res;
+  node->m_resource.reset(res);
 
   return true;
 }
@@ -139,39 +100,39 @@ bool PHTTPSpace::AddResource(PHTTPResource * res, AddOptions overwrite)
 bool PHTTPSpace::DelResource(const PURL & url)
 {
   const PStringArray & path = url.GetPath();
-  Node * node = root;
+  const Node * node = &m_root;
   for (PINDEX i = 0; i < path.GetSize(); i++) {
     if (path[i].IsEmpty())
       break;
 
-    PINDEX pos = node->children.GetValuesIndex(path[i]);
-    if (pos == P_MAX_INDEX)
+    auto pos = node->m_children.find(path[i]);
+    if (pos == node->m_children.end())
       return false;
 
-    node = &node->children[pos];
+    node = &*pos;
 
     // If have resource and not last node, then trying to remove something
     // further down the tree than a leaf node.
-    if (node->resource != NULL && i < (path.GetSize()-1))
+    if (node->m_resource != NULL && i < (path.size()-1))
       return false;
   }
 
-  if (!node->children.IsEmpty())
+  if (!node->m_children.empty())
     return false;   // Still a resource in tree further down path.
 
-  if (node->parent != NULL) {
+  if (node->m_parent != NULL) {
     do {
-      Node * par = node->parent;
-      par->children.Remove(node);
+      Node * par = node->m_parent;
+      par->m_children.erase(*node);
       node = par;
-    } while (node->parent != NULL && node->children.IsEmpty());
+    } while (node->m_parent != NULL && node->m_children.empty());
   }
 
   return true;
 }
 
 
-static const char * const HTMLIndexFiles[] = {
+static std::vector<PString> HTMLIndexFiles{
   "Welcome.html", "welcome.html", "index.html",
   "Welcome.htm",  "welcome.htm",  "index.htm"
 };
@@ -180,26 +141,26 @@ PHTTPResource * PHTTPSpace::FindResource(const PURL & url)
 {
   const PStringArray & path = url.GetPath();
 
-  Node * node = root;
+  const Node * node = &m_root;
   PINDEX i;
   for (i = 0; i < path.GetSize(); i++) {
     if (path[i].IsEmpty())
       break;
 
-    PINDEX pos = node->children.GetValuesIndex(path[i]);
-    if (pos == P_MAX_INDEX)
+    auto pos = node->m_children.find(path[i]);
+    if (pos == node->m_children.end())
       return NULL;
 
-    node = &node->children[pos];
+    node = &*pos;
 
-    if (node->resource != NULL)
-      return node->resource;
+    if (node->m_resource)
+      return node->m_resource.get();
   }
 
-  for (i = 0; i < PARRAYSIZE(HTMLIndexFiles); i++) {
-    PINDEX pos = node->children.GetValuesIndex(PString(HTMLIndexFiles[i]));
-    if (pos != P_MAX_INDEX)
-      return node->children[pos].resource;
+  for (const auto & file : HTMLIndexFiles) {
+    auto pos = node->m_children.find(file);
+    if (pos != node->m_children.end())
+      return pos->m_resource.get();
   }
 
   return NULL;
@@ -398,7 +359,7 @@ bool PHTTPServer::OnWebSocket(PHTTPConnectionInfo & connectInfo)
 
   bool persist = false;
  
-  m_urlSpace.StartRead();
+  m_urlSpaceMutex.lock_shared();
 
   PHTTPResource * resource = m_urlSpace.FindResource(connectInfo.GetURL());
   if (resource == NULL) {
@@ -428,7 +389,7 @@ bool PHTTPServer::OnWebSocket(PHTTPConnectionInfo & connectInfo)
     }
   }
 
-  m_urlSpace.EndRead();
+  m_urlSpaceMutex.unlock_shared();
 
   return persist;
 }
@@ -503,70 +464,42 @@ PString PHTTPServer::GetServerName() const
 }
 
 
-void PHTTPServer::SetURLSpace(const PHTTPSpace & space)
-{
-  m_urlSpace = space;
-}
-
-
 bool PHTTPServer::OnGET(const PHTTPConnectionInfo & conInfo)
 {
-  m_urlSpace.StartRead();
+  std::shared_lock<std::shared_mutex> lock(m_urlSpaceMutex);
   PHTTPResource * resource = m_urlSpace.FindResource(conInfo.GetURL());
-  if (resource == NULL) {
-    m_urlSpace.EndRead();
-    return OnError(NotFound, conInfo.GetURL().AsString(), m_connectInfo);
-  }
-
-  bool retval = resource->OnGET(*this, m_connectInfo);
-  m_urlSpace.EndRead();
-  return retval;
+  return resource != NULL
+    ? resource->OnGET(*this, m_connectInfo)
+    : OnError(NotFound, conInfo.GetURL().AsString(), m_connectInfo);
 }
 
 
 bool PHTTPServer::OnHEAD(const PHTTPConnectionInfo & conInfo)
 {
-  m_urlSpace.StartRead();
   PHTTPResource * resource = m_urlSpace.FindResource(conInfo.GetURL());
-  if (resource == NULL) {
-    m_urlSpace.EndRead();
-    return OnError(NotFound, conInfo.GetURL().AsString(), m_connectInfo);
-  }
-
-  bool retval = resource->OnHEAD(*this, m_connectInfo);
-  m_urlSpace.EndRead();
-  return retval;
+  return resource != NULL
+    ? resource->OnHEAD(*this, m_connectInfo)
+    : OnError(NotFound, conInfo.GetURL().AsString(), m_connectInfo);
 }
 
 
 bool PHTTPServer::OnPOST(const PHTTPConnectionInfo & conInfo)
 {
-  m_urlSpace.StartRead();
+  std::shared_lock<std::shared_mutex> lock(m_urlSpaceMutex);
   PHTTPResource * resource = m_urlSpace.FindResource(conInfo.GetURL());
-  if (resource == NULL) {
-    m_urlSpace.EndRead();
-    return OnError(NotFound, conInfo.GetURL().AsString(), m_connectInfo);
-  }
-
-  bool retval = resource->OnPOST(*this, m_connectInfo);
-  m_urlSpace.EndRead();
-  return retval;
+  return resource != NULL
+    ? resource->OnPOST(*this, m_connectInfo)
+    : OnError(NotFound, conInfo.GetURL().AsString(), m_connectInfo);
 }
 
 
 bool PHTTPServer::OnOPTIONS(const PHTTPConnectionInfo & conInfo)
 {
-  m_urlSpace.StartRead();
+  std::shared_lock<std::shared_mutex> lock(m_urlSpaceMutex);
   PHTTPResource * resource = m_urlSpace.FindResource(conInfo.GetURL());
-  if (resource == NULL) {
-    m_urlSpace.EndRead();
-    return OnError(NotFound, conInfo.GetURL().AsString(), m_connectInfo);
-  }
-  
-  bool retval = resource->OnOPTIONS(*this, m_connectInfo);
- 
-  m_urlSpace.EndRead();
-  return retval;
+  return resource != NULL
+    ? resource->OnOPTIONS(*this, m_connectInfo)
+    : OnError(NotFound, conInfo.GetURL().AsString(), m_connectInfo);
 }
 
 
@@ -888,7 +821,7 @@ void PHTTPListener::ListenMain()
     PChannel::Errors error = PSocket::Select(listeners);
     if (error == PChannel::NoError) {
       // get a socket(s) when a client connects
-      for (PSocket::SelectList::iterator it = listeners.begin(); it != listeners.end(); ++it) {
+      for (auto it : listeners) {
         PTCPSocket * socket = new PTCPSocket;
         if (socket->Accept(*it)) {
           PTRACE(5, "Queuing thread pool work for: local=" << socket->GetLocalAddress() << ", peer=" << socket->GetPeerAddress());
@@ -1117,7 +1050,7 @@ bool PHTTPMultiSimpAuth::Validate(const PHTTPRequest &,
 {
   PString user, pass;
   DecodeBasicAuthority(authInfo, user, pass);
-  return m_users.Contains(user) && m_users[user] == pass;
+  return m_users.Contains(user) && m_users(user) == pass;
 }
 
 
@@ -1704,7 +1637,6 @@ bool PHTTPConnectionInfo::Initialise(PHTTPServer & server, PString & args)
 
 void PHTTPConnectionInfo::SetMIME(const PString & tag, const PString & value)
 {
-  m_mimeInfo.MakeUnique();
   m_mimeInfo.SetAt(tag, value);
 }
 
@@ -1806,9 +1738,8 @@ bool PHTTPResource::InternalOnCommand(PHTTPServer & server,
 {
   // Nede to split songle if into 2 so the Tornado compiler won't end with
   // 'internal compiler error'
-  if (cmd == PHTTP::GET && connectInfo.GetMIME().Contains(PHTTP::IfModifiedSinceTag()))
-    if (!IsModifiedSince(PTime(connectInfo.GetMIME()[PHTTP::IfModifiedSinceTag()])))
-      return server.OnError(PHTTP::NotModified, connectInfo.GetURL().AsString(), connectInfo);
+  if (cmd == PHTTP::GET && !IsModifiedSince(connectInfo.GetMIME().GetVar(PHTTP::IfModifiedSinceTag(), PTime())))
+    return server.OnError(PHTTP::NotModified, connectInfo.GetURL().AsString(), connectInfo);
 
   PHTTPRequest * request = CreateRequest(server, connectInfo);
   request->entityBody = connectInfo.GetEntityBody();
@@ -1914,8 +1845,7 @@ bool PHTTPResource::CheckAuthority(PHTTPAuthority & authority,
 
 
   // if this is an authorisation request...
-  if (request.inMIME.Contains(PHTTP::AuthorizationTag()) &&
-      authority.Validate(request, request.inMIME[PHTTP::AuthorizationTag()]))
+  if (authority.Validate(request, request.inMIME(PHTTP::AuthorizationTag())))
     return true;
 
   // it must be a request for authorisation
@@ -2489,9 +2419,8 @@ bool PHTTPDirectory::LoadHeaders(PHTTPRequest & request)
 
   // else look for index files
   else {
-    PINDEX i;
-    for (i = 0; i < PARRAYSIZE(HTMLIndexFiles); i++)
-      if (file.Open(realPath + PDIR_SEPARATOR + HTMLIndexFiles[i], PFile::ReadOnly))
+    for (const auto & name : HTMLIndexFiles)
+      if (file.Open(realPath + PDIR_SEPARATOR + name, PFile::ReadOnly))
         break;
   }
 

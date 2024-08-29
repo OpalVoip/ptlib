@@ -50,6 +50,7 @@
 class PStringArray;
 class PRegularExpression;
 class PString;
+class PCaselessString;
 
 /**The same as the standard C snprintf(fmt, 1000, ...), but returns a
    PString instead of a const char *.
@@ -69,7 +70,7 @@ PString pvsprintf(
 
 
 /// Wide character array, based on standard wchar_t
-typedef std::vector<wchar_t> PWCharArray;
+using PWCharArray = PScalarArray<wchar_t>;
 
 
 /**The character string class. It supports a wealth of additional functions
@@ -122,6 +123,9 @@ public:
      */
     PString(
       const PString & str  ///< String to create new reference to.
+    );
+    PString(
+      const PCaselessString & str  ///< String to create new reference to.
     );
 
     /**Create a new reference to the specified buffer. The string memory is not
@@ -206,11 +210,11 @@ public:
       const PWCharArray & ustr ///< wchar_t null terminated string.
     );
 
-        /**Create a string from the single character. This is most commonly used
-           as a type conversion constructor when a literal character, eg 'A' is
-           used in a string expression. A new memory block is allocated of two
-           characters to take the char and its terminating '\\0' character.
-         */
+    /**Create a string from the single character. This is most commonly used
+        as a type conversion constructor when a literal character, eg 'A' is
+        used in a string expression. A new memory block is allocated of two
+        characters to take the char and its terminating '\\0' character.
+      */
     PString(
       char ch    ///< Single character to initialise string.
     );
@@ -356,18 +360,25 @@ public:
      */
     PString & operator=(
       const PString & str  ///< New string to assign.
-      );
+    );
+    PString & operator=(
+      const PCaselessString & str  ///< New string to assign.
+    );
 
-      /**Assign the string to the current object. The current instance then
-         becomes another reference to the same string in the <code>str</code>
-         parameter.
+    /**Assign the string to the current object. The current instance then
+        becomes another reference to the same string in the <code>str</code>
+        parameter.
 
-         @return
-         reference to the current PString object.
-       */
+        @return
+        reference to the current PString object.
+      */
     PString & operator=(
       const std::string & str  ///< New string to assign.
-    );
+    )
+    {
+      std::string::operator=(str);
+      return *this;
+    }
 
     /**Assign the C string to the current object. The current instance then
        becomes a unique reference to a copy of the <code>cstr</code> parameter.
@@ -380,7 +391,14 @@ public:
       */
     PString & operator=(
       const char * cstr  ///< C string to assign.
-    );
+    )
+    {
+      if (cstr != NULL)
+        std::string::operator=(cstr);
+      else
+        clear();
+      return *this;
+    }
 
     /**Assign the character to the current object. The current instance then
        becomes a unique reference to a copy of the character parameter. eg:
@@ -392,7 +410,11 @@ public:
       */
     PString & operator=(
       char ch            ///< Character to assign.
-    );
+    )
+    {
+      std::string::operator=(ch);
+      return *this;
+    }
 
     /**Assign a string from the integer type.
         This will create a simple base 10, shortest length conversion of the
@@ -549,6 +571,12 @@ public:
      */
     PString operator+(
       const PString & str   ///< String to concatenate.
+    ) const
+    {
+      return operator+(str.c_str());
+    }
+    PString operator+(
+      const PCaselessString & str   ///< String to concatenate.
     ) const;
 
     /**Concatenate a C string to a PString to produce a third. The original
@@ -595,7 +623,10 @@ public:
     friend PString operator+(
       const char * cstr,    ///< C string to be concatenated to.
       const PString & str   ///< String to concatenate.
-    );
+    )
+    {
+      return PString(cstr) + str;
+    }
 
     /**Concatenate a PString to a single character to produce a third. The
        original string is not modified, an entirely new unique reference to a
@@ -611,7 +642,10 @@ public:
     friend PString operator+(
       char  ch,             ///< Character to be concatenated to.
       const PString & str   ///< String to concatenate.
-    );
+    )
+    {
+      return PString(ch) + str;
+    }
 
     /**Concatenate a string to another string, modifiying that string.
 
@@ -620,7 +654,10 @@ public:
      */
     PString & operator+=(
       const PString & str   ///< String to concatenate.
-    );
+    )
+    {
+      return operator+=(str.c_str());
+    }
 
     /**Concatenate a C string to a PString, modifiying that string. The
        <code>cstr</code> parameter is typically a literal string, eg:
@@ -663,7 +700,10 @@ public:
      */
     PString operator&(
       const PString & str   ///< String to concatenate.
-    ) const;
+    ) const
+    {
+      return operator&(str.c_str());
+    }
 
     /**Concatenate a C string to a PString to produce a third. The original
        string is not modified, an entirely new unique reference to a string
@@ -724,7 +764,10 @@ public:
     friend PString operator&(
       const char * cstr,    ///< C string to be concatenated to.
       const PString & str   ///< String to concatenate.
-    );
+    )
+    {
+      return PString(cstr) & str;
+    }
 
     /**Concatenate a PString to a single character to produce a third. The
        original string is not modified, an entirely new unique reference to a
@@ -745,7 +788,10 @@ public:
     friend PString operator&(
       char  ch,              ///< Character to be concatenated to.
       const PString & str   ///< String to concatenate.
-    );
+    )
+    {
+      return PString(ch) & str;
+    }
 
     /**Concatenate a PString to a PString, modifiying that string.
 
@@ -759,7 +805,10 @@ public:
      */
     PString & operator&=(
       const PString & str   ///< String to concatenate.
-    );
+    )
+    {
+      return operator&=(str.c_str());
+    }
 
     /**Concatenate a C string to a PString, modifiying that string. The
        <code>cstr</code> parameter is typically a literal string, eg:
@@ -809,7 +858,10 @@ public:
      */
     bool operator*=(
       const PString & str  ///< PString object to compare against.
-    ) const;
+    ) const
+    {
+      return operator*=(str.c_str());
+    }
 
     /**Compare two strings using the <code>PObject::Compare()</code> function. This
        is identical to the <code>PObject</code> class function but is necessary due
@@ -820,7 +872,10 @@ public:
      */
     bool operator==(
       const PString & str  ///< PString object to compare against.
-    ) const;
+    ) const
+    {
+      return InternalCompare(0, P_MAX_INDEX, str) == EqualTo;
+    }
 
     /**Compare two strings using the <code>PObject::Compare()</code> function. This
        is identical to the <code>PObject</code> class function but is necessary due
@@ -831,7 +886,10 @@ public:
      */
     bool operator!=(
       const PString & str  ///< PString object to compare against.
-    ) const;
+    ) const
+    {
+      return InternalCompare(0, P_MAX_INDEX, str) != EqualTo;
+    }
 
     /**Compare two strings using the <code>PObject::Compare()</code> function. This
        is identical to the <code>PObject</code> class function but is necessary due
@@ -842,7 +900,10 @@ public:
      */
     bool operator<(
       const PString & str  ///< PString object to compare against.
-    ) const;
+    ) const
+    {
+      return InternalCompare(0, P_MAX_INDEX, str) == LessThan;
+    }
 
     /**Compare two strings using the <code>PObject::Compare()</code> function. This
        is identical to the <code>PObject</code> class function but is necessary due
@@ -853,7 +914,10 @@ public:
      */
     bool operator>(
       const PString & str  ///< PString object to compare against.
-    ) const;
+    ) const
+    {
+      return InternalCompare(0, P_MAX_INDEX, str) == GreaterThan;
+    }
 
     /**Compare two strings using the <code>PObject::Compare()</code> function. This
        is identical to the <code>PObject</code> class function but is necessary due
@@ -864,7 +928,10 @@ public:
      */
     bool operator<=(
       const PString & str  ///< PString object to compare against.
-    ) const;
+    ) const
+    {
+      return InternalCompare(0, P_MAX_INDEX, str) != GreaterThan;
+    }
 
     /**Compare two strings using the <code>PObject::Compare()</code> function. This
        is identical to the <code>PObject</code> class function but is necessary due
@@ -875,8 +942,10 @@ public:
      */
     bool operator>=(
       const PString & str  ///< PString object to compare against.
-    ) const;
-
+    ) const
+    {
+      return InternalCompare(0, P_MAX_INDEX, str) != LessThan;
+    }
 
     /**Compare a PString to a C string using a case insensitive compare
        function. The <code>cstr</code> parameter is typically a literal string,
@@ -904,7 +973,10 @@ public:
      */
     bool operator==(
       const char * cstr  ///< C string to compare against.
-    ) const;
+    ) const
+    {
+      return InternalCompare(0, P_MAX_INDEX, cstr) == EqualTo;
+    }
 
     /**Compare a PString to a C string using the <code>PObject::Compare()</code>
        function. The <code>cstr</code> parameter is typically a literal
@@ -918,7 +990,10 @@ public:
      */
     bool operator!=(
       const char * cstr  ///< C string to compare against.
-    ) const;
+    ) const
+    {
+      return InternalCompare(0, P_MAX_INDEX, cstr) != EqualTo;
+    }
 
     /**Compare a PString to a C string using the <code>PObject::Compare()</code>
        function. The <code>cstr</code> parameter is typically a literal
@@ -932,7 +1007,10 @@ public:
      */
     bool operator<(
       const char * cstr  ///< C string to compare against.
-    ) const;
+    ) const
+    {
+      return InternalCompare(0, P_MAX_INDEX, cstr) == LessThan;
+    }
 
     /**Compare a PString to a C string using the <code>PObject::Compare()</code>
        function. The <code>cstr</code> parameter is typically a literal
@@ -946,7 +1024,10 @@ public:
      */
     bool operator>(
       const char * cstr  ///< C string to compare against.
-    ) const;
+    ) const
+    {
+      return InternalCompare(0, P_MAX_INDEX, cstr) == GreaterThan;
+    }
 
     /**Compare a PString to a C string using the <code>PObject::Compare()</code>
        function. The <code>cstr</code> parameter is typically a literal
@@ -960,7 +1041,10 @@ public:
      */
     bool operator<=(
       const char * cstr  ///< C string to compare against.
-    ) const;
+    ) const
+    {
+      return InternalCompare(0, P_MAX_INDEX, cstr) != GreaterThan;
+    }
 
     /**Compare a PString to a C string using the <code>PObject::Compare()</code>
        function. The <code>cstr</code> parameter is typically a literal
@@ -974,7 +1058,10 @@ public:
      */
     bool operator>=(
       const char * cstr  ///< C string to compare against.
-    ) const;
+    ) const
+    {
+      return InternalCompare(0, P_MAX_INDEX, cstr) != LessThan;
+    }
 
     /**Compare a PString to a C string using a case insensitive compare
        function. The <code>cstr</code> parameter is typically a literal string,
@@ -989,7 +1076,10 @@ public:
     friend bool operator*=(
       const char * cstr,  ///< C string to compare against.
       const PString & str ///< String to compare against
-    );
+    )
+    {
+      return str *= cstr;
+    }
 
     /**Compare a PString to a C string using the <code>Compare()</code>
        function. The <code>cstr</code> parameter is typically a literal string,
@@ -1004,7 +1094,10 @@ public:
     friend bool operator==(
       const char * cstr,  ///< C string to compare against.
       const PString & str ///< String to compare against
-    );
+    )
+    {
+      return str.InternalCompare(0, P_MAX_INDEX, cstr) == PObject::EqualTo;
+    }
 
     /**Compare a PString to a C string using the <code>PObject::Compare()</code>
        function. The <code>cstr</code> parameter is typically a literal
@@ -1019,7 +1112,10 @@ public:
     friend bool operator!=(
       const char * cstr,  ///< C string to compare against.
       const PString & str ///< String to compare against
-    );
+    )
+    {
+      return str.InternalCompare(0, P_MAX_INDEX, cstr) != PObject::EqualTo;
+    }
 
     /**Compare a PString to a C string using the <code>PObject::Compare()</code>
        function. The <code>cstr</code> parameter is typically a literal
@@ -1034,7 +1130,10 @@ public:
     friend bool operator<(
       const char * cstr,  ///< C string to compare against.
       const PString & str ///< String to compare against
-    );
+    )
+    {
+      return str.InternalCompare(0, P_MAX_INDEX, cstr) == PObject::GreaterThan;
+    }
 
     /**Compare a PString to a C string using the <code>PObject::Compare()</code>
        function. The <code>cstr</code> parameter is typically a literal
@@ -1049,7 +1148,10 @@ public:
     friend bool operator>(
       const char * cstr,  ///< C string to compare against.
       const PString & str ///< String to compare against
-    );
+    )
+    {
+      return str.InternalCompare(0, P_MAX_INDEX, cstr) == PObject::LessThan;
+    }
 
     /**Compare a PString to a C string using the <code>PObject::Compare()</code>
        function. The <code>cstr</code> parameter is typically a literal
@@ -1064,7 +1166,10 @@ public:
     friend bool operator<=(
       const char * cstr,  ///< C string to compare against.
       const PString & str ///< String to compare against
-    );
+    )
+    {
+      return str.InternalCompare(0, P_MAX_INDEX, cstr) != PObject::LessThan;
+    }
 
     /**Compare a PString to a C string using the <code>PObject::Compare()</code>
        function. The <code>cstr</code> parameter is typically a literal
@@ -1079,7 +1184,10 @@ public:
     friend bool operator>=(
       const char * cstr,  ///< C string to compare against.
       const PString & str ///< String to compare against
-    );
+    )
+    {
+      return str.InternalCompare(0, P_MAX_INDEX, cstr) != PObject::GreaterThan;
+    }
 
     /**Compare a string against a substring of the object.
        This will compare at most <code>count</code> characters of the string, starting at
@@ -1129,7 +1237,10 @@ public:
     PINDEX Find(
       const PString & str,  ///< String to search for in string.
       PINDEX offset = 0     ///< Offset into string to begin search.
-    ) const;
+    ) const
+    {
+      return Find(str.c_str(), offset);
+    }
 
     /* Locate the position within the string of the character or substring. The
        search will begin at the character offset provided.
@@ -1160,7 +1271,10 @@ public:
     PINDEX FindLast(
       const PString & str,         ///< String to search for in string.
       PINDEX offset = P_MAX_INDEX  ///< Offset into string to begin search.
-    ) const;
+    ) const
+    {
+      return FindLast(str.c_str(), offset);
+    }
 
     /**Locate the position of the last matching substring.
        Locate the position within the string of the last matching character or
@@ -1188,7 +1302,10 @@ public:
     PINDEX FindOneOf(
       const PString & set,  ///< String of characters to search for in string.
       PINDEX offset = 0     ///< Offset into string to begin search.
-    ) const;
+    ) const
+    {
+      return FindOneOf(set.c_str(), offset);
+    }
 
     /**Locate the position of one of the characters in the set.
        The search will begin at the character offset provided.
@@ -1213,7 +1330,10 @@ public:
     PINDEX FindSpan(
       const PString & set,  ///< String of characters to search for in string.
       PINDEX offset = 0     ///< Offset into string to begin search.
-    ) const;
+    ) const
+    {
+      return FindSpan(set.c_str(), offset);
+    }
 
     /**Locate the position of character not in the set.
        The search will begin at the character offset provided.
@@ -1303,7 +1423,10 @@ public:
       const PString & str,  ///< Substring to insert.
       PINDEX pos,           ///< Position in string to insert the substring.
       PINDEX len = 0        ///< Length of section to remove.
-    );
+    )
+    {
+      return Splice(str.c_str(), pos, len);
+    }
 
     /**Splice the string into the current string at the specified position. The
        specified number of bytes are removed from the string.
@@ -1609,7 +1732,11 @@ public:
     PString & vsprintf(
       const PString & fmt, ///< String for output format.
       va_list args         ///< Extra parameters for <code>sprintf()</code> call.
-    );
+    )
+    {
+      return vsprintf(fmt.c_str(), args);
+    }
+
     /**Concatenate a formatted output to the string. This is identical to the
        standard C library <code>vsprintf()</code> function, but appends its
        output to the string.
@@ -1651,7 +1778,10 @@ public:
     friend PString pvsprintf(
       const PString & fmt, ///< String for output format.
       va_list args         ///< Extra parameters for <code>sprintf()</code> call.
-    );
+    )
+    {
+      return pvsprintf(fmt.c_str(), args);
+    }
 
 
     /**Convert the string to any type that can be converted using a stream.
@@ -1841,6 +1971,8 @@ public:
 
 
   protected:
+    bool m_caseless;
+
     void InternalFromWChar(
       const wchar_t * ptr,
       PINDEX len
@@ -1850,8 +1982,6 @@ public:
       PINDEX length,      // Number of characters to compare.
       const char * cstr   // C string to compare against.
     ) const;
-    virtual int internal_strcmp(const char * s1, const char *s2) const;
-    virtual int internal_strncmp(const char * s1, const char *s2, size_t n) const;
 
     bool InternalSplit(
       const PString & delimiter,  // Delimiter around which tom plit the substrings
@@ -1883,6 +2013,8 @@ class PWideString : public PObject, std::wstring {
     friend inline ostream & operator<<(ostream & stream, const PWideString & string) { return stream << PString(string.c_str()); }
 
     PINDEX GetLength() const { return length(); }
+    operator const wchar_t * () const { return c_str(); }
+    wchar_t * GetPointer(PINDEX size) { resize(size); return data(); }
 };
 
 #ifdef UNICODE
@@ -1905,19 +2037,21 @@ class PWideString : public PObject, std::wstring {
  */
 class PCaselessString : public PString
 {
-  PCLASSINFO(PCaselessString, PString);
-
+    PCLASSINFO(PCaselessString, PString);
   public:
     /**Create a new, empty, caseless string.
      */
-    PCaselessString();
+    PCaselessString() : PString() { m_caseless = true; }
 
     /**Create a new caseless string, initialising it to the characters in the
        C string provided.
      */
     PCaselessString(
       const char * cstr   ///< C string to initialise the caseless string from.
-    );
+    ) : PString(cstr)
+    {
+      m_caseless = true;
+    }
 
     /**Create a caseless string, with a reference to the characters in the
        normal <code>PString</code> provided. A PCaselessString may also be provided
@@ -1925,7 +2059,10 @@ class PCaselessString : public PString
      */
     PCaselessString(
       const PString & str  ///< String to initialise the caseless string from.
-    );
+    ) : PString(str)
+    {
+      m_caseless = true;
+    }
 
 
     /**Create a caseless string from a std::string
@@ -1933,7 +2070,9 @@ class PCaselessString : public PString
     PCaselessString(
       const std::string & str  ///< String to initialise the caseless string from.
       ) : PString(str)
-    { }
+    {
+      m_caseless = true;
+    }
 
     /**Assign the string to the current object. The current instance then
        becomes another reference to the same string in the <code>str</code>
@@ -1944,7 +2083,11 @@ class PCaselessString : public PString
      */
     PCaselessString & operator=(
       const PString & str  ///< New string to assign.
-    );
+    )
+    {
+      PString::operator=(str);
+      return *this;
+    }
 
     /**Assign the string to the current object. The current instance then
        becomes another reference to the same string in the <code>str</code>
@@ -1968,7 +2111,11 @@ class PCaselessString : public PString
      */
     PCaselessString & operator=(
       const char * cstr  ///< C string to assign.
-    );
+    )
+    {
+      PString::operator=(cstr);
+      return *this;
+    }
 
     /**Assign the character to the current object. The current instance then
        becomes a unique reference to a copy of the character parameter. eg:
@@ -1980,7 +2127,11 @@ class PCaselessString : public PString
      */
     PCaselessString & operator=(
       char ch            ///< Character to assign.
-    );
+    )
+    {
+      PString::operator=(ch);
+      return *this;
+    }
 
 
   // Overrides from class PObject
@@ -1989,11 +2140,6 @@ class PCaselessString : public PString
        unique reference to that data.
      */
     virtual PObject * Clone() const override;
-
-  protected:
-  // Overrides from class PString
-    virtual int internal_strcmp(const char * s1, const char *s2) const;
-    virtual int internal_strncmp(const char * s1, const char *s2, size_t n) const;
 };
 
 
@@ -2048,6 +2194,7 @@ public:
   PStringStream & operator=(char c) { str(std::string(1, c)); return *this; }
 
   __inline void clear() { std::stringstream::clear(); }
+  __inline bool empty() const { return rdbuf()->pubseekoff(0, ios_base::cur, ios_base::out) == 0; }
 
   void PrintOn(ostream & strm) const { strm << str(); }
 
@@ -2056,7 +2203,7 @@ public:
   operator PString() const { return str(); }
   PINDEX GetLength() const { return str().length(); }
   PString operator()(PINDEX start, PINDEX finish) const { return PString(str())(start, finish); }
-  bool IsEmpty() const { return rdbuf()->pubseekoff(0, ios_base::cur, ios_base::out) == 0; }
+  bool IsEmpty() const { return this->empty(); }
   PStringStream & Replace(const PString & target, const PString & subs, bool all = false, PINDEX offset = 0) { PString s = str(); s.Replace(target, subs, all, offset); str(s); return *this; }
   PStringStream & Splice(const PString & insert, PINDEX pos, PINDEX len = 0) { PString s = str(); s.Splice(insert, pos, len); str(s); return *this; }
   PStringStream & Delete(PINDEX start, PINDEX len) { PString s = str(); s.Delete(start, len); str(s); return *this; }
@@ -2101,20 +2248,19 @@ class PStringSet;
    functions do. This is more convenient for when string expressions are used
    as parameters to function in the collection.
 */
-class PStringArray : public PArray<PString>
+class PStringArray : public PObject, public std::vector<PString>
 {
-    typedef PArray<PString> BaseClass;
-    PCLASSINFO(PStringArray, BaseClass);
-
+    typedef std::vector<PString> stl_type;
+    PCLASSINFO(PStringArray, PObject);
   public:
   /**@name Construction */
   //@{
     /// Create an empty PString array.
     __inline PStringArray(PINDEX initialSize = 0)
-      : BaseClass(initialSize) { }
+      : stl_type(initialSize) { }
 
-    __inline PStringArray(const BaseClass & other)
-      : BaseClass(other) { }
+    __inline PStringArray(const stl_type & other)
+      : stl_type(other) { }
 
     /**Create a PStringArray from the array of C strings. If count is
        P_MAX_INDEX then strarr is assumed to point to an array of strings
@@ -2129,17 +2275,22 @@ class PStringArray : public PArray<PString>
      */
     PStringArray(
       const PString & str  ///< Single string to convert to an array of one.
-    );
+    )
+      : stl_type(1, str)
+    { }
     /**Create a PStringArray of length one from the single string.
      */
     PStringArray(
       const char * cstr  ///< Single string to convert to an array of one.
-    );
+    )
+      : stl_type(1, cstr)
+    { }
     /**Create a PStringArray from the list of strings.
      */
     PStringArray(
       const PStringList & list  ///< List of strings to convert to array.
     );
+
     /**Create a PStringArray from the sorted list strings.
      */
     PStringArray(
@@ -2150,28 +2301,13 @@ class PStringArray : public PArray<PString>
     PStringArray(
       const PStringSet & set  ///< Set of strings to convert to array.
     );
-
-    /**
-      * Create a PStringArray from a vector of PStrings
-      */
-    PStringArray(
-      const std::vector<PString> & vec
-    )
-    {
-      for (std::vector<PString>::const_iterator r = vec.begin(); r != vec.end(); ++r)
-        AppendString(*r);
-    }
-
-    /**
-      * Create a PStringArray from a vector of std::string
+    /** Create a PStringArray from a vector of std::string
       */
     PStringArray(
       const std::vector<std::string> & vec
     )
-    {
-      for (std::vector<std::string>::const_iterator r = vec.begin(); r != vec.end(); ++r)
-        AppendString(PString(*r));
-    }
+      : stl_type(vec.begin(), vec.end())
+    { }
 
     /**
       * Create a PStringArray from an STL container
@@ -2186,7 +2322,6 @@ class PStringArray : public PArray<PString>
         list.AppendString(PString(*r));
       return list;
     }
-
   //@}
 
   /**@name Overrides from class PObject */
@@ -2201,14 +2336,17 @@ class PStringArray : public PArray<PString>
       istream &strm   // Stream to read the objects contents from.
     ) override;
 
-    virtual PObject * Clone() const override
-    {
-      return this->CloneContents(PNEW PStringArray());
-    }
+    virtual PObject * Clone() const override;
   //@}
 
   /**@name New functions for class */
   //@{
+    PINDEX GetSize() const { return size(); }
+    void SetSize(PINDEX size) { resize(size); }
+    bool IsEmpty() const { return empty(); }
+    void RemoveAll() { clear(); }
+    void RemoveAt(PINDEX index) { erase(begin() + index); }
+
     /**As for <code>GetValuesIndex()</code> but takes a PString argument so that
        literals will be automatically converted.
 
@@ -2218,37 +2356,30 @@ class PStringArray : public PArray<PString>
     PINDEX GetStringsIndex(
       const PString & str ///< String to search for index of
     ) const;
-
-    PString operator[](
-      PINDEX index  ///< Index position in the collection of the object.
-    ) const;
-
-    /**Retrieve a reference  to the object in the array. If there was not an
-       object at that ordinal position or the index was beyond the size of the
-       array then the function will create a new one.
-
-       @return
-       reference to the object at <code>index</code> position.
-     */
-    PString & operator[](
-      PINDEX index  ///< Index position in the collection of the object.
-    );
+    PINDEX GetValuesIndex(
+      const PString & str ///< String to search for index of
+    ) const
+    {
+      return GetStringsIndex(str);
+    }
 
     /** Append a string to the array
      */
-    PINDEX AppendString(
+    __inline void AppendString(
       const PString & str ///< String to append.
-    );
-    void push_back(const PString & str) { AppendString(str); }
+    )
+    {
+      this->push_back(str);
+    }
 
     /**Concatenate a PString or PStringArray to the array
 
        @return
        The PStringArray with the new items appended
      */
-    PStringArray & operator +=(const PStringArray & array);
-    PStringArray & operator +=(const PString & str) { AppendString(str);  return *this; }
-    PStringArray & operator +=(const char * cstr)   { AppendString(cstr); return *this; }
+    PStringArray & operator +=(const PStringArray & other) { insert(end(), other.begin(), other.end()); return *this; }
+    PStringArray & operator +=(const PString & str) { emplace_back(str);  return *this; }
+    PStringArray & operator +=(const char * cstr)   { emplace_back(cstr); return *this; }
 
 
     /**Create a new PStringArray, and add PString or PStringArray to it
@@ -2289,21 +2420,20 @@ class PStringArray : public PArray<PString>
    functions do. This is more convenient for when string expressions are used
    as parameters to function in the collection.
  */
-class PStringList : public PList<PString>
+class PStringList : public PObject, public std::list<PString>
 {
-    typedef PList<PString> BaseClass;
-    PCLASSINFO(PStringList, BaseClass);
-
+    typedef std::list<PString> stl_type;
+    PCLASSINFO(PStringList, PObject);
   public:
   /**@name Construction */
   //@{
     /**Create an empty PStringList.
      */
     __inline PStringList()
-      : BaseClass() { }
+      : stl_type() { }
 
-    __inline PStringList(const BaseClass & other)
-      : BaseClass(other) { }
+    __inline PStringList(const stl_type & other)
+      : stl_type(other) { }
 
     /**Create a PStringList from the array of C strings.
      */
@@ -2316,12 +2446,16 @@ class PStringList : public PList<PString>
      */
     PStringList(
       const PString & str  ///< Single string to convert to a list of one.
-    );
+    )
+      : stl_type(1, str)
+    { }
     /**Create a PStringList of length one from the single string.
      */
     PStringList(
       const char * cstr  ///< Single string to convert to a list of one.
-    );
+    )
+      : stl_type(1, cstr)
+    { }
     /**Create a PStringList from the array of strings.
      */
     PStringList(
@@ -2351,31 +2485,39 @@ class PStringList : public PList<PString>
       istream &strm   // Stream to read the objects contents from.
     ) override;
 
-    virtual PObject * Clone() const override
-    {
-      return this->CloneContents(new PStringList());
-    }
+    virtual PObject * Clone() const override;
   //@}
 
   /**@name Operations */
   //@{
+    PINDEX GetSize() const { return size(); }
+    bool IsEmpty() const { return empty(); }
+    void RemoveAll() { clear(); }
+    bool Contains(const PString & str) const { return std::find(this->begin(), this->end(), str) != this->end(); }
+
     /** Append a string to the list.
      */
-    PINDEX AppendString(
+    void AppendString(
       const PString & str ///< String to append.
-    );
+    )
+    {
+      this->push_back(str);
+    }
 
     /** Insert a string into the list.
      */
-    PINDEX InsertString(
+    void InsertString(
       const PString & before,   ///< String to insert before.
       const PString & str       ///< String to insert.
-    );
+    )
+    {
+      insert(std::find(begin(), end(), before), str);
+    }
 
     /** Get the index of the string with the specified value.
       A linear search of list is performed to find the string value.
      */
-    PINDEX GetStringsIndex(
+    P_DEPRECATED PINDEX GetStringsIndex(
       const PString & str   ///< String value to search for.
     ) const;
 
@@ -2384,9 +2526,9 @@ class PStringList : public PList<PString>
        @return
        The PStringArray with the new items appended
      */
-    PStringList & operator +=(const PStringList & list);
-    PStringList & operator +=(const PString & str) { AppendString(str);  return *this; }
-    PStringList & operator +=(const char * cstr)   { AppendString(cstr); return *this; }
+    PStringList & operator +=(const PStringList & list) { insert(end(), list.begin(), list.end()); }
+    PStringList & operator +=(const PString & str) { emplace_back(str);  return *this; }
+    PStringList & operator +=(const char * cstr)   { emplace_back(cstr); return *this; }
 
 
     /**Create a new PStringList, and add PString or PStringList to it
@@ -2395,8 +2537,8 @@ class PStringList : public PList<PString>
        @return
        A new PStringList with the additional elements(s)
      */
-    PStringList operator + (const PStringList & array);
-    PStringList operator + (const PString & str);
+    PStringList operator + (const PStringList & list) { PStringList arr = *this; arr += list; return arr; }
+    PStringList operator + (const PString & str) { PStringList arr = *this; arr += str; return arr; }
 
     /**
       * Create a PStringArray from an STL container
@@ -2426,21 +2568,20 @@ class PStringList : public PList<PString>
 
    See the PAbstractSortedList and PSortedList classes for more information.
  */
-class PSortedStringList : public PSortedList<PString>
+class PSortedStringList : public PObject, public std::multiset<PString>
 {
-    typedef PSortedList<PString> BaseClass;
-    PCLASSINFO(PSortedStringList, BaseClass);
-
+    typedef std::multiset<PString> stl_type;
+    PCLASSINFO(PSortedStringList, PObject);
   public:
   /**@name Construction */
   //@{
     /**Create an empty PStringList.
      */
     __inline PSortedStringList()
-      : BaseClass() { }
+      : stl_type() { }
 
-    __inline PSortedStringList(const BaseClass & other)
-      : BaseClass(other) { }
+    __inline PSortedStringList(const stl_type & other)
+      : stl_type(other) { }
 
     /**Create a PStringArray from the array of C strings.
      */
@@ -2453,12 +2594,16 @@ class PSortedStringList : public PSortedList<PString>
      */
     PSortedStringList(
       const PString & str  ///< Single string to convert to a list of one.
-    );
+    )
+      : stl_type{str}
+    { }
     /**Create a PSortedStringList of length one from the single string.
      */
     PSortedStringList(
       const char * cstr  ///< Single string to convert to a list of one.
-    );
+    )
+      : stl_type{ cstr }
+    { }
     /**Create a PSortedStringList from the array of strings.
      */
     PSortedStringList(
@@ -2487,34 +2632,39 @@ class PSortedStringList : public PSortedList<PString>
     virtual void ReadFrom(
       istream &strm   // Stream to read the objects contents from.
     ) override;
+
+    virtual PObject * Clone() const override;
   //@}
 
   /**@name Operations */
   //@{
+    PINDEX GetSize() const { return size(); }
+    bool IsEmpty() const { return empty(); }
+    void RemoveAll() { clear(); }
+
     /** Add a string to the list.
         This will place the string in the correct position in the sorted list.
      */
-    PINDEX AppendString(
+    void AppendString(
       const PString & str ///< String to append.
-    );
+    )
+    {
+      this->emplace(str);
+    }
 
-    /** Get the index of the string with the specified value.
-      A binary search of tree is performed to find the string value.
-     */
-    PINDEX GetStringsIndex(
-      const PString & str   ///< String value to search for.
-    ) const;
-
-    /** Get the index of the next string after specified value.
-      A binary search of tree is performed to find the string greater than
-      or equal to the specified string value.
-     */
-    PINDEX GetNextStringsIndex(
-      const PString & str   ///< String value to search for.
-    ) const;
+    const PString & front() const { return *begin(); }
+    const PString & back() const { return *rbegin(); }
   //@}
 };
 
+
+template <> struct std::hash<PString>
+{
+  std::size_t operator()(const PString & obj) const noexcept
+  {
+    return obj.HashFunction();
+  }
+};
 
 /**This is a set collection class of <code>PString</code> objects. It has all the
    usual functions for a collection, with the object types set to
@@ -2529,21 +2679,20 @@ class PSortedStringList : public PSortedList<PString>
    complements the automatic creation of new PString objects when literals or
    expressions are used.
  */
-class PStringSet : public PSet<PString>
+class PStringSet : public PObject, public std::unordered_set<PString>
 {
-    typedef PSet<PString> BaseClass;
-    PCLASSINFO(PStringSet, BaseClass);
-
+    typedef std::unordered_set<PString> stl_type;
+    PCLASSINFO(PStringSet, PObject);
   public:
   /**@name Construction */
   //@{
     /**Create a PStringSet.
      */
     PStringSet()
-      : BaseClass() { }
+      : stl_type() { }
 
-    PStringSet(const BaseClass & other)
-      : BaseClass(other) { }
+    PStringSet(const stl_type & other)
+      : stl_type(other) { }
 
     /**Create a PStringSet from the array of C strings.
      */
@@ -2557,12 +2706,16 @@ class PStringSet : public PSet<PString>
      */
     PStringSet(
       const PString & str  ///< Single string to convert to a set of one.
-    );
+    )
+      : stl_type{ str }
+    { }
     /**Create a PStringSet containing the single string.
      */
     PStringSet(
       const char * cstr  ///< Single string to convert to a set of one.
-    );
+    )
+      : stl_type{ cstr }
+    { }
     /**Create a PStringSet containing the strings.
      */
     PStringSet(
@@ -2572,6 +2725,11 @@ class PStringSet : public PSet<PString>
      */
     PStringSet(
       const PStringList & strList  ///< String to convert to a set.
+    );
+    /**Create a PStringSet containing the strings.
+     */
+    PStringSet(
+      const PSortedStringList & strList  ///< String to convert to a set.
     );
   //@}
 
@@ -2587,30 +2745,47 @@ class PStringSet : public PSet<PString>
       istream &strm   ///< Stream to read the objects contents from.
     ) override;
 
-    virtual PObject * Clone() const override
-    {
-      return this->CloneContents(new PStringSet());
-    }
+    virtual PObject * Clone() const override;
   //@}
 
   /**@name Operations */
   //@{
+    PINDEX GetSize() const { return size(); }
+    bool IsEmpty() const { return empty(); }
+    void RemoveAll() { clear(); }
+    bool Contains(const PString & str) { return this->contains(str); }
+    bool operator[](const PString & str) { return this->contains(str); }
+
     /** Include the spcified string value into the set. */
     void Include(
       const PString & key ///< String value to add to set.
-    );
+    )
+    {
+      this->emplace(key);
+    }
     /** Include the spcified string value into the set. */
     PStringSet & operator+=(
       const PString & key ///< String value to add to set.
-    );
+    )
+    {
+      this->emplace(key);
+      return *this;
+    }
     /** Exclude the spcified string value from the set. */
     void Exclude(
       const PString & key ///< String value to remove from set.
-    );
+    )
+    {
+      this->erase(key);
+    }
     /** Exclude the spcified string value from the set. */
     PStringSet & operator-=(
       const PString & key ///< String value to remove from set.
-    );
+    )
+    {
+      this->erase(key);
+      return *this;
+    }
   //@}
 };
 
@@ -2619,11 +2794,11 @@ class PStringSet : public PSet<PString>
    a <code>PString</code> data type. The functions in this class primarily do all the
    appropriate casting of types.
  */
-template <class K> class PStringDictionary : public PDictionary<K, PString>
+template <typename K> class PStringDictionary : public PObject, public std::unordered_map<K, PString>
 {
-  typedef PDictionary<K, PString> BaseClass;
-  PCLASSINFO(PStringDictionary, BaseClass);
-
+    typedef K key_type;
+    typedef std::unordered_map<key_type, PString> stl_type;
+    PCLASSINFO(PStringDictionary, PObject);
   public:
   /**@name Construction */
   //@{
@@ -2634,7 +2809,7 @@ template <class K> class PStringDictionary : public PDictionary<K, PString>
        destroyed.
      */
     PStringDictionary()
-      : BaseClass() { }
+      : stl_type() { }
   //@}
 
   /**@name Overrides from class PObject */
@@ -2645,12 +2820,19 @@ template <class K> class PStringDictionary : public PDictionary<K, PString>
      */
     virtual PObject * Clone() const override
     {
-      return this->CloneContents(PNEW PStringDictionary());
+      return new PStringDictionary(*this);
     }
   //@}
 
   /**@name New functions for class */
   //@{
+    PINDEX GetSize() const { return this->size(); }
+    bool IsEmpty() const { return this->empty(); }
+    void RemoveAll() { this->clear(); }
+    bool Contains(const PString & str) const { return this->contains(str); }
+    PString * GetAt(const key_type & key) const { auto it = this->find(key); return it != this->end() ? const_cast<PString *>(&it->second) : nullptr; }
+    void RemoveAt(const key_type & key) { auto it = this->find(key); if (it != this->end()) this->erase(it); }
+
     /**Get the string contained in the dictionary at the <code>key</code>
        position. The hash table is used to locate the data quickly via the
        hash function provided by the key.
@@ -2664,10 +2846,10 @@ template <class K> class PStringDictionary : public PDictionary<K, PString>
        @return
        reference to the object indexed by the key.
      */
-    PString operator()(const K & key, const char * dflt = NULL) const
+    PString operator()(const K & key, const char * dflt = nullptr) const
     {
-      PString * str = this->GetAt(key);
-      return str != NULL ? *str : PString(dflt);
+      auto it = this->find(key);
+      return it != this->end() ? it->second : PString(dflt);
     }
 
     /**Add a new object to the collection. If the objects value is already in
@@ -2680,10 +2862,13 @@ template <class K> class PStringDictionary : public PDictionary<K, PString>
        @return
        true if the object was successfully added.
      */
-    virtual bool SetAt(
+    virtual void SetAt(
       const K & key,       // Key for position in dictionary to add object.
       const PString & str  // New string value to put into the dictionary.
-    ) { return this->BaseClass::SetAt(key, PNEW PString(str)) != NULL; }
+    )
+    {
+      this->operator[](key) = str;
+    }
   //@}
 };
 
@@ -2731,11 +2916,6 @@ class PStringToString : public PStringDictionary<PString>
 
   /**@name Overrides from class PObject */
   //@{
-    virtual PObject * Clone() const 
-    {
-      return this->CloneContents(PNEW PStringToString());
-    }
-
     /** Input the contents of the object from the stream. This is
        primarily used by the standard <code>operator>></code> function.
 
@@ -2802,42 +2982,33 @@ class PStringToString : public PStringDictionary<PString>
     This assures that the keys are caseless and has some access functions for
     bool/int types for ease of access with default values.
   */
-class PStringOptions : public PStringDictionary<PCaselessString>
+class PStringOptions : public PStringToString
 {
-    typedef PStringDictionary<PCaselessString> BaseClass;
-    PCLASSINFO(PStringOptions, BaseClass);
+    PCLASSINFO(PStringOptions, PStringToString);
   public:
     PStringOptions() { }
-    explicit PStringOptions(const PString & str) : PStringOptions(PStringToString(str)) { }
-    PStringOptions(const BaseClass & other) : BaseClass(other) { }
-    PStringOptions & operator=(const BaseClass & other) { BaseClass::operator=(other); return *this; }
-
-    PStringOptions(const PStringToString & other)
-    {
-      for (const auto & it : other)
-        this->SetAt(it.first, it.second);
-    }
+    explicit PStringOptions(const PString & str) : PStringToString(str) { }
+    PStringOptions(const PStringToString & other) : PStringToString(other) { }
+    PStringOptions & operator=(const PStringToString & other) { PStringToString::operator=(other); return *this; }
 
     /// Determine if the specified key is present.
-    bool Contains(const char *              key   ) const { PConstCaselessString k(key); return BaseClass::Contains(k); }
-    bool Contains(const std::string     &   key   ) const { return BaseClass::Contains(PCaselessString(key)); }
-    bool Contains(const PString         &   key   ) const { return BaseClass::Contains(PCaselessString(key)); }
-    bool Contains(const PCaselessString &   key   ) const { return BaseClass::Contains(key); }
-    bool Contains(const PCaselessString & (*key)()) const { return BaseClass::Contains(key()); }
+    bool Contains(const char *              key   ) const { PConstCaselessString k(key); return Contains(k); }
+    bool Contains(const std::string     &   key   ) const { return Contains(PCaselessString(key)); }
+    bool Contains(const PString         &   key   ) const { return Contains(PCaselessString(key)); }
+    bool Contains(const PCaselessString &   key   ) const { return this->contains(key); }
+    bool Contains(const PCaselessString & (*key)()) const { return Contains(key()); }
 
-    // Overide default PStringToString::SetAt() to make sure the key is caseless
-    bool SetAt(const char *              key,    const PString & data) { PConstCaselessString k(key); return SetAt(k, data); }
-    bool SetAt(const std::string     &   key,    const PString & data) { return SetAt(PCaselessString(key), data); }
-    bool SetAt(const PString         &   key,    const PString & data) { return SetAt(PCaselessString(key), data); }
-    bool SetAt(const PCaselessString &   key,    const PString & data) { return BaseClass::SetAt(key, data); }
-    bool SetAt(const PCaselessString & (*key)(), const PString & data) { return SetAt(key(), data); }
+    void SetAt(const char *              key,    const PString & data) { PConstCaselessString k(key); SetAt(k, data); }
+    void SetAt(const std::string     &   key,    const PString & data) { SetAt(PCaselessString(key), data); }
+    void SetAt(const PString         &   key,    const PString & data) { SetAt(PCaselessString(key), data); }
+    void SetAt(const PCaselessString &   key,    const PString & data) { this->emplace(key, data); }
+    void SetAt(const PCaselessString & (*key)(), const PString & data) { SetAt(key(), data); }
 
-    // Overide default PStringToString::RemoveAt() to make sure the key is caseless
-    void RemoveAt(const char *              key)    { PConstCaselessString k(key); return RemoveAt(k); }
-    void RemoveAt(const std::string     &   key)    { return RemoveAt(PCaselessString(key)); }
-    void RemoveAt(const PString         &   key)    { return RemoveAt(PCaselessString(key)); }
-    void RemoveAt(const PCaselessString &   key)    { return BaseClass::RemoveAt(key); }
-    void RemoveAt(const PCaselessString & (*key)()) { return RemoveAt(key()); }
+    void RemoveAt(const char *              key)    { PConstCaselessString k(key); RemoveAt(k); }
+    void RemoveAt(const std::string     &   key)    { RemoveAt(PCaselessString(key)); }
+    void RemoveAt(const PString         &   key)    { RemoveAt(PCaselessString(key)); }
+    void RemoveAt(const PCaselessString &   key)    { this->erase(key); }
+    void RemoveAt(const PCaselessString & (*key)()) { RemoveAt(key()); }
 
     /// Get an option value.
     PString GetString(const char *              key,    const char * dflt = NULL) const { PConstCaselessString k(key); return GetString(k, dflt); }
@@ -2847,11 +3018,11 @@ class PStringOptions : public PStringDictionary<PCaselessString>
     PString GetString(const PCaselessString & (*key)(), const char * dflt = NULL) const { return GetString(key(), dflt); }
 
     /// Set the option value.
-    bool SetString(const char *              key,    const PString & value) { return SetAt(key, value); }
-    bool SetString(const std::string     &   key,    const PString & value) { return SetAt(key, value); }
-    bool SetString(const PString         &   key,    const PString & value) { return SetAt(key, value); }
-    bool SetString(const PCaselessString &   key,    const PString & value) { return SetAt(key, value); }
-    bool SetString(const PCaselessString & (*key)(), const PString & value) { return SetAt(key, value); }
+    void SetString(const char *              key,    const PString & value) { SetAt(key, value); }
+    void SetString(const std::string     &   key,    const PString & value) { SetAt(key, value); }
+    void SetString(const PString         &   key,    const PString & value) { SetAt(key, value); }
+    void SetString(const PCaselessString &   key,    const PString & value) { SetAt(key, value); }
+    void SetString(const PCaselessString & (*key)(), const PString & value) { SetAt(key, value); }
 
     /// Get the option value as a boolean.
     bool GetBoolean(const char *              key,    bool dflt = false) const { PConstCaselessString k(key); return GetBoolean(k, dflt); }
@@ -2916,11 +3087,11 @@ class PStringOptions : public PStringDictionary<PCaselessString>
     template<typename T> T GetVar(const PCaselessString &   key,    const T & dflt) const { PStringStream s(GetString(key)); T v; s>>v; return s.fail() || s.bad() ? dflt : v; }
     template<typename T> T GetVar(const PCaselessString & (*key)(), const T & dflt) const { return GetVar<T>(key(), dflt); }
 
-    template<typename T> bool SetVar(const char *              key,    const T & value) { PConstCaselessString k(key); return SetVar<T>(k, value); }
-    template<typename T> bool SetVar(const std::string     &   key,    const T & value) { return SetVar<T>(PCaselessString(key), value); }
-    template<typename T> bool SetVar(const PString         &   key,    const T & value) { return SetVar<T>(PCaselessString(key), value); }
-    template<typename T> bool SetVar(const PCaselessString &   key,    const T & value) { return SetString(key, PSTRSTRM(value)); }
-    template<typename T> bool SetVar(const PCaselessString & (*key)(), const T & value) { return SetVar<T>(key(), value); }
+    template<typename T> void SetVar(const char *              key,    const T & value) { PConstCaselessString k(key); SetVar<T>(k, value); }
+    template<typename T> void SetVar(const std::string     &   key,    const T & value) { SetVar<T>(PCaselessString(key), value); }
+    template<typename T> void SetVar(const PString         &   key,    const T & value) { SetVar<T>(PCaselessString(key), value); }
+    template<typename T> void SetVar(const PCaselessString &   key,    const T & value) { SetString(key, PSTRSTRM(value)); }
+    template<typename T> void SetVar(const PCaselessString & (*key)(), const T & value) { SetVar<T>(key(), value); }
 
     /// Determine of the option exists.
     __inline bool Has(const char            * key)      const { return Contains(key); }
@@ -2947,11 +3118,11 @@ class PStringOptions : public PStringDictionary<PCaselessString>
     __inline PString Get(const PCaselessString & (*key)(), const PString     & dflt) const { return GetString(key, dflt); }
 
     /// Set the option value.
-    __inline bool Set(const char *              key,    const PString & value) { return SetAt(key, value); }
-    __inline bool Set(const std::string     &   key,    const PString & value) { return SetAt(key, value); }
-    __inline bool Set(const PString         &   key,    const PString & value) { return SetAt(key, value); }
-    __inline bool Set(const PCaselessString &   key,    const PString & value) { return SetAt(key, value); }
-    __inline bool Set(const PCaselessString & (*key)(), const PString & value) { return SetAt(key, value); }
+    __inline void Set(const char *              key,    const PString & value) { SetAt(key, value); }
+    __inline void Set(const std::string     &   key,    const PString & value) { SetAt(key, value); }
+    __inline void Set(const PString         &   key,    const PString & value) { SetAt(key, value); }
+    __inline void Set(const PCaselessString &   key,    const PString & value) { SetAt(key, value); }
+    __inline void Set(const PCaselessString & (*key)(), const PString & value) { SetAt(key, value); }
 
     /// Remove option value
     __inline void Remove(const char *              key)    { RemoveAt(key); }
@@ -3309,6 +3480,25 @@ class PRegularExpression : public PObject, public std::regex
     std::regex_constants::error_type m_lastErrorType;
 };
 
+
+__inline PStringArray PString::Tokenise(const PString & separators, bool onePerSeparator) const
+{
+  return Tokenise(separators.c_str(), onePerSeparator);
+}
+
+__inline PString PString::operator+(const PCaselessString & str) const { return operator+(str.c_str()); }
+__inline PStringArray::PStringArray(const PStringList & other) : stl_type(other.begin(), other.end()) { }
+__inline PStringArray::PStringArray(const PSortedStringList & other) : stl_type(other.begin(), other.end()) { }
+__inline PStringArray::PStringArray(const PStringSet & other) : stl_type(other.begin(), other.end()) { }
+__inline PStringList::PStringList(const PStringArray & other) : stl_type(other.begin(), other.end()) { }
+__inline PStringList::PStringList(const PSortedStringList & other) : stl_type(other.begin(), other.end()) { }
+__inline PStringList::PStringList(const PStringSet & other) : stl_type(other.begin(), other.end()) { }
+__inline PSortedStringList::PSortedStringList(const PStringArray & other) : stl_type(other.begin(), other.end()) { }
+__inline PSortedStringList::PSortedStringList(const PStringList & other) : stl_type(other.begin(), other.end()) { }
+__inline PSortedStringList::PSortedStringList(const PStringSet & other) : stl_type(other.begin(), other.end()) { }
+__inline PStringSet::PStringSet(const PStringArray & other) : stl_type(other.begin(), other.end()) { }
+__inline PStringSet::PStringSet(const PStringList & other) : stl_type(other.begin(), other.end()) { }
+__inline PStringSet::PStringSet(const PSortedStringList & other) : stl_type(other.begin(), other.end()) { }
 
 #endif // PTLIB_STRING_H
 

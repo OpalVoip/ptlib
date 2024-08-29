@@ -253,7 +253,7 @@ class PIntCondMutex : public PCondMutex
    http://arxiv.org/ftp/arxiv/papers/1309/1309.4507.pdf to improve efficiency.
  */
 
-class PReadWriteMutex : public PObject, public PMutexExcessiveLockInfo, PProfiling::HighWaterMark<PReadWriteMutex>, PNonCopyable
+class PReadWriteMutex : public PObject, public PMutexExcessiveLockInfo, PProfiling::HighWaterMark<PReadWriteMutex>, std::shared_timed_mutex
 {
   PCLASSINFO(PReadWriteMutex, PObject);
   public:
@@ -322,23 +322,6 @@ class PReadWriteMutex : public PObject, public PMutexExcessiveLockInfo, PProfili
     void InternalStartWrite(const PDebugLocation * location);
     void InternalEndWrite(const PDebugLocation * location);
 
-#if P_READ_WRITE_ALGO2
-    PSemaphore  m_inSemaphore;
-    unsigned    m_inCount;
-    PSemaphore  m_outSemaphore;
-    unsigned    m_outCount;
-    PSemaphore  m_writeSemaphore;
-    bool        m_wait;
-#else
-    PSemaphore  m_readerSemaphore;
-    PTimedMutex m_readerMutex;
-    unsigned    m_readerCount;
-    PTimedMutex m_starvationPreventer;
-
-    PSemaphore  m_writerSemaphore;
-    PTimedMutex m_writerMutex;
-    unsigned    m_writerCount;
-#endif
     struct Nest
     {
       atomic<unsigned> m_readerCount;
@@ -358,11 +341,7 @@ class PReadWriteMutex : public PObject, public PMutexExcessiveLockInfo, PProfili
     Nest * GetNest();
     Nest & StartNest();
     void EndNest();
-    void InternalStartReadWithNest(Nest & nest, const PDebugLocation & location);
-    void InternalEndReadWithNest(Nest & nest, const PDebugLocation & location);
-    void InternalStartWriteWithNest(Nest & nest, const PDebugLocation & location);
-    void InternalEndWriteWithNest(Nest & nest, const PDebugLocation & location);
-    void InternalWait(Nest & nest, PSync & sync, const PDebugLocation & location) const;
+    void InternalWait(Nest & nest, bool exclusive);
 
   friend class PSafeObject;
   friend class PReadWaitAndSignal;

@@ -257,7 +257,7 @@ RegistryKey::RegistryKey(const PString & subkeyname, OpenMode mode)
     return;
 
   PTRACE_IF(1, error == ERROR_ACCESS_DENIED, "PTLib\tAccess denied accessing registry entry "
-            << (basekey != NULL ? "" : LocalMachineStr) << subkey);
+            << (basekey != NULL ? PString::Empty() : LocalMachineStr) << subkey);
 
   m_hKey = NULL;
   if (mode != Create)
@@ -280,7 +280,7 @@ RegistryKey::RegistryKey(const PString & subkeyname, OpenMode mode)
     if (error != ERROR_SUCCESS) {
       PTRACE(1, "PTLib\tCould not create registry entry "
              << (basekey == HKEY_LOCAL_MACHINE ? LocalMachineStr :
-                (basekey == HKEY_CURRENT_USER ? CurrentUserStr : "")) << subkey);
+                (basekey == HKEY_CURRENT_USER ? CurrentUserStr : PString::Empty())) << subkey);
       m_hKey = NULL;
     }
   }

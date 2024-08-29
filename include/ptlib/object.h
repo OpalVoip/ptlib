@@ -114,15 +114,6 @@ struct PNonCopyable
   PNonCopyable & operator=(const PNonCopyable &) = delete;
 };
 
-template <typename T> class PAutoPtr : public std::unique_ptr<T>
-{
-  public:
-    PAutoPtr() = default;
-    explicit PAutoPtr(T * p) : std::unique_ptr<T>(p) { }
-    PAutoPtr(PAutoPtr & other) : std::unique_ptr<T>(other.release()) { }
-    void transfer(PAutoPtr & other) { std::unique_ptr<T>::operator=(std::move(other)); }
-};
-
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -160,19 +151,7 @@ template <typename T> class PAutoPtr : public std::unique_ptr<T>
 // Disable inlines when debugging for faster compiles (the compiler doesn't
 // actually inline the function with debug on any way).
 
-#ifndef P_USE_INLINES
-#ifdef _DEBUG
-#define P_USE_INLINES 0
-#else
-#define P_USE_INLINES 0
-#endif
-#endif
-
-#if P_USE_INLINES
-#define PINLINE __inline
-#else
-#define PINLINE
-#endif
+#define __inline __inline
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -2377,6 +2356,14 @@ template <> struct std::hash<PObject>
   std::size_t operator()(const PObject & obj) const noexcept
   {
     return obj.HashFunction();
+  }
+};
+
+template <> struct std::hash<std::shared_ptr<PObject>>
+{
+  std::size_t operator()(const std::shared_ptr<PObject> & ptr) const noexcept
+  {
+    return ptr ? ptr->HashFunction() : 0;
   }
 };
 

@@ -466,15 +466,15 @@ void PHTTPField::GetAllNames(PStringArray & list) const
 
 void PHTTPField::SetAllValues(const PStringToString & data)
 {
-  if (!m_baseName.IsEmpty() && data.Contains(m_fullName))
-    SetValue(data[m_fullName]);
+  if (!m_baseName.IsEmpty())
+    SetValue(data(m_fullName));
 }
 
 
 bool PHTTPField::ValidateAll(const PStringToString & data, PStringStream & msg) const
 {
   if (data.Contains(m_fullName))
-    return Validated(data[m_fullName], msg);
+    return Validated(data.at(m_fullName), msg);
   return true;
 }
 
@@ -1073,7 +1073,6 @@ void PHTTPFieldArray::SetArrayFieldName(PINDEX idx) const
 void PHTTPFieldArray::SetAllValues(const PStringToString & data)
 {
   PHTTPFields newFields(m_fields.GetSize());
-  newFields.DisallowDeleteObjects();
   PINDEX i;
   for (i = 0; i < m_fields.GetSize(); i++)
     newFields.SetAt(i, m_fields.GetAt(i));
@@ -1128,10 +1127,8 @@ void PHTTPFieldArray::SetAllValues(const PStringToString & data)
       newFields.RemoveAt(pos);
   }
 
-  m_fields.DisallowDeleteObjects();
   for (i = 0; i < newFields.GetSize(); i++)
-    m_fields.Remove(newFields.GetAt(i));
-  m_fields.AllowDeleteObjects();
+    m_fields.Remove(newFields.GetAt(i).get());
   m_fields.RemoveAll();
 
   for (i = 0; i < newFields.GetSize(); i++) {
@@ -2431,16 +2428,16 @@ bool PHTTPConfig::Post(PHTTPRequest & request,
       PStringArray names;
       field.GetAllNames(names);
       for (PINDEX i = 0; i < names.GetSize(); i++) {
-        PINDEX idx = oldValues.GetStringsIndex(names[i]);
-        if (idx != P_MAX_INDEX)
-          oldValues.RemoveAt(idx);
+        auto it = oldValues.find(names[i]);
+        if (it != oldValues.end())
+          oldValues.erase(it);
       }
     }
   }
 
-  for (fld = 0; fld < oldValues.GetSize(); fld++) {
+  for (const auto & oldField : oldValues) {
     PString section, key;
-    switch (SplitConfigKey(oldValues[fld], section, key)) {
+    switch (SplitConfigKey(oldField, section, key)) {
       case 1 :
         cfg.DeleteKey(key);
         break;

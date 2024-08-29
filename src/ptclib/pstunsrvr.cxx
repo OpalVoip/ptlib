@@ -145,8 +145,6 @@ bool PSTUNServer::Open(uint16_t port)
     PopulateInfo(secondaryAlternateSocket, primaryAddress,   primaryPort,   secondarySocket,          primaryAlternateSocket,   primarySocket);
   }
 
-  m_selectList.DisallowDeleteObjects();
-
   return true;
 }
 
@@ -203,9 +201,12 @@ bool PSTUNServer::IsOpen() const
 
 bool PSTUNServer::Close()
 {
-  m_sockets.AllowDeleteObjects(m_autoDelete);
-  m_sockets.SetSize(0);
-  m_selectList.SetSize(0);
+  if (m_autoDelete) {
+    for (auto it : m_sockets)
+      delete it;
+  }
+  m_sockets.clear();
+  m_selectList.clear();
   m_socketToSocketInfoMap.clear();
 
   return true;
@@ -219,8 +220,8 @@ bool PSTUNServer::Read(PSTUNMessage & message, PSTUNServer::SocketInfo & socketI
     return false;
 
   if (m_selectList.GetSize() == 0) {
-    for (PINDEX i = 0; i < m_sockets.GetSize(); ++i)
-      m_selectList += m_sockets[i];
+    for (auto it : m_sockets)
+      m_selectList.Append(it);
 
     switch (PIPSocket::Select(m_selectList)) {
       default:

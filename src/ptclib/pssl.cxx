@@ -232,7 +232,7 @@ PSSLPrivateKey::PSSLPrivateKey(const PFilePath & keyFile, PSSLFileTypes fileType
 PSSLPrivateKey::PSSLPrivateKey(const uint8_t * keyData, PINDEX keySize)
   : m_pkey(NULL)
 {
-  SetData(PBYTEArray(keyData, keySize, false));
+  SetData(PBYTEView(keyData, keySize));
 }
 
 
@@ -325,7 +325,7 @@ bool PSSLPrivateKey::Create(unsigned modulus,
 }
 
 
-bool PSSLPrivateKey::SetData(const PBYTEArray & keyData)
+bool PSSLPrivateKey::SetData(const PBYTEView & keyData)
 {
   FreePrivateKey();
 
@@ -470,7 +470,7 @@ PSSLCertificate::PSSLCertificate(const PFilePath & certFile, PSSLFileTypes fileT
 PSSLCertificate::PSSLCertificate(const uint8_t * certData, PINDEX certSize)
   : m_certificate(NULL)
 {
-  SetData(PBYTEArray(certData, certSize, false));
+  SetData(PBYTEView(certData, certSize));
 }
 
 
@@ -583,7 +583,7 @@ bool PSSLCertificate::CreateRoot(const PString & subject,
     }
   }
 
-  POrdinalToString info;
+  std::unordered_map<int, PString> info;
   PStringArray fields = subject.Tokenise('/', false);
   PINDEX i;
   for (i = 0; i < fields.GetSize(); i++) {
@@ -592,10 +592,10 @@ bool PSSLCertificate::CreateRoot(const PString & subject,
     if (equals != P_MAX_INDEX) {
       int nid = OBJ_txt2nid((char *)(const char *)field.Left(equals));
       if (nid != NID_undef)
-        info.SetAt(nid, field.Mid(equals+1));
+        info.emplace(nid, field.Mid(equals+1));
     }
   }
-  if (info.IsEmpty()) {
+  if (info.empty()) {
     PTRACE(1, "Cannot create root certiicate: invalid subject \"" << subject << '"');
     return false;
   }
@@ -618,11 +618,11 @@ bool PSSLCertificate::CreateRoot(const PString & subject,
     }
 
     X509_NAME * name = X509_NAME_new();
-    for (POrdinalToString::iterator it = info.begin(); it != info.end(); ++it)
+    for (const auto & it : info)
       X509_NAME_add_entry_by_NID(name,
-                                 it->first,
+                                 it.first,
                                  MBSTRING_ASC,
-                                 (unsigned char *)(const char *)it->second,
+                                 (unsigned char *)it.second.c_str(),
                                  -1,-1, 0);
     X509_set_issuer_name(m_certificate, name);
     X509_set_subject_name(m_certificate, name);
@@ -651,7 +651,7 @@ bool PSSLCertificate::CreateRoot(const PString & subject,
 }
 
 
-bool PSSLCertificate::SetData(const PBYTEArray & certData)
+bool PSSLCertificate::SetData(const PBYTEView & certData)
 {
   FreeCertificate();
 

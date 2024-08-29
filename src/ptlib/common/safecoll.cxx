@@ -264,110 +264,28 @@ void PSafeLockBase::Unlock()
 
 /////////////////////////////////////////////////////////////////////////////
 
-PSafeCollection::PSafeCollection(PCollection * coll)
-  : m_collection(PAssertNULL(coll))
-  , m_collectionMutex(PDebugLocation(__FILE__, __LINE__, "SafeCollection"))
-  , m_deleteObjects(true)
+PSafeCollection::PSafeCollection()
+  : m_collectionMutex(PDebugLocation(__FILE__, __LINE__, "SafeCollection"))
   , m_removalMutex(PDebugLocation(__FILE__, __LINE__, "SafeRemoval"))
-#if P_TIMERS
-  , m_deleteObjectsTimer(NULL)
-#endif
 {
-  m_collection->DisallowDeleteObjects();
-  m_toBeRemoved.DisallowDeleteObjects();
 }
 
 
 PSafeCollection::~PSafeCollection()
 {
-#if P_TIMERS
-  delete m_deleteObjectsTimer;
-#endif
-
-  RemoveAll();
-
   /* Delete objects moved to deleted list in RemoveAll(), we don't use
      DeleteObjectsToBeRemoved() as that will do a garbage collection which might
      prevent deletion. Need to be a bit more forceful here. */
-  for (PList<PSafeObject>::iterator i = m_toBeRemoved.begin(); i != m_toBeRemoved.end(); ++i) {
-    i->GarbageCollection();
-    if (i->SafelyCanBeDeleted())
-      delete &*i;
+  for (auto obj : m_toBeRemoved) {
+    obj->GarbageCollection();
+    if (obj->SafelyCanBeDeleted())
+      delete obj;
     else {
       // If anything still has a PSafePtr .. "detach" it from the collection so
       // will be deleted when that PSafePtr finally goes out of scope.
-      i->m_safelyBeingRemoved = false;
+      obj->m_safelyBeingRemoved = false;
     }
   }
-
-  delete m_collection;
-}
-
-
-bool PSafeCollection::SafeRemove(PSafeObject * obj)
-{
-  if (obj == NULL)
-    return false;
-
-  PWaitAndSignal mutex(m_collectionMutex);
-  if (!m_collection->Remove(obj))
-    return false;
-
-  SafeRemoveObject(obj);
-  return true;
-}
-
-
-bool PSafeCollection::SafeRemoveAt(PINDEX idx)
-{
-  PWaitAndSignal mutex(m_collectionMutex);
-  PSafeObject * obj = PDownCast(PSafeObject, m_collection->RemoveAt(idx));
-  if (obj == NULL)
-    return false;
-
-  SafeRemoveObject(obj);
-  return true;
-}
-
-
-void PSafeCollection::PrintOn(ostream &strm) const
-{
-  m_collectionMutex.Wait();
-  if (m_collection != NULL)
-    m_collection->PrintOn(strm);
-  m_collectionMutex.Signal();
-}
-
-
-void PSafeCollection::RemoveAll(bool synchronous)
-{
-  m_collectionMutex.Wait();
-
-  while (m_collection->GetSize() > 0)
-    SafeRemoveObject(PDownCast(PSafeObject, m_collection->RemoveAt(0)));
-
-  m_collectionMutex.Signal();
-
-  if (synchronous) {
-    // Have unfortunate busy loop here, but it should be very
-    // rare that it will be here for long
-    while (!DeleteObjectsToBeRemoved())
-      PThread::Sleep(100);
-  }
-}
-
-
-bool PSafeCollection::SafeAddObject(PSafeObject * obj, PSafeObject * old)
-{
-  if (obj == old)
-    return false;
-
-  SafeRemoveObject(old);
-
-  if (obj == NULL)
-    return false;
-
-  return PAssert(m_collection->GetObjectsIndex(obj) == P_MAX_INDEX, "Cannot insert safe object twice") && obj->SafeReference();
 }
 
 
@@ -376,24 +294,11 @@ void PSafeCollection::SafeRemoveObject(PSafeObject * obj)
   if (obj == NULL)
     return;
 
-  // Make sure SfeRemove() called before SafeDereference() to avoid race condition
-  if (m_deleteObjects) {
-    obj->SafeRemove();
+  obj->SafeRemove();
 
-    m_removalMutex.Wait();
-    m_toBeRemoved.Append(obj);
-    m_removalMutex.Signal();
-  }
-
-  /* Even though we are marked as not to delete objects, we still need to obey
-     the rule that if there are no references left the object is deleted. If
-     the object is still "owned" by a PSafeCollection that has NOT got
-     deleteObjects false, then SafeDereference returns false so we don't delete
-     is here. If there are no PSafePtr()s or PSafeCollections()'s anywhere we
-     need to delete it.
-     */
-  if (obj->SafeDereference() && !m_deleteObjects)
-    delete obj;
+  m_removalMutex.Wait();
+  m_toBeRemoved.push_back(obj);
+  m_removalMutex.Signal();
 }
 
 
@@ -402,11 +307,11 @@ bool PSafeCollection::DeleteObjectsToBeRemoved()
   {
     PWaitAndSignal lock(m_removalMutex);
 
-    PList<PSafeObject>::iterator it = m_toBeRemoved.begin();
+    auto it = m_toBeRemoved.begin();
     while (it != m_toBeRemoved.end()) {
-      if (it->GarbageCollection() && it->SafelyCanBeDeleted()) {
-        PObject * obj = &*it;
-        m_toBeRemoved.Remove(obj);
+      PSafeObject * obj = *it;
+      if (obj->GarbageCollection() && obj->SafelyCanBeDeleted()) {
+        m_toBeRemoved.erase(it);
 
         m_removalMutex.Signal();
         DeleteObject(obj);
@@ -415,18 +320,18 @@ bool PSafeCollection::DeleteObjectsToBeRemoved()
         it = m_toBeRemoved.begin(); // Restart looking through list
       }
       else {
-        PTRACE(it->GetTraceLogLevel(), it->GetClassName() << ' ' << (void *)&*it
-               << " awaiting delete: references=" << it->GetSafeReferenceCount());
+        PTRACE(obj->GetTraceLogLevel(), obj->GetClassName() << ' ' << (void *)obj
+               << " awaiting delete: references=" << obj->GetSafeReferenceCount());
         ++it;
       }
     }
 
-    if (!m_toBeRemoved.IsEmpty())
+    if (!m_toBeRemoved.empty())
       return false;
   }
 
   PWaitAndSignal lock(m_collectionMutex);
-  return m_collection->IsEmpty();
+  return IsEmpty();
 }
 
 
@@ -442,7 +347,7 @@ void PSafeCollection::SetAutoDeleteObjects()
   if (m_deleteObjectsTimer != NULL)
     return;
 
-  m_deleteObjectsTimer = new PTimer();
+  m_deleteObjectsTimer = std::make_unique<PTimer>();
   m_deleteObjectsTimer->SetNotifier(PCREATE_NOTIFIER(DeleteObjectsTimeout), "SafeDelObj");
   m_deleteObjectsTimer->RunContinuous(1000); // Every second
 #endif
@@ -455,37 +360,6 @@ void PSafeCollection::DeleteObjectsTimeout(PTimer &, intptr_t)
   DeleteObjectsToBeRemoved();
 }
 #endif
-
-
-PINDEX PSafeCollection::GetSize() const
-{
-  PWaitAndSignal lock(m_collectionMutex);
-  return m_collection->GetSize();
-}
-
-
-void PSafeCollection::CopySafeCollection(PCollection * other)
-{
-  DisallowDeleteObjects();
-
-  for (PINDEX i = 0; i < other->GetSize(); ++i) {
-    PSafeObject * obj = dynamic_cast<PSafeObject *>(other->GetAt(i));
-    if (obj != NULL && obj->SafeReference())
-      m_collection->Append(obj);
-  }
-}
-
-
-void PSafeCollection::CopySafeDictionary(PAbstractDictionary * other)
-{
-  DisallowDeleteObjects();
-
-  for (PINDEX i = 0; i < other->GetSize(); ++i) {
-    PSafeObject * obj = dynamic_cast<PSafeObject *>(&other->AbstractGetDataAt(i));
-    if (obj != NULL && obj->SafeReference())
-      m_collection->Insert(other->AbstractGetKeyAt(i), obj);
-  }
-}
 
 
 /////////////////////////////////////////////////////////////////////////////

@@ -44,7 +44,8 @@ class PSTUNServer : public PObject, public PSTUN
   PCLASSINFO(PSTUNServer, PObject)
   public:
     PSTUNServer();
-    
+    ~PSTUNServer() { Close(); }
+
     bool Open(uint16_t port = DefaultPort);
     bool Open(PUDPSocket * socket1, PUDPSocket * socket2 = NULL);
 

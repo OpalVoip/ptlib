@@ -186,7 +186,7 @@ void TestThread::Main()
     }
 
     int proto;
-    PBYTEArray payload;
+    PEthSocket::Frame::Payload payload;
     PIPSocket::Address srcIP, dstIP;
     PIPSocketAddressAndPort src, dst;
     PEthSocket::Address srcMac, dstMac;
@@ -205,7 +205,7 @@ void TestThread::Main()
     cout << ' ';
 
     if (m_binary)
-      cout << PBYTEArray(payload, std::min(payload.GetSize(), (PINDEX)16), false);
+      cout << PBYTEView(payload, std::min(payload.GetSize(), (PINDEX)16));
     else {
       PString str((const char *)(const uint8_t *)payload, payload.GetSize());
       cout << str.Left(str.FindOneOf("\r\n"));

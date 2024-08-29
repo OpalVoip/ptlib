@@ -981,15 +981,15 @@ void PASN_BitString::PrintOn(ostream & strm) const
 
   if (totalBits > 128)
     strm << "Hex {\n"
-         << hex << setfill('0') << resetiosflags(ios::floatfield) << setiosflags(ios::fixed)
+         << hex << setfill('0') << std::resetiosflags(ios::floatfield) << std::setiosflags(ios::fixed)
          << setw(16) << setprecision(indent) << bitData
-         << dec << setfill(' ') << resetiosflags(ios::floatfield)
+         << dec << setfill(' ') << std::resetiosflags(ios::floatfield)
          << '\n' << setw(indent-1) << "}";
   else if (totalBits > 32)
     strm << "Hex: "
-         << hex << setfill('0') << resetiosflags(ios::floatfield) << setiosflags(ios::fixed)
+         << hex << setfill('0') << std::resetiosflags(ios::floatfield) << std::setiosflags(ios::fixed)
          << setprecision(2) << setw(16) << bitData
-         << dec << setfill(' ') << resetiosflags(ios::floatfield);
+         << dec << setfill(' ') << std::resetiosflags(ios::floatfield);
   else {
     strm << "Bits: ";
     uint8_t mask = 0x80;
@@ -1142,7 +1142,7 @@ void PASN_OctetString::PrintOn(ostream & strm) const
   ios::fmtflags flags = strm.flags();
 
   strm << ' ' << value.GetSize() << " octets {\n"
-       << hex << setfill('0') << resetiosflags(ios::floatfield)
+       << hex << setfill('0') << std::resetiosflags(ios::floatfield)
        << setprecision(indent) << setw(16);
 
   if (value.GetSize() <= 32 || (flags&ios::floatfield) != ios::fixed)
@@ -1481,7 +1481,7 @@ bool PASN_BMPString::IsLegalCharacter(uint16_t ch)
   if (ch > lastChar)
     return false;
 
-  if (characterSet.IsEmpty())
+  if (characterSet.empty())
     return true;
 
   const wchar_t * wptr = characterSet;
@@ -1503,7 +1503,7 @@ void PASN_BMPString::SetValueRaw(const wchar_t * array, PINDEX paramSize)
 
   // Number of bytes must be at least lhe lower constraint
   PINDEX newSize = (int)paramSize < lowerLimit ? lowerLimit : paramSize;
-  value.SetSize(newSize);
+  value.resize(newSize);
 
   PINDEX count = 0;
   for (PINDEX i = 0; i < paramSize; i++) {
@@ -1549,13 +1549,13 @@ void PASN_BMPString::SetCharacterSet(ConstraintType ctype, const PWCharArray & c
   if (ctype == Unconstrained) {
     firstChar = 0;
     lastChar = 0xffff;
-    characterSet.SetSize(0);
+    characterSet.resize(0);
   }
   else {
     characterSet = charSet;
 
     charSetUnalignedBits = CountBits(lastChar - firstChar + 1);
-    if (!charSet.IsEmpty()) {
+    if (!charSet.empty()) {
       unsigned count = 0;
       for (PINDEX i = 0; i < charSet.GetSize(); i++) {
         if (characterSet[i] >= firstChar && characterSet[i] <= lastChar)
@@ -1612,7 +1612,7 @@ void PASN_BMPString::PrintOn(ostream & strm) const
     PINDEX j;
     for (j = 0; j < 8; j++)
       if (i+j < sz)
-        strm << setw(4) << value[i+j] << ' ';
+        strm << setw(4) << (unsigned)value[i+j] << ' ';
       else
         strm << "     ";
     strm << "  ";
@@ -2003,7 +2003,7 @@ PASN_Sequence::PASN_Sequence(const PASN_Sequence & other)
     extensionMap(other.extensionMap)
 {
   for (PINDEX i = 0; i < other.fields.GetSize(); i++)
-    fields.SetAt(i, other.fields[i].Clone());
+    fields.SetAt(i, other.fields[i].CloneAs<PASN_Object>());
 
   knownExtensions = other.knownExtensions;
   totalExtensions = other.totalExtensions;
@@ -2017,7 +2017,7 @@ PASN_Sequence & PASN_Sequence::operator=(const PASN_Sequence & other)
 
   fields.SetSize(other.fields.GetSize());
   for (PINDEX i = 0; i < other.fields.GetSize(); i++)
-    fields.SetAt(i, other.fields[i].Clone());
+    fields.SetAt(i, other.fields[i].CloneAs<PASN_Object>());
 
   optionMap = other.optionMap;
   knownExtensions = other.knownExtensions;
@@ -2211,7 +2211,7 @@ PASN_Array::PASN_Array(const PASN_Array & other)
     array(other.array.GetSize())
 {
   for (PINDEX i = 0; i < other.array.GetSize(); i++)
-    array.SetAt(i, other.array[i].Clone());
+    array.SetAt(i, other.array[i].CloneAs<PASN_Object>());
 }
 
 
@@ -2221,7 +2221,7 @@ PASN_Array & PASN_Array::operator=(const PASN_Array & other)
 
   array.SetSize(other.array.GetSize());
   for (PINDEX i = 0; i < other.array.GetSize(); i++)
-    array.SetAt(i, other.array[i].Clone());
+    array.SetAt(i, other.array[i].CloneAs<PASN_Object>());
 
   return *this;
 }

@@ -1362,9 +1362,7 @@ void PPER_Stream::AnyTypeEncode(const PASN_Object * value)
 
   PINDEX nBytes = substream.GetSize();
   if (nBytes == 0) {
-    const uint8_t null[1] = { 0 };
-    nBytes = sizeof(null);
-    substream = PBYTEArray(null, nBytes, false);
+    substream = PBYTEArray{ 0 };
   }
 
   LengthEncode(nBytes, 0, INT_MAX);

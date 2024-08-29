@@ -102,6 +102,7 @@
 #include <windows.h>
 
 // Remove some stupid defines from Windows headers.
+enum { WIN_DELETE = DELETE };
 #undef DELETE
 #undef min
 #undef max

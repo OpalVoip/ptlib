@@ -262,7 +262,7 @@ class PDirectory : public PFilePathString
        @return
        true if may be used to separate directories in a path.
      */
-    PINLINE static bool IsSeparator(
+    static bool IsSeparator(
       char ch    ///< Character to check as being a separator.
     );
 

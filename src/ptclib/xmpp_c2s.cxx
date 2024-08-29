@@ -102,15 +102,13 @@ XMPP::C2S::StreamHandler::StreamHandler(const JID& jid, const PString& pwd, bool
     m_HasBind(false), m_HasSession(false),
     m_State(XMPP::C2S::StreamHandler::Null)
 {
-  m_PendingIQs.DisallowDeleteObjects();
 }
 
 
 XMPP::C2S::StreamHandler::~StreamHandler()
 {
   m_PendingIQsLock.Wait();
-  while (m_PendingIQs.GetSize() > 0)
-    delete m_PendingIQs.RemoveHead();
+  m_PendingIQs.clear();
   m_PendingIQsLock.Signal();
 }
 

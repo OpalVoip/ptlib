@@ -31,11 +31,6 @@
 
 #include <ptlib/pprocess.h>
 
-#if !P_USE_INLINES
-#include <ptlib/osutil.inl>
-#include <ptlib/msos/ptlib/ptlib.inl>
-#endif
-
 #include <share.h>
 #ifdef _WIN32
 #include <WERAPI.H>
@@ -518,7 +513,7 @@ bool PFile::SetPermissions(const PFilePath & name, PFileInfo::Permissions permis
   FileSecurityPermissions(name, permissions);
 #endif
 
-  return _wchmod(name.AsWide(), permissions&(_S_IWRITE|_S_IREAD)) == 0;
+  return _wchmod(name.AsWide(), int(permissions) & (_S_IWRITE|_S_IREAD)) == 0;
 }
 
 
@@ -899,6 +894,8 @@ bool PProcess::SetMaxHandles(int /*newLimit*/)
 
 //////////////////////////////////////////////////////////////////////////////
 
+#pragma warning(disable:4834)
+
 #define INCLUDE_STUFF1(cls) \
   cls i##cls; \
   i##cls = i##cls
@@ -906,7 +903,6 @@ bool PProcess::SetMaxHandles(int /*newLimit*/)
 #define INCLUDE_STUFF2(cls) \
   INCLUDE_STUFF1(cls); \
   i##cls.GetPointer(); \
-  i##cls.Attach(0, 0); \
   i##cls.SetAt(0, 0); \
   i##cls.GetAt(0); \
   i##cls[0]
@@ -922,8 +918,6 @@ void PDummyFunctionToMakeSureSymbolsAreInDEFFile()
   INCLUDE_STUFF2(PUnsignedArray);
   INCLUDE_STUFF2(PDWORDArray);
   INCLUDE_STUFF1(PStringSet);
-  INCLUDE_STUFF1(POrdinalToString);
-  INCLUDE_STUFF1(PStringToOrdinal);
   INCLUDE_STUFF1(PStringToString);
 }
 

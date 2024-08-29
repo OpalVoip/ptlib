@@ -167,7 +167,7 @@ void TimingTest::Main()
     count++;                      // Count the changes in tick
   } ;
 
-  cout << "Actual resolution is " << 1000000/count << "us\n"
+  cout << "Actual resolution is " << float(PTimeInterval::MilliToNano)/count << "ms\n"
           "Current tick: \"" << newTick << '"' << endl;
 
   cout << "\nTesting sleep function" << endl;

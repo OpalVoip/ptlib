@@ -236,7 +236,7 @@ class PThread : public PObject, PProfiling::HighWaterMark<PThread>, PNonCopyable
       AutoDeleteFlag deletion = AutoDeleteThread  ///< New auto delete setting.
     );
 
-    /** Reet the flag indicating thread object is to be automatically deleted
+    /** Reset the flag indicating thread object is to be automatically deleted
         when the thread ends.
      */
     void SetNoAutoDelete() { SetAutoDelete(NoAutoDeleteThread); }
@@ -406,10 +406,10 @@ class PThread : public PObject, PProfiling::HighWaterMark<PThread>, PNonCopyable
        Note that the correct way for a thread to terminate is to return from
        this function.
      */
-    virtual void Main() { }
+    virtual void Main();
 
     /** Get the currently running thread object instance. It is possible, even
-       likely, that the smae code may be executed in the context of differenct
+       likely, that the same code may be executed in the context of different
        threads. Under some circumstances it may be necessary to know what the
        current codes thread is and this static function provides that
        information.
@@ -449,13 +449,9 @@ class PThread : public PObject, PProfiling::HighWaterMark<PThread>, PNonCopyable
 
   private:
     void InternalThreadMain();
-    void InternalThreadEnded();
     void PlatformConstruct();
     void PlatformDestroy();
     void PlatformSetThreadName(const char * name);
-#if P_USE_THREAD_CANCEL
-    static void PlatformThreadEnded(void *);
-#endif
 
     friend class PProcess;
     friend class PExternalThread;

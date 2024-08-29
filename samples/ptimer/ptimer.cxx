@@ -215,7 +215,7 @@ protected:
   void LongOnTimeoutTest();
   void MassStopTest();
   void StartStopTest();
-  void PullCheck();
+  void PollCheck();
   void CallbackCheck();
   void DestroyCheck();
   void TestStopInTimeout();
@@ -290,7 +290,7 @@ void PTimerTest::Main()
     return;
   }
 
-  PullCheck();
+  PollCheck();
   CallbackCheck();
   StartStopTest();
   TestStopInTimeout();
@@ -317,8 +317,7 @@ void PTimerTest::Main()
        << " milliseconds before ending" << endl;
  
   m_interval = std::min(1000000U, std::max(0U, args.GetOptionAs('i', 50U)));
-  cout << "Separate each instance of PTimer by " << Interval()
-       << " milliseconds " << endl;
+  cout << "Separate each instance of PTimer by " << Interval() << "ms." << endl;
 
   UserInterfaceThread ui;
   ui.Start();
@@ -745,25 +744,23 @@ void PTimerTest::MultiTimerTest()
           "This can take quite some time." << endl;
   std::atomic<unsigned> runningCount(TotalTimers);
 
-  std::list<MultiTimer*> timers;
+  std::list<std::unique_ptr<MultiTimer>> timers;
   for (int i = 0; i < TotalTimers; ++i) {
-    MultiTimer* timer = new MultiTimer(runningCount, PRandom::Number(2, 10));
-    timers.push_back(timer);
-#if 0
-    if (i%100 == 99)
+    timers.push_back(std::make_unique<MultiTimer>(runningCount, PRandom::Number(5, 25)));
+    if (i%1000 == 999)
       cout << "Created " << (i+1) << " timers." << endl;
-#endif
   }
 
-  while (runningCount > 0)
-    PThread::Sleep(1000);
+  while (runningCount > 0) {
+    PThread::Sleep(5000);
+    cout <<  runningCount << " timers still running." << endl;
+  }
 
   int64_t sum = 0;
   while (timers.size() > 0) {
-    MultiTimer * timer = timers.back();
-    sum += std::abs(((timer->m_end - timer->m_start) - timer->GetResetTime()).GetMilliSeconds());
-    delete timer;
+    auto timer = std::move(timers.back());
     timers.pop_back();
+    sum += std::abs(((timer->m_end - timer->m_start) - timer->GetResetTime()).GetMilliSeconds());
   }
   cout << "Average delta time: " << PTimeInterval(sum / TotalTimers) << endl;
 }
@@ -787,7 +784,7 @@ public:
 
   SlowTimer(bool& _flag)
     : m_flag(_flag)
-    , interval(0, PRandom::Number(2))
+    , interval(0, PRandom::Number(1,3))
   {
     destructed = false;
   }
@@ -903,7 +900,7 @@ void PTimerTest::StartStopTest()
   sync.Wait(2000);
 }
 
-void PTimerTest::PullCheck()
+void PTimerTest::PollCheck()
 {
   PTime then;
   cout << "Starting 5 second timer for poll check..." << endl;

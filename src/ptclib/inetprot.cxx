@@ -680,10 +680,11 @@ bool PMIMEInfo::InternalAddMIME(const PString & fieldName, const PString & field
 
   PString * str = GetAt(fieldName);
   if (str == NULL)
-    return SetAt(fieldName, fieldValue);
-
-  *str += '\n';
-  *str += fieldValue;
+    SetAt(fieldName, fieldValue);
+  else {
+    *str += '\n';
+    *str += fieldValue;
+  }
   return true;
 }
 
@@ -969,18 +970,18 @@ bool PMultiPartList::Decode(const PString & entityBody, const PStringToString & 
   if (multipartContentType.NumCompare("multipart/") != EqualTo)
     return false;
 
-  if (!contentInfo.Contains("boundary")) {
+  PString boundary = contentInfo("boundary");
+  if (boundary.empty()) {
     PTRACE(2, "MIME\tNo boundary in multipart Content-Type");
     return false;
   }
+  boundary.insert(0, "--");
 
   PCaselessString startContentId, startContentType;
   if (multipartContentType == "multipart/related") {
     startContentId = contentInfo("start");
     startContentType = contentInfo("type");
   }
-
-  PString boundary = "--" + contentInfo["boundary"];
 
   // split body into parts, assuming binary data
   const char * bodyPtr = (const char *)entityBody;

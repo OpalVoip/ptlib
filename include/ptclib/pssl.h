@@ -149,7 +149,7 @@ class PSSLPrivateKey : public PObject
     /**Set the certificate as binary ASN1 DER encoded data.
       */
     bool SetData(
-      const PBYTEArray & data
+      const PBYTEView & data
     );
 
     /**Get the certificate as binary ASN1 DER encoded data.
@@ -290,7 +290,7 @@ class PSSLCertificate : public PObject
     /**Set the certificate as binary ASN1 DER encoded data.
       */
     bool SetData(
-      const PBYTEArray & data
+      const PBYTEView & data
     );
 
     /**Get the certificate as binary ASN1 DER encoded data.

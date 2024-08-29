@@ -162,7 +162,7 @@ namespace XMPP
 
     /** Read a XMPP stanza from the stream
     */
-    virtual PXMLElement * Read();
+    virtual std::shared_ptr<PXMLElement> Read();
 
     /** Reset the parser. The will delete and re-instantiate the
     XML stream parser.

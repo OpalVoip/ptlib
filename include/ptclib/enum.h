@@ -62,7 +62,7 @@ class NAPTRRecordList : public PSortedList<PDNS::NAPTRRecord>
 {
   public:
     NAPTRRecordList()
-      : currentPos(0)
+      : currentPos()
       , lastOrder(0)
       , orderLocked(false)
     { }
@@ -78,7 +78,7 @@ class NAPTRRecordList : public PSortedList<PDNS::NAPTRRecord>
     { orderLocked = false; }
 
   protected:
-    PINDEX     currentPos;
+    iterator   currentPos;
     int        lastOrder;
     bool       orderLocked;
 };

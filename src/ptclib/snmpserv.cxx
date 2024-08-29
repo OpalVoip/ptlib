@@ -208,8 +208,8 @@ bool PSNMPServer::MIB_LocalMatch(PSNMP_PDU & pdu)
   PINDEX size = vars.GetSize();
  
   for(PINDEX x = 0 ;x < size; x++){
-    PRFC1155_ObjectSyntax *obj = (PRFC1155_ObjectSyntax*) m_objList.GetAt(vars[x].m_name);
-    if (obj != NULL){
+    auto obj = m_objList.GetAt(vars[x].m_name);
+    if (obj){
       vars[x].m_value = *obj;
       found = true;
     }

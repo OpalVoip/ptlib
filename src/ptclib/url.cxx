@@ -181,13 +181,8 @@ void PURL::CopyContents(const PURL & other)
   m_relativePath = other.m_relativePath;
   m_path         = other.m_path;
   m_fragment     = other.m_fragment;
-
   m_paramVars    = other.m_paramVars;
-  m_paramVars.MakeUnique();
-
   m_queryVars    = other.m_queryVars;
-  m_queryVars.MakeUnique();
-
   m_contents   = other.m_contents;
 }
 
@@ -832,7 +827,6 @@ PString PURL::GetPathStr() const
 void PURL::SetPath(const PStringArray & p)
 {
   m_path = p;
-  m_path.MakeUnique();
   Recalculate();
 }
 
@@ -846,7 +840,6 @@ void PURL::SetRelativePath(bool relative)
 
 void PURL::AppendPath(const PString & segment)
 {
-  m_path.MakeUnique();
   m_path.AppendString(segment);
   Recalculate();
 }
@@ -854,7 +847,6 @@ void PURL::AppendPath(const PString & segment)
 
 void PURL::AppendPathSegments(const PStringArray & segments)
 {
-  m_path.MakeUnique();
   m_path += segments;
   Recalculate();
 }
@@ -862,7 +854,6 @@ void PURL::AppendPathSegments(const PStringArray & segments)
 
 void PURL::AppendPathStr(const PString & segments)
 {
-  m_path.MakeUnique();
   PStringArray segmentStrings = segments.Tokenise("/", true);
   for (PINDEX i = 0; i < segmentStrings.GetSize(); ++i)
     m_path.AppendString(UntranslateString(segmentStrings[i], PathTranslation));
@@ -872,8 +863,6 @@ void PURL::AppendPathStr(const PString & segments)
 
 void PURL::ChangePath(const PString & segment, PINDEX idx)
 {
-  m_path.MakeUnique();
-
   if (m_path.IsEmpty()) {
     if (!segment.IsEmpty())
       m_path.AppendString(segment);
@@ -910,10 +899,8 @@ void PURL::SetParamVars(const PStringToString & p, bool merge)
 {
   if (merge)
     m_paramVars.Merge(p, PStringToString::e_MergeIgnore);
-  else {
+  else
     m_paramVars = p;
-    m_paramVars.MakeUnique();
-  }
   Recalculate();
 }
 

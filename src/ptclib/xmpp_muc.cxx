@@ -240,15 +240,15 @@ void XMPP::MUC::Room::OnPresence(XMPP::Presence& msg, intptr_t)
 
     XMPP::MUC::User * puser;
 
-    PINDEX i = m_OtherUsers.GetValuesIndex(user);
+    auto it = m_OtherUsers.find(user);
 
-    if (i != P_MAX_INDEX) { // known user?
+    if (it != m_OtherUsers.end()) { // known user?
       if (msg.GetType() == XMPP::Presence::Unavailable) {
         OnUserRemoved(user);
-        m_OtherUsers.RemoveAt(i);
+        m_OtherUsers.erase(it);
       }
       else {
-        puser = (XMPP::MUC::User *)m_OtherUsers.GetAt(i);
+        puser = &*it;
         puser->m_Role = role;
         puser->m_Affiliation = affiliation;
         OnUserChanged(user);

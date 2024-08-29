@@ -33,14 +33,14 @@
 ///////////////////////////////////////////////////////////////////////////////
 // PDirectory
 
-PINLINE bool PDirectory::IsSeparator(char c)
+__inline bool PDirectory::IsSeparator(char c)
   { return c == ':' || c == '/' || c == '\\'; }
 
-PINLINE bool PDirectory::Remove(const PString & p)
+__inline bool PDirectory::Remove(const PString & p)
   { return _wrmdir(p.AsWide()) == 0; }
 
 
-PINLINE bool PDirectory::Restart(PFileInfo::FileTypes scanMask)
+__inline bool PDirectory::Restart(PFileInfo::FileTypes scanMask)
   { return Open(scanMask); }
 
 
@@ -48,17 +48,17 @@ PINLINE bool PDirectory::Restart(PFileInfo::FileTypes scanMask)
 ///////////////////////////////////////////////////////////////////////////////
 // PFile
 
-PINLINE bool PFile::Exists(const PFilePath & name)
+__inline bool PFile::Exists(const PFilePath & name)
   { return _waccess_s(name.AsWide(), 0) == 0; }
 
-PINLINE bool PFile::Remove(const PFilePath & name, bool force)
+__inline bool PFile::Remove(const PFilePath & name, bool force)
   { return PFile::Remove((const PString &)name, force); }
 
 
 ///////////////////////////////////////////////////////////////////////////////
 // PThread
 
-PINLINE PUniqueThreadIdentifier PThread::GetCurrentUniqueIdentifier()
+__inline PUniqueThreadIdentifier PThread::GetCurrentUniqueIdentifier()
   { return ::GetCurrentThreadId(); }
 
 // End Of File ///////////////////////////////////////////////////////////////

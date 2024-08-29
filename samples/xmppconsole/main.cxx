@@ -167,17 +167,11 @@ void XMPPFrame::ReportRoster()
   }
 
   PDictionary<PString, POrdinalKey> groups;
-  const XMPP::Roster::ItemList& l = m_Roster->GetItems();
-  //  cout << " Roster contains " << l.GetSize() << " items" << endl;
+  const XMPP::Roster::ItemList& itemList = m_Roster->GetItems();
+  cout << " Roster contains " << itemList.GetSize() << " items" << endl;
 
-  for (PINDEX i = 0, imax = l.GetSize() ; i < imax ; i++) {
-    const XMPP::Roster::Item& item = l[i];
-    const PStringSet& s = item.GetGroups();
-    //  cout << " groups within element " << (i + 1) << " has size " << s.GetSize() << endl;
-
-    for (PINDEX j = 0, jmax = s.GetSize() ; j < jmax ; j++) {
-
-      const PString& key = s.GetKeyAt(j);
+  for (const auto & item : itemList) {
+    for (const auto & key : item.GetGroups()) {
       cout << key << endl;
       if (!groups.Contains(key)) {
 	//  g_id = m_RosterTree->AppendItem(rootID, (const char *)key);
@@ -188,17 +182,15 @@ void XMPPFrame::ReportRoster()
       // wxTreeItemId i_id = m_RosterTree->AppendItem(g_id, (const char *)item.GetName());
       //m_RosterTree->Expand(g_id);
 
-      const XMPP::Roster::Item::PresenceInfo& pres = item.GetPresence();
+      for (const auto & it : item.GetPresence()) {
+        PString res = it.first;
+        cout << "res is " << res << endl;
 
-      for (PINDEX k = 0, kmax = pres.GetSize() ; k < kmax ; k++) {
-        PString res = pres.GetKeyAt(k);
-	cout << "res is " << res << endl;
-
-        if (pres[res].GetType() == XMPP::Presence::Available) {
+        if (it.second.GetType() == XMPP::Presence::Available) {
           PString show;
-          pres[res].GetShow(&show);
+          it.second.GetShow(&show);
           res += " - " + show;
-	  cout << res << endl;
+          cout << res << endl;
         }
       }
     }

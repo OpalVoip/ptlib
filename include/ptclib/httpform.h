@@ -601,16 +601,16 @@ class PHTTPIntegerField : public PHTTPField
 };
 
 
-class PHTTboolField : public PHTTPField
+class PHTTPBooleanField : public PHTTPField
 {
-  PCLASSINFO(PHTTboolField, PHTTPField)
+  PCLASSINFO(PHTTPBooleanField, PHTTPField)
   public:
-    PHTTboolField(
+    PHTTPBooleanField(
       const char * name,
       bool initVal = false,
       const char * help = NULL
     );
-    PHTTboolField(
+    PHTTPBooleanField(
       const char * name,
       const char * title,
       bool initVal = false,

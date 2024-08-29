@@ -34,227 +34,236 @@
 ///////////////////////////////////////////////////////////////////////////////
 // PTimeInterval
 
-PINLINE PTimeInterval::PTimeInterval(int64_t millisecs)
+__inline PTimeInterval::PTimeInterval(int64_t millisecs)
   : m_nanoseconds(millisecs*MilliToNano) { }
 
-PINLINE PTimeInterval::PTimeInterval(const std::chrono::nanoseconds& nsecs)
+__inline PTimeInterval::PTimeInterval(const std::chrono::nanoseconds& nsecs)
   : m_nanoseconds(nsecs.count()) { }
 
-PINLINE PTimeInterval::PTimeInterval(const std::chrono::microseconds& usecs)
-  : m_nanoseconds(usecs.count()*MicroToNano) { }
+__inline PTimeInterval::PTimeInterval(const std::chrono::microseconds& usecs)
+  : PTimeInterval(std::chrono::duration_cast<std::chrono::nanoseconds>(usecs)) { }
 
-PINLINE PTimeInterval::PTimeInterval(const std::chrono::milliseconds& msecs)
-  : m_nanoseconds(msecs.count()*MilliToNano) { }
+__inline PTimeInterval::PTimeInterval(const std::chrono::milliseconds& msecs)
+  : PTimeInterval(std::chrono::duration_cast<std::chrono::nanoseconds>(msecs)) { }
 
-PINLINE PTimeInterval::PTimeInterval(const std::chrono::seconds& secs)
-  : m_nanoseconds(secs.count()*SecsToNano) { }
+__inline PTimeInterval::PTimeInterval(const std::chrono::seconds& secs)
+  : PTimeInterval(std::chrono::duration_cast<std::chrono::nanoseconds>(secs)) { }
 
-PINLINE PTimeInterval::PTimeInterval(const PTimeInterval & other)
+__inline PTimeInterval::PTimeInterval(const std::chrono::minutes & mins)
+  : PTimeInterval(std::chrono::duration_cast<std::chrono::nanoseconds>(mins)) { }
+
+__inline PTimeInterval::PTimeInterval(const std::chrono::hours & hours)
+  : PTimeInterval(std::chrono::duration_cast<std::chrono::nanoseconds>(hours)) { }
+
+__inline PTimeInterval::PTimeInterval(const std::chrono::days & days)
+  : PTimeInterval(std::chrono::duration_cast<std::chrono::nanoseconds>(days)) { }
+
+__inline PTimeInterval::PTimeInterval(const PTimeInterval & other)
   : m_nanoseconds(other.InternalGet()) { }
 
-PINLINE PTimeInterval & PTimeInterval::operator=(const PTimeInterval & other)
+__inline PTimeInterval & PTimeInterval::operator=(const PTimeInterval & other)
   { InternalSet(other.InternalGet()); return *this; }
 
-PINLINE PObject * PTimeInterval::Clone() const
+__inline PObject * PTimeInterval::Clone() const
   { return PNEW PTimeInterval(GetMilliSeconds()); }
 
-PINLINE PTimeInterval PTimeInterval::Frequency(double frequency)
+__inline PTimeInterval PTimeInterval::Frequency(double frequency)
   { PTimeInterval t; t.SetFrequency(frequency); return t; }
 
-PINLINE PTimeInterval PTimeInterval::NanoSeconds(int64_t nsecs, int secs)
+__inline PTimeInterval PTimeInterval::NanoSeconds(int64_t nsecs, int secs)
   { PTimeInterval t; t.SetNanoSeconds(nsecs, secs); return t; }
 
-PINLINE PTimeInterval PTimeInterval::MicroSeconds(int64_t usecs, int secs)
+__inline PTimeInterval PTimeInterval::MicroSeconds(int64_t usecs, int secs)
   { PTimeInterval t; t.SetMicroSeconds(usecs, secs); return t; }
 
-PINLINE PTimeInterval PTimeInterval::Seconds(double secs)
+__inline PTimeInterval PTimeInterval::Seconds(double secs)
   { PTimeInterval t; t.SetSeconds(secs); return t; }
 
-PINLINE int64_t PTimeInterval::GetNanoSeconds() const
+__inline int64_t PTimeInterval::GetNanoSeconds() const
   { return InternalGet(); }
 
-PINLINE void PTimeInterval::SetNanoSeconds(int64_t nsecs, int secs)
+__inline void PTimeInterval::SetNanoSeconds(int64_t nsecs, int secs)
   { InternalSet(nsecs+secs*SecsToNano); }
 
-PINLINE int64_t PTimeInterval::GetMicroSeconds() const
+__inline int64_t PTimeInterval::GetMicroSeconds() const
   { return InternalGet()/MicroToNano; }
 
-PINLINE void PTimeInterval::SetMicroSeconds(int64_t usecs, int secs)
+__inline void PTimeInterval::SetMicroSeconds(int64_t usecs, int secs)
   { InternalSet(usecs*MicroToNano+secs*SecsToNano); }
 
-PINLINE int64_t PTimeInterval::GetMilliSeconds() const
+__inline int64_t PTimeInterval::GetMilliSeconds() const
   { return InternalGet()/MilliToNano; }
 
-PINLINE void PTimeInterval::SetMilliSeconds(int64_t msecs)
+__inline void PTimeInterval::SetMilliSeconds(int64_t msecs)
   { InternalSet(msecs*MilliToNano); }
 
-PINLINE double PTimeInterval::GetFrequency() const
+__inline double PTimeInterval::GetFrequency() const
   { return 1000000000.0/InternalGet(); }
 
-PINLINE void PTimeInterval::SetFrequency(double frequency)
+__inline void PTimeInterval::SetFrequency(double frequency)
   { InternalSet((int64_t)(SecsToNano/frequency)); }
 
-PINLINE long PTimeInterval::GetSeconds() const
+__inline long PTimeInterval::GetSeconds() const
   { return (long)(InternalGet()/SecsToNano); }
 
-PINLINE double PTimeInterval::GetSecondsAsDouble() const
+__inline double PTimeInterval::GetSecondsAsDouble() const
   { return InternalGet()/(double)SecsToNano; }
 
-PINLINE void PTimeInterval::SetSeconds(double secs)
+__inline void PTimeInterval::SetSeconds(double secs)
   { InternalSet((int64_t)(secs*SecsToNano)); }
 
-PINLINE long PTimeInterval::GetMinutes() const
+__inline long PTimeInterval::GetMinutes() const
   { return (long)(InternalGet()/MinsToNano); }
 
-PINLINE int PTimeInterval::GetHours() const
+__inline int PTimeInterval::GetHours() const
   { return (int)(InternalGet()/HoursToNano); }
 
-PINLINE int PTimeInterval::GetDays() const
+__inline int PTimeInterval::GetDays() const
   { return (int)(InternalGet()/DaysToNano); }
 
 
-PINLINE PTimeInterval PTimeInterval::operator-() const
+__inline PTimeInterval PTimeInterval::operator-() const
   { return PTimeInterval::NanoSeconds(-GetNanoSeconds()); }
 
-PINLINE PTimeInterval PTimeInterval::operator+(const PTimeInterval & t) const
+__inline PTimeInterval PTimeInterval::operator+(const PTimeInterval & t) const
   { return PTimeInterval::NanoSeconds(GetNanoSeconds() + t.GetNanoSeconds()); }
 
-PINLINE PTimeInterval operator+(int64_t left, const PTimeInterval & right)
+__inline PTimeInterval operator+(int64_t left, const PTimeInterval & right)
   { return PTimeInterval(left + right.GetMilliSeconds()); }
 
-PINLINE PTimeInterval & PTimeInterval::operator+=(const PTimeInterval & t)
+__inline PTimeInterval & PTimeInterval::operator+=(const PTimeInterval & t)
   { SetNanoSeconds(GetNanoSeconds() + t.GetNanoSeconds()); return *this; }
 
-PINLINE PTimeInterval PTimeInterval::operator-(const PTimeInterval & t) const
+__inline PTimeInterval PTimeInterval::operator-(const PTimeInterval & t) const
   { return PTimeInterval::NanoSeconds(GetNanoSeconds() - t.GetNanoSeconds()); }
 
-PINLINE PTimeInterval operator-(int64_t left, const PTimeInterval & right)
+__inline PTimeInterval operator-(int64_t left, const PTimeInterval & right)
   { return PTimeInterval(left - right.GetMilliSeconds()); }
 
-PINLINE PTimeInterval & PTimeInterval::operator-=(const PTimeInterval & t)
+__inline PTimeInterval & PTimeInterval::operator-=(const PTimeInterval & t)
   { SetNanoSeconds(GetNanoSeconds() - t.GetNanoSeconds()); return *this; }
 
-PINLINE PTimeInterval PTimeInterval::operator*(int f) const
+__inline PTimeInterval PTimeInterval::operator*(int f) const
   { return PTimeInterval::NanoSeconds(GetNanoSeconds() * f); }
 
-PINLINE PTimeInterval operator*(int left, const PTimeInterval & right)
+__inline PTimeInterval operator*(int left, const PTimeInterval & right)
   { return PTimeInterval::NanoSeconds(left * right.GetNanoSeconds()); }
 
-PINLINE PTimeInterval & PTimeInterval::operator*=(int f)
+__inline PTimeInterval & PTimeInterval::operator*=(int f)
   { SetNanoSeconds(GetNanoSeconds() * f); return *this; }
 
-PINLINE int PTimeInterval::operator/(const PTimeInterval & t) const
+__inline int PTimeInterval::operator/(const PTimeInterval & t) const
   { return (int)(GetNanoSeconds() / t.GetNanoSeconds()); }
 
-PINLINE PTimeInterval PTimeInterval::operator/(int f) const
+__inline PTimeInterval PTimeInterval::operator/(int f) const
   { return PTimeInterval::NanoSeconds(GetNanoSeconds() / f); }
 
-PINLINE PTimeInterval operator/(int64_t left, const PTimeInterval & right)
+__inline PTimeInterval operator/(int64_t left, const PTimeInterval & right)
   { return PTimeInterval::NanoSeconds(left / right.GetNanoSeconds()); }
 
-PINLINE PTimeInterval & PTimeInterval::operator/=(int f)
+__inline PTimeInterval & PTimeInterval::operator/=(int f)
   { SetNanoSeconds(GetNanoSeconds() / f); return *this; }
 
 
-PINLINE bool PTimeInterval::operator==(const PTimeInterval & t) const
+__inline bool PTimeInterval::operator==(const PTimeInterval & t) const
   { return GetNanoSeconds() == t.GetNanoSeconds(); }
 
-PINLINE bool PTimeInterval::operator!=(const PTimeInterval & t) const
+__inline bool PTimeInterval::operator!=(const PTimeInterval & t) const
   { return GetNanoSeconds() != t.GetNanoSeconds(); }
 
-PINLINE bool PTimeInterval::operator> (const PTimeInterval & t) const
+__inline bool PTimeInterval::operator> (const PTimeInterval & t) const
   { return GetNanoSeconds() > t.GetNanoSeconds(); }
 
-PINLINE bool PTimeInterval::operator>=(const PTimeInterval & t) const
+__inline bool PTimeInterval::operator>=(const PTimeInterval & t) const
   { return GetNanoSeconds() >= t.GetNanoSeconds(); }
 
-PINLINE bool PTimeInterval::operator< (const PTimeInterval & t) const
+__inline bool PTimeInterval::operator< (const PTimeInterval & t) const
   { return GetNanoSeconds() < t.GetNanoSeconds(); }
 
-PINLINE bool PTimeInterval::operator<=(const PTimeInterval & t) const
+__inline bool PTimeInterval::operator<=(const PTimeInterval & t) const
   { return GetNanoSeconds() <= t.GetNanoSeconds(); }
 
-PINLINE bool PTimeInterval::operator==(long msecs) const
+__inline bool PTimeInterval::operator==(long msecs) const
   { return GetMilliSeconds() == (int64_t)msecs; }
 
-PINLINE bool PTimeInterval::operator!=(long msecs) const
+__inline bool PTimeInterval::operator!=(long msecs) const
   { return GetMilliSeconds() != (int64_t)msecs; }
 
-PINLINE bool PTimeInterval::operator> (long msecs) const
+__inline bool PTimeInterval::operator> (long msecs) const
   { return GetMilliSeconds() > (int64_t)msecs; }
 
-PINLINE bool PTimeInterval::operator>=(long msecs) const
+__inline bool PTimeInterval::operator>=(long msecs) const
   { return GetMilliSeconds() >= (int64_t)msecs; }
 
-PINLINE bool PTimeInterval::operator< (long msecs) const
+__inline bool PTimeInterval::operator< (long msecs) const
   { return GetMilliSeconds() < (int64_t)msecs; }
 
-PINLINE bool PTimeInterval::operator<=(long msecs) const
+__inline bool PTimeInterval::operator<=(long msecs) const
   { return GetMilliSeconds() <= (int64_t)msecs; }
 
 
 ///////////////////////////////////////////////////////////////////////////////
 // PTime
 
-PINLINE PTime::PTime(const PTime & other)
+__inline PTime::PTime(const PTime & other)
   : m_microSecondsSinceEpoch(other.m_microSecondsSinceEpoch.load()) { }
 
-PINLINE PTime & PTime::operator=(const PTime & other)
+__inline PTime & PTime::operator=(const PTime & other)
   { m_microSecondsSinceEpoch.store(other.m_microSecondsSinceEpoch.load()); return *this; }
 
-PINLINE PObject * PTime::Clone() const
+__inline PObject * PTime::Clone() const
   { return PNEW PTime(*this); }
 
-PINLINE void PTime::SetCurrentTime()
+__inline void PTime::SetCurrentTime()
   { m_microSecondsSinceEpoch.store(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count()); }
 
-PINLINE bool PTime::IsValid() const
+__inline bool PTime::IsValid() const
   { return m_microSecondsSinceEpoch.load() > 46800000000LL; }
 
-PINLINE int64_t PTime::GetTimestamp() const
+__inline int64_t PTime::GetTimestamp() const
   { return m_microSecondsSinceEpoch.load(); }
 
-PINLINE PTime & PTime::SetTimestamp(time_t seconds, int64_t usecs)
+__inline PTime & PTime::SetTimestamp(time_t seconds, int64_t usecs)
   { m_microSecondsSinceEpoch.store(seconds*Micro + usecs); return *this; }
 
-PINLINE PTime & PTime::AddTimestamp(int64_t usecs)
+__inline PTime & PTime::AddTimestamp(int64_t usecs)
  { m_microSecondsSinceEpoch += usecs; return *this; }
 
-PINLINE time_t PTime::GetTimeInSeconds() const
+__inline time_t PTime::GetTimeInSeconds() const
   { return m_microSecondsSinceEpoch.load()/Micro; }
 
-PINLINE unsigned PTime::GetMicrosecond() const
+__inline unsigned PTime::GetMicrosecond() const
   { return m_microSecondsSinceEpoch.load()%Micro; }
 
-PINLINE PTimeInterval PTime::GetElapsed() const
+__inline PTimeInterval PTime::GetElapsed() const
   { return IsValid() ? (PTime() - *this) : 0; }
 
-PINLINE bool PTime::IsPast() const
+__inline bool PTime::IsPast() const
   { return GetElapsed() > 0; }
 
-PINLINE bool PTime::IsFuture() const
+__inline bool PTime::IsFuture() const
   { return GetElapsed() < 0; }
 
 
-PINLINE PString PTime::AsString(const PString & format, int zone) const
+__inline PString PTime::AsString(const PString & format, int zone) const
   { return AsString((const char *)format, zone); }
 
-PINLINE int PTime::GetTimeZone() 
+__inline int PTime::GetTimeZone() 
   { return GetTimeZone(IsDaylightSavings() ? DaylightSavings : StandardTime); }
 
-PINLINE PTime PTime::operator+(const PTimeInterval & t) const
+__inline PTime PTime::operator+(const PTimeInterval & t) const
   { return PTime(0, GetTimestamp() +  t.GetMicroSeconds()); }
 
-PINLINE PTime & PTime::operator+=(const PTimeInterval & t)
+__inline PTime & PTime::operator+=(const PTimeInterval & t)
   { m_microSecondsSinceEpoch += t.GetMicroSeconds(); return *this; }
 
-PINLINE PTimeInterval PTime::operator-(const PTime & t) const
+__inline PTimeInterval PTime::operator-(const PTime & t) const
   { return PTimeInterval::MicroSeconds(GetTimestamp() - t.GetTimestamp()); }
 
-PINLINE PTime PTime::operator-(const PTimeInterval & t) const
+__inline PTime PTime::operator-(const PTimeInterval & t) const
   { return PTime(0, GetTimestamp() - t.GetMicroSeconds()); }
 
-PINLINE PTime & PTime::operator-=(const PTimeInterval & t)
+__inline PTime & PTime::operator-=(const PTimeInterval & t)
   { m_microSecondsSinceEpoch -= t.GetMicroSeconds(); return *this; }
 
 
@@ -262,203 +271,207 @@ PINLINE PTime & PTime::operator-=(const PTimeInterval & t)
 ///////////////////////////////////////////////////////////////////////////////
 // PSimpleTimer
 
-PINLINE void PSimpleTimer::Stop()
+__inline void PSimpleTimer::Stop()
   { SetInterval(0); }
 
-PINLINE PTimeInterval PSimpleTimer::GetElapsed() const
+__inline PTimeInterval PSimpleTimer::GetElapsed() const
   { return PTimer::Tick() - m_startTick; }
 
-PINLINE bool PSimpleTimer::IsRunning() const
+__inline bool PSimpleTimer::IsRunning() const
   { return (PTimer::Tick() - m_startTick) < *this; }
 
-PINLINE bool PSimpleTimer::HasExpired() const
+__inline bool PSimpleTimer::HasExpired() const
   { return (PTimer::Tick() - m_startTick) >= *this; }
 
-PINLINE PSimpleTimer::operator bool() const
+__inline PSimpleTimer::operator bool() const
   { return HasExpired(); }
 
 
 ///////////////////////////////////////////////////////////////////////////////
 // PTimer
 
-PINLINE PTimeInterval PTimer::GetResetTime() const
+__inline PTimeInterval PTimer::GetResetTime() const
   { return PTimeInterval::NanoSeconds(PTimeInterval::InternalGet()); }
 
-PINLINE const PNotifier & PTimer::GetNotifier() const
+__inline const PNotifier & PTimer::GetNotifier() const
   { return m_callback; }
 
-PINLINE void PTimer::SetNotifier(const PNotifier & func, const PString & threadName)
+__inline void PTimer::SetNotifier(const PNotifier & func, const PString & threadName)
   { m_callback = func; m_threadName = threadName; }
 
-PINLINE PTimeInterval PTimer::Tick()
-  { return std::chrono::high_resolution_clock::now().time_since_epoch().count(); }
+__inline PTimeInterval PTimer::Tick()
+{
+  return std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now().time_since_epoch());
+}
 
-PINLINE unsigned PTimer::Resolution()
-  { return SecsToNano/std::chrono::high_resolution_clock::period::den; }
+__inline float PTimer::Resolution()
+{
+  return float(MilliToNano)/std::chrono::high_resolution_clock::period::den;
+}
 
 #endif // P_TIMERS
 
 ///////////////////////////////////////////////////////////////////////////////
 
-PINLINE PChannelStreamBuffer::PChannelStreamBuffer(const PChannelStreamBuffer & sbuf)
+__inline PChannelStreamBuffer::PChannelStreamBuffer(const PChannelStreamBuffer & sbuf)
   : channel(sbuf.channel) { }
 
-PINLINE PChannelStreamBuffer &
+__inline PChannelStreamBuffer &
           PChannelStreamBuffer::operator=(const PChannelStreamBuffer & sbuf)
   { channel = sbuf.channel; return *this; }
 
-PINLINE PChannel::PChannel(const PChannel &)
+__inline PChannel::PChannel(const PChannel &)
   : std::iostream(cout.rdbuf())
   { PAssertAlways("Cannot copy channels"); }
 
-PINLINE PChannel & PChannel::operator=(const PChannel &)
+__inline PChannel & PChannel::operator=(const PChannel &)
   { PAssertAlways("Cannot assign channels"); return *this; }
 
-PINLINE void PChannel::SetReadTimeout(const PTimeInterval & time)
+__inline void PChannel::SetReadTimeout(const PTimeInterval & time)
   { readTimeout = time; }
 
-PINLINE PTimeInterval PChannel::GetReadTimeout() const
+__inline PTimeInterval PChannel::GetReadTimeout() const
   { return readTimeout; }
 
-PINLINE void PChannel::SetWriteTimeout(const PTimeInterval & time)
+__inline void PChannel::SetWriteTimeout(const PTimeInterval & time)
   { writeTimeout = time; }
 
-PINLINE PTimeInterval PChannel::GetWriteTimeout() const
+__inline PTimeInterval PChannel::GetWriteTimeout() const
   { return writeTimeout; }
 
-PINLINE intptr_t PChannel::GetHandle() const
+__inline intptr_t PChannel::GetHandle() const
   { return os_handle; }
 
-PINLINE int PChannel::GetOSHandleAsInt() const
+__inline int PChannel::GetOSHandleAsInt() const
   { return static_cast<int>(GetHandle()); }
 
-PINLINE void PChannel::AbortCommandString()
+__inline void PChannel::AbortCommandString()
   { m_abortCommandString = true; }
 
 
 ///////////////////////////////////////////////////////////////////////////////
 // PIndirectChannel
 
-PINLINE PIndirectChannel::~PIndirectChannel()
+__inline PIndirectChannel::~PIndirectChannel()
   { Close(); }
 
-PINLINE PChannel * PIndirectChannel::GetReadChannel() const
+__inline PChannel * PIndirectChannel::GetReadChannel() const
   { return readChannel; }
 
-PINLINE PChannel * PIndirectChannel::GetWriteChannel() const
+__inline PChannel * PIndirectChannel::GetWriteChannel() const
   { return writeChannel; }
 
 
 ///////////////////////////////////////////////////////////////////////////////
 // PDirectory
 
-PINLINE PDirectory & PDirectory::operator=(const PDirectory & str)
+__inline PDirectory & PDirectory::operator=(const PDirectory & str)
   { Close(); PFilePathString::operator=(str); return *this; }
 
-PINLINE PDirectory & PDirectory::operator=(const PString & str)
+__inline PDirectory & PDirectory::operator=(const PString & str)
   { Close(); PFilePathString::operator=(PFilePath::Canonicalise(str, true)); return *this; }
 
-PINLINE PDirectory & PDirectory::operator=(const char * cstr)
+__inline PDirectory & PDirectory::operator=(const char * cstr)
   { Close(); PFilePathString::operator=(PFilePath::Canonicalise(cstr, true)); return *this; }
 
 
-PINLINE bool PDirectory::Exists() const
+__inline bool PDirectory::Exists() const
   { return Exists(*this); }
 
-PINLINE bool PDirectory::Change() const
+__inline bool PDirectory::Change() const
   { return Change(*this); }
 
-PINLINE bool PDirectory::Create(int perm, bool recurse) const
+__inline bool PDirectory::Create(int perm, bool recurse) const
   { return Create(*this, perm, recurse); }
 
-PINLINE bool PDirectory::Remove()
+__inline bool PDirectory::Remove()
   { Close(); return Remove(*this); }
 
 
 ///////////////////////////////////////////////////////////////////////////////
 
-PINLINE PFilePath::PFilePath()
+__inline PFilePath::PFilePath()
   { }
 
-PINLINE PFilePath::PFilePath(const PFilePath & path)
+__inline PFilePath::PFilePath(const PFilePath & path)
   : PFilePathString(path) { }
 
-PINLINE PFilePath & PFilePath::operator=(const PFilePath & path)
+__inline PFilePath & PFilePath::operator=(const PFilePath & path)
   { PFilePathString::operator=(path); return *this; }
 
-PINLINE PFilePath & PFilePath::operator=(const PString & str)
+__inline PFilePath & PFilePath::operator=(const PString & str)
   { PFilePathString::operator=(Canonicalise(str, false)); return *this; }
 
-PINLINE PFilePath & PFilePath::operator=(const char * cstr)
+__inline PFilePath & PFilePath::operator=(const char * cstr)
   { PFilePathString::operator=(Canonicalise(cstr, false)); return *this; }
 
-PINLINE PFilePath & PFilePath::operator+=(const PString & str)
+__inline PFilePath & PFilePath::operator+=(const PString & str)
   { PFilePathString::operator=(Canonicalise(*this + str, false)); return *this; }
 
-PINLINE PFilePath & PFilePath::operator+=(const char * cstr)
+__inline PFilePath & PFilePath::operator+=(const char * cstr)
   { PFilePathString::operator=(Canonicalise(*this + cstr, false)); return *this; }
 
 
 ///////////////////////////////////////////////////////////////////////////////
 
-PINLINE PFile::PFile()
+__inline PFile::PFile()
   { os_handle = -1; m_removeOnClose = false; }
 
-PINLINE PFile::PFile(OpenMode mode, OpenOptions opts)
+__inline PFile::PFile(OpenMode mode, OpenOptions opts)
   { os_handle = -1; m_removeOnClose = false; Open(mode, opts); }
 
-PINLINE PFile::PFile(const PFilePath & name, OpenMode mode, OpenOptions opts)
+__inline PFile::PFile(const PFilePath & name, OpenMode mode, OpenOptions opts)
   { os_handle = -1; m_removeOnClose = false; Open(name, mode, opts); }
 
 
-PINLINE bool PFile::Exists() const
+__inline bool PFile::Exists() const
   { return Exists(m_path); }
 
-PINLINE bool PFile::Access(OpenMode mode)
+__inline bool PFile::Access(OpenMode mode)
   { return ConvertOSError(Access(m_path, mode) ? 0 : -1); }
 
-PINLINE bool PFile::Touch(const PFilePath & name, const PTime & accessTime)
+__inline bool PFile::Touch(const PFilePath & name, const PTime & accessTime)
   { return Touch(name, accessTime, accessTime); }
 
-PINLINE bool PFile::Touch(const PTime & accessTime)
+__inline bool PFile::Touch(const PTime & accessTime)
   { return ConvertOSError(Touch(m_path, accessTime) ? 0 : -1); }
 
-PINLINE bool PFile::Touch(const PTime & accessTime, const PTime & modTime)
+__inline bool PFile::Touch(const PTime & accessTime, const PTime & modTime)
   { return ConvertOSError(Touch(m_path, accessTime, modTime) ? 0 : -1); }
 
-PINLINE bool PFile::Remove(bool force)
+__inline bool PFile::Remove(bool force)
   { Close(); return ConvertOSError(Remove(m_path, force) ? 0 : -1); }
 
-PINLINE bool PFile::Copy(const PFilePath & newname, bool force, bool recurse)
+__inline bool PFile::Copy(const PFilePath & newname, bool force, bool recurse)
   { return ConvertOSError(Copy(m_path, newname, force, recurse) ? 0 : -1); }
 
-PINLINE bool PFile::GetInfo(PFileInfo & info)
+__inline bool PFile::GetInfo(PFileInfo & info)
   { return ConvertOSError(GetInfo(m_path, info) ? 0 : -1); }
 
-PINLINE bool PFile::SetPermissions(PFileInfo::Permissions permissions)
+__inline bool PFile::SetPermissions(PFileInfo::Permissions permissions)
   { return ConvertOSError(SetPermissions(m_path, permissions) ? 0 : -1); }
 
 
-PINLINE const PFilePath & PFile::GetFilePath() const
+__inline const PFilePath & PFile::GetFilePath() const
   { return m_path; }
       
 
-PINLINE PString PFile::GetName() const
+__inline PString PFile::GetName() const
   { return m_path; }
 
-PINLINE off_t PFile::GetPosition() const
+__inline off_t PFile::GetPosition() const
   { return _lseek(GetOSHandleAsInt(), 0, SEEK_CUR); }
 
 
 ///////////////////////////////////////////////////////////////////////////////
 
-PINLINE PTextFile::PTextFile()
+__inline PTextFile::PTextFile()
   { }
 
-PINLINE PTextFile::PTextFile(OpenMode mode, OpenOptions opts)
+__inline PTextFile::PTextFile(OpenMode mode, OpenOptions opts)
   { Open(mode, opts); }
 
-PINLINE PTextFile::PTextFile(const PFilePath & name, OpenMode mode, OpenOptions opts)
+__inline PTextFile::PTextFile(const PFilePath & name, OpenMode mode, OpenOptions opts)
   { Open(name, mode, opts); }
 
 
@@ -467,91 +480,91 @@ PINLINE PTextFile::PTextFile(const PFilePath & name, OpenMode mode, OpenOptions 
 
 #ifdef P_CONFIG_FILE
 
-PINLINE PConfig::PConfig(Source src)
+__inline PConfig::PConfig(Source src)
   : defaultSection(DefaultSectionName()) { Construct(src, PString::Empty(), PString::Empty()); }
 
-PINLINE PConfig::PConfig(Source src, const PString & appname)
+__inline PConfig::PConfig(Source src, const PString & appname)
   : defaultSection(DefaultSectionName()) { Construct(src, appname, PString::Empty()); }
 
-PINLINE PConfig::PConfig(Source src, const PString & appname, const PString & manuf)
+__inline PConfig::PConfig(Source src, const PString & appname, const PString & manuf)
   : defaultSection(DefaultSectionName()) { Construct(src, appname, manuf); }
 
-PINLINE PConfig::PConfig(const PString & section, Source src)
+__inline PConfig::PConfig(const PString & section, Source src)
   : defaultSection(section) { Construct(src, PString::Empty(), PString::Empty()); }
 
-PINLINE PConfig::PConfig(const PString & section, Source src, const PString & appname)
+__inline PConfig::PConfig(const PString & section, Source src, const PString & appname)
   : defaultSection(section) { Construct(src, appname, PString::Empty()); }
 
-PINLINE PConfig::PConfig(const PString & section,
+__inline PConfig::PConfig(const PString & section,
                          Source src,
                          const PString & appname,
                          const PString & manuf)
   : defaultSection(section) { Construct(src, appname, manuf); }
 
-PINLINE PConfig::PConfig(const PFilePath & filename, const PString & section)
+__inline PConfig::PConfig(const PFilePath & filename, const PString & section)
   : defaultSection(section) { Construct(filename); }
 
-PINLINE void PConfig::SetDefaultSection(const PString & section)
+__inline void PConfig::SetDefaultSection(const PString & section)
   { defaultSection = section; }
 
-PINLINE PString PConfig::GetDefaultSection() const
+__inline PString PConfig::GetDefaultSection() const
   { return defaultSection; }
 
-PINLINE PStringArray PConfig::GetKeys() const
+__inline PStringArray PConfig::GetKeys() const
   { return GetKeys(defaultSection); }
 
-PINLINE PStringToString PConfig::GetAllKeyValues() const
+__inline PStringToString PConfig::GetAllKeyValues() const
   { return GetAllKeyValues(defaultSection); }
 
-PINLINE void PConfig::DeleteSection()
+__inline void PConfig::DeleteSection()
   { DeleteSection(defaultSection); }
 
-PINLINE void PConfig::DeleteKey(const PString & key)
+__inline void PConfig::DeleteKey(const PString & key)
   { DeleteKey(defaultSection, key); }
 
-PINLINE bool PConfig::HasKey(const PString & key) const
+__inline bool PConfig::HasKey(const PString & key) const
   { return HasKey(defaultSection, key); }
 
-PINLINE PString PConfig::GetString(const PString & key) const
+__inline PString PConfig::GetString(const PString & key) const
   { return GetString(defaultSection, key, PString()); }
 
-PINLINE PString PConfig::GetString(const PString & key, const PString & dflt) const
+__inline PString PConfig::GetString(const PString & key, const PString & dflt) const
   { return GetString(defaultSection, key, dflt); }
 
-PINLINE void PConfig::SetString(const PString & key, const PString & value)
+__inline void PConfig::SetString(const PString & key, const PString & value)
   { SetString(defaultSection, key, value); }
 
-PINLINE bool PConfig::GetBoolean(const PString & key, bool dflt) const
+__inline bool PConfig::GetBoolean(const PString & key, bool dflt) const
   { return GetBoolean(defaultSection, key, dflt); }
 
-PINLINE void PConfig::SetBoolean(const PString & key, bool value)
+__inline void PConfig::SetBoolean(const PString & key, bool value)
   { SetBoolean(defaultSection, key, value); }
 
-PINLINE long PConfig::GetInteger(const PString & key, long dflt) const
+__inline long PConfig::GetInteger(const PString & key, long dflt) const
   { return GetInteger(defaultSection, key, dflt); }
 
-PINLINE void PConfig::SetInteger(const PString & key, long value)
+__inline void PConfig::SetInteger(const PString & key, long value)
   { SetInteger(defaultSection, key, value); }
 
-PINLINE int64_t PConfig::GetInt64(const PString & key, int64_t dflt) const
+__inline int64_t PConfig::GetInt64(const PString & key, int64_t dflt) const
   { return GetInt64(defaultSection, key, dflt); }
 
-PINLINE void PConfig::SetInt64(const PString & key, int64_t value)
+__inline void PConfig::SetInt64(const PString & key, int64_t value)
   { SetInt64(defaultSection, key, value); }
 
-PINLINE double PConfig::GetReal(const PString & key, double dflt) const
+__inline double PConfig::GetReal(const PString & key, double dflt) const
   { return GetReal(defaultSection, key, dflt); }
 
-PINLINE void PConfig::SetReal(const PString & key, double value)
+__inline void PConfig::SetReal(const PString & key, double value)
   { SetReal(defaultSection, key, value); }
 
-PINLINE PTime PConfig::GetTime(const PString & key) const
+__inline PTime PConfig::GetTime(const PString & key) const
   { return GetTime(defaultSection, key); }
 
-PINLINE PTime PConfig::GetTime(const PString & key, const PTime & dflt) const
+__inline PTime PConfig::GetTime(const PString & key, const PTime & dflt) const
   { return GetTime(defaultSection, key, dflt); }
 
-PINLINE void PConfig::SetTime(const PString & key, const PTime & value)
+__inline void PConfig::SetTime(const PString & key, const PTime & value)
   { SetTime(defaultSection, key, value); }
 
 
@@ -561,78 +574,78 @@ PINLINE void PConfig::SetTime(const PString & key, const PTime & value)
 ///////////////////////////////////////////////////////////////////////////////
 // PArgList
 
-PINLINE void PArgList::SetArgs(int argc, char ** argv)
+__inline void PArgList::SetArgs(int argc, char ** argv)
   { SetArgs(PStringArray(argc, argv)); }
 
-PINLINE bool PArgList::Parse(const PString & theArgumentSpec, bool optionsBeforeParams)
+__inline bool PArgList::Parse(const PString & theArgumentSpec, bool optionsBeforeParams)
   { return Parse((const char *)theArgumentSpec, optionsBeforeParams); }
 
-PINLINE bool PArgList::HasOption(char option) const
+__inline bool PArgList::HasOption(char option) const
   { return GetOptionCount(option) != 0; }
 
-PINLINE bool PArgList::HasOption(const char * option) const
+__inline bool PArgList::HasOption(const char * option) const
   { return GetOptionCount(option) != 0; }
 
-PINLINE bool PArgList::HasOption(const PString & option) const
+__inline bool PArgList::HasOption(const PString & option) const
   { return GetOptionCount(option) != 0; }
 
-PINLINE PINDEX PArgList::GetCount() const
+__inline PINDEX PArgList::GetCount() const
   { return m_parameterIndex.GetSize()-m_shift; }
 
-PINLINE PString PArgList::operator[](PINDEX num) const
+__inline PString PArgList::operator[](PINDEX num) const
   { return GetParameter(num); }
 
-PINLINE PArgList & PArgList::operator<<(int sh)
+__inline PArgList & PArgList::operator<<(int sh)
   { Shift(sh); return *this; }
 
-PINLINE PArgList & PArgList::operator>>(int sh)
+__inline PArgList & PArgList::operator>>(int sh)
   { Shift(-sh); return *this; }
 
 
 ///////////////////////////////////////////////////////////////////////////////
 // PThread
 
-PINLINE PThreadIdentifier PThread::GetThreadId() const
+__inline PThreadIdentifier PThread::GetThreadId() const
   { return m_threadId; }
 
-PINLINE PUniqueThreadIdentifier PThread::GetUniqueIdentifier() const
+__inline PUniqueThreadIdentifier PThread::GetUniqueIdentifier() const
   { return m_uniqueId; }
 
-PINLINE PThreadIdentifier PThread::GetCurrentThreadId()
+__inline PThreadIdentifier PThread::GetCurrentThreadId()
   { return std::this_thread::get_id(); }
 
-PINLINE void PThread::Sleep(const PTimeInterval& delay)
+__inline void PThread::Sleep(const PTimeInterval& delay)
   { std::this_thread::sleep_for(delay.AsChronoNS()); }
 
-PINLINE void PThread::Yield()
+__inline void PThread::Yield()
   { std::this_thread::yield(); }
 
 
 ///////////////////////////////////////////////////////////////////////////////
 // PProcess
 
-PINLINE PArgList & PProcess::GetArguments()
+__inline PArgList & PProcess::GetArguments()
   { return m_arguments; }
 
-PINLINE const PString & PProcess::GetManufacturer() const
+__inline const PString & PProcess::GetManufacturer() const
   { return m_manufacturer; }
 
-PINLINE const PString & PProcess::GetName() const
+__inline const PString & PProcess::GetName() const
   { return m_productName; }
 
-PINLINE const PFilePath & PProcess::GetFile() const
+__inline const PFilePath & PProcess::GetFile() const
   { return m_executableFile; }
 
-PINLINE int PProcess::GetMaxHandles() const
+__inline int PProcess::GetMaxHandles() const
   { return m_maxHandles; }
 
-PINLINE void PProcess::SetTerminationValue(int value)
+__inline void PProcess::SetTerminationValue(int value)
   { m_terminationValue = value; }
 
-PINLINE int PProcess::GetTerminationValue() const
+__inline int PProcess::GetTerminationValue() const
   { return m_terminationValue; }
 
-PINLINE void PThreadYield()
+__inline void PThreadYield()
   { PThread::Yield(); }
 
 

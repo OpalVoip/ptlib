@@ -253,7 +253,7 @@ bool XMPP::Stream::Write(const PXML & pdu)
 }
 
 
-PXMLElement * XMPP::Stream::Read()
+std::shared_ptr<PXMLElement> XMPP::Stream::Read()
 {
   return m_Parser->Read(this);
 }
@@ -381,24 +381,20 @@ void XMPP::BaseStreamHandler::OnElement(PXMLElement & pdu)
 
 void XMPP::BaseStreamHandler::Main()
 {
-  PXMLElement * pdu;
-
   for (;;)
   {
     if (!m_Stream || !m_Stream->IsOpen())
       break;
 
-    pdu = m_Stream->Read();
+    auto pdu = m_Stream->Read();
 
-    if (pdu != NULL)
+    if (pdu)
     {
       PTRACE(5, "XMPP", "RCV: " << *pdu);
       OnElement(*pdu);
     }
     else if (m_Stream->GetErrorCode() != PChannel::Timeout)
       break;
-
-    delete pdu;
   }
 }
 

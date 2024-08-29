@@ -338,8 +338,8 @@ bool PSocket::os_connect(struct sockaddr * addr, socklen_t size)
   uint32_t err = ERROR_SUCCESS;
 
   if (::connect(os_handle, addr, size) == SOCKET_ERROR && (err = GetLastError()) == WSAEWOULDBLOCK) {
-    P_fd_set writefds = os_handle;
-    P_fd_set exceptfds = os_handle;
+    P_fd_set writefds = os_handle.load();
+    P_fd_set exceptfds = os_handle.load();
     P_timeval tv;
 
     /* To avoid some strange behaviour on various windows platforms, do a zero
@@ -435,7 +435,7 @@ bool PSocket::os_vread(Slice * slices, size_t sliceCount,
     return false;
 
   if (available == 0) {
-    P_fd_set readfds = os_handle;
+    P_fd_set readfds = os_handle.load();
     P_timeval tv = readTimeout;
     int selval = ::select(0, readfds, NULL, NULL, tv);
     if (!ConvertOSError(selval, LastReadError))
@@ -464,7 +464,7 @@ bool PSocket::os_vwrite(const Slice * slices,
   if (CheckNotOpen())
     return false;
 
-  P_fd_set writefds = os_handle;
+  P_fd_set writefds = os_handle.load();
   P_timeval tv = writeTimeout;
   int selval = ::select(0, NULL, writefds, NULL, tv);
   if (!ConvertOSError(selval, LastWriteError))
@@ -498,9 +498,8 @@ PChannel::Errors PSocket::Select(SelectList & read,
 {
   PSocket * firstSocket = NULL;
 
-  SelectList::iterator sock;
   P_fd_set readfds;
-  for (sock = read.begin(); sock != read.end(); ++sock) {
+  for (const auto & sock : read) {
     if (!sock->IsOpen())
       return NotOpen;
     readfds += sock->GetHandle();
@@ -509,7 +508,7 @@ PChannel::Errors PSocket::Select(SelectList & read,
   }
 
   P_fd_set writefds;
-  for (sock = write.begin(); sock != write.end(); ++sock) {
+  for (const auto & sock : write) {
     if (!sock->IsOpen())
       return NotOpen;
     writefds += sock->GetHandle();
@@ -518,7 +517,7 @@ PChannel::Errors PSocket::Select(SelectList & read,
   }
 
   P_fd_set exceptfds;
-  for (sock = except.begin(); sock != except.end(); ++sock) {
+  for (const auto & sock : except) {
     if (!sock->IsOpen())
       return NotOpen;
     exceptfds += sock->GetHandle();
@@ -536,9 +535,9 @@ PChannel::Errors PSocket::Select(SelectList & read,
     return firstSocket->GetErrorCode();
 
   if (retval > 0) {
-    sock = read.begin();
+    auto sock = read.begin();
     while (sock != read.end()) {
-      intptr_t h = sock->GetHandle();
+      intptr_t h = (*sock)->GetHandle();
       if (h < 0)
         return Interrupted;
       if (readfds.IsPresent(h))
@@ -548,7 +547,7 @@ PChannel::Errors PSocket::Select(SelectList & read,
     }
     sock = write.begin();
     while ( sock != write.end()) {
-      intptr_t h = sock->GetHandle();
+      intptr_t h = (*sock)->GetHandle();
       if (h < 0)
         return Interrupted;
       if (writefds.IsPresent(h))
@@ -558,7 +557,7 @@ PChannel::Errors PSocket::Select(SelectList & read,
     }
     sock = except.begin();
     while ( sock != except.end()) {
-      intptr_t h = sock->GetHandle();
+      intptr_t h = (*sock)->GetHandle();
       if (h < 0)
         return Interrupted;
       if (exceptfds.IsPresent(h))
@@ -568,9 +567,9 @@ PChannel::Errors PSocket::Select(SelectList & read,
     }
   }
   else {
-    read.RemoveAll();
-    write.RemoveAll();
-    except.RemoveAll();
+    read.clear();
+    write.clear();
+    except.clear();
   }
 
   return NoError;

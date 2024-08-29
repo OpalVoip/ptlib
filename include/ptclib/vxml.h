@@ -636,10 +636,10 @@ class PVXMLSession : public PIndirectChannel, public PSSLCertificateInfo
     bool             m_abortVXML;
     PSyncPoint       m_waitForEvent;
     PURL             m_newURL;
-    PAutoPtr<PXML>   m_newXML;
+    std::unique_ptr<PXML> m_newXML;
     PString          m_lastXMLError;
     PString          m_newFormName;
-    std::unique_ptr<PXML>   m_currentXML;
+    std::unique_ptr<PXML> m_currentXML;
     PXMLObject  *    m_currentNode;
     bool             m_speakNodeData;
     bool             m_bargeIn;
@@ -687,7 +687,7 @@ class PVXMLSession : public PIndirectChannel, public PSSLCertificateInfo
     PDECLARE_MUTEX(m_grammersMutex);
     char           m_defaultMenuDTMF;
 
-    PAutoPtr<PScriptLanguage> m_scriptContext;
+    std::unique_ptr<PScriptLanguage> m_scriptContext;
 
     PSyncQueue<PString> m_userInputQueue;
 

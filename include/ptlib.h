@@ -168,8 +168,8 @@
 
 ///////////////////////////////////////////////////////////////////////////////
 
+#include <ptlib/pprocess.h>
 
-#if P_USE_INLINES
 
 #ifdef _WIN32
 #include <ptlib/msos/ptlib/ptlib.inl>
@@ -177,8 +177,6 @@
 #include <ptlib/unix/ptlib/ptlib.inl>
 #endif
 #include <ptlib/osutil.inl>
-
-#endif
 
 #endif // PTLIB_PTLIB_H
 

@@ -465,8 +465,8 @@ void PCLI::Context::OnCompletedLine()
 
   if (CheckInternalCommand(line, m_cli.GetHistoryCommand())) {
     unsigned cmdNum = 1;
-    for (PStringList::iterator cmd = m_commandHistory.begin(); cmd != m_commandHistory.end(); ++cmd)
-      *this << cmdNum++ << ' ' << *cmd << '\n';
+    for (const auto & cmd : m_commandHistory)
+      *this << cmdNum++ << ' ' << cmd << '\n';
     flush();
     return;
   }
@@ -574,28 +574,18 @@ PCLI::Context & PCLI::Arguments::WriteError(const PString & error)
 
 ///////////////////////////////////////////////////////////////////////////////
 
-static int EditCodes[]     = { '\b', '\x7f' };
-static int EraseCodes[]    = { 'U'-64 };
-static int LeftCodes[]     = { 'L'-64 };
-static int RightCodes[]    = { 'R'-64 };
-static int BeginCodes[]    = { 'B'-64 };
-static int EndCodes[]      = { 'E'-64 };
-static int PrevCmdCodes[]  = { 'P'-64 };
-static int NextCmdCodes[]  = { 'N'-64 };
-static int AutoFillCodes[] = { '\t' };
-
 PCLI::PCLI(const char * prompt)
   : m_newLine('\n')
   , m_requireEcho(false)
-  , m_editCodes(EditCodes, PARRAYSIZE(EditCodes), false)
-  , m_eraseCodes(EraseCodes, PARRAYSIZE(EraseCodes), false)
-  , m_leftCodes(LeftCodes, PARRAYSIZE(LeftCodes), false)
-  , m_rightCodes(RightCodes, PARRAYSIZE(RightCodes), false)
-  , m_beginCodes(BeginCodes, PARRAYSIZE(BeginCodes), false)
-  , m_endCodes(EndCodes, PARRAYSIZE(EndCodes), false)
-  , m_prevCmdCodes(PrevCmdCodes, PARRAYSIZE(PrevCmdCodes), false)
-  , m_nextCmdCodes(NextCmdCodes, PARRAYSIZE(NextCmdCodes), false)
-  , m_autoFillCodes(AutoFillCodes, PARRAYSIZE(AutoFillCodes), false)
+  , m_editCodes{ '\b', '\x7f' }
+  , m_eraseCodes{ 'U'-64 }
+  , m_leftCodes{ 'L'-64 }
+  , m_rightCodes{ 'R'-64 }
+  , m_beginCodes{ 'B'-64 }
+  , m_endCodes{ 'E'-64 }
+  , m_prevCmdCodes{ 'P'-64 }
+  , m_nextCmdCodes{ 'N'-64 }
+  , m_autoFillCodes{ '\t' }
   , m_prompt(prompt != NULL ? prompt : "CLI> ")
   , m_usernamePrompt("Username: ")
   , m_passwordPrompt("Password: ")
@@ -1280,7 +1270,7 @@ bool PCLISocket::HandleSingleThreadForAll()
   // wait for something to become available
   if (PIPSocket::Select(readList) == PChannel::NoError) {
     // process sockets
-    for (PSocket::SelectList::iterator socket = readList.begin(); socket != readList.end(); ++socket) {
+    for (const auto socket : readList) {
       if (&*socket == &m_listenSocket)
         HandleIncoming();
       else {

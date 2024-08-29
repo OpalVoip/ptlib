@@ -132,7 +132,7 @@ public:
     for (const auto & voice : m_voices) {
       PStringStream strm;
       PURL::OutputVars(strm, voice.second);
-      voices.AppendString(strm.Mid(1));
+      voices.AppendString(strm.str().substr(1));
     }
 
     PTRACE(3, "Voices:\n" << setfill('\n') << voices);
@@ -174,7 +174,7 @@ public:
 
     if (voice.Contains(VoiceName)) {
       PCaselessString voiceName = voice.Get(VoiceName);
-      PStringOptions * found = m_voices.GetAt(voiceName);
+      auto found = m_voices.GetAt(voiceName);
       if (!found) {
         PTRACE(2, "Unsupported voice \"" << voiceName << '"');
         return false;
@@ -195,7 +195,6 @@ public:
         return false;
       }
       voice = *found;
-      voice.MakeUnique();
       return ValidateEngine(voice);
     }
 
@@ -204,7 +203,6 @@ public:
           (gender.empty() || gender == it.second.Get(VoiceGender)) &&
           (engine.empty() || engine == it.second.Get(VoiceEngine) || it.second.Get(VoiceEngines).Find(engine) != P_MAX_INDEX)) {
         voice = it.second;
-        voice.MakeUnique();
         return ValidateEngine(voice);
       }
     }
@@ -325,7 +323,7 @@ public:
       strm << '>'
            << PXML::EscapeSpecialChars(text)
            << "</say-as>";
-      request.SetText(strm.c_str());
+      request.SetText(strm.str().c_str());
       request.SetTextType(Aws::Polly::Model::TextType::ssml);
     }
 
@@ -385,13 +383,13 @@ class PSpeechRecognition_AWS : public PSpeechRecognition, PAwsClient<Aws::Transc
   };
   #pragma pack()
 
-  bool WriteEvent(const PBYTEArray & contents, const PStringOptions & headers)
+  bool WriteEvent(const void * data, size_t length, const PStringOptions & headers)
   {
     size_t headerLen = 0;
     for (PStringOptions::const_iterator it = headers.begin(); it != headers.end(); ++it)
       headerLen += 1 + it->first.length() + 1 + 2 + it->second.length();
 
-    PBYTEArray message(sizeof(Prelude) + headerLen + contents.size() + sizeof(PUInt32b));
+    PBYTEArray message(sizeof(Prelude) + headerLen + length + sizeof(PUInt32b));
     BYTE * ptr = message.GetPointer();
 
     Prelude & prelude = *reinterpret_cast<Prelude *>(ptr);
@@ -414,8 +412,8 @@ class PSpeechRecognition_AWS : public PSpeechRecognition, PAwsClient<Aws::Transc
       ptr += value.length();
     }
 
-    memcpy(ptr, contents, contents.size());
-    ptr += contents.size();
+    memcpy(ptr, data, length);
+    ptr += length;
 
     *(PUInt32b *)ptr = PCRC32::Calculate(message, message.size() - sizeof(PUInt32b));
 
@@ -429,7 +427,7 @@ class PSpeechRecognition_AWS : public PSpeechRecognition, PAwsClient<Aws::Transc
     headers.Set(":event-type", "AudioEvent");
     headers.Set(":content-type", "application/octet-stream");
 
-    return WriteEvent(PBYTEArray((const BYTE *)samples, sampleCount*sizeof(uint16_t), false), headers);
+    return WriteEvent(samples, sampleCount*sizeof(uint16_t), headers);
   }
 
   bool ReadEvent(PBYTEArray & contents, PStringOptions & headers)

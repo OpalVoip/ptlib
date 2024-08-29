@@ -103,9 +103,8 @@ void VidTest::Main()
     else if (!inputDriverName.IsEmpty())
       cerr << ", default device";
     cerr << ", device name must be one of:\n";
-    PStringList devices = PVideoInputDevice::GetDriversDeviceNames("*\t*");
-    for (PINDEX i = 0; i < devices.GetSize(); i++)
-      cerr << "   " << devices[i] << '\n';
+    for (const auto & it : PVideoInputDevice::GetDriversDeviceNames("*\t*"))
+      cerr << "   " << it << '\n';
     cerr << endl;
     return;
   }
@@ -176,9 +175,8 @@ void VidTest::Main()
     else if (!outputDriverName.IsEmpty())
       cerr << ", default device";
     cerr << ", device name must be one of:\n";
-    PStringList devices = PVideoOutputDevice::GetDriversDeviceNames("*\t*");
-    for (PINDEX i = 0; i < devices.GetSize(); i++)
-      cerr << "   " << devices[i] << '\n';
+    for (const auto & it : PVideoOutputDevice::GetDriversDeviceNames("*\t*"))
+      cerr << "   " << it << '\n';
     cerr << endl;
     return;
   }
@@ -403,12 +401,13 @@ void VidTest::GrabAndDisplay(PThread &, intptr_t)
   PVideoOutputDevice::FrameData frameData;
     m_grabber->GetFrameSize(frameData.width, frameData.height);
 
-    for (PINDEX frameIndex = 0; frameIndex < m_converters.GetSize(); ++frameIndex) {
-      if (m_converters[frameIndex].Convert(frames[frameIndex],
-                                            frames[frameIndex+1].GetPointer(m_converters[frameIndex].GetMaxDstFrameBytes())))
-        m_converters[frameIndex].GetDstFrameSize(frameData.width, frameData.height);
+    PINDEX frameIndex = 0;
+    for (auto & converter : m_converters) {
+      if (converter.Convert(frames[frameIndex], frames[frameIndex+1].GetPointer(converter.GetMaxDstFrameBytes())))
+        converter.GetDstFrameSize(frameData.width, frameData.height);
       else
         cerr << "Frame conversion failed!" << endl;
+      ++frameIndex;
     }
 
     m_display->SetFrameSize(frameData.width, frameData.height);

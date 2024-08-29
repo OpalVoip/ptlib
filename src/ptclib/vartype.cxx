@@ -1045,7 +1045,6 @@ static thread_local PVarData::Object * s_varDataInitialiser;
 
 PVarData::Object::Object()
 {
-  m_memberValues.DisallowDeleteObjects();
   s_varDataInitialiser = this;
 }
 

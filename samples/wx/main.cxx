@@ -53,9 +53,9 @@
 #endif
 
 #if wxUSE_UNICODE
-typedef wstringstream tstringstream;
+typedef std::wstringstream tstringstream;
 #else
-typedef  stringstream tstringstream;
+typedef std:: stringstream tstringstream;
 #endif
 
 extern void InitXmlResource(); // From resource.cpp whichis compiled resource.xrc

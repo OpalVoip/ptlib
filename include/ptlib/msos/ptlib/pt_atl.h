@@ -35,6 +35,7 @@
 #endif
 
 #ifdef P_ATL
+  #define DELETE WIN_DELETE
   #pragma warning(disable:4127)
   #include <cguid.h>
   #include <atlbase.h>

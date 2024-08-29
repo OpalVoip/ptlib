@@ -128,7 +128,7 @@ static BOOL CALLBACK AddWindowName(HWND hWnd, LPARAM userData)
     if (len > 0) {
       PWideString wideName;
       if (GetWindowTextW(hWnd, wideName.GetPointer(len+1), len+1))
-        reinterpret_cast<PStringArray *>(userData)->AppendString(TopWindowPrefix + wideName);
+	reinterpret_cast<PStringArray *>(userData)->AppendString(TopWindowPrefix + PString(wideName));
     }
   }
   return TRUE;

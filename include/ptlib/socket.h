@@ -335,11 +335,17 @@ class PSocket : public PChannel
         SelectList()
           { }
         /** Add a socket to list .*/
+        void Append(PSocket * sock /** Socket to add. */)
+        { this->push_back(sock); }
         void operator+=(PSocket & sock /** Socket to add. */)
           { this->push_back(&sock); }
         /** Remove a socket from list .*/
+        void Remove(PSocket * sock /** Socket to remove. */)
+          { this->remove(sock); }
         void operator-=(PSocket & sock /** Socket to remove. */)
           { this->remove(&sock); }
+        PINDEX GetSize() const { return size(); }
+        bool IsEmpty() const { return empty(); }
     };
 
     /**Select a socket with available data. */

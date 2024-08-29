@@ -134,7 +134,7 @@ class PIpAccessControlEntry : public PObject
      */
     bool Match(
       PIPSocket::Address & address    ///< Address to search for
-    );
+    ) const;
 
     /**Get the domain part of entry.
       */
@@ -303,7 +303,7 @@ class PIpAccessControlList : public PIpAccessControlList_base
 
     /**Find the PIpAccessControl specification for the address.
       */
-    PIpAccessControlEntry * Find(
+    const PIpAccessControlEntry * Find(
       PIPSocket::Address address    ///< IP Address to find
     ) const;
 

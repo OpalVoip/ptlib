@@ -147,18 +147,17 @@ PDNS::NAPTRRecord * PDNS::NAPTRRecordList::HandleDNSRecord(PDNS_RECORD dnsRecord
 
 void PDNS::NAPTRRecordList::PrintOn(ostream & strm) const
 {
-  PINDEX i;
-  for (i = 0; i < GetSize(); i++) 
-    strm << (*this)[i] << endl;
+  for (const auto & it : *this) 
+    strm << it << endl;
 }
 
 PDNS::NAPTRRecord * PDNS::NAPTRRecordList::GetFirst(const char * service)
 {
-  if (GetSize() == 0)
+  if (empty())
     return NULL;
 
-  currentPos   = 0;
-  lastOrder = operator[](0).order;
+  currentPos   = begin();
+  lastOrder = currentPos->order;
   orderLocked = false;
 
   return GetNext(service);
@@ -166,12 +165,12 @@ PDNS::NAPTRRecord * PDNS::NAPTRRecordList::GetFirst(const char * service)
 
 PDNS::NAPTRRecord * PDNS::NAPTRRecordList::GetNext(const char * service)
 {
-  if (GetSize() == 0)
+  if (empty())
     return NULL;
 
-  while (currentPos < GetSize()) {
+  while (currentPos != end()) {
 
-    NAPTRRecord & record = operator[](currentPos);
+    NAPTRRecord & record = *currentPos;
 
     // once we have a match, we cannot look at higher order records
     // and note that the list is already sorted by preference
@@ -179,7 +178,7 @@ PDNS::NAPTRRecord * PDNS::NAPTRRecordList::GetNext(const char * service)
       return NULL;
 
     else {
-      currentPos++;
+      ++currentPos;
       lastOrder   = record.order;
       if (record.order == lastOrder) {
         if ((service == NULL) || (record.service *= service)) {

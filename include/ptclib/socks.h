@@ -85,7 +85,7 @@ class PSocksProtocol
     PString            serverHost;
     uint16_t               serverPort;
     PString            authenticationUsername;
-    PString            authenticationPassuint16_t;
+    PString            authenticationPassword;
     PIPSocket::Address remoteAddress;
     uint16_t               remotePort;
     PIPSocket::Address localAddress;

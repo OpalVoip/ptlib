@@ -36,11 +36,6 @@
 #include <codecvt>
 #include <math.h>
 
-#if !P_USE_INLINES
-#include "ptlib/contain.inl"
-#endif
-
-
 #define new PNEW
 #undef  __CLASS__
 #define __CLASS__ GetClass()
@@ -84,7 +79,7 @@ void PCharArray::ReadFrom(istream &strm)
 }
 
 
-void PBYTEArray::PrintOn(ostream & strm) const
+static void PrintBytes(ostream & strm, const uint8_t * buffer, size_t size)
 {
   int line_width = (int)strm.width();
   if (line_width == 0)
@@ -100,7 +95,7 @@ void PBYTEArray::PrintOn(ostream & strm) const
     strm.setf(ios::right, ios::adjustfield);
 
   PINDEX i = 0;
-  while (i < GetSize()) {
+  while (i < size) {
     if (i > 0)
       strm << '\n';
     int j;
@@ -109,8 +104,8 @@ void PBYTEArray::PrintOn(ostream & strm) const
     for (j = 0; j < line_width; j++) {
       if (indent >= 0 && j == line_width/2)
         strm << ' ';
-      if (i+j < GetSize())
-        strm << setw(val_width) << (GetAt(i+j)&0xff);
+      if (i+j < size)
+        strm << setw(val_width) << (buffer[i+j]&0xff);
       else {
         for (int k = 0; k < val_width; k++)
           strm << ' ';
@@ -121,8 +116,8 @@ void PBYTEArray::PrintOn(ostream & strm) const
     if ((strm.flags()&ios::floatfield) != ios::fixed) {
       strm << "  ";
       for (j = 0; j < line_width; j++) {
-        if (i+j < GetSize()) {
-          unsigned val = GetAt(i+j)&0xff;
+        if (i+j < size) {
+          unsigned val = buffer[i+j]&0xff;
           if (isprint(val))
             strm << (char)val;
           else
@@ -134,6 +129,12 @@ void PBYTEArray::PrintOn(ostream & strm) const
   }
 
   strm.flags(oldFlags);
+}
+
+
+void PBYTEArray::PrintOn(ostream & strm) const
+{
+  PrintBytes(strm, GetPointer(), GetSize());
 }
 
 
@@ -157,6 +158,12 @@ void PBYTEArray::ReadFrom(istream &strm)
 }
 
 
+void PBYTEView::PrintOn(ostream & strm) const
+{
+  PrintBytes(strm, data(), size());
+}
+
+
 void PHexDump::PrintOn(ostream & strm) const
 {
   char oldFill = strm.fill('0');
@@ -169,7 +176,7 @@ void PHexDump::PrintOn(ostream & strm) const
     strm.width(GetSize());
   }
 
-  PBYTEArray::PrintOn(strm);
+  PrintBytes(strm, data(), size());
 
   strm.flags(oldFlags);
   strm.precision(oldPrec);
@@ -180,23 +187,33 @@ void PHexDump::PrintOn(ostream & strm) const
 ///////////////////////////////////////////////////////////////////////////////
 
 PString::PString()
+  : m_caseless(false)
 {
 }
 
 
 PString::PString(const PString & str)
   : std::string(str)
+  , m_caseless(str.m_caseless)
 {
 }
 
 
+PString::PString(const PCaselessString & str)
+  : std::string(str)
+  , m_caseless(str.m_caseless)
+{ }
+
+
 PString::PString(const PCharArray & buf)
   : std::string(buf)
+  , m_caseless(false)
 {
 }
 
 
 PString::PString(const PBYTEArray & buf)
+  : m_caseless(false)
 {
   PINDEX bufSize = buf.GetSize();
   if (bufSize > 0) {
@@ -210,19 +227,21 @@ PString::PString(const PBYTEArray & buf)
 
 PString::PString(const std::string & str)
   : std::string(str)
+  , m_caseless(false)
 {
 }
 
 
 PString::PString(char c)
   : std::string(1, c)
+  , m_caseless(false)
 {
 }
 
 
 PString::PString(bool b)
-  : PCharArray(b ? "true" : "false", b ? 5 : 6)
-  , m_length(b ? 4 : 5)
+  : std::string(b ? "true" : "false")
+  , m_caseless(false)
 {
 }
 
@@ -239,11 +258,13 @@ const PString & PString::Empty()
 
 PString::PString(const char * cstr)
   : std::string(cstr != NULL ? cstr : "")
+  , m_caseless(false)
 {
 }
 
 
 PString::PString(const wchar_t * wstr)
+  : m_caseless(false)
 {
   if (wstr == NULL)
     MakeEmpty();
@@ -252,12 +273,14 @@ PString::PString(const wchar_t * wstr)
 }
 
 PString::PString(const wchar_t * wstr, PINDEX len)
+  : m_caseless(false)
 {
   InternalFromWChar(wstr, len);
 }
 
 
 PString::PString(const PWCharArray & wstr)
+  : m_caseless(false)
 {
   PINDEX size = wstr.GetSize();
   if (size > 0 && wstr[size-1] == 0) // Stip off trailing NULL if present
@@ -268,6 +291,7 @@ PString::PString(const PWCharArray & wstr)
 
 PString::PString(const char * cstr, PINDEX len)
   : std::string(cstr, len)
+  , m_caseless(false)
 {
 }
 
@@ -328,6 +352,7 @@ static void TranslateEscapes(const char * & src, char * dst)
 
 
 PString::PString(ConversionType type, const char * str, ...)
+  : m_caseless(false)
 {
   switch (type) {
     case Pascal :
@@ -385,36 +410,42 @@ template <typename S, typename U> void p_signed2string(S value, unsigned base, s
 
 
 PString::PString(short n)
+  : m_caseless(false)
 {
   p_signed2string<signed int, unsigned>(n, 10, *this);
 }
 
 
 PString::PString(unsigned short n)
+  : m_caseless(false)
 {
   p_unsigned2string<unsigned int>(n, 10, *this);
 }
 
 
 PString::PString(int n)
+  : m_caseless(false)
 {
   p_signed2string<signed int, unsigned>(n, 10, *this);
 }
 
 
 PString::PString(unsigned int n)
+  : m_caseless(false)
 {
   p_unsigned2string<unsigned int>(n, 10, *this);
 }
 
 
 PString::PString(long n)
+  : m_caseless(false)
 {
   p_signed2string<signed long, unsigned long>(n, 10, *this);
 }
 
 
 PString::PString(unsigned long n)
+  : m_caseless(false)
 {
   p_unsigned2string<unsigned long>(n, 10, *this);
 }
@@ -422,6 +453,7 @@ PString::PString(unsigned long n)
 
 #ifdef HAVE_LONG_LONG_INT
 PString::PString(long long n)
+  : m_caseless(false)
 {
   p_signed2string<signed long long, unsigned long long>(n, 10, *this);
 }
@@ -430,6 +462,7 @@ PString::PString(long long n)
 
 #ifdef HAVE_UNSIGNED_LONG_LONG_INT
 PString::PString(unsigned long long n)
+  : m_caseless(false)
 {
   p_unsigned2string<unsigned long long>(n, 10, *this);
 }
@@ -501,6 +534,7 @@ template <typename S, typename U>
 
 #define PSTRING_CONV_CTOR(paramType, signedType, unsignedType) \
 PString::PString(ConversionType type, paramType value, unsigned param) \
+  : m_caseless(false) \
 { \
   p_convert<signedType, unsignedType>(type, value, param, *this); \
 }
@@ -521,6 +555,7 @@ PSTRING_CONV_CTOR(unsigned long long, long long, unsigned long long);
 
 
 PString::PString(ConversionType type, double value, unsigned places)
+  : m_caseless(false)
 {
   switch (type) {
     case Decimal :
@@ -561,6 +596,22 @@ PString::PString(ConversionType type, double value, unsigned places)
       PAssertAlways(PInvalidParameter);
       MakeEmpty();
   }
+}
+
+
+PString & PString::operator=(const PString & str)
+{
+  std::string::operator=(str);
+  m_caseless = str.m_caseless;
+  return *this;
+}
+
+
+PString & PString::operator=(const PCaselessString & str)
+{
+  std::string::operator=(str);
+  m_caseless = str.m_caseless;
+  return *this;
 }
 
 
@@ -905,19 +956,12 @@ PObject::Comparison PString::InternalCompare(PINDEX offset, PINDEX length, const
 
   const char * s1 = c_str()+offset;
   const char * s2 = cstr != NULL ? cstr : "";
-  return Compare2(length != P_MAX_INDEX ? internal_strncmp(s1, s2, length) : internal_strcmp(s1, s2), 0);
-}
-
-
-int PString::internal_strcmp(const char * s1, const char *s2) const
-{
-  return strcmp(s1, s2);
-}
-
-
-int PString::internal_strncmp(const char * s1, const char *s2, size_t n) const
-{
-  return strncmp(s1, s2, n);
+  int comparison;
+  if (m_caseless)
+    comparison = length != P_MAX_INDEX ? strncasecmp(s1, s2, length) : strcasecmp(s1, s2);
+  else
+    comparison = length != P_MAX_INDEX ? strncmp(s1, s2, length) : strcmp(s1, s2);
+  return Compare2(comparison, 0);
 }
 
 
@@ -1226,15 +1270,13 @@ PStringArray PString::Tokenise(const char * separators, bool onePerSeparator) co
   
   if (separators == NULL || IsEmpty())  // No tokens
     return tokens;
-    
-  PINDEX token = 0;
+
   PINDEX p1 = 0;
   PINDEX p2 = FindOneOf(separators);
 
   if (p2 == 0) {
     if (onePerSeparator) { // first character is a token separator
-      tokens[token] = Empty();
-      token++;                        // make first string in array empty
+      tokens.push_back(Empty());
       p1 = 1;
       p2 = FindOneOf(separators, 1);
     }
@@ -1247,10 +1289,9 @@ PStringArray PString::Tokenise(const char * separators, bool onePerSeparator) co
 
   while (p2 != P_MAX_INDEX) {
     if (p2 > p1)
-      tokens[token] = operator()(p1, p2-1);
+      tokens.push_back(operator()(p1, p2-1));
     else
-      tokens[token] = Empty();
-    token++;
+      tokens.push_back(Empty());
 
     // Get next separator. If not one token per separator then continue
     // around loop to skip over all the consecutive separators.
@@ -1259,7 +1300,7 @@ PStringArray PString::Tokenise(const char * separators, bool onePerSeparator) co
     } while ((p2 = FindOneOf(separators, p1)) == p1 && !onePerSeparator);
   }
 
-  tokens[token] = operator()(p1, P_MAX_INDEX);
+  tokens.push_back(operator()(p1, P_MAX_INDEX));
 
   return tokens;
 }
@@ -1272,17 +1313,16 @@ PStringArray PString::Lines() const
   if (IsEmpty())
     return lines;
 
-  PINDEX line = 0;
   PINDEX p1 = 0;
   PINDEX p2;
   while ((p2 = FindOneOf("\r\n", p1)) != P_MAX_INDEX) {
-    lines[line++] = operator()(p1, p2-1);
+    lines.push_back(operator()(p1, p2-1));
     p1 = p2 + 1;
     if (at(p2) == '\r' && at(p1) == '\n') // CR LF pair
       p1++;
   }
   if (p1 < GetLength())
-    lines[line] = operator()(p1, P_MAX_INDEX);
+    lines.push_back(operator()(p1, P_MAX_INDEX));
   return lines;
 }
 
@@ -1499,6 +1539,7 @@ bool PString::IsTrue(const char * str)
          strcasecmp(str, "on") == 0 ||
          strcasecmp(str, "yes") == 0 ||
          strcasecmp(str, "y") == 0 ||
+         strcasecmp(str, "enabled") == 0 ||
          atoi(str) != 0;
 }
 
@@ -1519,6 +1560,7 @@ bool PString::IsFalse(const char * str)
          strcasecmp(str, "off") == 0 ||
          strcasecmp(str, "no") == 0 ||
          strcasecmp(str, "n") == 0 ||
+         strcasecmp(str, "disabled") == 0 ||
          strspn(str, "-0") == strlen(str);
 }
 
@@ -1589,18 +1631,6 @@ PObject * PCaselessString::Clone() const
 }
 
 
-int PCaselessString::internal_strcmp(const char * s1, const char *s2) const
-{
-  return strcasecmp(s1, s2);
-}
-
-
-int PCaselessString::internal_strncmp(const char * s1, const char *s2, size_t n) const
-{
-  return strncasecmp(s1, s2, n);
-}
-
-
 ///////////////////////////////////////////////////////////////////////////////
 
 PStringArray::PStringArray(PINDEX count, char const * const * strarr, bool caseless)
@@ -1617,70 +1647,19 @@ PStringArray::PStringArray(PINDEX count, char const * const * strarr, bool casel
       count++;
   }
 
-  SetSize(count);
+  reserve(count);
   for (PINDEX i = 0; i < count; i++) {
-    PString * newString;
     if (caseless)
-      newString = new PCaselessString(strarr[i]);
+      push_back(PCaselessString(strarr[i]));
     else
-      newString = new PString(strarr[i]);
-    SetAt(i, newString);
+      emplace_back(strarr[i]);
   }
-}
-
-
-PStringArray::PStringArray(const PString & str)
-{
-  m_objectArray->SetAt(0, str.CloneAs<PString>());
-}
-
-
-PStringArray::PStringArray(const char * cstr)
-{
-  m_objectArray->SetAt(0, new PString(cstr));
-}
-
-
-PStringArray::PStringArray(const PStringList & list)
-{
-  SetSize(list.GetSize());
-  PINDEX count = 0;
-  for (PStringList::const_iterator it = list.begin(); it != list.end(); ++it)
-    m_objectArray->SetAt(count++, it->CloneAs<PString>());
-}
-
-
-PStringArray::PStringArray(const PSortedStringList & list)
-{
-  SetSize(list.GetSize());
-  for (PINDEX i = 0; i < list.GetSize(); i++)
-    m_objectArray->SetAt(i, list[i].CloneAs<PString>());
-}
-
-
-PStringArray::PStringArray(const PStringSet & set)
-{
-  SetSize(set.GetSize());
-  PINDEX count = 0;
-  for (PStringSet::const_iterator it = set.begin(); it != set.end(); ++it)
-    m_objectArray->SetAt(count++, it->CloneAs<PString>());
-}
-
-
-PStringArray & PStringArray::operator+=(const PStringArray & v)
-{
-  PINDEX i;
-  for (i = 0; i < v.GetSize(); i++)
-    AppendString(v[i]);
-
-  return *this;
 }
 
 
 PStringArray PStringArray::operator+(const PStringArray & v) const
 {
   PStringArray arr = *this;
-  arr.MakeUnique();
   arr += v;
   return arr;
 }
@@ -1689,7 +1668,6 @@ PStringArray PStringArray::operator+(const PStringArray & v) const
 PStringArray PStringArray::operator+(const PString & v) const
 {
   PStringArray arr = *this;
-  arr.MakeUnique();
   arr += v;
   return arr;
 }
@@ -1705,22 +1683,21 @@ void PStringArray::ReadFrom(istream & strm)
 }
 
 
-PString PStringArray::operator[](PINDEX index) const
+PObject * PStringArray::Clone() const
 {
-  PASSERTINDEX(index);
-  if (index < GetSize() && m_objectArray->GetAt(index) != NULL)
-    return *(PString *)m_objectArray->GetAt(index);
-  return PString::Empty();
+  return new PStringArray(*this);
 }
 
 
-PString & PStringArray::operator[](PINDEX index)
+PINDEX PStringArray::GetStringsIndex(const PString & str) const
 {
-  PASSERTINDEX(index);
-  PAssert(SetMinSize(index+1), POutOfMemory);
-  if (m_objectArray->GetAt(index) == NULL)
-    m_objectArray->SetAt(index, new PString);
-  return *(PString *)m_objectArray->GetAt(index);
+  PINDEX index = 0;
+  for (const auto & it : *this) {
+    if (it == str)
+      return index;
+    ++index;
+  }
+  return P_MAX_INDEX;
 }
 
 
@@ -1780,62 +1757,15 @@ PString PStringArray::ToString(char separator) const
 
 PStringList::PStringList(PINDEX count, char const * const * strarr, bool caseless)
 {
-  if (count == 0)
-    return;
-
   if (PAssertNULL(strarr) == NULL)
     return;
 
-  for (PINDEX i = 0; i < count; i++) {
-    PString * newString;
+  for (PINDEX i = 0; i < count && strarr[count] != NULL; i++) {
     if (caseless)
-      newString = new PCaselessString(strarr[i]);
+      push_back(PCaselessString(strarr[i]));
     else
-      newString = new PString(strarr[i]);
-    Append(newString);
+      emplace_back(strarr[i]);
   }
-}
-
-
-PStringList::PStringList(const PString & str)
-{
-  Append(str.Clone());
-}
-
-
-PStringList::PStringList(const char * cstr)
-{
-  AppendString(cstr);
-}
-
-
-PStringList::PStringList(const PStringArray & array)
-{
-  for (PINDEX i = 0; i < array.GetSize(); i++)
-    Append(array[i].Clone());
-}
-
-
-PStringList::PStringList(const PSortedStringList & list)
-{
-  for (PSortedStringList::const_iterator it = list.begin(); it != list.end(); ++it)
-    Append(it->Clone());
-}
-
-
-PStringList::PStringList(const PStringSet & set)
-{
-  for (PStringSet::const_iterator it = set.begin(); it != set.end(); ++it)
-    Append(it->Clone());
-}
-
-
-PStringList & PStringList::operator += (const PStringList & v)
-{
-  for (PStringList::const_iterator i = v.begin(); i != v.end(); i++)
-    AppendString(*i);
-
-  return *this;
 }
 
 
@@ -1849,59 +1779,38 @@ void PStringList::ReadFrom(istream & strm)
 }
 
 
+PObject * PStringList::Clone() const
+{
+  return new PStringList(*this);
+}
+
+
+PINDEX PStringList::GetStringsIndex(const PString & str) const
+{
+  PINDEX index = 0;
+  for (const auto & it : *this) {
+    if (it == str)
+      return index;
+    ++index;
+  }
+  return P_MAX_INDEX;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 
 PSortedStringList::PSortedStringList(PINDEX count,
                                      char const * const * strarr,
                                      bool caseless)
 {
-  if (count == 0)
-    return;
-
   if (PAssertNULL(strarr) == NULL)
     return;
 
-  for (PINDEX i = 0; i < count; i++) {
-    PString * newString;
+  for (PINDEX i = 0; i < count && strarr[count] != NULL; i++) {
     if (caseless)
-      newString = new PCaselessString(strarr[i]);
+      insert(PCaselessString(strarr[i]));
     else
-      newString = new PString(strarr[i]);
-    Append(newString);
+      emplace(strarr[i]);
   }
-}
-
-
-PSortedStringList::PSortedStringList(const PString & str)
-{
-  Append(str.Clone());
-}
-
-
-PSortedStringList::PSortedStringList(const char * cstr)
-{
-  AppendString(cstr);
-}
-
-
-PSortedStringList::PSortedStringList(const PStringArray & array)
-{
-  for (PINDEX i = 0; i < array.GetSize(); i++)
-    Append(array[i].Clone());
-}
-
-
-PSortedStringList::PSortedStringList(const PStringList & list)
-{
-  for (PStringList::const_iterator it = list.begin(); it != list.end(); ++it)
-    Append(it->Clone());
-}
-
-
-PSortedStringList::PSortedStringList(const PStringSet & set)
-{
-  for (PStringSet::const_iterator it = set.begin(); it != set.end(); ++it)
-    Append(it->Clone());
 }
 
 
@@ -1915,96 +1824,25 @@ void PSortedStringList::ReadFrom(istream & strm)
 }
 
 
-PINDEX PSortedStringList::GetNextStringsIndex(const PString & str) const
+PObject * PSortedStringList::Clone() const
 {
-  PINDEX len = str.GetLength();
-  PSortedListElement * element;
-  PINDEX index = InternalStringSelect(str, len, m_info->m_root, element);
-
-  if (index != 0) {
-    PSortedListElement * prev;
-    while ((prev = m_info->Predecessor(element)) != &m_info->nil && ((PString *)prev->m_data)->NumCompare(str, len) >= EqualTo) {
-      element = prev;
-      index--;
-    }
-  }
-
-  return index;
-}
-
-
-PINDEX PSortedStringList::InternalStringSelect(const char * str,
-                                               PINDEX len,
-                                               PSortedListElement * thisElement,
-                                               PSortedListElement * & selectedElement) const
-{
-  if (thisElement == &m_info->nil)
-    return 0;
-
-  switch (((PString *)thisElement->m_data)->NumCompare(str, len)) {
-    case PObject::LessThan :
-    {
-      PINDEX index = InternalStringSelect(str, len, thisElement->m_right, selectedElement);
-      return thisElement->m_left->m_subTreeSize + index + 1;
-    }
-
-    case PObject::GreaterThan :
-      return InternalStringSelect(str, len, thisElement->m_left, selectedElement);
-
-    default :
-      selectedElement = thisElement;
-      return thisElement->m_left->m_subTreeSize;
-  }
+  return new PSortedStringList(*this);
 }
 
 
 ///////////////////////////////////////////////////////////////////////////////
 
 PStringSet::PStringSet(PINDEX count, char const * const * strarr, bool caseless)
-  : BaseClass(true)
 {
-  if (count == 0)
-    return;
-
   if (PAssertNULL(strarr) == NULL)
     return;
 
-  for (PINDEX i = 0; i < count; i++) {
+  for (PINDEX i = 0; i < count && strarr[i] != NULL; i++) {
     if (caseless)
-      Include(PCaselessString(strarr[i]));
+      insert(PCaselessString(strarr[i]));
     else
-      Include(PString(strarr[i]));
+      emplace(strarr[i]);
   }
-}
-
-
-PStringSet::PStringSet(const PString & str)
-  : BaseClass(true)
-{
-  Include(str);
-}
-
-
-PStringSet::PStringSet(const char * cstr)
-  : BaseClass(true)
-{
-  Include(cstr);
-}
-
-
-PStringSet::PStringSet(const PStringArray & strArray)
-  : BaseClass(true)
-{
-  for (PINDEX i = 0; i < strArray.GetSize(); ++i)
-    Include(strArray[i]);
-}
-
-
-PStringSet::PStringSet(const PStringList & strList)
-  : BaseClass(true)
-{
-  for (PStringList::const_iterator it = strList.begin(); it != strList.end(); ++it)
-    Include(*it);
 }
 
 
@@ -2017,74 +1855,9 @@ void PStringSet::ReadFrom(istream & strm)
   }
 }
 
-
-///////////////////////////////////////////////////////////////////////////////
-
-POrdinalToString::POrdinalToString(PINDEX count, const Initialiser * init)
+PObject * PStringSet::Clone() const
 {
-  while (count-- > 0) {
-    SetAt(init->key, init->value);
-    init++;
-  }
-}
-
-
-void POrdinalToString::ReadFrom(istream & strm)
-{
-  while (strm.good()) {
-    POrdinalKey key;
-    char equal;
-    PString str;
-    strm >> key >> ws >> equal >> str;
-    if (equal != '=')
-      SetAt(key, PString::Empty());
-    else
-      SetAt(key, str.Mid(equal+1));
-  }
-}
-
-
-///////////////////////////////////////////////////////////////////////////////
-
-PStringToOrdinal::PStringToOrdinal(PINDEX count,
-                                   const Initialiser * init,
-                                   bool caseless)
-{
-  while (count-- > 0) {
-    if (caseless)
-      SetAt(PCaselessString(init->key), init->value);
-    else
-      SetAt(init->key, init->value);
-    init++;
-  }
-}
-
-
-PStringToOrdinal::PStringToOrdinal(PINDEX count,
-                                   const POrdinalToString::Initialiser * init,
-                                   bool caseless)
-{
-  while (count-- > 0) {
-    if (caseless)
-      SetAt(PCaselessString(init->value), init->key);
-    else
-      SetAt(init->value, init->key);
-    init++;
-  }
-}
-
-
-void PStringToOrdinal::ReadFrom(istream & strm)
-{
-  while (strm.good()) {
-    PString str;
-    strm >> str;
-    PINDEX equal = str.FindLast('=');
-    if (equal == P_MAX_INDEX)
-      SetAt(str, 0);
-    else
-      SetAt(str.Left(equal), str.Mid(equal+1).AsInteger());
-  }
+  return new PStringSet(*this);
 }
 
 
@@ -2095,6 +1868,9 @@ PStringToString::PStringToString(PINDEX count,
                                  bool caselessKeys,
                                  bool caselessValues)
 {
+  if (PAssertNULL(init) == NULL)
+    return;
+
   while (count-- > 0) {
     if (caselessValues)
       if (caselessKeys)
@@ -2122,11 +1898,11 @@ void PStringToString::ReadFrom(istream & strm)
     PString key, value;
     str.Split('=', key, value, PString::SplitDefaultToBefore);
 
-    PString * ptr = GetAt(key);
-    if (ptr != NULL)
-      *ptr += '\n' + value;
+    auto it = find(key);
+    if (it != end())
+      it->second += '\n' + value;
     else
-      SetAt(key, value);
+      at(key) = value;
   }
 }
 
@@ -2143,11 +1919,11 @@ void PStringToString::FromString(const PString & str)
 void PStringToString::Merge(const PStringToString & other, MergeAction action)
 {
   for (const_iterator it = other.begin(); it != other.end(); ++it) {
-    PString * str = GetAt(it->first);
-    if (str == NULL || action == e_MergeOverwrite)
+    auto str = find(it->first);
+    if (str == end() || action == e_MergeOverwrite)
       SetAt(it->first, it->second);
     else if (action == e_MergeAppend)
-      *str += '\n' + it->second;
+      str->second += '\n' + it->second;
   }
 }
 
@@ -2196,34 +1972,22 @@ char ** PStringToString::ToCharArray(bool withEqualSign, PCharArray * storage) c
 
 PString PStringOptions::GetString(const PCaselessString & key, const char * dflt) const
 {
-  PString * str = PStringToString::GetAt(key);
-  return str != NULL ? *str : PString(dflt);
+  auto it = find(key);
+  return it != end() ? it->second : PString(dflt);
 }
 
 
 bool PStringOptions::GetBoolean(const PCaselessString & key, bool dflt) const
 {
-  PString * str = PStringToString::GetAt(key);
-  if (str == NULL)
-    return dflt;
-
-  if (str->IsEmpty() || str->AsUnsigned() != 0)
-    return true;
-
-  static char const * const synonymsForTrue[] = { "true", "yes", "enabled" };
-  for (PINDEX i = 0; i < PARRAYSIZE(synonymsForTrue); ++i) {
-    if (PConstCaselessString(synonymsForTrue[i]).NumCompare(*str) == EqualTo)
-      return true;
-  }
-
-  return false;
+  auto it = find(key);
+  return it != end() ? it->second.IsTrue() : dflt;
 }
 
 
 long PStringOptions::GetInteger(const PCaselessString & key, long dflt) const
 {
-  PString * str = PStringToString::GetAt(key);
-  return str != NULL ? str->AsInteger() : dflt;
+  auto it = find(key);
+  return it != end() ? it->second.AsInteger() : dflt;
 }
 
 
@@ -2235,8 +1999,8 @@ void PStringOptions::SetInteger(const PCaselessString & key, long value)
 
 double PStringOptions::GetReal(const PCaselessString & key, double dflt) const
 {
-  PString * str = PStringToString::GetAt(key);
-  return str != NULL ? str->AsReal() : dflt;
+  auto it = find(key);
+  return it != end() ? it->second.AsReal() : dflt;
 }
 
 
@@ -2449,7 +2213,6 @@ bool PRegularExpression::Execute(const char * cstr, PINDEX & start, PINDEX & len
 {
   if (m_lastErrorCode != NoError && m_lastErrorCode != NoMatch)
     return false;
-  }
 
   std::match_results<const char *> match;
   if (!std::regex_search(cstr, match, *this, flags)) {

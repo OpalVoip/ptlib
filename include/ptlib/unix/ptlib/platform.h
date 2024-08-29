@@ -235,10 +235,6 @@ typedef void (*PRunTimeSignalHandler)(int, siginfo_t *, void *);
   typedef std::thread::id PUniqueThreadIdentifier;
 #endif
 
-#ifndef P_ANDROID
-  #define P_USE_THREAD_CANCEL 1
-#endif
-
 #if defined(P_HAS_SEMAPHORES) || defined(P_HAS_NAMED_SEMAPHORES)
   #include <semaphore.h>
 #endif  // P_HAS_SEMPAHORES

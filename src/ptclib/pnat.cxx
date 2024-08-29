@@ -55,9 +55,11 @@ void PNatMethods::LoadAll(PPluginManager * pluginMgr)
   if (pluginMgr == NULL)
     pluginMgr = &PPluginManager::GetPluginManager();
 
-  PStringArray methods = pluginMgr->GetPluginsProviding(PPlugin_PNatMethod::ServiceType(), false);
-  for (PINDEX i = 0; i < methods.GetSize(); ++i)
-    Append(pluginMgr->CreatePlugin(methods[i], PPlugin_PNatMethod::ServiceType()));
+  for (const auto & method : pluginMgr->GetPluginsProviding(PPlugin_PNatMethod::ServiceType(), false)) {
+    auto plugin = dynamic_cast<PNatMethod *>(pluginMgr->CreatePlugin(method, PPlugin_PNatMethod::ServiceType()));
+    if (plugin)
+      Append(plugin);
+  }
 }
 
 
@@ -107,9 +109,7 @@ bool PNatMethods::SetMethodPriority(const PString & name, unsigned priority)
       if (natMethod->m_priority == priority)
         return true;
 
-      DisallowDeleteObjects();
       erase(it);
-      AllowDeleteObjects();
 
       natMethod->m_priority = priority;
       Append(natMethod);

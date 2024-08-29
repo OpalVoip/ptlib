@@ -492,11 +492,11 @@ PIPCacheData * PHostByName::GetHost(const PString & name)
       key[i] &= 0x5f;
   }
 
-  PIPCacheData * host = GetAt(key);
+  PIPCacheData * host = GetAt(key).get();
   int localErrNo = NO_DATA;
 
   if (host != NULL && host->HasAged()) {
-    SetAt(key, NULL);
+    RemoveAt(key);
     host = NULL;
   }
 
@@ -619,14 +619,14 @@ PIPCacheData * PHostByAddr::GetHost(const PIPSocket::Address & addr)
   mutex.Wait();
 
   PIPCacheKey key = addr;
-  PIPCacheData * host = GetAt(key);
+  auto host = GetAt(key);
 
-  if (host != NULL && host->HasAged()) {
-    SetAt(key, NULL);
+  if (host && host->HasAged()) {
+    erase(key);
     host = NULL;
   }
 
-  if (host == NULL) {
+  if (!host) {
     mutex.Signal();
 
     int retry = 3;
@@ -683,12 +683,12 @@ PIPCacheData * PHostByAddr::GetHost(const PIPSocket::Address & addr)
     if (localErrNo != NETDB_SUCCESS || retry == 0)
       return NULL;
 
-    host = new PIPCacheData(host_info, addr.AsString());
+    host = std::make_shared<PIPCacheData>(host_info, addr.AsString());
 
     SetAt(key, host);
   }
 
-  return host->GetHostAddress().IsValid() ? host : NULL;
+  return host->GetHostAddress().IsValid() ? host.get() : NULL;
 }
 
 
@@ -862,13 +862,13 @@ int PSocket::Select(PSocket & sock1,
   if (!sock1.ConvertOSError(Select(read, dummy1, dummy2, timeout)))
     return sock1.GetErrorCode();
 
-  switch (read.GetSize()) {
+  switch (read.size()) {
     case 0 :
       return 0;
     case 2 :
       return -3;
     default :
-      return &read.front() == &sock1 ? -1 : -2;
+      return read.front() == &sock1 ? -1 : -2;
   }
 }
 

@@ -304,22 +304,11 @@ bool PSOAPServerResource::SetMethod(const PString & methodName, const PNotifier 
   // Set the method for the notifier function and add it to the list
   PWaitAndSignal m( methodMutex );
 
-  // Find the method, or create a new one
-  PSOAPServerMethod * methodInfo;
-  
-  PINDEX pos = methodList.GetValuesIndex( methodName );
-  if (pos != P_MAX_INDEX)
-  {
-    methodInfo = ( PSOAPServerMethod *) methodList.GetAt( pos );
-  }
+  auto it = methodList.find(methodName);
+  if (it != methodList.end())
+    it->methodFunc = func;
   else 
-  {
-    methodInfo = new PSOAPServerMethod( methodName );
-    methodList.Append( methodInfo );
-  }
-
-  // set the function
-  methodInfo->methodFunc = func;
+    methodList.Append(new PSOAPServerMethod(methodName, func));
 
   return true;
 }
@@ -419,18 +408,15 @@ bool PSOAPServerResource::OnSOAPRequest( const PString & methodName,
   methodMutex.Wait();
 
   // Find the method information
-  PINDEX pos = methodList.GetValuesIndex( methodName );
-
-  if ( pos == P_MAX_INDEX ) 
+  auto it = methodList.find(methodName);
+  if (it == methodList.end())
   {
     reply = FormatFault( PSOAPMessage::Client, "Unknown method = " + methodName ).AsString();
     return false;
   }
   
-  PSOAPServerMethod * methodInfo = ( PSOAPServerMethod * )methodList.GetAt( pos );
-  PNotifier notifier = methodInfo->methodFunc;
-  
-  methodMutex.Signal();
+  PNotifier notifier = it->methodFunc;
+    methodMutex.Signal();
 
   // create a request/response container to be passed to the notifier function
   PSOAPServerRequestResponse p( request );

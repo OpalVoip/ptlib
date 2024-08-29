@@ -249,14 +249,16 @@ class PEthSocket : public PSocket
 
         void PreRead();
 
+        typedef PBYTEView Payload;
+
         /** Extract the data link payload.
             @return the protocol identifier for the payload.
          */
         int GetDataLink(
-          PBYTEArray & payload
+          Payload & payload
         );
         int GetDataLink(
-          PBYTEArray & payload,
+          Payload & payload,
           Address & src,
           Address & dst
         );
@@ -271,10 +273,10 @@ class PEthSocket : public PSocket
             @return the protocol identifier for the payload.
          */
         int GetIP(
-          PBYTEArray & payload
+          Payload & payload
         );
         int GetIP(
-          PBYTEArray & payload,
+          Payload & payload,
           PIPSocket::Address & src,
           PIPSocket::Address & dst
         );
@@ -289,12 +291,12 @@ class PEthSocket : public PSocket
             @return the protocol identifier for the payload.
          */
         bool GetUDP(
-          PBYTEArray & payload,
+          Payload & payload,
           uint16_t & srcPort,
           uint16_t & dstPort
         );
         bool GetUDP(
-          PBYTEArray & payload,
+          Payload & payload,
           PIPSocketAddressAndPort & src,
           PIPSocketAddressAndPort & dst
         );
@@ -309,12 +311,12 @@ class PEthSocket : public PSocket
             @return the protocol identifier for the payload.
          */
         bool GetTCP(
-          PBYTEArray & payload,
+          Payload & payload,
           uint16_t & srcPort,
           uint16_t & dstPort
         );
         bool GetTCP(
-          PBYTEArray & payload,
+          Payload & payload,
           PIPSocketAddressAndPort & src,
           PIPSocketAddressAndPort & dst
         );

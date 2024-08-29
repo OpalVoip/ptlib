@@ -461,28 +461,25 @@ void PPluginManager::CallNotifier(PDynaLink & dll, NotificationCode code)
 
 ////////////////////////////////////////////////////////////////////////////////////
 
-PPluginModuleManager::PPluginModuleManager(const char * _signatureFunctionName, PPluginManager * _pluginMgr)
-  : signatureFunctionName(_signatureFunctionName)
+PPluginModuleManager::PPluginModuleManager(const char * signatureFunctionName, PPluginManager * pluginMgr)
+  : m_signatureFunctionName(signatureFunctionName)
+  , m_pluginMgr(pluginMgr != NULL ? *pluginMgr : PPluginManager::GetPluginManager())
 {
-  pluginDLLs.DisallowDeleteObjects();
-  pluginMgr = _pluginMgr;;
-  if (pluginMgr == NULL)
-    pluginMgr = &PPluginManager::GetPluginManager();
 }
 
 void PPluginModuleManager::OnLoadModule(PDynaLink & dll, intptr_t code)
 {
   PDynaLink::Function dummyFunction;
-  if (!dll.GetFunction(signatureFunctionName, dummyFunction))
+  if (!dll.GetFunction(m_signatureFunctionName, dummyFunction))
     return;
 
   switch (code) {
     case 0:
-      pluginDLLs.SetAt(dll.GetName(), &dll); 
+      m_pluginDLLs.emplace(dll.GetName(), std::move(dll));
       break;
 
     case 1: 
-      pluginDLLs.RemoveAt(dll.GetName());
+      m_pluginDLLs.erase(dll.GetName());
       break;
 
     default:

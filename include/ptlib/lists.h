@@ -89,7 +89,13 @@ template <class T> class PList : public PCollection<T, std::list<std::shared_ptr
       value_type * obj   ///< New object to place into the collection.
     ) override
     {
-      this->m_collection.emplace_back(pointer_type(obj));
+      this->Append(pointer_type(obj));
+    }
+    void Append(
+      pointer_type obj   ///< New object to place into the collection.
+    )
+    {
+      this->m_collection.emplace_back(obj);
     }
 
     /**Append a new object to the collection. This places a new link at the
@@ -98,11 +104,17 @@ template <class T> class PList : public PCollection<T, std::list<std::shared_ptr
        @return
        index of the newly added object.
      */
-    virtual void Prepend(
+    void Prepend(
       value_type * obj   ///< New object to place into the collection.
     )
     {
-      this->m_collection.emplace_front(pointer_type(obj));
+      this->Prepend(pointer_type(obj));
+    }
+    void Prepend(
+      pointer_type obj   ///< New object to place into the collection.
+    )
+    {
+      this->m_collection.emplace_front(obj);
     }
 
     /**Insert a new object immediately before the specified object. If the
@@ -159,6 +171,12 @@ template <class T> class PList : public PCollection<T, std::list<std::shared_ptr
     {
       this->m_collection.pop_back();
     }
+
+    // See if list contains object
+    bool Contains(const value_type & v) const
+    {
+      return std::find(this->begin(), this->end(), v) != this->end();
+    }
   //@}
 };
 
@@ -169,6 +187,8 @@ template <class T> class PQueue : public PObject, public std::queue<T *>
 {
     PCLASSINFO(PQueue, PObject);
   public:
+    ~PQueue() { PAssert(this->empty(), PLogicError); }
+
     /* Cloning a queue does not make sense */
     virtual PObject * Clone() const
     {
@@ -190,6 +210,8 @@ template <class T> class PStack : public PObject, public std::stack<T *>
   PCLASSINFO(PStack, PObject);
 
   public:
+    ~PStack() { PAssert(this->empty(), PLogicError); }
+
     /* Cloning a queue does not make sense */
     virtual PObject * Clone() const
     {
@@ -208,6 +230,16 @@ template <class T> class PStack : public PObject, public std::stack<T *>
 ///////////////////////////////////////////////////////////////////////////////
 // Sorted List of PObjects
 
+template <class T> struct PSortedListCompare
+{
+  using is_transparent = void;  // important
+
+  bool operator() (std::shared_ptr<T> const & l, std::shared_ptr<T> const & r) const { return *l < *r; }
+  bool operator() (std::shared_ptr<T> const & l,                 T  const & r) const { return *l < r; }
+  bool operator() (                T  const & l, std::shared_ptr<T> const & r) const { return l < *r; }
+};
+
+
 /**This class is a collection of objects which are descendents of the
    <code>PObject</code> class. It is implemeted as a Red-Black binary tree to
    maintain the objects in rank order. Note that this requires that the
@@ -224,7 +256,7 @@ template <class T> class PStack : public PObject, public std::stack<T *>
    repeated access via ordinal index is made there is little overhead. All
    other access incurs a minimum overhead, but not insignificant.
  */
-template <class T> class PSortedList : public PCollection<T, std::multiset<std::shared_ptr<T>>>
+template <class T> class PSortedList : public PCollection<T, std::multiset<std::shared_ptr<T>, PSortedListCompare<T>>>
 {
     typedef T value_type;
     typedef std::shared_ptr<value_type> pointer_type;
@@ -285,6 +317,12 @@ template <class T> class PSortedList : public PCollection<T, std::multiset<std::
         return false;
       c.erase(it);
       return true;
+    }
+
+    // See if list contains object
+    bool Contains(const value_type & v) const
+    {
+      return this->find(v) != this->end();
     }
   //@}
 };

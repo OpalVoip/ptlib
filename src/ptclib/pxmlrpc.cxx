@@ -131,7 +131,7 @@ PXMLElement * PXMLRPCBlock::CreateScalar(const PString & value)
 }
 
 
-PXMLElement * PXMLRPCBlock::CreateScalar(int value) 
+PXMLElement * PXMLRPCBlock::CreateScalar(long value) 
 {
   return CreateScalar(IntType, PString(PString::Unsigned, value)); 
 }
@@ -307,7 +307,7 @@ void PXMLRPCBlock::AddParam(const PString & str)
   AddParam(CreateScalar(str));
 }
 
-void PXMLRPCBlock::AddParam(int value) 
+void PXMLRPCBlock::AddParam(long value) 
 {
   AddParam(CreateScalar(value)); 
 }
@@ -554,8 +554,8 @@ bool PXMLRPCBlock::ParseStruct(PXMLElement * structElement, PXMLRPCStructBase & 
     PString name;
     PXMLElement * element = ParseStructElement(*this, structElement, i, name);
     if (element != NULL) {
-      PXMLRPCVariableBase * variable = data.GetVariable(name);
-      if (variable != NULL) {
+      auto variable = data.GetVariable(name);
+      if (variable) {
         if (variable->IsArray()) {
           if (!ParseArray(element, *variable))
             return false;
@@ -1083,115 +1083,10 @@ void PXMLRPCVariableBase::FromString(PINDEX, const PString & str)
 }
 
 
-PString PXMLRPCVariableBase::ToBase64(PAbstractArray & data) const
-{
-  return PBase64::Encode(data.GetPointer(), data.GetSize());
-}
-
-
-void PXMLRPCVariableBase::FromBase64(const PString & str, PAbstractArray & data)
-{
-  PBase64 decoder;
-  decoder.StartDecoding();
-  decoder.ProcessDecoding(str);
-  data = decoder.GetDecodedData();
-}
-
-
-/////////////////////////////////////////////////////////////////
-
-PXMLRPCArrayBase::PXMLRPCArrayBase(PContainer & a, const char * n, const char * t)
-  : PXMLRPCVariableBase(n, t)
-  , m_array(a)
-{
-}
-
-
-void PXMLRPCArrayBase::PrintOn(ostream & strm) const
-{
-  strm << setfill('\n') << m_array << setfill(' ');
-}
-
-
-void PXMLRPCArrayBase::Copy(const PXMLRPCVariableBase & other)
-{
-  m_array = ((PXMLRPCArrayBase &)other).m_array;
-}
-
-
-bool PXMLRPCArrayBase::IsArray() const
-{
-  return true;
-}
-
-
-PINDEX PXMLRPCArrayBase::GetSize() const
-{
-  return m_array.GetSize();
-}
-
-
-bool PXMLRPCArrayBase::SetSize(PINDEX sz)
-{
-  return m_array.SetSize(sz);
-}
-
-
-/////////////////////////////////////////////////////////////////
-
-PXMLRPCArrayObjectsBase::PXMLRPCArrayObjectsBase(PArrayObjects & a, const char * n, const char * t)
-  : PXMLRPCArrayBase(a, n, t)
-  , m_array(a)
-{
-}
-
-
-bool PXMLRPCArrayObjectsBase::SetSize(PINDEX sz)
-{
-  if (!m_array.SetSize(sz))
-    return false;
-
-  for (PINDEX i = 0; i < sz; i++) {
-    if (m_array.GetAt(i) == NULL) {
-      PObject * object = CreateObject();
-      if (object == NULL)
-        return false;
-      m_array.SetAt(i, object);
-    }
-  }
-
-  return true;
-}
-
-
-PString PXMLRPCArrayObjectsBase::ToString(PINDEX i) const
-{
-  PStringStream stream;
-  stream << *m_array.GetAt(i);
-  return stream;
-}
-
-
-void PXMLRPCArrayObjectsBase::FromString(PINDEX i, const PString & str)
-{
-  PObject * object = m_array.GetAt(i);
-  if (object == NULL) {
-    object = CreateObject();
-    m_array.SetAt(i, object);
-  }
-
-  PStringStream stream(str);
-  stream >> *object;
-}
-
-
 /////////////////////////////////////////////////////////////////
 
 PXMLRPCStructBase::PXMLRPCStructBase()
 {
-  variablesByOrder.DisallowDeleteObjects();
-  variablesByName.DisallowDeleteObjects();
-
   initialiserMutex.Wait();
   initialiserStack = initialiserInstance;
   initialiserInstance = this;

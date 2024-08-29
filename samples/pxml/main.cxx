@@ -53,11 +53,12 @@ static void TestXML(const PArgList & args, const PString & str)
 void PxmlTest::Main()
 {
   PArgList & args = GetArguments();
-  if (!args.Parse("s-simple.         Simple test\n"
-                  "b-billion-laughs. Billion laugh test\n"
-                  "e-encoding:       Set encoding character set\n"
-                  PTRACE_ARGLIST
-  ))
+  args.Parse("s-simple.         Simple test\n"
+             "b-billion-laughs. Billion laugh test\n"
+             "e-encoding:       Set encoding character set\n"
+             PTRACE_ARGLIST
+  );
+  if (!args.IsParsed())
     cerr << args.Usage("[ -e ] -s | -b | { file ... }") << endl;
   else if (args.HasOption('s'))
     TestXML(args, testXML); 

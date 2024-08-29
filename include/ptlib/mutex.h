@@ -36,6 +36,7 @@
 
 #include <ptlib/psync.h>
 #include <mutex>
+#include <shared_mutex>
 
 
 class PMutexExcessiveLockInfo
@@ -146,7 +147,7 @@ class PTimedMutex : public PSync, public PMutexExcessiveLockInfo, PProfiling::Hi
     /** Try to enter the critical section for exlusive access. Does not wait.
         @return true if cirical section entered, leave/Signal must be called.
       */
-    PINLINE bool Try() { return Wait(0); }
+    __inline bool Try() { return Wait(0); }
 
     virtual void PrintOn(ostream &strm) const override;
 

@@ -115,15 +115,6 @@
 
 #include <ptlib/pprocess.h>
 
-#if !P_USE_INLINES
-#include "ptlib/osutil.inl"
-#ifdef _WIN32
-#include "ptlib/win32/ptlib/ptlib.inl"
-#else
-#include "ptlib/unix/ptlib/ptlib.inl"
-#endif
-#endif
-
 #define new PNEW
 
 #if defined(__arm__) && !defined(__llvm__) && (__GNUC__ < 4 || (__GNUC__ == 4 && __GNUC_MINOR__ < 6))

@@ -130,8 +130,10 @@ class PSOAPServerMethod : public PString
 {
   PCLASSINFO( PSOAPServerMethod, PString );
   public:
-    PSOAPServerMethod( const PString & name ) 
-      : PString( name ) { }
+    PSOAPServerMethod( const PString & name, PNotifier func = PNotifier())
+      : PString( name )
+      , methodFunc(func)
+    { }
 
     PNotifier methodFunc;
 };

@@ -168,9 +168,6 @@ class PGloballyUniqueID : public PBYTEArray
 
     bool operator!() const { return !IsNULL(); }
   //@}
-
-  private:
-    virtual bool SetSize(PINDEX) override { return true; }
 };
 
 

@@ -332,7 +332,7 @@ class PTimer : public PTimeInterval
        @return
        minimum number of milliseconds per timer "tick".
      */
-    static unsigned Resolution();
+    static float Resolution();
   //@}
 
 
@@ -347,6 +347,9 @@ class PTimer : public PTimeInterval
       public:
         // Create a new timer list
         List();
+
+        // Destroy timer list
+        ~List();
 
         /* Decrement all the created timers and dispatch to their callback
            functions if they have expired. The <code>PTimer::Tick()</code> function
@@ -377,6 +380,7 @@ class PTimer : public PTimeInterval
         typedef std::map<PIdGenerator::Handle, PTimer *> TimerMap;
         TimerMap m_timers;
         PCriticalSection m_timersMutex;
+        bool m_shuttingDown;
 #if PTRACING
         size_t m_highWaterMark;
 #endif

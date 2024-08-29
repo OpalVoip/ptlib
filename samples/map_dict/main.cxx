@@ -22,8 +22,6 @@
 
 using namespace std;
 
-#define NEW_DICTIONARY_ITERATOR 1
-
 /*! \mainpage  map_dictionary 
 
 The purpose of this program is to find out which is faster:
@@ -109,6 +107,8 @@ class Element : public PObject
 {
   PCLASSINFO(Element, PObject);
 
+  PObject * Clone() const { return new Element(*this); }
+
   /*Sopme data held in this class */
   PString m_stuff;
   PINDEX  m_moreStuff;
@@ -187,14 +187,14 @@ class StringDict : public Tester
     mutable Type data;
 
   public:
-    StringDict() { data.DisallowDeleteObjects(); }
+    StringDict() { }
 
     virtual const char * GetName() const { return "String Dictionary"; }
 
     virtual void TestInsert() const
     {
       for (size_t i = 0; i < StringKeys.size(); i++)
-        data.Insert(StringKeys[i], &DataElements[i]);
+        data.SetAt(StringKeys[i], DataElements[i].CloneAs<Element>());
     }
 
     virtual bool TestLookup() const
@@ -204,13 +204,8 @@ class StringDict : public Tester
 
     virtual void TestIterate() const
     {
-#if NEW_DICTIONARY_ITERATOR
       for (Type::iterator it = data.begin(); it != data.end(); ++it)
         DoNothing(it->first, it->second);
-#else
-      for (PINDEX i = 0; i < data.GetSize(); ++i)
-        DoNothing(data.GetKeyAt(i), data.GetDataAt(i));
-#endif
     }
 
     virtual void TestRemove() const
@@ -258,14 +253,14 @@ class IntDict : public Tester
     typedef PDictionary<POrdinalKey, Element> Type;
     mutable Type data;
   public:
-    IntDict() { data.DisallowDeleteObjects(); }
+    IntDict() { }
 
     virtual const char * GetName() const { return "Integer Dictionary"; }
 
     virtual void TestInsert() const
     {
       for (size_t i = 0; i < StringKeys.size(); i++)
-        data.Insert(POrdinalKey(IntKeys[i]), &DataElements[i]);
+        data.SetAt(POrdinalKey(IntKeys[i]), DataElements[i].CloneAs<Element>());
     }
 
     virtual bool TestLookup() const
@@ -275,13 +270,8 @@ class IntDict : public Tester
 
     virtual void TestIterate() const
     {
-#if NEW_DICTIONARY_ITERATOR
       for (Type::iterator it = data.begin(); it != data.end(); ++it)
         DoNothing(it->first, it->second);
-#else
-      for (PINDEX i = 0; i < data.GetSize(); ++i)
-        DoNothing(data.GetKeyAt(i), data.GetDataAt(i));
-#endif
     }
 
     virtual void TestRemove() const
@@ -293,7 +283,7 @@ class IntDict : public Tester
 
 
 /**This is where all the activity happens. This class is launched on
-   program startup, and does timing runs on the map and dictionaries
+   program start up, and does timing runs on the map and dictionaries
    to see which is faster */
 class MapDictionary : public PProcess
 {

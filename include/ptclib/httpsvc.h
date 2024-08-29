@@ -237,6 +237,8 @@ class PConfigPage : public PHTTPConfig
       PHTML & replyMessage          ///< Reply message for post.
     ) override;
 
+    virtual void OnLoadedHTML(PHTTPRequest & request, PHTML & text);
+
   protected:
     virtual bool GetExpirationDate(
       PTime & when          ///< Time that the resource expires

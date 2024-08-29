@@ -176,15 +176,15 @@ class PPluginManager : public PObject
 class PPluginModuleManager : public PObject
 {
   public:
-    typedef PDictionary<PString, PDynaLink> PluginListType;
+    typedef std::unordered_map<PString, PDynaLink> PluginListType;
 
     PPluginModuleManager(const char * signatureFunctionName, PPluginManager * pluginMgr = NULL);
 
     virtual void OnLoadPlugin(PDynaLink & /*dll*/, intptr_t /*code*/)
     { }
 
-    virtual PluginListType GetPluginList() const
-    { return pluginDLLs; }
+    virtual const PluginListType & GetPluginList() const
+    { return m_pluginDLLs; }
 
     virtual void OnStartup()
     { }
@@ -192,12 +192,10 @@ class PPluginModuleManager : public PObject
     { }
 
   protected:
-    PluginListType pluginDLLs;
+    const char *     m_signatureFunctionName;
+    PPluginManager & m_pluginMgr;
+    PluginListType   m_pluginDLLs;
     PDECLARE_NOTIFIER(PDynaLink, PPluginModuleManager, OnLoadModule);
-
-  protected:
-    const char * signatureFunctionName;
-    PPluginManager * pluginMgr;
 };
 
 

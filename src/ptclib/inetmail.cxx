@@ -1499,7 +1499,7 @@ bool PRFC822Channel::MultipartMessage(const PString & boundary)
     writePartHeaders = true;
   }
 
-  boundaries.Prepend(new PString(boundary));
+  boundaries.push_front(new PString(boundary));
   return true;
 }
 
@@ -1518,7 +1518,7 @@ void PRFC822Channel::NextPart(const PString & boundary)
     if (boundaries.front() == boundary)
       break;
     *this << "\n--" << boundaries.front() << "--\n";
-    boundaries.RemoveHead();
+    boundaries.pop_front();
   }
 
   flush();

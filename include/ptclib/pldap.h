@@ -176,7 +176,7 @@ class PLDAPSession : public PObject
         virtual void SetLDAPModVars(struct ldapmod & mod) override;
 
         PStringArray m_values;
-        PBaseArray<const char *> m_pointers;
+        std::vector<const char *> m_pointers;
     };
 
     class BinaryModAttrib : public ModAttrib {
@@ -207,7 +207,7 @@ class PLDAPSession : public PObject
         virtual void SetLDAPModVars(struct ldapmod & mod) override;
 
         PArray<PBYTEArray> m_values;
-        PBaseArray<struct berval *> m_pointers;
+        std::vector <struct berval *> m_pointers;
         PBYTEArray m_bervals;
     };
 

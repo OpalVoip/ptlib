@@ -87,8 +87,8 @@ static void Construct(PGloballyUniqueID::Version version, uint8_t * theArray, co
 
       *(PInt64l *)theArray = timestamp;
 
-      static WORD clockSequence = (WORD)PRandom::Number();
-      static PInt64 lastTimestamp = 0;
+      static uint16_t clockSequence = (uint16_t)PRandom::Number();
+      static int64_t lastTimestamp = 0;
       static PMutex s_mutex(PDebugLocation(__FILE__, __LINE__, "GUID"));
       s_mutex.Wait();
       if (lastTimestamp < timestamp)

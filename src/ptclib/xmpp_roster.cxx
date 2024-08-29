@@ -199,13 +199,10 @@ bool XMPP::Roster::SetItem(Item * item, bool localOnly)
     if (existingItem != NULL)
       m_Items.Remove(existingItem);
 
-    if (m_Items.Append(item)) {
-      m_ItemChangedHandlers(*item, 0);
-      m_RosterChangedHandlers(*this, 0);
-      return true;
-    }
-    else
-      return false;
+    m_Items.Append(item);
+    m_ItemChangedHandlers(*item, 0);
+    m_RosterChangedHandlers(*this, 0);
+    return true;
   }
 
   XMPP::IQ iq(XMPP::IQ::Set);

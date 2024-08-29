@@ -150,7 +150,7 @@ class PXMLRPCBlock : public PXML
     PXMLElement * CreateMember(const PString & name, PXMLElement * value);
 
     PXMLElement * CreateScalar(const PString & str);
-    PXMLElement * CreateScalar(int value);
+    PXMLElement * CreateScalar(long value);
     PXMLElement * CreateScalar(double value);
     PXMLElement * CreateDateAndTime(const PTime & time);
     PXMLElement * CreateBinary(const PBYTEArray & data);
@@ -170,7 +170,7 @@ class PXMLRPCBlock : public PXML
     // helper functions for adding parameters
     void AddParam(PXMLElement * parm);
     void AddParam(const PString & str);
-    void AddParam(int value);
+    void AddParam(long value);
     void AddParam(double value);
     void AddParam(const PTime & time);
     void AddParam(const PXMLRPCStructBase & structData);
@@ -209,8 +209,19 @@ class PXMLRPCVariableBase : public PObject, PNonCopyable
     virtual PINDEX GetSize() const;
     virtual bool SetSize(PINDEX);
 
-    PString ToBase64(PAbstractArray & data) const;
-    void FromBase64(const PString & str, PAbstractArray & data);
+    template <typename T> PString ToBase64(PScalarArray<T> & data) const
+    {
+      return PBase64::Encode(data.GetPointer(), data.GetSize());
+    }
+
+    template <typename T> void FromBase64(const PString & str, PScalarArray<T> & data)
+    {
+      PBase64 decoder;
+      decoder.StartDecoding();
+      decoder.ProcessDecoding(str);
+      data = decoder.GetDecodedData();
+    }
+
 
   protected:
     const char * m_name;
@@ -218,39 +229,91 @@ class PXMLRPCVariableBase : public PObject, PNonCopyable
 };
 
 
-class PXMLRPCArrayBase : public PXMLRPCVariableBase {
+template <class T> class PXMLRPCArrayBase : public PXMLRPCVariableBase {
     PCLASSINFO(PXMLRPCArrayBase, PXMLRPCVariableBase);
   protected:
-    PXMLRPCArrayBase(PContainer & array, const char * name, const char * type);
-    PXMLRPCArrayBase & operator=(const PXMLRPCArrayBase &);
+    PXMLRPCArrayBase(T & array, const char * name, const char * type)
+      : PXMLRPCVariableBase(name, type)
+      , m_array(array)
+    { }
 
   public:
-    virtual void PrintOn(ostream & strm) const override;
-    virtual void Copy(const PXMLRPCVariableBase & other) override;
-    virtual bool IsArray() const override;
-    virtual PINDEX GetSize() const override;
-    virtual bool SetSize(PINDEX) override;
+    virtual void PrintOn(ostream & strm) const override
+    {
+      strm << setfill('\n') << m_array << setfill(' ');
+    }
+
+    virtual void Copy(const PXMLRPCVariableBase & other) override
+    {
+      m_array = dynamic_cast<const PXMLRPCArrayBase &>(other).m_array;
+    }
+
+    virtual bool IsArray() const override
+    {
+      return true;
+    }
+
+    virtual PINDEX GetSize() const override
+    {
+      return m_array.GetSize();
+    }
+
+    virtual bool SetSize(PINDEX sz) override
+    {
+      m_array.SetSize(sz);
+      return true;
+    }
 
   protected:
-    PContainer & m_array;
+    T & m_array;
 };
 
 
-class PXMLRPCArrayObjectsBase : public PXMLRPCArrayBase {
+template <typename T> class PXMLRPCArrayObjectsBase : public PXMLRPCArrayBase<PArray<T>>
+{
     PCLASSINFO(PXMLRPCArrayObjectsBase, PXMLRPCArrayBase);
   protected:
-    PXMLRPCArrayObjectsBase(PArrayObjects & array, const char * name, const char * type);
-    PXMLRPCArrayObjectsBase & operator=(const PXMLRPCArrayObjectsBase &);
+    PXMLRPCArrayObjectsBase(PArray<T> & array, const char * name, const char * type)
+      : PXMLRPCArrayBase<PArray<T>>(array, name, type)
+    { }
+    PXMLRPCArrayObjectsBase & operator=(const PXMLRPCArrayObjectsBase &) = delete;
 
   public:
-    virtual PString ToString(PINDEX i) const override;
-    virtual void FromString(PINDEX i, const PString & str) override;
-    virtual bool SetSize(PINDEX) override;
+    virtual PString ToString(PINDEX i) const override
+    {
+      PStringStream stream;
+      stream << *this->m_array.GetAt(i);
+      return stream;
+    }
 
-    virtual PObject * CreateObject() const = 0;
+    virtual void FromString(PINDEX i, const PString & str) override
+    {
+      auto object = this->m_array.GetAt(i);
+      if (!object)
+        object = this->m_array.SetAt(i, CreateObject());
 
-  protected:
-    PArrayObjects & m_array;
+      PStringStream stream(str);
+      stream >> *object;
+    }
+
+    virtual bool SetSize(PINDEX sz) override
+    {
+      if (!this->m_array.SetSize(sz))
+        return false;
+
+      for (PINDEX i = 0; i < sz; i++) {
+        if (this->m_array.GetAt(i) == NULL) {
+          auto object = CreateObject();
+          if (object == NULL)
+            return false;
+          this->m_array.SetAt(i, object);
+        }
+      }
+
+      return true;
+    }
+
+    virtual T * CreateObject() const = 0;
 };
 
 
@@ -266,7 +329,7 @@ class PXMLRPCStructBase : public PObject, PNonCopyable
 
     PINDEX GetNumVariables() const { return variablesByOrder.GetSize(); }
     PXMLRPCVariableBase & GetVariable(PINDEX idx) const { return variablesByOrder[idx]; }
-    PXMLRPCVariableBase * GetVariable(const char * name) const { return variablesByName.GetAt(name); }
+    auto GetVariable(const char * name) const { return variablesByName.GetAt(name); }
 
     void AddVariable(PXMLRPCVariableBase * var);
     static PXMLRPCStructBase & GetInitialiser();
@@ -379,29 +442,23 @@ class PXMLRPCStructBase : public PObject, PNonCopyable
         PXMLRPC_VARIABLE_CUSTOM(base, type, variable, "struct", ;, \
                     PXMLRPCStructBase * GetStruct(PINDEX) const { return &instance; } )
 
-
-#define PXMLRPC_ARRAY(base, arraytype, basetype, variable, xmltype) \
-        PXMLRPC_ARRAY_CUSTOM(base, arraytype, basetype, variable, xmltype, PXMLRPCArrayObjectsBase, \
-                    PObject * CreateObject() const { return new basetype; })
-
-
 #define PXMLRPC_ARRAY_STRING(base, arraytype, basetype, variable) \
-        PXMLRPC_ARRAY(base, arraytype, basetype, variable, "string")
+        PXMLRPC_ARRAY_CUSTOM(base, arraytype, basetype, variable, "string", PXMLRPCArrayBase<PStringArray>, )
 
 #define PXMLRPC_ARRAY_INTEGER(base, type, variable) \
-        PXMLRPC_ARRAY_CUSTOM(base, PScalarArray<type>, type, variable, "int", PXMLRPCArrayBase, \
+        PXMLRPC_ARRAY_CUSTOM(base, PScalarArray<type>, type, variable, "int", PXMLRPCArrayBase<PScalarArray<type>>, \
                     PString ToString(PINDEX i) const { return PString(instance[i]); } \
                     void FromString(PINDEX i, const PString & str) { instance[i] = (type)str.AsInteger(); })
 
 #define PXMLRPC_ARRAY_DOUBLE(base, type, variable) \
-        PXMLRPC_ARRAY_CUSTOM(base, PScalarArray<type>, type, variable, "double", PXMLRPCArrayBase, \
+        PXMLRPC_ARRAY_CUSTOM(base, PScalarArray<type>, type, variable, "double", PXMLRPCArrayBase<PScalarArray<type>>, \
                     PString ToString(PINDEX i) const { return psprintf("%f", instance[i]); } \
                     void FromString(PINDEX i, const PString & str) { instance[i] = (type)str.AsReal(); })
 
 #define PXMLRPC_ARRAY_STRUCT(base, type, variable) \
-        PXMLRPC_ARRAY_CUSTOM(base, PArray<type>, type, variable, "struct", PXMLRPCArrayObjectsBase, \
+        PXMLRPC_ARRAY_CUSTOM(base, PArray<type>, type, variable, "struct", PXMLRPCArrayObjectsBase<type>, \
                              PXMLRPCStructBase * GetStruct(PINDEX i) const { return &instance[i]; } \
-                             PObject * CreateObject() const { return new type; })
+                             type * CreateObject() const { return new type; })
 
 
 #define PXMLRPC_FUNC_NOARG_NOREPLY(name) \

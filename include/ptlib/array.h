@@ -56,12 +56,13 @@
    \li <code>PLongArray</code>
    \li <code>PDWORDArray</code>
  */
-template <class T> class PBaseArray : public PObject, public std::vector<T>
+template <typename T> class PScalarArray : public PObject, public std::vector<T>
 {
+    PCLASSINFO(PScalarArray, PObject);
+  public:
     typedef T value_type;
     typedef std::vector<value_type> vector_type;
-    PCLASSINFO(PBaseArray, PObject);
-  public:
+
   /**@name Construction */
   //@{
     /**Construct a new dynamic array of elements of the specified type. The
@@ -69,17 +70,24 @@ template <class T> class PBaseArray : public PObject, public std::vector<T>
        logically equivalent to the zero value for the type, though this would
        be very rare.
      */
-    PBaseArray(
+    PScalarArray(
       PINDEX initialSize = 0  ///< Initial number of elements in the array.
     ) : vector_type(initialSize) { }
 
     /**Construct a new dynamic array of elements of the specified type.
      */
-    PBaseArray(
+    PScalarArray(
       T const * buffer,   ///< Pointer to an array of the elements of type \b T.
       PINDEX length       ///< Number of elements pointed to by \p buffer.
     ) : vector_type(buffer, buffer+length) { }
-  //@}
+
+    /**Construct a new dynamic array of elements of the specified type.
+     */
+    PScalarArray(
+      std::initializer_list<T> init  ///< Initial value(s)
+    ) : vector_type(init)
+    { }
+//@}
 
   /**@name Overrides from class PObject */
   //@{
@@ -115,8 +123,8 @@ template <class T> class PBaseArray : public PObject, public std::vector<T>
       const PObject & obj   ///< Object being compared to
     ) const override
     {
-      const PBaseArray & t1 = *this;
-      const PBaseArray & t2 = dynamic_cast<const PBaseArray &>(obj);
+      const PScalarArray & t1 = *this;
+      const PScalarArray & t2 = dynamic_cast<const PScalarArray &>(obj);
       const auto & it1 = t1.begin();
       const auto & it2 = t2.begin();
       while (it1 != t1.end() && it2 != t2.end()) {
@@ -134,52 +142,23 @@ template <class T> class PBaseArray : public PObject, public std::vector<T>
 
     virtual PObject * Clone() const override
     {
-      return PNEW PBaseArray(*this);
-    }
-
-    /// Print the array
-    virtual void PrintOn(
-      ostream & strm ///< Stream to output to.
-    ) const override
-    {
-      for (const auto & it : *this)
-        strm << it;
-    }
-    /// Read the array
-    virtual void ReadFrom(
-      istream & strm   ///< Stream to read the objects contents from.
-    ) override
-    {
-      for (size_t index = 0; ;++index) {
-        T v;
-        strm >> v;
-        if (strm.fail())
-          break;
-        this->SetAt(index, v);
-      }
+      return PNEW PScalarArray(*this);
     }
   //@}
 
   /**@name New functions for class */
   //@{
-    PINDEX GetSize() const
-    {
-      return this->size();
-    }
-
-    bool SetSize(PINDEX newSize)
-    {
-      this->resize(newSize);
-      return true;
-    }
+    bool IsEmpty() const { return this->empty(); }
+    PINDEX GetSize() const { return this->size(); }
+    PINDEX GetLength() const { return this->size(); }
+    virtual bool SetSize(PINDEX newSize) { this->resize(newSize); return true; }
 
     bool SetMinSize(PINDEX newSize)
     {
-      if (this->GetSize() < newSize)
-        this->SetSize(newSize);
+      if (this->size() < newSize)
+        this->resize(newSize);
+      return true;
     }
-
-    bool IsEmpty() const { return this->m_collection.empty(); }
 
     /**Set the specific element in the array. The array will automatically
        expand, if necessary, to fit the new element in.
@@ -261,19 +240,55 @@ template <class T> class PBaseArray : public PObject, public std::vector<T>
        @return
        <code>true</code> if the memory allocation succeeded.
      */
-    bool Concatenate(
-      const PBaseArray & array  ///< Other array to concatenate
+    void Concatenate(
+      const PScalarArray & array  ///< Other array to concatenate
     ) {
-      return this->insert(this->end(), array.begin(), array.end());
+      this->insert(this->end(), array.begin(), array.end());
+    }
+    void Concatenate(
+      const T * data,  ///< Other array to concatenate
+      const PINDEX length
+    )
+    {
+      this->insert(this->end(), data, data+length);
     }
   //@}
 };
 
-/// Array of characters.
-class PCharArray : public PBaseArray<char>
+template <class T> class PScalarArrayWithPrint : public PScalarArray<T>
 {
-    typedef PBaseArray<char> ParentClass;
-    PCLASSINFO(PCharArray, ParentClass);
+public:
+  typedef PScalarArray<T> base_type;
+  PScalarArrayWithPrint(PINDEX initialSize = 0) : base_type(initialSize) { }
+  PScalarArrayWithPrint(T const * buffer, PINDEX length) : base_type(buffer, length) { }
+  PScalarArrayWithPrint(std::initializer_list<T> init) : base_type(init) { }
+
+  /// Print the array
+  virtual void PrintOn(ostream & strm) const override
+  {
+    for (const auto it : *this)
+      strm << it;
+  }
+
+  /// Read the array
+  virtual void ReadFrom(istream & strm) override
+  {
+    for (;;) {
+      T v;
+      strm >> v;
+      if (strm.fail())
+        break;
+      this->push_back(v);
+    }
+  }
+};
+
+
+/// Array of characters.
+class PCharArray : public PScalarArray<char>
+{
+    typedef PScalarArray<char> base_type;
+    PCLASSINFO(PCharArray, base_type);
   public:
   /**@name Construction */
   //@{
@@ -282,14 +297,14 @@ class PCharArray : public PBaseArray<char>
      */
     PCharArray(
       PINDEX initialSize = 0  ///< Initial number of elements in the array.
-    ) : ParentClass(initialSize) { }
+    ) : base_type(initialSize) { }
 
     /**Construct a new dynamic array of char.
      */
     PCharArray(
       char const * buffer,   ///< Pointer to an array of chars.
       PINDEX length       ///< Number of elements pointed to by \p buffer.
-    ) : ParentClass(buffer, length) { }
+    ) : base_type(buffer, length) { }
   //@}
 
   /**@name Overrides from class PObject */
@@ -306,19 +321,19 @@ class PCharArray : public PBaseArray<char>
 };
 
 /// Array of short integers.
-typedef PBaseArray<short> PShortArray;
+typedef PScalarArrayWithPrint<short> PShortArray;
 
 /// Array of integers.
-typedef PBaseArray<int> PIntArray;
+typedef PScalarArrayWithPrint<int> PIntArray;
 
 /// Array of long integers.
-typedef PBaseArray<long> PLongArray;
+typedef PScalarArrayWithPrint<long> PLongArray;
 
 /// Array of unsigned characters.
-class PBYTEArray : public PBaseArray<uint8_t>
+class PBYTEArray : public PScalarArray<uint8_t>
 {
-    typedef PBaseArray<uint8_t> ParentClass;
-    PCLASSINFO(PCharArray, ParentClass);
+    typedef PScalarArray<uint8_t> base_type;
+    PCLASSINFO(PCharArray, base_type);
   public:
   /**@name Construction */
   //@{
@@ -327,20 +342,20 @@ class PBYTEArray : public PBaseArray<uint8_t>
      */
     PBYTEArray(
       PINDEX initialSize = 0  ///< Initial number of elements in the array.
-    ) : ParentClass(initialSize) { }
+    ) : base_type(initialSize) { }
 
     /**Construct a new dynamic array of unsigned chars.
      */
     PBYTEArray(
       uint8_t const * buffer,   ///< Pointer to an array of BYTEs.
       PINDEX length       ///< Number of elements pointed to by \p buffer.
-    ) : ParentClass(buffer, length) { }
+    ) : base_type(buffer, length) { }
 
     /**Construct a new dynamic array of unsigned chars.
      */
     PBYTEArray(
       const std::string & str  ///< String to copy to BYTE array
-    ) : ParentClass(reinterpret_cast<const BYTE *>(str.data()), str.length()) { }
+    ) : base_type(reinterpret_cast<const BYTE *>(str.data()), str.length()) { }
   //@}
 
   /**@name Overrides from class PObject */
@@ -381,38 +396,73 @@ class PBYTEArray : public PBaseArray<uint8_t>
 };
 
 
+class PBYTEView : public PObject, public std::span<const uint8_t>
+{
+    typedef std::span<const uint8_t> span_type;
+    PCLASSINFO(PBYTEView, PObject)
+  public:
+    PBYTEView() : span_type() { }
+    PBYTEView(const uint8_t * data, PINDEX length)
+      : span_type(data, length)
+    { }
+    PBYTEView(const PBYTEArray & bytes)
+      : span_type(bytes.data(), bytes.size())
+    { }
+
+    PINDEX GetSize() const { return size(); }
+    PINDEX GetLength() const { return size(); }
+    PINDEX IsEmpty() const { return empty(); }
+    const uint8_t * GetPointer() const { return data(); }
+    operator const uint8_t * () const { return data(); }
+
+    void Attach(const uint8_t * data, PINDEX length)
+    {
+      *this = PBYTEView(data, length);
+    }
+
+    virtual void PrintOn(ostream & strm) const override;
+
+      /**Function to cast block of memory in PBYTEArray to another structure.
+        */
+    template <typename T> const T & GetAs(PINDEX offset = 0) const
+    {
+      PAssert(offset+(PINDEX)sizeof(T) <= GetSize(), PInvalidParameter);
+      return *(const T *)(data()+offset);
+    }
+};
+
+
 /**Helper class for outputting a block of memory in hex
   */
-class PHexDump : public PObject, public std::span<uint8_t>
+class PHexDump : public PBYTEView
 {
-  typedef std::span<uint8_t> ParentClass;
-  PCLASSINFO(PHexDump, PObject)
-public:
-  PHexDump(const void * data, size_t length, bool compact = true)
-    : ParentClass(const_cast<uint8_t*>(static_cast<const uint8_t *>(data)), length)
-    , m_compact(compact)
-  { }
+    PCLASSINFO(PHexDump, PBYTEView)
+  public:
+    PHexDump(const void * data, size_t length, bool compact = true)
+      : PBYTEView(static_cast<const uint8_t *>(data), length)
+      , m_compact(compact)
+    { }
 
-  explicit PHexDump(const PBYTEArray & data, bool compact = true)
-    : ParentClass(const_cast<uint8_t *>(data.data()), data.size())
-    , m_compact(compact)
-  { }
+    explicit PHexDump(const PBYTEArray & data, bool compact = true)
+      : PBYTEView(data)
+      , m_compact(compact)
+    { }
 
-  virtual void PrintOn(ostream & strm) const override;
+    virtual void PrintOn(ostream & strm) const override;
 
-protected:
-  bool m_compact;
+  protected:
+    bool m_compact;
 };
 
 
 /// Array of unsigned short integers.
-typedef PBaseArray<uint16_t> PWORDArray;
+typedef PScalarArrayWithPrint<uint16_t> PWORDArray;
 
 /// Array of unsigned integers.
-typedef PBaseArray<unsigned> PUnsignedArray;
+typedef PScalarArrayWithPrint<unsigned> PUnsignedArray;
 
 /// Array of unsigned long integers.
-typedef PBaseArray<uint32_t> PDWORDArray;
+typedef PScalarArrayWithPrint<uint32_t> PDWORDArray;
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -446,7 +496,7 @@ template <class T> class PArray : public PCollection<T, std::vector<std::shared_
        Note that by default, objects placed into the list will be deleted when
        removed or when all references to the list are destroyed.
      */
-    PINLINE PArray(
+    __inline PArray(
       PINDEX initialSize = 0  ///< Initial number of objects in the array.
     )
     {
@@ -491,6 +541,12 @@ template <class T> class PArray : public PCollection<T, std::vector<std::shared_
     )
     {
       this->m_collection.emplace_back(pointer_type(obj));
+    }
+    virtual void Append(
+      pointer_type obj   ///< New object to place into the collection.
+    )
+    {
+      this->m_collection.emplace_back(obj);
     }
 
     /**Insert a new object immediately before the specified object. If the
@@ -552,6 +608,22 @@ template <class T> class PArray : public PCollection<T, std::vector<std::shared_
       return index;
     }
 
+    /**Remove the specific object from the collection.
+       All objects are shifted down to fill the vacated position.
+     */
+    virtual void Remove(
+      value_type * obj  ///< Object to remove
+    )
+    {
+      auto & c = this->m_collection;
+      for (auto it = c.begin(); it != c.end(); ++it) {
+        if (it->get() == obj) {
+          c.erase(it);
+          break;
+        }
+      }
+    }
+
     /**Remove the object at the specified ordinal index from the collection.
        All objects are shifted down to fill the vacated position.
 
@@ -572,7 +644,7 @@ template <class T> class PArray : public PCollection<T, std::vector<std::shared_
        @return
        <code>true</code> if the object was successfully added.
      */
-    virtual bool SetAt(
+    virtual pointer_type SetAt(
       PINDEX index,   ///< Index position in collection to set.
       value_type * val   ///< New value to place into the collection.
     )
@@ -580,7 +652,20 @@ template <class T> class PArray : public PCollection<T, std::vector<std::shared_
       auto & c = this->m_collection;
       if (index >= c.size())
         c.resize(index+1);
-      c[index].reset(val);
+      auto & p = c[index];
+      p.reset(val);
+      return p;
+    }
+
+    virtual void SetAt(
+      PINDEX index,   ///< Index position in collection to set.
+      pointer_type val   ///< New value to place into the collection.
+    )
+    {
+      auto & c = this->m_collection;
+      if (index >= c.size())
+        c.resize(index+1);
+      c[index] = val;
     }
 
     /**Get the object at the specified ordinal position. If the index was
@@ -589,11 +674,11 @@ template <class T> class PArray : public PCollection<T, std::vector<std::shared_
        @return
        Pointer to object at the specified index.
      */
-    virtual value_type * GetAt(
+    virtual pointer_type GetAt(
       PINDEX index  ///< Index position in the collection of the object.
-    )
+    ) const
     {
-      return this->m_collection[index].get();
+      return this->m_collection[index];
     }
 
     /**Retrieve a reference  to the object in the array. If there was not an
@@ -606,8 +691,8 @@ template <class T> class PArray : public PCollection<T, std::vector<std::shared_
     T & operator[](
       PINDEX index  ///< Index position in the collection of the object.
     ) const {
-      auto * obj = this->GetAt(index);
-      if (obj != NULL)
+      auto obj = this->GetAt(index);
+      if (obj)
         return *obj;
       PAssertAlways(PInvalidArrayElement);
       std::abort();

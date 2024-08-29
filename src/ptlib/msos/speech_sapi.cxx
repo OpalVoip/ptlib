@@ -649,7 +649,7 @@ class PSpeechRecognition_SAPI : public PSpeechRecognition, protected PSpStreamFo
             if (PCOM_SUCCEEDED(pResult->GetPhrase, (&pPhrase))) {
               WCHAR * pwszText;
               pResult->GetText((ULONG)SP_GETWHOLEPHRASE, (ULONG)SP_GETWHOLEPHRASE, FALSE, &pwszText, NULL);
-              if (!m_notifier.IsNULL())
+              if (!!m_notifier)
                 m_notifier(*this, Transcript(true, PTimer::Tick(), pwszText, 1));
               CoTaskMemFree(pwszText);
             }

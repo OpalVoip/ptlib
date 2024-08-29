@@ -58,13 +58,13 @@ class PKey : public PObject
   //@{
     /** Create a new key for ordinal index values.
      */
-    PINLINE PKey(
+    __inline PKey(
       value_type newKey = 0   ///< Ordinal index value to use as a key.
     ) : m_key(newKey) { }
 
     /**Operator to assign the ordinal.
       */
-    PINLINE PKey & operator=(value_type newKey)
+    __inline PKey & operator=(value_type newKey)
     { this->m_key = newKey; return *this; }
   //@}
 
@@ -115,31 +115,31 @@ class PKey : public PObject
   //@{
     /** Operator so that a PKey can be used as a PINDEX value.
      */
-    PINLINE operator value_type() const  { return this->m_key; }
+    __inline operator value_type() const  { return this->m_key; }
 
     /**Operator to pre-increment the ordinal.
       */
-    PINLINE value_type operator++() { return ++this->m_key; }
+    __inline value_type operator++() { return ++this->m_key; }
 
     /**Operator to post-increment the ordinal.
       */
-    PINLINE value_type operator++(int) { return this->m_key++; }
+    __inline value_type operator++(int) { return this->m_key++; }
 
     /**Operator to pre-decrement the ordinal.
       */
-    PINLINE value_type operator--() { return --this->m_key; }
+    __inline value_type operator--() { return --this->m_key; }
 
     /**Operator to post-decrement the ordinal.
       */
-    PINLINE value_type operator--(int) { return this->m_key--; }
+    __inline value_type operator--(int) { return this->m_key--; }
 
     /**Operator to add the ordinal.
       */
-    PINLINE PKey & operator+=(value_type add) { this->m_key += add; return *this; }
+    __inline PKey & operator+=(value_type add) { this->m_key += add; return *this; }
 
     /**Operator to subtract from the ordinal.
       */
-    PINLINE PKey & operator-=(value_type minus) { this->m_key -= minus; return *this; }
+    __inline PKey & operator-=(value_type minus) { this->m_key -= minus; return *this; }
   //@}
 
   private:
@@ -151,13 +151,15 @@ typedef PKey<PINDEX> POrdinalKey;
 
 //////////////////////////////////////////////////////////////////////////////
 
+template <class T> using PSetBase = std::unordered_set<std::shared_ptr<T>, std::hash<std::shared_ptr<PObject>>>;
+
 /** Abstract set of PObjects.
  */
-template <class T> class PSet : public PCollection<T, std::unordered_set<std::shared_ptr<T>>>
+template <class T> class PSet : public PCollection<T, PSetBase<T>>
 {
     typedef T value_type;
     typedef std::shared_ptr<value_type> pointer_type;
-    typedef std::unordered_set<pointer_type> set_type;
+    typedef PSetBase<value_type> set_type;
     typedef PCollection<value_type, set_type> base_type;
     PCLASSINFO(PSet, base_type);
   public:
@@ -168,7 +170,7 @@ template <class T> class PSet : public PCollection<T, std::unordered_set<std::sh
        Note that by default, objects placed into the list will be deleted when
        removed or when all references to the list are destroyed.
      */
-    PINLINE PSet() { }
+    __inline PSet() { }
   //@}
 
   /**@name Overrides from class PObject */
@@ -240,7 +242,11 @@ template <class T> class PSet : public PCollection<T, std::unordered_set<std::sh
      */
     PSet & operator-=(
       const value_type & obj   // New object to exclude in the set.
-    ) { this->m_collection.erase(this->m_collection.find(obj)); return *this; }
+      )
+    {
+      this->m_collection.erase(this->m_collection.find(pointer_type(const_cast<value_type *>(&obj))));
+      return *this;
+    }
 
     /**Determine if the value of the object is contained in the set. The
        object values are compared, not the pointers.  So the objects in the
@@ -252,7 +258,10 @@ template <class T> class PSet : public PCollection<T, std::unordered_set<std::sh
      */
     bool Contains(
       const value_type & key  ///< Key to look for in the set.
-    ) const { return this->m_collection.contains(key); }
+    ) const
+    {
+      return this->m_collection.contains(pointer_type(const_cast<value_type *>(&key)));
+    }
 
     /**Determine if the value of the object is contained in the set. The
        object values are compared, not the pointers.  So the objects in the
@@ -306,7 +315,7 @@ template <typename K, class D> class PDictionary : public PObject
        Note that by default, objects placed into the dictionary will be deleted
        when removed or when all references to the dictionary are destroyed.
      */
-    PINLINE PDictionary() { }
+    __inline PDictionary() { }
   //@}
 
   /**@name Overrides from class PObject */
@@ -350,6 +359,12 @@ template <typename K, class D> class PDictionary : public PObject
 
   /**@name New functions for class */
   //@{
+    bool IsEmpty() const { return this->m_map.empty(); }
+    bool empty() const { return this->m_map.empty(); }
+
+    PINDEX GetSize() const { return this->m_map.size(); }
+    size_t size() const { return this->m_map.size(); }
+
     /**Add a new object to the collection. If the objects value is already in
        the dictionary then the object is overrides the previous value.
 
@@ -360,12 +375,25 @@ template <typename K, class D> class PDictionary : public PObject
        @return
        true if the object was successfully added.
      */
-    virtual data_type * SetAt(
+    virtual pointer_type SetAt(
       const key_type & key,  ///< Key for position in dictionary to add object.
       data_type * obj         ///< New object to put into the dictionary.
     )
     {
-      this->m_map.emplace(key, obj);
+      auto result = this->m_map.emplace(key, obj);
+      if (!result.second)
+        result.first->second.reset(obj);
+      return result.first->second;
+    }
+    virtual pointer_type SetAt(
+      const key_type & key,  ///< Key for position in dictionary to add object.
+      pointer_type obj         ///< New object to put into the dictionary.
+    )
+    {
+      auto result = this->m_map.emplace(key, obj);
+      if (!result.second)
+        result.first->second = obj;
+      return result.first->second;
     }
 
     /**Get the object at the specified key position. If the key was not in the
@@ -374,13 +402,13 @@ template <typename K, class D> class PDictionary : public PObject
        @return
        pointer to object at the specified key.
      */
-    virtual data_type * GetAt(
+    virtual pointer_type GetAt(
       const key_type & key   ///< Key for position in dictionary to get object.
     ) const
     {
       const auto & m = this->m_map;
       const auto it = m.find(key);
-      return it != m.end() ? it->second.get() : nullptr;
+      return it != m.end() ? it->second : nullptr;
     }
 
     /**Get the object contained in the dictionary at the \p key
@@ -435,16 +463,22 @@ template <typename K, class D> class PDictionary : public PObject
     {
       this->m_map.erase(key);
     }
+    void erase(const K & key) { this->RemoveAt(key); }
+
+    void RemoveAll()
+    {
+      this->m_map.clear();
+    }
 
 /**Get an array containing all the keys for the dictionary.
       */
-    virtual void GetKeys(
-      std::vector<K> & keys
-    ) const
+    virtual std::vector<K> GetKeys() const
     {
+      std::vector<K> keys;
       keys.reserve(this->m_map.size());
       for (const auto & it : this->m_map)
         keys.push_back(it.first);
+      return keys;
     }
   //@}
 

@@ -395,14 +395,14 @@ bool PEthSocket::Frame::Read(PChannel & channel, PINDEX packetSize)
 }
 
 
-int PEthSocket::Frame::GetDataLink(PBYTEArray & payload)
+int PEthSocket::Frame::GetDataLink(Payload & payload)
 {
   Address src, dst;
   return GetDataLink(payload, src, dst);
 }
 
 
-int PEthSocket::Frame::GetDataLink(PBYTEArray & payload, Address & src, Address & dst)
+int PEthSocket::Frame::GetDataLink(Payload & payload, Address & src, Address & dst)
 {
   if (m_dataLinkType == 113) {
     const PCookedFrameHeader & header = m_rawData.GetAs<PCookedFrameHeader>();
@@ -494,14 +494,14 @@ uint8_t * PEthSocket::Frame::CreateDataLink(const Address & src, const Address &
 }
 
 
-int PEthSocket::Frame::GetIP(PBYTEArray & payload)
+int PEthSocket::Frame::GetIP(Payload & payload)
 {
   PIPSocket::Address src, dst;
   return GetIP(payload, src, dst);
 }
 
 
-int PEthSocket::Frame::GetIP(PBYTEArray & payload, PIPSocket::Address & src, PIPSocket::Address & dst)
+int PEthSocket::Frame::GetIP(Payload & payload, PIPSocket::Address & src, PIPSocket::Address & dst)
 {
   // Already processed this frame as an IP fragment
   if (m_fragmentProcessed) {
@@ -514,7 +514,7 @@ int PEthSocket::Frame::GetIP(PBYTEArray & payload, PIPSocket::Address & src, PIP
     return -1;
   }
 
-  PBYTEArray ip;
+  Payload ip;
   if (GetDataLink(ip) != 0x800) // IPv4
     return -1;
 
@@ -571,7 +571,7 @@ int PEthSocket::Frame::GetIP(PBYTEArray & payload, PIPSocket::Address & src, PIP
     m_fragmentDstIP = dst;
   }
 
-  m_fragments.Concatenate(payload);
+  m_fragments.Concatenate(payload.data(), payload.size());
   m_fragmentProcessed = true;
 
   if (isFragment)
@@ -588,7 +588,7 @@ uint8_t * PEthSocket::Frame::CreateIP(const PIPSocket::Address & src, const PIPS
 {
   length += 20;
 
-  PBYTEArray dummy;
+  Payload dummy;
   Address srcMac, dstMac;
   if ((size_t)m_rawSize > sizeof(PEthSocket::Address)*2)
     GetDataLink(dummy, srcMac, dstMac);
@@ -603,7 +603,7 @@ uint8_t * PEthSocket::Frame::CreateIP(const PIPSocket::Address & src, const PIPS
 }
 
 
-bool PEthSocket::Frame::GetUDP(PBYTEArray & payload, uint16_t & srcPort, uint16_t & dstPort)
+bool PEthSocket::Frame::GetUDP(Payload & payload, uint16_t & srcPort, uint16_t & dstPort)
 {
   PIPSocketAddressAndPort src, dst;
   if (!GetUDP(payload, src, dst))
@@ -615,9 +615,9 @@ bool PEthSocket::Frame::GetUDP(PBYTEArray & payload, uint16_t & srcPort, uint16_
 }
 
 
-bool PEthSocket::Frame::GetUDP(PBYTEArray & payload, PIPSocketAddressAndPort & src, PIPSocketAddressAndPort & dst)
+bool PEthSocket::Frame::GetUDP(Payload & payload, PIPSocketAddressAndPort & src, PIPSocketAddressAndPort & dst)
 {
-  PBYTEArray udp;
+  Payload udp;
   PIPSocket::Address srcIP, dstIP;
   if (GetIP(udp, srcIP, dstIP) != 0x11)
     return false;
@@ -652,7 +652,7 @@ uint8_t * PEthSocket::Frame::CreateUDP(const PIPSocketAddressAndPort & src, cons
 }
 
 
-bool PEthSocket::Frame::GetTCP(PBYTEArray & payload, uint16_t & srcPort, uint16_t & dstPort)
+bool PEthSocket::Frame::GetTCP(Payload & payload, uint16_t & srcPort, uint16_t & dstPort)
 {
   PIPSocketAddressAndPort src, dst;
   if (!GetTCP(payload, src, dst))
@@ -664,9 +664,9 @@ bool PEthSocket::Frame::GetTCP(PBYTEArray & payload, uint16_t & srcPort, uint16_
 }
 
 
-bool PEthSocket::Frame::GetTCP(PBYTEArray & payload, PIPSocketAddressAndPort & src, PIPSocketAddressAndPort & dst)
+bool PEthSocket::Frame::GetTCP(Payload & payload, PIPSocketAddressAndPort & src, PIPSocketAddressAndPort & dst)
 {
-  PBYTEArray tcp;
+  Payload tcp;
   PIPSocket::Address srcIP, dstIP;
   if (GetIP(tcp, srcIP, dstIP) != 6)
     return false;

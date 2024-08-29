@@ -259,7 +259,6 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\ptlib\msos\PTLib_2022.vcxproj">
       <Project>{85f4f26a-1a5d-4685-a48a-448102c5c5bc}</Project>
-      <LinkLibraryDependencies>true</LinkLibraryDependencies>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

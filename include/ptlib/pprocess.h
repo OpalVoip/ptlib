@@ -179,7 +179,7 @@ class PProcess : public PThread
       PThread & thread
     );
 
-    /**Callback for when a thread is ended if wqas started in the PTLib system.
+    /**Callback for when a thread is ended and was started in the PTLib system.
        Note this is called in the context of the old thread.
       */
     virtual void OnThreadEnded(
@@ -191,7 +191,7 @@ class PProcess : public PThread
 
        Note this function is called asynchronously and there may be many
        limitations on what can and cannot be done depending on the underlying
-       operating system. It is recommeneded that this does no more than set
+       operating system. It is recommended that this does no more than set
        flags and return.
 
        Default behaviour returns false and the process is killed.
@@ -213,7 +213,7 @@ class PProcess : public PThread
     /**Set the termination value for the process.
     
        The termination value is an operating system dependent integer which
-       indicates the processes termiantion value. It can be considered a
+       indicates the processes termination value. It can be considered a
        "return value" for an entire programme.
      */
     void SetTerminationValue(
@@ -223,7 +223,7 @@ class PProcess : public PThread
     /**Get the termination value for the process.
     
        The termination value is an operating system dependent integer which
-       indicates the processes termiantion value. It can be considered a
+       indicates the processes termination value. It can be considered a
        "return value" for an entire programme.
        
        @return
@@ -246,7 +246,7 @@ class PProcess : public PThread
        The default for this information is the empty string.
     
        @return
-       string for the manufacturer name eg "Equivalence".
+       string for the manufacturer name e.g. "Equivalence".
      */
     virtual const PString & GetManufacturer() const;
 
@@ -257,7 +257,7 @@ class PProcess : public PThread
        The default is the title part of the executable image file.
 
        @return
-       string for the process name eg "MyApp".
+       string for the process name e.g. "MyApp".
      */
     virtual const PString & GetName() const;
 
@@ -266,14 +266,14 @@ class PProcess : public PThread
        information as used by the <code>PConfig</code> class.
 
        If the <code>full</code> parameter is true then a version string
-       built from the major, minor, status and build veriosn codes is
+       built from the major, minor, status and build version codes is
        returned. If false then only the major and minor versions are
        returned.
 
        The default for this information is "1.0".
     
        @return
-       string for the version eg "1.0b3".
+       string for the version e.g. "1.0b3".
      */
     virtual PString GetVersion(
       bool full = true ///< true for full version, false for short version.
@@ -295,7 +295,7 @@ class PProcess : public PThread
      */
     PProcessIdentifier GetProcessID() const { return m_processID; }
 
-    /**Get the platform dependent process identifier for the currentprocess.
+    /**Get the platform dependent process identifier for the current process.
        This is an arbitrary (and unique) integer attached to a process by the
        operating system.
 
@@ -312,7 +312,7 @@ class PProcess : public PThread
     */
     PTime GetStartTime() const;
 
-    // Memory usage informatiom. All values are in bytes.
+    // Memory usage information. All values are in bytes.
     struct MemoryUsage {
       MemoryUsage()
         : m_virtual(0)
@@ -326,14 +326,14 @@ class PProcess : public PThread
 
       uint64_t m_virtual;   ///< Virtual memory used by process
       uint64_t m_resident;  ///< Resident memory used by process
-      uint64_t m_max;       ///< Maxmimum memory used in heap
+      uint64_t m_max;       ///< Maximum memory used in heap
       uint64_t m_current;   ///< Current memory used in heap
       uint64_t m_blocks;    ///< Number of mapped regions
       uint64_t m_total;     ///< Total physical memory in system
       uint64_t m_available; ///< Available physical memory in system
     };
 
-    /**Get process memory suage.
+    /**Get process memory usage.
       */
     void GetMemoryUsage(
       MemoryUsage & usage
@@ -368,17 +368,17 @@ class PProcess : public PThread
        This is a platform dependent string only provided by platforms that are
        multi-user.
 
-       For unix systems if the username may consist exclusively of digits and
+       For Unix systems if the username may consist exclusively of digits and
        there is no actual username consisting of that string then the numeric
        uid value is used. For example "0" is the superuser. For the rare
-       occassions where the users name is the same as their uid, if the
+       occasions where the users name is the same as their uid, if the
        username field starts with a '#' then the numeric form is forced.
 
        If an empty string is provided then original user that executed the
        process in the first place (the real user) is set as the effective user.
 
        The permanent flag indicates that the user will not be able to simple
-       change back to the original user as indicated above, ie for unix
+       change back to the original user as indicated above, ie for Unix
        systems setuid() is used instead of seteuid(). This is not necessarily
        meaningful for all platforms.
 
@@ -392,7 +392,7 @@ class PProcess : public PThread
     );
 
     /**Get the "home" directory for the logged in user.
-       This checke dthe environment variable HOME first, and if not set tries
+       This checks the environment variable HOME first, and if not set tries
        to determine the home directory in a platform dependent manner.
       */
     PDirectory GetHomeDirectory() const;
@@ -411,10 +411,10 @@ class PProcess : public PThread
        This is a platform dependent string only provided by platforms that are
        multi-user.
 
-       For unix systems if the groupname may consist exclusively of digits and
+       For Unix systems if the groupname may consist exclusively of digits and
        there is no actual groupname consisting of that string then the numeric
        uid value is used. For example "0" is the superuser. For the rare
-       occassions where the groups name is the same as their uid, if the
+       occasions where the groups name is the same as their uid, if the
        groupname field starts with a '#' then the numeric form is forced.
 
        If an empty string is provided then original group that executed the
@@ -422,7 +422,7 @@ class PProcess : public PThread
        group.
 
        The permanent flag indicates that the group will not be able to simply
-       change back to the original group as indicated above, ie for unix
+       change back to the original group as indicated above, ie for Unix
        systems setgid() is used instead of setegid(). This is not necessarily
        meaningful for all platforms.
 
@@ -445,13 +445,13 @@ class PProcess : public PThread
     int GetMaxHandles() const;
 
     /**Set the maximum number of file handles for the process.
-       For unix systems the user must be run with the approriate privileges
+       For unix systems the user must be run with the appropriate privileges
        before this function can set the value above the system limit.
 
        For some platforms this is meaningless.
 
        @return
-       true if successfully set the maximum file hadles.
+       true if successfully set the maximum file handles.
       */
     bool SetMaxHandles(
       int newLimit  ///< New limit on file handles
@@ -473,7 +473,7 @@ class PProcess : public PThread
        this function only sets the internal variable.
 
        Note for Windows, a path beginning with "HKEY_LOCAL_MACHINE\\" or
-       "HKEY_CURRENT_USER\\" will actually search teh system registry for the
+       "HKEY_CURRENT_USER\\" will actually search the system registry for the
        application base name only (no ".ini") in that folder of the registry.
       */
     void SetConfigurationPath(
@@ -518,7 +518,7 @@ class PProcess : public PThread
     /**See if operating system is later than the version specified.
 
        @return
-       true if OS version leter than or equal to parameters.
+       true if OS version less than or equal to parameters.
      */
     static bool IsOSVersion(
       unsigned major,     ///< Major version number
@@ -612,7 +612,7 @@ class PProcess : public PThread
 
         This will check to see if the URL types sip, h323, sips and h323s are registered
         with the operating system to launch the current application. If they are not, it
-        will rewrite the system configuraton so that they will.
+        will rewrite the system configuration so that they will.
 
         For more information on the Windows implementation, see the following link:
 
@@ -672,7 +672,7 @@ class PProcess : public PThread
     PArgList     m_arguments;           // The list of arguments
     int          m_maxHandles;          // Maximum number of file handles process can open.
 
-    PTime m_programStartTime;           // time at which process was intantiated, i.e. started
+    PTime m_programStartTime;           // time at which process was instantiated, i.e. started
 
     atomic<bool> m_shuttingDown;
 
@@ -685,13 +685,13 @@ class PProcess : public PThread
     void InternalThreadStarted(PThread * thread);
     void InternalThreadEnded(PThread * thread);
 
-    atomic<bool>   m_keepingHouse;
-    PThread      * m_houseKeeper; // Thread for doing timers, thread clean up etc.
-    PSyncPoint     m_signalHouseKeeper;
+    atomic<bool>             m_keepingHouse;
+    std::unique_ptr<PThread> m_houseKeeper; // Thread for doing timers, thread clean up etc.
+    PSyncPoint               m_signalHouseKeeper;
     void HouseKeeping();
 
 #if P_TIMERS
-    PTimer::List * m_timerList;
+    std::unique_ptr<PTimer::List> m_timerList;
     friend PTimer::List * PTimer::TimerList();
 #endif
 
@@ -711,7 +711,7 @@ class PProcess : public PThread
 #if PTRACING
     PDECLARE_NOTIFIER(PTimer, PProcess, ProfileUpdateLogTimer) { PTRACE(3, "PTLibProfile", *this); }
     void PrintProfileOn(ostream & strm);
-    PTimer         * m_profileProcessTimer;
+    std::unique_ptr<PTimer> m_profileProcessTimer;
     PCriticalSection m_profileProcessMutex;
     Times            m_profileLastProcessTimes;
     std::set<Times>  m_profileLastThreadTimes;

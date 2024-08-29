@@ -399,18 +399,16 @@ public:
       return v8::Local<v8::Object>();
     }
 
-    for (PINDEX i = 0; i < tokens.GetSize(); ++i) {
-      PString element = tokens[i];
+    for (auto it = tokens.begin(); it != tokens.end(); ++it) {
+      PString element = *it;
       PINDEX start = element.Find('[');
       if (start != P_MAX_INDEX) {
         PINDEX end = element.Find(']', start + 1);
         if (end != P_MAX_INDEX) {
-          tokens[i] = element(0, start - 1);
-          tokens.InsertAt(++i, new PString(element(start, end - 1)));
-          if (end < element.GetLength() - 1) {
-            i++;
-            tokens.InsertAt(i, new PString(element(end + 1, P_MAX_INDEX)));
-          }
+          *it = element(0, start - 1);
+          tokens.insert(++it, new PString(element(start, end - 1)));
+          if (end < element.GetLength() - 1)
+            tokens.insert(++it, new PString(element(end + 1, P_MAX_INDEX)));
         }
       }
     }
@@ -960,7 +958,7 @@ PScriptLanguage::VarTypes PJavaScript::GetVarType(const PString & name)
 bool PJavaScript::GetVar(const PString & name, PVarType & var)
 {
   PWaitAndSignal mutex(m_mutex);
-  for (PStringList::iterator it = m_scopeChain.rbegin(); it != m_scopeChain.rend(); --it) {
+  for (auto it = m_scopeChain.rbegin(); it != m_scopeChain.rend(); --it) {
     if (m_private->GetVar(PSTRSTRM(*it << '.' << name), var, false))
       return true;
   }

@@ -248,7 +248,7 @@ PString * PSimpleScript::InternalFindVar(const PString & varName) const
   }
 
   PString * value;
-  for (PStringList::const_iterator it = m_scopeChain.rbegin(); it != m_scopeChain.rend(); --it) {
+  for (auto it = m_scopeChain.rbegin(); it != m_scopeChain.rend(); --it) {
     if ((value = m_variables.GetAt(PSTRSTRM(*it << '.' << name))) != NULL)
       return value;
   }

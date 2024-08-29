@@ -62,7 +62,7 @@ private:
     const PRegularExpression m_suppression;
   public:
     Logger()
-      : m_suppression(PConfig(PConfig::Environment).GetString("PTLIB_AWS_LOG_SUPPRESSION"), PRegularExpression::IgnoreCase|PRegularExpression::Extended)
+      : m_suppression(PConfig::GetEnv("PTLIB_AWS_LOG_SUPPRESSION"), PRegularExpression::IgnoreCase|PRegularExpression::Extended)
     { }
 
   private:

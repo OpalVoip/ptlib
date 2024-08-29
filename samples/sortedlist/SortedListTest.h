@@ -24,6 +24,7 @@ private:
 class PSafeString:public PSafeObject {
   PCLASSINFO(PSafeString, PSafeObject);
   PSafeString(const PString & _string);
+  Comparison Compare(const PObject & obj) const;
   void PrintOn(ostream &strm) const;
 private:
   PString m_string;

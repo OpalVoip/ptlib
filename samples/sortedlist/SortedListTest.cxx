@@ -61,7 +61,7 @@ void SortedListTest::Main()
 
   {
     PSortedStringList ss;
-    PAssert(ss.begin() == ss.end(), "Bad PSortedStringList implemetation");
+    PAssert(ss.begin() == ss.end(), "Bad PSortedStringList implementation");
     ss.AppendString("fred");
     ss.AppendString("nurk");
     ss.AppendString("rocky");
@@ -75,17 +75,17 @@ void SortedListTest::Main()
       cout << "  \"" << *it << "\"\n";
 
     cout << "Reverse iteration:\n";
-    for (PSortedStringList::iterator it = ss.rbegin(); it != ss.rend(); --it)
+    for (PSortedStringList::reverse_iterator it = ss.rbegin(); it != ss.rend(); ++it)
       cout << "  \"" << *it << "\"\n";
     cout << endl;
 
     PSortedStringList::iterator found = ss.find("fred");
-    PAssert(found != ss.end() && *found == "fred", "Bad PSortedStringList implemetation");
+    PAssert(found != ss.end() && *found == "fred", "Bad PSortedStringList implementation");
     ss.erase(found);
   }
 
-  for (PINDEX i = 0; i < 15; i++) {
-    if (i < 10)
+  for (PINDEX i = 10; i < 25; i++) {
+    if (i < 20)
       new DoSomeThing1(i);
     else
       new DoSomeThing2(i);
@@ -94,7 +94,7 @@ void SortedListTest::Main()
 
 
 DoSomeThing1::DoSomeThing1(PINDEX _index)
-  : PThread(AutoDeleteThread, NormalPriority, psprintf("DoSomeThing1 %u", _index))
+  : PThread(AutoDeleteThread, NormalPriority, psprintf("DoSomeThing%u", _index))
   , m_index(_index)
 {
   Start();
@@ -103,8 +103,6 @@ DoSomeThing1::DoSomeThing1(PINDEX _index)
 
 void DoSomeThing1::Main()
 {
-  list.AllowDeleteObjects();
-
   PRandom rand(PRandom::Number());
 
   PINDEX i;
@@ -119,16 +117,15 @@ void DoSomeThing1::Main()
 
   for (;;) {
 
-    PINDEX remove = rand.Generate() % (list.GetSize() + 1);
+    PINDEX remove = rand.Generate(list.GetSize());
     for (i = 0; i < remove; i++) {
-      PINDEX index = rand.Generate() % list.GetSize();
+      PINDEX index = rand.Generate(list.GetSize() - 1);
+      auto it = list.begin();
+      std::advance(it, index);
       coutMutex.Wait();
-      cout << GetThreadName() << ": Removing element " << list[index] << " at index position " << index << endl;
+      cout << GetThreadName() << ": Removing element " << *it << " at index position " << index << endl;
       coutMutex.Signal();
-      if (index%2)
-        list.Remove(&list[index]);
-      else
-        list.RemoveAt(index);
+      list.erase(it);
     }
 
     PINDEX add = rand.Generate() % 1000 + 300;
@@ -149,6 +146,12 @@ PSafeString::PSafeString(const PString & _string)
 }
 
 
+PObject::Comparison PSafeString::Compare(const PObject & obj) const
+{
+  const PSafeString & other = dynamic_cast<const PSafeString &>(obj);
+  return m_string.Compare(other.m_string);
+}
+
 void PSafeString::PrintOn(ostream &strm) const
 {
   strm << m_string;
@@ -156,7 +159,7 @@ void PSafeString::PrintOn(ostream &strm) const
 
 
 DoSomeThing2::DoSomeThing2(PINDEX index)
-  : PThread(AutoDeleteThread, NormalPriority, psprintf("DoSomeThing2 %u", index))
+  : PThread(AutoDeleteThread, NormalPriority, psprintf("DoSomeThing%u", index))
   , m_index(index)
 {
   Start();
@@ -169,24 +172,25 @@ void DoSomeThing2::Main()
 
   PINDEX i;
 
-  for (i = 0; i < 5000; i++) {
+  for (i = 0; i < 1000; i++) {
     PSafeString * p = new PSafeString(rand.Generate());
+    coutMutex.Wait();
+    cout << GetThreadName() << ": Added " << *p << " element to sorted list" << endl;
+    coutMutex.Signal();
     list.Append(p);
-//    coutMutex.Wait();
-//    cout << GetThreadName() << ": Added " << *p << " element to sorted list" << endl;
-//    coutMutex.Signal();
   }
 
   for (;;) {
 
-    PINDEX remove = rand.Generate() % (list.GetSize() + 1);
+    PINDEX remove = rand.Generate(list.GetSize());
     for (i = 0; i < remove; i++) {
-      PINDEX index = rand.Generate() % list.GetSize();
+      PINDEX index = rand.Generate(list.GetSize() - 1);
+      auto it = list.begin();
+      std::advance(it, index);
       coutMutex.Wait();
-      PSafePtr<PSafeString> str = list.GetAt(index, PSafeReference);
-      cout << GetThreadName() << ": Removing element " << *str << " at index position " << index << endl;
+      cout << GetThreadName() << ": Removing element " << *it << " at index position " << index << endl;
       coutMutex.Signal();
-      list.Remove(&(*str));
+      PAssert(list.Remove(&*it), PLogicError);
     }
 
     PINDEX add = rand.Generate() % 1000 + 300;

@@ -236,7 +236,7 @@ bool PIpAccessControlEntry::IsValid()
 }
 
 
-bool PIpAccessControlEntry::Match(PIPSocket::Address & addr)
+bool PIpAccessControlEntry::Match(PIPSocket::Address & addr) const
 {
   switch (domain[0]) {
     case '\0' : // Must have address field set
@@ -249,7 +249,7 @@ bool PIpAccessControlEntry::Match(PIPSocket::Address & addr)
       return true;
 
     default : // All else must be a hostname
-      if (!PIPSocket::GetHostAddress(domain, address))
+      if (!PIPSocket::GetHostAddress(domain, const_cast<PIpAccessControlEntry*>(this)->address))
         return false;
   }
 
@@ -455,14 +455,14 @@ bool PIpAccessControlList::Add(PIpAccessControlEntry * entry)
     return false;
   }
 
-  PINDEX idx = GetValuesIndex(*entry);
-  if (idx == P_MAX_INDEX) {
+  auto it = std::find(begin(), end(), *entry);
+  if (it == end()) {
     Append(entry);
     return true;
   }
 
   // Return true if the newly added entry is identical to an existing one
-  PIpAccessControlEntry & existing = operator[](idx);
+  PIpAccessControlEntry & existing = *it;
   bool ok = existing.IsClass(PIpAccessControlEntry::Class()) &&
             entry->IsClass(PIpAccessControlEntry::Class()) &&
             existing.IsAllowed() == entry->IsAllowed();
@@ -522,14 +522,13 @@ PIpAccessControlEntry * PIpAccessControlList::CreateControlEntry(const PString &
 }
 
 
-PIpAccessControlEntry * PIpAccessControlList::Find(PIPSocket::Address address) const
+const PIpAccessControlEntry * PIpAccessControlList::Find(PIPSocket::Address address) const
 {
   PINDEX size = GetSize();
   if (size == 0)
     return NULL;
 
-  for (PINDEX i = 0; i < GetSize(); i++) {
-    PIpAccessControlEntry & entry = operator[](i);
+  for (auto & entry : *this) {
     if (entry.Match(address))
       return &entry;
   }
@@ -556,7 +555,7 @@ bool PIpAccessControlList::IsAllowed(PIPSocket::Address address) const
   if (IsEmpty())
     return defaultAllowance;
 
-  PIpAccessControlEntry * entry = Find(address);
+  const PIpAccessControlEntry * entry = Find(address);
   if (entry == NULL)
     return false;
 

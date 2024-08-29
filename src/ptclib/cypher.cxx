@@ -508,10 +508,9 @@ bool PBase64::ProcessDecoding(const char * cstr)
 PBYTEArray PBase64::GetDecodedData()
 {
   m_perfectDecode = m_quadPosition == 0;
-  m_decodedData.SetSize(m_decodeSize);
+  m_decodedData.resize(m_decodeSize);
   PBYTEArray retval = m_decodedData;
-  retval.MakeUnique();
-  m_decodedData.SetSize(0);
+  m_decodedData.clear();
   m_decodeSize = 0;
   return retval;
 }

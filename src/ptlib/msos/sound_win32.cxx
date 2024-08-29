@@ -1019,7 +1019,7 @@ bool PSoundChannelWin32::SetBuffers(PINDEX size, PINDEX count)
     return SetErrorValues(BadParameter, E_INVALIDARG);
   }
 
-  if (count == buffers.GetSize() && size == buffers[0].GetSize())
+  if (count == buffers.size() && size == buffers[0].GetSize())
       return true;
 
   Abort();

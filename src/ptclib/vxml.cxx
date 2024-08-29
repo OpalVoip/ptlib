@@ -1431,7 +1431,6 @@ PTextToSpeech * PVXMLSession::SetTextToSpeech(PTextToSpeech * tts, bool autoDele
 
   if (tts != NULL) {
     PStringOptions extraOptions = options;
-    extraOptions.MakeUnique();
     m_httpMutex.Wait();
     m_httpProxies.ToOptions(extraOptions);
     m_httpMutex.Signal();
@@ -1479,7 +1478,6 @@ bool PVXMLSession::SetSpeechRecognition(const PString & srName, const PStringOpt
   PWaitAndSignal lock(m_grammersMutex);
   m_speechRecognitionName = srName;
   m_speechRecognitionOptions = options;
-  m_speechRecognitionOptions.MakeUnique();
   return true;
 }
 
@@ -1525,7 +1523,7 @@ bool PVXMLSession::LoadActualResource(const PURL & url,
                                       PBYTEArray & data,
                                       PVXMLCache::Params & cacheParams)
 {
-  PAutoPtr<PHTTPClient> http(InternalCreateHTTPClient());
+  std::unique_ptr<PHTTPClient> http(InternalCreateHTTPClient());
 
   http->SetReadTimeout(timeout);
 
@@ -1681,7 +1679,7 @@ bool PVXMLSession::InternalLoadVXML(const PURL & url, const PString & xmlText, c
   FlushInput();
 
   // parse the XML
-  std::unique_ptr<PXML> xml(new PXML);
+  std::unique_ptr<PXML> xml = std::make_unique<PXML>();
   if (!xml->Load(xmlText)) {
     m_lastXMLError = PSTRSTRM(url.AsString().Left(100) <<
                               '(' << xml->GetErrorLine() <<
@@ -1718,7 +1716,7 @@ bool PVXMLSession::InternalLoadVXML(const PURL & url, const PString & xmlText, c
   }
 
   m_newURL = url;
-  m_newXML.transfer(xml);
+  m_newXML = std::move(xml);
   m_newFormName = firstForm;
   InternalStartThread();
   return true;
@@ -2193,7 +2191,7 @@ void PVXMLSession::InternalStartVXML()
   InternalSetVar(DocumentScope, DocumentURIVar, m_newURL);  // Non-standard but potentially useful
 
   PTRACE(4, "Processing global elements.");
-  m_currentXML.transfer(m_newXML);
+  m_currentXML = std::move(m_newXML);
   m_currentNode = m_currentXML->GetRootElement()->GetElement(0);
   do {
     PXMLElement * element;
@@ -2715,7 +2713,7 @@ bool PVXMLSession::PlayElement(PXMLElement & element)
       return retval;
   }
 
-  return PlayResource(src, std::max(DWORD(1), element.GetAttribute("repeat").AsUnsigned()), 0, &element) ||
+  return PlayResource(src, std::max(uint32_t(1), element.GetAttribute("repeat").AsUnsigned()), 0, &element) ||
          ThrowBadFetchError(element, "Could not load audio from \"" << src << '"');
 }
 
@@ -3266,7 +3264,7 @@ bool PVXMLSession::TraversedGrammar(PXMLElement &)
 }
 
 
-typedef set<PXMLElement *> ElementSet;
+typedef std::unordered_set<PXMLElement *> ElementSet;
 
 static ElementSet FindElementWithCount(PXMLElement & parent, const PString & name, unsigned count)
 {
@@ -3476,7 +3474,7 @@ bool PVXMLSession::TraverseSubmit(PXMLElement & element)
     return ThrowBadFetchError(element, "Could not GET " << url);
   }
 
-  PAutoPtr<PHTTPClient> http(InternalCreateHTTPClient());
+  std::unique_ptr<PHTTPClient> http(InternalCreateHTTPClient());
   http->SetReadTimeout(GetTimeProperty(FetchTimeoutProperty, &element));
 
   PMIMEInfo sendMIME, replyMIME;
@@ -3549,7 +3547,7 @@ bool PVXMLSession::TraverseSubmit(PXMLElement & element)
     return ThrowError(element, PSTRSTRM(ErrorBadFetch << '.' << url.GetScheme() << '.' << http->GetLastResponseCode()),
                       "<submit> could not find anything to send using \"" << setfill(',') << namelist << '"');
 
-  if (http->ExecuteCommand(PHTTP::POST, url, sendMIME, PBYTEArray(bodyStr, false), replyMIME) == PHTTP::RequestOK &&
+  if (http->ExecuteCommand(PHTTP::POST, url, sendMIME, PBYTEView(bodyStr), replyMIME) == PHTTP::RequestOK &&
       http->ReadContentBody(replyMIME, replyBody) &&
       InternalLoadVXML(url, replyBody, PString::Empty()))
     return true;
@@ -4194,7 +4192,6 @@ bool PVXMLGrammar::Start()
     else {
       PTRACE_CONTEXT_ID_TO(m_recogniser);
       PStringToString options = m_session.m_speechRecognitionOptions;
-      options.MakeUnique();
       m_session.m_httpMutex.Wait();
       m_session.m_httpProxies.ToOptions(options);
       m_session.m_httpMutex.Signal();
@@ -4574,7 +4571,7 @@ PVXMLGrammarSRGS::PVXMLGrammarSRGS(const PVXMLGrammarInit & init)
     return;
   }
 
-  PAutoPtr<PXML> loadedXML;
+  std::unique_ptr<PXML> loadedXML;
   PXMLElement * grammar;
   PString src = init.m_grammarElement->GetAttribute(SrcAttribute);
   if (src.empty())

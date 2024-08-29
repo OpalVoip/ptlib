@@ -257,7 +257,7 @@ class PASNInteger : public PASNObject
 
     void PrintOn(ostream & strm) const override;
     void Encode(PBYTEArray & buffer) override;
-    WORD GetEncodedLength() override;
+    uint16_t GetEncodedLength() override;
     PObject * Clone() const override;
 
     PASNInt GetInteger() const override;

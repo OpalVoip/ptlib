@@ -55,7 +55,7 @@ class PNotifierTemplate : public PObject, public std::function<FunctionType>
     PNotifierTemplate(nullptr_t *) : m_target() { }
     PNotifierTemplate(Function fn, TargetType target) : Function(std::move(fn)), m_target(target) { }
 
-    bool operator==(const PNotifierTemplate & other) const { return m_target == other.m_target && target<FunctionType>() == other.target<FunctionType>(); }
+    bool operator==(const PNotifierTemplate & other) const { return m_target == other.m_target && this->target<FunctionType>() == other.target<FunctionType>(); }
     bool operator!=(const PNotifierTemplate & other) const { return !operator==(other); }
 
     P_DEPRECATED bool IsNULL() const { return Function::operator bool(); }

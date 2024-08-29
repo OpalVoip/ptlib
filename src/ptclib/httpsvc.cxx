@@ -1153,7 +1153,6 @@ PString PServiceMacro::Translate(PHTTPRequest &, const PString &, const PString 
 
 PServiceMacros_list::PServiceMacros_list()
 {
-  DisallowDeleteObjects();
   PServiceMacro * macro = PServiceMacro::list;
   while (macro != NULL) {
     Append(macro);
@@ -1708,9 +1707,9 @@ bool PServiceHTML::ProcessMacros(PHTTPRequest & request,
       if (text.FindRegEx(EndBlockRegEx, endpos, endlen, pos+len)) {
         PINDEX startpos = pos+len;
         len = endpos-pos + endlen;
-        PINDEX idx = ServiceMacros.GetValuesIndex(PServiceMacro(cmd, true));
-        if (idx != P_MAX_INDEX) {
-          substitution = ServiceMacros[idx].Translate(request, args, text(startpos, endpos-1));
+        auto it = ServiceMacros.find(PServiceMacro(cmd, true));
+        if (it != ServiceMacros.end()) {
+          substitution = it->Translate(request, args, text(startpos, endpos-1));
           substitedMacro = true;
         }
       }
@@ -1726,9 +1725,9 @@ bool PServiceHTML::ProcessMacros(PHTTPRequest & request,
 
       PString substitution;
       if (!process.SubstituteEquivalSequence(request, cmd & args, substitution)) {
-        PINDEX idx = ServiceMacros.GetValuesIndex(PServiceMacro(cmd, false));
-        if (idx != P_MAX_INDEX) {
-          substitution = ServiceMacros[idx].Translate(request, args, PString::Empty());
+        auto it = ServiceMacros.find(PServiceMacro(cmd, false));
+        if (it != ServiceMacros.end()) {
+          substitution = it->Translate(request, args, PString::Empty());
           substitedMacro = true;
         }
       }

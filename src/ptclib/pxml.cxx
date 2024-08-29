@@ -316,7 +316,7 @@ void PXMLParser::StartElement(const char * name, const char **attrs)
     attrs += 2;
   }
 
-  m_currentElement = newElement;
+  m_currentElement.reset(newElement);
   m_lastData = NULL;
 
   for (PStringToString::iterator it = m_nameSpaces.begin(); it != m_nameSpaces.end(); ++it) 
@@ -333,10 +333,10 @@ void PXMLParser::EndElement(const char * name)
 
   m_currentElement->EndData();
 
-  if (m_currentElement != m_document.m_rootElement)
-    m_currentElement = m_currentElement->GetParent();
+  if (m_currentElement.get() != m_document.m_rootElement)
+    m_currentElement.reset(m_currentElement->GetParent());
   else {
-    m_currentElement = NULL;
+    m_currentElement.reset();
     m_parsing = false;
   }
 
@@ -660,7 +660,7 @@ PINDEX PXML::GetNumElements() const
 
 bool PXML::IsNoIndentElement(const PString & elementName) const
 {
-  return m_noIndentElements.GetValuesIndex(elementName) != P_MAX_INDEX;
+  return m_noIndentElements.contains(elementName);
 }
 
 
@@ -1266,7 +1266,6 @@ PXMLElement::PXMLElement(const PXMLElement & copy)
   : m_name(copy.m_name)
   , m_attributes(copy.m_attributes)
 {
-  m_attributes.MakeUnique();
   m_dirty = copy.m_dirty;
 
   for (PINDEX idx = 0; idx < copy.m_subObjects.GetSize(); idx++)
@@ -1296,8 +1295,8 @@ bool PXMLElement::GetDefaultNamespace(PCaselessString & str) const
 
 bool PXMLElement::GetNamespace(const PCaselessString & prefix, PCaselessString & str) const
 {
-  if (m_nameSpaces.GetValuesIndex(prefix) != P_MAX_INDEX) {
-    str = m_nameSpaces[prefix];
+  if (m_nameSpaces.contains(prefix)) {
+    str = m_nameSpaces.at(prefix);
     return true;
   }
 
@@ -1362,9 +1361,9 @@ PXMLObject * PXMLElement::GetSubObject(PINDEX idx) const
 PXMLElement * PXMLElement::GetElement(PINDEX index) const
 {
   for (PINDEX i = 0; i < m_subObjects.GetSize(); i++) {
-    PXMLElement * element = dynamic_cast<PXMLElement *>(m_subObjects.GetAt(i));
-    if (element != NULL && index-- == 0)
-      return element;
+    auto element = std::dynamic_pointer_cast<PXMLElement>(m_subObjects.GetAt(i));
+    if (element && index-- == 0)
+      return element.get();
   }
   return NULL;
 }
@@ -1374,9 +1373,9 @@ PXMLElement * PXMLElement::GetElement(const PCaselessString & name, PINDEX index
 {
   PCaselessString extendedName(PrependNamespace(name));
   for (PINDEX i = 0; i < m_subObjects.GetSize(); i++) {
-    PXMLElement * element = dynamic_cast<PXMLElement *>(m_subObjects.GetAt(i));
-    if (element != NULL && extendedName == element->GetName() && index-- == 0)
-      return element;
+    auto element = std::dynamic_pointer_cast<PXMLElement>(m_subObjects.GetAt(i));
+    if (element && extendedName == element->GetName() && index-- == 0)
+      return element.get();
   }
   return NULL;
 }
@@ -1386,26 +1385,19 @@ PXMLElement * PXMLElement::GetElement(const PCaselessString & name, const PCasel
 {
   PCaselessString extendedName(PrependNamespace(name));
   for (PINDEX i = 0; i < m_subObjects.GetSize(); i++) {
-    PXMLElement * element = dynamic_cast<PXMLElement *>(m_subObjects.GetAt(i));
-    if (element != NULL && extendedName == element->GetName() && attrval == element->GetAttribute(attr))
-      return element;
+    auto element = std::dynamic_pointer_cast<PXMLElement>(m_subObjects.GetAt(i));
+    if (element && extendedName == element->GetName() && attrval == element->GetAttribute(attr))
+      return element.get();
   }
   return NULL;
 }
 
 
-bool PXMLElement::RemoveSubObject(PINDEX idx, bool dispose)
+bool PXMLElement::RemoveSubObject(PINDEX idx)
 {
   if (idx >= m_subObjects.GetSize())
     return false;
-
-  if (dispose)
-    m_subObjects.RemoveAt(idx);
-  else {
-    m_subObjects.DisallowDeleteObjects();
-    m_subObjects.RemoveAt(idx);
-    m_subObjects.AllowDeleteObjects();
-  }
+  m_subObjects.RemoveAt(idx);
   return true;
 }
 
@@ -1552,8 +1544,8 @@ PString PXMLElement::GetData(bool trim) const
   PString str;
 
   for (PINDEX i = 0; i < m_subObjects.GetSize(); i++) {
-    PXMLData * data = dynamic_cast<PXMLData *>(m_subObjects.GetAt(i));
-    if (data != NULL) {
+    auto data = std::dynamic_pointer_cast<PXMLData>(m_subObjects.GetAt(i));
+    if (data) {
       if (trim) {
         PStringArray lines = data->GetString().Lines();
         for (PINDEX j = 0; j < lines.GetSize(); j++)
@@ -1702,46 +1694,46 @@ PXMLStreamParser::PXMLStreamParser(PXML & doc, Options options)
 
 void PXMLStreamParser::EndElement(const char * name)
 {
-  PXMLElement * element = m_currentElement;
+  auto element = m_currentElement;
 
   PXMLParser::EndElement(name);
 
   if (!m_parsing)
     return;
 
-  PINDEX i = m_document.GetRootElement()->FindObject(element);
+  PINDEX i = m_document.GetRootElement()->FindObject(element.get());
   if (i == P_MAX_INDEX)
     return;
 
-  messages.push(element);
-  m_document.GetRootElement()->RemoveSubObject(i, false);
+  m_messages.push(element);
+  m_document.GetRootElement()->RemoveSubObject(i);
 }
 
 
-PXMLElement * PXMLStreamParser::Read(PChannel * channel)
+std::shared_ptr<PXMLElement> PXMLStreamParser::Read(PChannel * channel)
 {
   char buf[256];
 
   channel->SetReadTimeout(1000);
 
   while (m_parsing) {
-    if (!messages.empty()) {
-      auto msg = messages.front();
-      messages.pop();
+    if (!m_messages.empty()) {
+      auto msg = m_messages.front();
+      m_messages.pop();
       return msg;
     }
 
     if (!channel->Read(buf, sizeof(buf) - 1) || !channel->IsOpen())
-      return 0;
+      return nullptr;
 
     buf[channel->GetLastReadCount()] = 0;
 
     if (!Parse(buf, channel->GetLastReadCount(), false))
-      return 0;
+      return nullptr;
   }
 
   channel->Close();
-  return 0;
+  return nullptr;
 }
 
 ///////////////////////////////////////////////////////

@@ -222,18 +222,24 @@ void VxmlTest::TransferStatus(PCLI::Arguments & args, intptr_t)
   PVXMLSession::TransferStatus status;
   PString transferError;
 
-  PCaselessString arg = args[0];
-  if (PConstCaselessString("success").starts_with(arg))
+  static const PConstCaselessString success("success");
+  static const PConstCaselessString busy("busy");
+  static const PConstCaselessString congestion("congestion");
+  static const PConstCaselessString noanswer("noanswer");
+  static const PConstCaselessString unknown("unknown");
+  static const PConstCaselessString failed("failed");
+  const char * arg = args[0].c_str();
+  if (success.starts_with(arg))
     status = PVXMLSession::TransferSuccessful;
-  else if (PConstCaselessString("busy").starts_with(arg))
+  else if (busy.starts_with(arg))
     status = PVXMLSession::TransferBusy;
-  else if (PConstCaselessString("congestion").starts_with(arg))
+  else if (congestion.starts_with(arg))
     status = PVXMLSession::TransferCongestion;
-  else if (PConstCaselessString("noanswer").starts_with(arg))
+  else if (noanswer.starts_with(arg))
     status = PVXMLSession::TransferNoAnswer;
-  else if (PConstCaselessString("unknown").starts_with(arg))
+  else if (unknown.starts_with(arg))
     status = PVXMLSession::TransferUnknown;
-  else if (PConstCaselessString("failed").starts_with(arg)) {
+  else if (failed.starts_with(arg)) {
     status = PVXMLSession::TransferFailed;
     transferError = "custom.123";
   }

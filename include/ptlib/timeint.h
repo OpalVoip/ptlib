@@ -93,6 +93,15 @@ class PTimeInterval : public PObject
     PTimeInterval(
       const std::chrono::seconds& secs
     );
+    PTimeInterval(
+      const std::chrono::minutes & mins
+    );
+    PTimeInterval(
+      const std::chrono::hours & hours
+    );
+    PTimeInterval(
+      const std::chrono::days & days
+    );
 
     PTimeInterval(const PTimeInterval & other);
     PTimeInterval & operator=(const PTimeInterval & other);

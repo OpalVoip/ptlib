@@ -83,15 +83,13 @@ bool PTextDataFormat::ReadRecord(PChannel & channel, PVarData::Record & data)
     PString heading = m_headings[i];
 
     bool autoDetect = false;
-    PVarType * field = data.GetAt(heading);
-    if (field == NULL) {
-      field = new PVarType;
+    auto field = data.GetAt(heading);
+    if (!field) {
+      field = data.SetAt(heading, new PVarType);
       autoDetect = true;
     }
 
     int result = ReadField(channel, *field, autoDetect);
-    data.SetAt(heading, field);
-
     if (result != 0)
       return result > 0;
   }
@@ -112,7 +110,7 @@ bool PTextDataFormat::WriteRecord(PChannel & channel, const PVarData::Record & d
 
   PINDEX last = m_headings.GetSize() - 1;
   for (PINDEX i = 0; i <= last; ++i) {
-    PVarType * field = data.GetAt((m_headings[i]));
+    auto field = data.GetAt((m_headings[i]));
     if (!WriteField(channel, field != NULL ? *field : PVarType(), i == last))
       return false;
   }

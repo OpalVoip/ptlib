@@ -475,7 +475,7 @@ void PSTUNMessage::SetType(MsgType newType, const uint8_t * id)
     return;
 
   PSTUNMessageHeader * hdr = (PSTUNMessageHeader *)GetPointer();
-  hdr->msgType = (WORD)newType;
+  hdr->msgType = (uint16_t)newType;
 
   if (id != NULL)
     memcpy(hdr->transactionId, id, sizeof(hdr->transactionId));
@@ -515,10 +515,10 @@ bool PSTUNMessage::IsRFC5389() const
 }
 
 
-PBYTEArray PSTUNMessage::GetTransactionID() const
+PBYTEView PSTUNMessage::GetTransactionID() const
 {
   PSTUNMessageHeader * hdr = (PSTUNMessageHeader *)GetPointer();
-  return PBYTEArray(hdr->transactionId, sizeof(hdr->transactionId), false);
+  return PBYTEView(hdr->transactionId, sizeof(hdr->transactionId));
 }
 
 static int CalcPaddedAttributeLength(int len)
@@ -620,7 +620,7 @@ PSTUNAttribute * PSTUNMessage::AddAttribute(const PSTUNAttribute & attribute)
 
   int oldLength = ((PSTUNMessageHeader *)GetPointer())->msgLength;
   int newLength = oldLength + paddedLength;
-  ((PSTUNMessageHeader *)GetPointer())->msgLength = (WORD)newLength;
+  ((PSTUNMessageHeader *)GetPointer())->msgLength = (uint16_t)newLength;
 
   // internal array pointer may be invalidated by next statement
   SetMinSize(sizeof(PSTUNMessageHeader) + newLength);
@@ -775,9 +775,9 @@ void PSTUNMessage::CalculateMessageIntegrity(const uint8_t * credentialsHashPtr,
   // calculate hash up to, but not including, MESSAGE_INTEGRITY attribute itself
   // Note the value used for msgLength is prior to things like FINGERPRINT, so need to
   // change it back temporarily.
-  WORD checkLength = (WORD)((const BYTE *)mi - GetPointer());
+  uint16_t checkLength = (uint16_t)((const BYTE *)mi - GetPointer());
   PSTUNMessageHeader * hdr = (PSTUNMessageHeader *)GetPointer();
-  WORD oldLength = hdr->msgLength;
+  uint16_t oldLength = hdr->msgLength;
   hdr->msgLength = checkLength - sizeof(PSTUNMessageHeader) + sizeof(PSTUNMessageIntegrity);
 
   PHMAC_SHA1 hmac;
@@ -1354,7 +1354,7 @@ void PSTUNClient::InternalUpdate(bool externalAddressOnly)
     }
 
     // take the first valid one
-    for (PSocket::SelectList::iterator it = selectList.begin(); it != selectList.end(); ++it) {
+    for (auto & it : selectList) {
       PSTUNUDPSocket & udp = dynamic_cast<PSTUNUDPSocket &>(*it);
       if (responseI.Read(udp) && responseI.IsValidFor(requestI)) {
         delete m_socket;
@@ -1364,9 +1364,7 @@ void PSTUNClient::InternalUpdate(bool externalAddressOnly)
     }
 
     if (m_socket != NULL) {
-      sockets.AllowDeleteObjects(false);
       sockets.Remove(m_socket);
-      sockets.AllowDeleteObjects(true);
       break;
     }
   }

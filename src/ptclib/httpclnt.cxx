@@ -177,10 +177,10 @@ struct PHTTPClient_BinaryReader : public PHTTPContentProcessor
 
 struct PHTTPClient_BinaryWriter : public PHTTPContentProcessor
 {
-  PBYTEArray m_body;
-  bool       m_written;
+  PBYTEView m_body;
+  bool      m_written;
 
-  PHTTPClient_BinaryWriter(const PBYTEArray & body)
+  PHTTPClient_BinaryWriter(const PBYTEView & body)
     : PHTTPContentProcessor(false)
     , m_body(body)
     , m_written(false)
@@ -194,7 +194,7 @@ struct PHTTPClient_BinaryWriter : public PHTTPContentProcessor
 
     m_written = true;
     size = m_body.GetLength();
-    return m_body.GetPointer();
+    return const_cast<uint8_t *>(m_body.GetPointer());
   }
 
   virtual void Reset()
@@ -268,7 +268,7 @@ PHTTP::StatusCode PHTTPClient::ExecuteCommand(Commands cmd,
 PHTTP::StatusCode PHTTPClient::ExecuteCommand(Commands cmd,
                                               const PURL & url,
                                               PMIMEInfo & outMIME,
-                                              const PBYTEArray & dataBody,
+                                              const PBYTEView & dataBody,
                                               PMIMEInfo & replyMIME)
 {
   PHTTPClient_BinaryWriter processor(dataBody);
@@ -808,7 +808,7 @@ bool PHTTPClient::PutDocument(const PURL & url, const PString & data, const PStr
 }
 
 
-bool PHTTPClient::PutDocument(const PURL & url, const PBYTEArray & data, const PString & contentType, const PMIMEInfo & mime)
+bool PHTTPClient::PutDocument(const PURL & url, const PBYTEView & data, const PString & contentType, const PMIMEInfo & mime)
 {
   PMIMEInfo outMIME(mime), replyMIME;
   outMIME.SetAt(ContentTypeTag(), contentType);
@@ -876,10 +876,10 @@ bool PHTTPClient::ConnectURL(const PURL & destURL)
   if (secure)
 #if P_SSL
   {
-    PAutoPtr<PSSLChannel> ssl;
+    std::unique_ptr<PSSLChannel> ssl;
     PSSLContext::Method method = PSSLContext::HighestTLS;
     for (;;) {
-      PAutoPtr<PTCPSocket> tcp(new PTCPSocket(ap.GetPort()));
+      std::unique_ptr<PTCPSocket> tcp = std::make_unique<PTCPSocket>(ap.GetPort());
       tcp->SetReadTimeout(readTimeout);
 
       if (usingProxy) {
@@ -916,7 +916,7 @@ bool PHTTPClient::ConnectURL(const PURL & destURL)
           return SetLastResponse(TransportConnectError, PSTRSTRM("TCP connect fail: " << tcp->GetErrorText() << " (errno=" << tcp->GetErrorNumber() << ')'));
       }
 
-      PAutoPtr<PSSLContext> context(new PSSLContext(method));
+      std::unique_ptr<PSSLContext> context = std::make_unique<PSSLContext>(method);
       if (!ApplySSLCredentials(*context))
         return SetLastResponse(TransportConnectError, "Could not set certificates");
 
@@ -1154,8 +1154,8 @@ bool PHTTPClientDigestAuthentication::Parse(const PString & p_auth, bool proxy)
   if (!qopStr.IsEmpty()) {
     PTRACE(3, "Authentication contains qop-options " << qopStr);
     PStringList options = qopStr.Tokenise(',', true);
-    qopAuth    = options.GetStringsIndex("auth") != P_MAX_INDEX;
-    qopAuthInt = options.GetStringsIndex("auth-int") != P_MAX_INDEX;
+    qopAuth    = options.Contains("auth");
+    qopAuthInt = options.Contains("auth-int");
     cnonce = PGloballyUniqueID().AsString();
   }
 

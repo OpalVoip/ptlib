@@ -195,7 +195,7 @@ class PCLI : public PObject
         PString     m_commandLine;
         PINDEX      m_editPosition;
         bool        m_ignoreNextEOL;
-        PStringList m_commandHistory;
+        PStringArray m_commandHistory;
         PINDEX      m_historyPosition;
         PThread   * m_thread;
         int         m_pagedLines;
@@ -1115,7 +1115,7 @@ class PCLICurses : public PCLI
 
     Window * GetWindow(
       PINDEX idx
-    ) { return dynamic_cast<Window *>(m_windows.GetAt(idx)); }
+    ) { return m_windows.GetAt(idx).get(); }
 
     Window & operator[](PINDEX idx) const { return m_windows[idx]; }
 
