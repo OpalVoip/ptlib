@@ -163,11 +163,11 @@ bool PAwsClientBase::SetProfile(const PString & profile)
   PString profileToUse = profile.empty() ? env.GetString("PTLIB_AWS_PROFILE", env.GetString("AWS_PROFILE")) : profile;
   if (profile.empty() || (profile == "default")) {
     PTRACE(4, "Default client config");
-    m_clientConfig = std::make_unique<Aws::Client::ClientConfiguration>();
+    m_clientConfig.reset(new Aws::Client::ClientConfiguration());
   }
   else {
     PTRACE(4, "Client config for \"" << profile << '"');
-    m_clientConfig = std::make_unique<Aws::Client::ClientConfiguration>(profile.c_str());
+    m_clientConfig.reset(new Aws::Client::ClientConfiguration(profile.c_str()));
   }
 
   if (m_clientConfig->profileName.empty())
@@ -208,7 +208,7 @@ void PAwsClientBase::SetAccessKey(const PString & accessKeyId, const PString & s
   if (accessKeyId.empty() || secretAccessKey.empty())
     m_credentials.reset();
   else
-    m_credentials = std::make_unique<Aws::Auth::AWSCredentials>(accessKeyId.c_str(), secretAccessKey.c_str());
+    m_credentials.reset(new Aws::Auth::AWSCredentials(accessKeyId.c_str(), secretAccessKey.c_str()));
 }
 
 PString PAwsClientBase::GetAccessKeyId() const
