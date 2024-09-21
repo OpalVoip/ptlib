@@ -15,15 +15,44 @@ class Fred : public PObject
     {
     }
 
-    Comparison Compare(const PObject & obj) const
+    Comparison Compare(const PObject & obj) const override
     {
-      const Fred & other = dynamic_cast<const Fred &>(obj);
-      if (m_character < other.m_character)
-        return GreaterThan;
-      if (m_character > other.m_character)
-        return LessThan;
-      return EqualTo;
+      return Compare2(m_character, dynamic_cast<const Fred &>(obj).m_character);
     }
+
+    void PrintOn(ostream & strm) const override
+    {
+      strm << m_character;
+    }
+
+    PINDEX HashFunction() const override
+    {
+      return std::abs(128-m_character)%23;
+    }
+};
+
+class Safe : public PSafeObject
+{
+  char m_character;
+public:
+  Safe(char c)
+    : m_character(c)
+  { }
+
+  Comparison Compare(const PObject & obj) const override
+  {
+    return Compare2(m_character, dynamic_cast<const Safe &>(obj).m_character);
+  }
+
+  void PrintOn(ostream & strm) const override
+  {
+    strm << m_character;
+  }
+
+  PINDEX HashFunction() const override
+  {
+    return std::abs(128-m_character)%23;
+  }
 };
 
 
@@ -37,8 +66,6 @@ SortedListTest::SortedListTest()
 
 void SortedListTest::Main()
 {
-#ifdef _MSC_VER
-  // Tests for Visual Studio debugger autoexp.dat
   {
     PString str("fred");
     PCharArray chars("fred", 4);
@@ -55,9 +82,17 @@ void SortedListTest::Main()
     PStringSet s_strings; s_strings+='f'; s_strings+='r'; s_strings+='e'; s_strings+='d';
     PStringToString ssd_strings; ssd_strings.SetAt('f','F'); ssd_strings.SetAt('r','R'); ssd_strings.SetAt('e','E'); ssd_strings.SetAt('d','D');
 
+    PSafeDictionary<PString, Safe> safe_dict;
+    safe_dict.SetAt('f', new Safe('F'));
+    safe_dict.SetAt('r', new Safe('R'));
+    safe_dict.SetAt('e', new Safe('E'));
+    safe_dict.SetAt('d', new Safe('D'));
+    cout << "PSafeDictionary<PString, Safe> ";
+    for (PSafeDictionary<PString, Safe>::iterator it = safe_dict.begin(); it != safe_dict.end(); ++it)
+      cout << it->first << '=' << *it->second << ' ';
     cout << endl;
   }
-#endif
+  cin.get();
 
   {
     PSortedStringList ss;

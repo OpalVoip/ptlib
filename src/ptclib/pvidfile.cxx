@@ -476,7 +476,7 @@ class PBMPFile : public PStillImageVideoFile
     PCLASSINFO(PBMPFile, PStillImageVideoFile);
 
   protected:
-    virtual bool InternalOpen(OpenMode mode, OpenOptions opts, PFileInfo::Permissions permissions)
+    virtual bool InternalOpen(OpenMode mode, OpenOptions opts, PFileInfo::Permissions permissions) override
     {
       if (mode != PFile::ReadOnly) {
         SetErrorValues(Miscellaneous, EINVAL);
@@ -575,7 +575,7 @@ class PJPEGFile : public PStillImageVideoFile
     PCLASSINFO(PJPEGFile, PStillImageVideoFile);
 
   protected:
-    virtual bool InternalOpen(OpenMode mode, OpenOptions opts, PFileInfo::Permissions permissions)
+    virtual bool InternalOpen(OpenMode mode, OpenOptions opts, PFileInfo::Permissions permissions) override
     {
       if (mode != PFile::ReadOnly) {
         SetErrorValues(Miscellaneous, EINVAL);

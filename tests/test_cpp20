@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+echo "Configuring without C++20"
+( cd .. && \
+  ./configure --disable-cpp20 && \
+  make clean && make ) 1>/dev/null
+
+echo "Running tests"
+./run_tests
+
+echo "Configuring with C++20"
+( cd .. && \
+  ./configure --enable-cpp20 && \
+  make clean && make ) 1>/dev/null
+
+echo "Running tests"
+./run_tests
+
+

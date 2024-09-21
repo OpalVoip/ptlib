@@ -699,7 +699,7 @@ class PSafePtrMultiThreaded : public PSafePtrBase
     virtual void Assign(PSafeObject * obj) override;
 
   protected:
-    virtual void DeleteObject(PSafeObject * obj);
+    virtual void DeleteObject(PSafeObject * obj) override;
 
     virtual void LockPtr() override { m_mutex.Wait(); }
     virtual void UnlockPtr() override;
@@ -982,7 +982,8 @@ template <class T, class C> class PSafeColl : public PSafeCollection
       }
   //@}
 
-    class iterator_base {
+    class iterator_base
+    {
       protected:
         coll_type m_snapshot;
         coll_iter m_iterator;
@@ -1025,9 +1026,7 @@ template <class T, class C> class PSafeColl : public PSafeCollection
     class iterator : public iterator_base
     {
       protected:
-        iterator(const PSafeColl & coll)
-          : iterator_base(coll)
-        { }
+        iterator(const PSafeColl & coll) : iterator_base(coll) { }
 
       public:
         using iterator_category = std::forward_iterator_tag;
@@ -1045,18 +1044,17 @@ template <class T, class C> class PSafeColl : public PSafeCollection
     iterator end()   { return iterator(); }
     void erase(const iterator& it) { if (PAssert(it != end(), PLogicError)) this->SafeRemove(&*it.m_iterator); }
 
-    class const_iterator : public iterator_base, public std::iterator<std::forward_iterator_tag, const value_type> {
+    class const_iterator : public iterator_base
+    {
       protected:
-        const_iterator(const PSafeColl & coll)
-          : iterator_base(coll)
-        { }
+        const_iterator(const PSafeColl & coll) : iterator_base(coll) { }
 
       public:
         using iterator_category = std::forward_iterator_tag;
         using value_type = const T;
 
         const_iterator() { }
-        const_iterator(const PSafeColl::iterator & it) : iterator_base(it) { }
+        const_iterator(const iterator & it) : iterator_base(it) { }
 
         const_iterator & operator++()    {                      this->Next(); return *this; }
         const_iterator   operator++(int) { iterator it = *this; this->Next(); return it;    }
