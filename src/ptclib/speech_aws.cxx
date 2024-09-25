@@ -509,7 +509,6 @@ class PSpeechRecognition_AWS : public PSpeechRecognition, PAwsClient<Aws::Transc
   void ReadEvents()
   {
     PTRACE(4, "Reading events thread started");
-    std::set<Transcript> sentTranscripts;
     while (m_webSocket.IsOpen()) {
       PBYTEArray data;
       PStringOptions headers;
@@ -545,8 +544,7 @@ class PSpeechRecognition_AWS : public PSpeechRecognition, PAwsClient<Aws::Transc
                                                   PTimeInterval::Seconds((double)item.GetNumber("StartTime")),
                                                   item.GetString("Content"),
                                                   (float)item.GetNumber("Confidence"));
-                            if (!transcript.m_content.empty() && sentTranscripts.find(transcript) == sentTranscripts.end()) {
-                              sentTranscripts.insert(transcript);
+                            if (!transcript.m_content.empty()) {
                               PTRACE(4, "Sending notification of " << transcript);
                               m_notifier(*this, transcript);
                             }
