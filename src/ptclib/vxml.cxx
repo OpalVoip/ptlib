@@ -4553,7 +4553,7 @@ The algorithm for the text grammar is as follows:
 2. If the timer expires throw a `noinput` exception.
 3. If a non final SR notifications is received, the timer is restarted, and
    we go back to step 2.
-4. If a final SR notification arrives, switch to “part filled” mode and start
+4. If a final SR notification arrives, switch to ï¿½part filledï¿½ mode and start
    the timer with the maximum of the `completetimeout` and `incompletetimeout`
    properties, as per specification.
 5. If the timer expires, we are `filled`.
@@ -4579,6 +4579,8 @@ void PVXMLTextGrammar::OnInput(const PString & input)
     SetFilled(input);
   else
     SetPartFilled(input);
+  else
+    SetFilled(input);
 }
 
 
