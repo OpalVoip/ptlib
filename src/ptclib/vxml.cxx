@@ -4550,10 +4550,10 @@ void PVXMLTextGrammar::OnRecognition(PSpeechRecognition& sr, PSpeechRecognition:
 
 void PVXMLTextGrammar::OnInput(const PString & input)
 {
-  if (m_terminators.Find(input) != P_MAX_INDEX)
-    SetFilled(input);
-  else
+  if (m_usingDTMF && m_terminators.Find(input) == P_MAX_INDEX)
     SetPartFilled(input);
+  else
+    SetFilled(input);
 }
 
 
