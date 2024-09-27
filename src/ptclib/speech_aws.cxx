@@ -435,8 +435,12 @@ class PSpeechRecognition_AWS : public PSpeechRecognition, PAwsClient<Aws::Transc
   bool ReadEvent(PBYTEArray & contents, PStringOptions & headers)
   {
     PBYTEArray message;
-    if (!m_webSocket.ReadMessage(message))
+    if (!m_webSocket.ReadMessage(message)) {
+      PTRACE_IF(2, m_webSocket.GetErrorCode() != PChannel::NoError,
+                "Error reading WebSocket:" << m_webSocket.GetErrorText());
+      m_webSocket.Close();
       return false;
+    }
 
     if (message.size() < sizeof(Prelude)) {
       PTRACE(2, "Received message ridiculously small");
@@ -511,6 +515,7 @@ class PSpeechRecognition_AWS : public PSpeechRecognition, PAwsClient<Aws::Transc
   void ReadEvents()
   {
     PTRACE(4, "Reading events thread started");
+    Transcript transcript(false, 0, PString::Empty(), 0);
     while (m_webSocket.IsOpen()) {
       PBYTEArray data;
       PStringOptions headers;
@@ -542,10 +547,10 @@ class PSpeechRecognition_AWS : public PSpeechRecognition, PAwsClient<Aws::Transc
                         if (items.IsType(idxItem, PJSON::e_Object)) {
                           PJSON::Object const & item = items.GetObject(idxItem);
                           if (item.GetString("Type") == "pronunciation") {
-                            Transcript transcript(false,
-                                                  PTimeInterval::Seconds((double)item.GetNumber("StartTime")),
-                                                  item.GetString("Content"),
-                                                  (float)item.GetNumber("Confidence"));
+                            transcript.m_final = false;
+                            transcript.m_when = PTimeInterval::Seconds((double)item.GetNumber("StartTime"));
+                            transcript.m_content = item.GetString("Content");
+                            transcript.m_confidence = (float)item.GetNumber("Confidence");
                             if (!transcript.m_content.empty()) {
                               PTRACE(4, "Sending notification of " << transcript);
                               m_notifier(*this, transcript);
@@ -556,10 +561,10 @@ class PSpeechRecognition_AWS : public PSpeechRecognition, PAwsClient<Aws::Transc
                     }
                   }
                   if (!alternatives.empty() && !result.GetBoolean("IsPartial")) {
-                    Transcript transcript(true,
-                                          PTimeInterval::Seconds((double)result.GetNumber("StartTime")),
-                                          alternatives.GetObject(0).GetString("Transcript"),
-                                          1);
+                    transcript.m_final = true;
+                    transcript.m_when = PTimeInterval::Seconds((double)result.GetNumber("StartTime"));
+                    transcript.m_content = alternatives.GetObject(0).GetString("Transcript");
+                    transcript.m_confidence = 1;
                     PTRACE(4, "Sending notification of " << transcript);
                     m_notifier(*this, transcript);
                   }
@@ -593,6 +598,13 @@ class PSpeechRecognition_AWS : public PSpeechRecognition, PAwsClient<Aws::Transc
 #endif // PTRACING
       }
     }
+
+    if (!transcript.m_final && !transcript.m_content.empty()) {
+      transcript.m_final = true;
+      PTRACE(4, "Sending fail safe notification of " << transcript);
+      m_notifier(*this, transcript);
+    }
+
     PTRACE(4, "Reading events thread ended");
   }
 
