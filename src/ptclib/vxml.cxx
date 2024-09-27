@@ -1384,7 +1384,7 @@ PVXMLSession::PVXMLSession()
   props.SetAt(InterDigitTimeoutProperty, "5s");
   props.SetAt(TermTimeoutProperty, "0");
   props.SetAt(TermCharProperty, "#");
-  props.SetAt(CompleteTimeoutProperty, "2s");
+  props.SetAt(CompleteTimeoutProperty, "0.5s");
   props.SetAt(IncompleteTimeoutProperty, "5s");
   props.SetAt(FetchTimeoutProperty, "5s");
   props.SetAt(DocumentMaxAgeProperty, "3600s");
@@ -4171,6 +4171,9 @@ bool PVXMLGrammar::Start()
     m_terminators = m_session.GetProperty(TermCharProperty);
   if (m_noInputTimeout == 0)
     m_noInputTimeout = m_session.GetTimeProperty(TimeoutProperty);
+  m_interDigitTimeout = m_session.GetTimeProperty(InterDigitTimeoutProperty);
+  m_completeTimeout = m_session.GetTimeProperty(CompleteTimeoutProperty);
+  m_incompleteTimeout = m_session.GetTimeProperty(IncompleteTimeoutProperty);
 
   PString inputModes = m_session.GetProperty(InputModesProperty, m_grammarElement, ModeAttribute);
 
@@ -4248,7 +4251,7 @@ void PVXMLGrammar::SetPartFilled(const PString & input, bool overwrite)
   else
     m_value &= input;
 
-  PTimeInterval timeout = m_session.GetTimeProperty(m_usingDTMF ? InterDigitTimeoutProperty : IncompleteTimeoutProperty);
+  PTimeInterval timeout = m_usingDTMF ? m_interDigitTimeout : std::max(m_completeTimeout, m_incompleteTimeout);
 
   GrammarState prev = Started;
   if (m_state.compare_exchange_strong(prev, PartFill)) {
@@ -4541,21 +4544,38 @@ PVXMLTextGrammar::PVXMLTextGrammar(const PVXMLGrammarInit & init)
 }
 
 
+/*
+The algorithm for the text grammar is as follows:
+1. Start grammar, set the timer to the `timeout` attribute or property.
+2. If the timer expires throw a `noinput` exception.
+3. If a non final SR notifications is received, the timer is restarted, and
+   we go back to step 2.
+4. If a final SR notification arrives, switch to “part filled” mode and start
+   the timer with the maximum of the `completetimeout` and `incompletetimeout`
+   properties, as per specification.
+5. If the timer expires, we are `filled`.
+6. If we get another non final SR notification, set the timer to the `timeout`
+   attribute or property.
+7. If the timer expires, we are `filled`.
+8. Go to step 4
+*/
+
 void PVXMLTextGrammar::OnRecognition(PSpeechRecognition& sr, PSpeechRecognition::Transcript transcript)
 {
   if (transcript.m_final)
     PVXMLGrammar::OnRecognition(sr, transcript);
   else
-    SetPartFilled(PString::Empty());
+    m_timer = m_noInputTimeout;
 }
 
 
 void PVXMLTextGrammar::OnInput(const PString & input)
 {
-  if (m_usingDTMF && m_terminators.Find(input) == P_MAX_INDEX)
-    SetPartFilled(input);
-  else
+  // Voice input relies on the timeout to "fill" the grammar
+  if (m_usingDTMF && m_terminators.Find(input) != P_MAX_INDEX)
     SetFilled(input);
+  else
+    SetPartFilled(input);
 }
 
 
