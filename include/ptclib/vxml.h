@@ -216,6 +216,9 @@ class PVXMLGrammar : public PObject, protected PVXMLGrammarInit
     float                m_confidence;
     atomic<GrammarState> m_state;
     PTimeInterval        m_noInputTimeout;
+    PTimeInterval        m_interDigitTimeout;
+    PTimeInterval        m_completeTimeout;
+    PTimeInterval        m_incompleteTimeout;
     PTimer               m_timer;
 };
 
