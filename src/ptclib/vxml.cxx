@@ -4579,8 +4579,6 @@ void PVXMLTextGrammar::OnInput(const PString & input)
     SetFilled(input);
   else
     SetPartFilled(input);
-  else
-    SetFilled(input);
 }
 
 
