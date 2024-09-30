@@ -267,7 +267,7 @@ protected:
   virtual PObject * CloneContents(PCollection * clone) const
   {
     for (const auto & it : *this)
-      clone->Append(it.CloneAs<value_type>());
+      clone->Append(it.template CloneAs<value_type>());
     return clone;
   }
 };

@@ -249,9 +249,9 @@ PChannel::Errors PSocket::Select(SelectList & read,
   pfd[0].events = POLLIN;
 
   for (i = 0; i < 3; i++) {
-    for (SelectList::iterator it = list[i]->begin(); it != list[i]->end(); it++) {
+    for (auto it : *list[i]) {
       if (firstSocket == NULL)
-        firstSocket = &*it;
+        firstSocket = it;
 
       int h = it->GetHandle();
       for (j = 0; j < count; ++j) {
@@ -294,7 +294,7 @@ PChannel::Errors PSocket::Select(SelectList & read,
   for (i = 0; i < 3; i++) {
     SelectList::iterator it = list[i]->begin();
     while (it != list[i]->end()) {
-      PSocket & socket = *it;
+      PSocket & socket = **it;
       socket.px_threadMutex.Wait();
       socket.px_selectThread[i] = NULL;
       socket.px_threadMutex.Signal();
@@ -854,13 +854,13 @@ bool PIPSocket::GetRouteTable(RouteTable & table)
 
     if ( process_rtentry(rtm, ptr, net_addr, net_mask, dest_addr, metric) ){
 
-      RouteEntry * entry = new RouteEntry(net_addr);
-      entry->net_mask = net_mask;
-      entry->destination = dest_addr;
+      RouteEntry entry(net_addr);
+      entry.net_mask = net_mask;
+      entry.destination = dest_addr;
       if ( get_ifname(rtm->rtm_index,name) )
-        entry->interfaceName = name;
-      entry->metric = metric;
-      table.Append(entry);
+        entry.interfaceName = name;
+      entry.metric = metric;
+      table.emplace_back(entry);
 
     } // end if
 
@@ -1395,7 +1395,7 @@ bool PIPSocket::GetInterfaceTable(InterfaceTable & list, bool includeDown)
 
       if (addr.IsAny() || addr.IsBroadcast())
         addr = GetInvalidAddress();
-      list.Append(PNEW InterfaceEntry(ifa->ifa_name, addr, mask, macAddr));
+      list.emplace_back(ifa->ifa_name, addr, mask, macAddr);
     }
     freeifaddrs(interfaces);
   }

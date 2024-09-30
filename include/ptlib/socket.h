@@ -71,7 +71,7 @@ class PSocket : public PChannel
     virtual bool Read(
       void * buf,   ///< Pointer to a block of memory to receive the read bytes.
       PINDEX len    ///< Maximum number of bytes to read into the buffer.
-    );
+    ) override;
 
     /** Low level write to the channel.
 
@@ -81,7 +81,7 @@ class PSocket : public PChannel
     virtual bool Write(
       const void * buf, ///< Pointer to a block of memory to write.
       PINDEX len        ///< Number of bytes to write.
-    );
+    ) override;
 
   /**@name Socket establishment functions */
   //@{

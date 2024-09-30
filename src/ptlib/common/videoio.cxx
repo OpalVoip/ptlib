@@ -452,7 +452,7 @@ bool PVideoFrameInfo::ParseSize(const PString & str, unsigned & width, unsigned 
     }
   }
 
-  return sscanf_s(str, "%ux%u", &width, &height) == 2 && width > 0 && height > 0;
+  return sscanf(str, "%ux%u", &width, &height) == 2 && width > 0 && height > 0;
 }
 
 

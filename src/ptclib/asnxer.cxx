@@ -152,7 +152,7 @@ bool PXER_Stream::OctetStringDecode(PASN_OctetString & value)
   {
     elem[0] = data[i];
     elem[1] = data[i + 1];
-    sscanf_s(elem, "%x", &octet);
+    sscanf(elem, "%x", &octet);
     bin[j] = (uint8_t)octet;
   }
 

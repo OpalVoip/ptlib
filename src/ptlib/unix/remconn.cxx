@@ -354,8 +354,7 @@ PStringArray PRemoteConnection::GetAvailableNames()
   // remotes have section names of the form "Remote-x" where X is some
   // unique identifier, usually a number or the system name
   PStringList sections = config.GetSections();
-  for (PINDEX i = 0; i < sections.GetSize(); i++) {
-    PString sectionName = sections[i];
+  for (const auto & sectionName : sections) {
     if (sectionName != OptionsStr)
       names[names.GetSize()] = sectionName;
   }

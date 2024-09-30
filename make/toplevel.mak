@@ -195,7 +195,6 @@ ifeq ($(HAS_VIDEO),1)
   SOURCES += $(COMMON_SRC_DIR)/vfakeio.cxx \
              $(COMMON_SRC_DIR)/videoio.cxx \
              $(COMMON_SRC_DIR)/vconvert.cxx \
-             $(COMMON_SRC_DIR)/pvidchan.cxx \
              $(COMMON_SRC_DIR)/tinyjpeg.c \
              $(COMMON_SRC_DIR)/jidctflt.c
 
@@ -500,7 +499,6 @@ SOURCES	+= \
 	$(GETDATE_SOURCE) \
 	$(COMMON_SRC_DIR)/osutils.cxx \
 	$(PLATFORM_SRC_DIR)/assert.cxx \
-	$(COMMON_SRC_DIR)/collect.cxx \
 	$(COMMON_SRC_DIR)/contain.cxx \
 	$(COMMON_SRC_DIR)/object.cxx   # must be last module
 

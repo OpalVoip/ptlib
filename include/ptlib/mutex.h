@@ -282,7 +282,7 @@ class PCriticalSection : public PSync, public std::mutex
   //@{
     /** Create a new PCriticalSection
       */
-    PObject * Clone() const;
+    PObject * Clone() const override;
 
     /** Enter the critical section by waiting for exclusive access.
      */

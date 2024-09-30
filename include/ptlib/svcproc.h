@@ -236,9 +236,9 @@ class PServiceProcess : public PProcess
 #else
   public:
     ~PServiceProcess();
-    virtual void AddRunTimeSignalHandlers(const int * signals = NULL);
-    virtual void AsynchronousRunTimeSignal(int signal, PProcessIdentifier source);
-    virtual void HandleRunTimeSignal(int signal);
+    virtual void AddRunTimeSignalHandlers(const int * signals = NULL) override;
+    virtual void AsynchronousRunTimeSignal(int signal, PProcessIdentifier source) override;
+    virtual void HandleRunTimeSignal(int signal) override;
   protected:
     int  InitialiseService();
     PString pidFileToRemove;

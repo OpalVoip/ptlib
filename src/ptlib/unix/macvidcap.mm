@@ -205,21 +205,21 @@ class PVideoInputDevice_Mac : public PVideoInputDevice
     PVideoInputDevice_Mac();
     ~PVideoInputDevice_Mac();
 
-    PBoolean Open(const PString & deviceName, PBoolean startImmediate) override;
-    PBoolean IsOpen() override;
-    PBoolean Close() override;
-    PBoolean Start() override;
-    PBoolean Stop() override;
-    PBoolean IsCapturing() override;
+    bool Open(const PString & deviceName, bool startImmediate) override;
+    bool IsOpen() override;
+    bool Close() override;
+    bool Start() override;
+    bool Stop() override;
+    bool IsCapturing() override;
     static PStringArray GetInputDeviceNames();
     virtual PStringArray GetDeviceNames() const override;
     static bool GetDeviceCapabilities(const PString &, Capabilities *);
     virtual bool GetDeviceCapabilities(Capabilities * caps) { return GetDeviceCapabilities(PString::Empty(), caps); }
     virtual PINDEX GetMaxFrameBytes() override;
-    virtual PBoolean SetColourFormat(const PString & colourFormat) override;
-    virtual PBoolean SetFrameRate(unsigned rate) override;
-    virtual PBoolean SetFrameSize(unsigned width, unsigned height) override;
-    virtual PBoolean GetFrameSizeLimits(unsigned & minWidth, unsigned & minHeight, unsigned & maxWidth, unsigned & maxHeight) override;
+    virtual bool SetColourFormat(const PString & colourFormat) override;
+    virtual bool SetFrameRate(unsigned rate) override;
+    virtual bool SetFrameSize(unsigned width, unsigned height) override;
+    virtual bool GetFrameSizeLimits(unsigned & minWidth, unsigned & minHeight, unsigned & maxWidth, unsigned & maxHeight) override;
   
   protected:
     virtual bool InternalGetFrameData(BYTE * buffer, PINDEX & bytesReturned, bool & keyFrame, bool wait) override;
@@ -261,7 +261,7 @@ PVideoInputDevice_Mac::~PVideoInputDevice_Mac()
 }
 
 
-PBoolean PVideoInputDevice_Mac::Open(const PString & devName, PBoolean startImmediate)
+bool PVideoInputDevice_Mac::Open(const PString & devName, bool startImmediate)
 {
   Close();
 
@@ -396,13 +396,13 @@ PBoolean PVideoInputDevice_Mac::Open(const PString & devName, PBoolean startImme
 }
 
 
-PBoolean PVideoInputDevice_Mac::IsOpen()
+bool PVideoInputDevice_Mac::IsOpen()
 {
   return m_captureFrame != nil;
 }
 
 
-PBoolean PVideoInputDevice_Mac::Close()
+bool PVideoInputDevice_Mac::Close()
 {
   PTRACE_IF(4, IsOpen(), "Closing \"" << m_deviceName << '"');
   
@@ -443,7 +443,7 @@ PBoolean PVideoInputDevice_Mac::Close()
 }
 
 
-PBoolean PVideoInputDevice_Mac::Start()
+bool PVideoInputDevice_Mac::Start()
 {
   PReadWaitAndSignal mutex(m_mutex);
   
@@ -469,7 +469,7 @@ PBoolean PVideoInputDevice_Mac::Start()
 }
 
 
-PBoolean PVideoInputDevice_Mac::Stop()
+bool PVideoInputDevice_Mac::Stop()
 {
   PReadWaitAndSignal mutex(m_mutex);
   
@@ -498,7 +498,7 @@ PBoolean PVideoInputDevice_Mac::Stop()
 }
 
 
-PBoolean PVideoInputDevice_Mac::IsCapturing()
+bool PVideoInputDevice_Mac::IsCapturing()
 {
   PReadWaitAndSignal mutex(m_mutex);
   return IsOpen() && [m_session isRunning];
@@ -526,7 +526,7 @@ PStringArray PVideoInputDevice_Mac::GetDeviceNames() const
 }
 
 
-PBoolean PVideoInputDevice_Mac::SetColourFormat(const PString & newFormat)
+bool PVideoInputDevice_Mac::SetColourFormat(const PString & newFormat)
 {
   if (m_colourFormat *= newFormat)
     return true;
@@ -544,7 +544,7 @@ PBoolean PVideoInputDevice_Mac::SetColourFormat(const PString & newFormat)
 }
 
 
-PBoolean PVideoInputDevice_Mac::SetFrameRate(unsigned rate)
+bool PVideoInputDevice_Mac::SetFrameRate(unsigned rate)
 {
   if (rate < 1)
     rate = 1;
@@ -561,7 +561,7 @@ PBoolean PVideoInputDevice_Mac::SetFrameRate(unsigned rate)
 }
 
 
-PBoolean PVideoInputDevice_Mac::GetFrameSizeLimits(unsigned & minWidth,
+bool PVideoInputDevice_Mac::GetFrameSizeLimits(unsigned & minWidth,
                                                    unsigned & minHeight,
                                                    unsigned & maxWidth,
                                                    unsigned & maxHeight)
@@ -572,7 +572,7 @@ PBoolean PVideoInputDevice_Mac::GetFrameSizeLimits(unsigned & minWidth,
 }
 
 
-PBoolean PVideoInputDevice_Mac::SetFrameSize(unsigned width, unsigned height)
+bool PVideoInputDevice_Mac::SetFrameSize(unsigned width, unsigned height)
 {
   if (width == m_frameWidth && height == m_frameHeight)
     return true;

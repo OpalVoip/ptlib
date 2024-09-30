@@ -1583,7 +1583,7 @@ PString & PString::vsprintf(const char * fmt, va_list arg)
   int requiredSpace;
   do {
     providedSpace += 1000;
-    requiredSpace = vsprintf_s(GetPointerAndSetLength(providedSpace+len), providedSpace, fmt, arg);
+    requiredSpace = vsnprintf(GetPointerAndSetLength(providedSpace+len), providedSpace-1, fmt, arg);
   } while (requiredSpace == -1 || requiredSpace >= providedSpace);
   resize(len + requiredSpace);
 
@@ -2062,7 +2062,7 @@ PRegularExpression::match_flag PRegularExpression::MapFlags(ExecOptions opts)
 
 PString PRegularExpression::GetErrorText() const
 {
-  switch (m_lastErrorCode) {
+  switch (m_lastErrorType) {
     case std::regex_constants::error_collate:
       return "the expression contains an invalid collating element name";
     case std::regex_constants::error_ctype:

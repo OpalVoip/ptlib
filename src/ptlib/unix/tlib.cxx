@@ -384,7 +384,7 @@ void PProcess::PlatformResetRunTimeSignalHandler(int signal, PRunTimeSignalHandl
 
 
 #define SIG_NAME(s) { s, #s }
-POrdinalToString::Initialiser const PProcess::InternalSigNames[] = {
+std::unordered_map<int, std::string> const PProcess::InternalSigNames{
   SIG_NAME(SIGHUP   ),      /* Hangup (POSIX).  */
   SIG_NAME(SIGINT   ),      /* Interrupt (ANSI).  */
   SIG_NAME(SIGQUIT  ),      /* Quit (POSIX).  */
@@ -902,9 +902,6 @@ JNIEXPORT jint JNI_OnLoad(JavaVM* vm, void* reserved)
 #endif
 
 
-static PINDEX const PThreadMinimumStack = 16 * PTHREAD_STACK_MIN; // Set a decent stack size that won't eat all virtual memory, or crash
-
-
 int PX_NewHandle(const char*, int);
 
 
@@ -1115,12 +1112,11 @@ bool PThread::PlatformKill(PThreadIdentifier tid, PUniqueThreadIdentifier uid, i
 #ifdef P_MACOSX
 // obtain thread priority of the main thread
 static unsigned long
-GetThreadBasePriority()
+GetThreadBasePriority(pthread_t baseThread)
 {
   thread_basic_info_data_t threadInfo;
   policy_info_data_t       thePolicyInfo;
   unsigned int             count;
-  pthread_t baseThread = PProcess::Current().GetThreadId();
 
   // get basic info
   count = THREAD_BASIC_INFO_COUNT;
@@ -1231,7 +1227,7 @@ void PThread::SetPriority(Priority priorityLevel)
       long                            relativePriority;
 
       theFixedPolicy.timeshare = false; // set to true for a non-fixed thread
-      result = thread_policy_set(pthread_mach_thread_np(m_threadId),
+      result = thread_policy_set(pthread_mach_thread_np(m_nativeHandle),
                                  THREAD_EXTENDED_POLICY,
                                  (thread_policy_t)&theFixedPolicy,
                                  THREAD_EXTENDED_POLICY_COUNT);
@@ -1243,12 +1239,12 @@ void PThread::SetPriority(Priority priorityLevel)
 
       // precedency policy's "importance" value is relative to
       // spawning thread's priority
-
-      relativePriority = 62 - GetThreadBasePriority();
-      PTRACE(3, "relativePriority is " << relativePriority << " base priority is " << GetThreadBasePriority());
+      unsigned long baseThreadPriority = GetThreadBasePriority(PProcess::Current().m_nativeHandle);
+      relativePriority = 62 - baseThreadPriority;
+      PTRACE(3, "relativePriority is " << relativePriority << " base priority is " << baseThreadPriority);
 
       thePrecedencePolicy.importance = relativePriority;
-      result = thread_policy_set(pthread_mach_thread_np(m_threadId),
+      result = thread_policy_set(pthread_mach_thread_np(m_nativeHandle),
                                  THREAD_PRECEDENCE_POLICY,
                                  (thread_policy_t)&thePrecedencePolicy,
                                  THREAD_PRECEDENCE_POLICY_COUNT);
@@ -1512,8 +1508,8 @@ void PSemaphore::Reset(unsigned initial, unsigned maximum)
     else {
       PStringStream generatedName;
       generatedName << "/ptlib/" << getpid() << '/' << this;
-      sem_unlink(generatedName);
-      m_namedSemaphore.ptr = sem_open(generatedName, (O_CREAT | O_EXCL), 700, m_initial);
+      sem_unlink(generatedName.str().c_str());
+      m_namedSemaphore.ptr = sem_open(generatedName.str().c_str(), (O_CREAT | O_EXCL), 700, m_initial);
     }
 
     PAssertWithRetry(pthread_mutex_unlock, &semCreationMutex);

@@ -106,15 +106,6 @@ bool PICMPSocket::Ping(const PString & host)
 
 bool PICMPSocket::Ping(const PString & host, PingInfo & info)
 {
-  if (!WritePing(host, info))
-    return false;
-
-  return ReadPing(info);
-}
-
-
-bool PICMPSocket::WritePing(const PString & host, PingInfo & info)
-{
   // find address of the host
   PIPSocket::Address addr;
   if (!GetHostAddress(host, addr))
@@ -145,14 +136,11 @@ bool PICMPSocket::WritePing(const PString & host, PingInfo & info)
   packet.checksum = CalcChecksum(&packet, sizeof(packet));
 
   // send the packet
-  return WriteTo(&packet, sizeof(packet), addr, 0);
-}
+  if (!WriteTo(&packet, sizeof(packet), addr, 0))
+    return false;
 
-
-bool PICMPSocket::ReadPing(PingInfo & info)
-{
   // receive a packet
-  uint8_t packet[RX_BUFFER_SIZE];
+  uint8_t reply[RX_BUFFER_SIZE];
   IPHdr      * ipHdr;
   ICMPPacket * icmpPacket;
   uint16_t port;
@@ -160,16 +148,16 @@ bool PICMPSocket::ReadPing(PingInfo & info)
   PTimer timeout(GetReadTimeout());
 
   for (;;) {
-    memset(&packet, 0, sizeof(packet));
+    memset(&reply, 0, sizeof(reply));
 
-    if (!ReadFrom(packet, sizeof(packet), info.remoteAddr, port))
+    if (!ReadFrom(reply, sizeof(reply), info.remoteAddr, port))
       return false;
 
     now  = PTimer::Tick().GetMilliSeconds();
-    ipHdr      = (IPHdr *)packet;
-    icmpPacket = (ICMPPacket *)(packet + ((ipHdr->verIhl & 0xf) << 2));
+    ipHdr      = (IPHdr *)reply;
+    icmpPacket = (ICMPPacket *)(reply + ((ipHdr->verIhl & 0xf) << 2));
 
-    if ((      icmpPacket->type == ICMP_ECHO_REPLY) && 
+    if ((icmpPacket->type == ICMP_ECHO_REPLY) && 
         ((uint16_t)icmpPacket->id   == info.identifier)) {
       info.status = PingSuccess;
       break;

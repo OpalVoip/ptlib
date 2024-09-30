@@ -113,7 +113,7 @@ static int PSASL_ClientPassword(sasl_conn_t *, void *context, int id, sasl_secre
 
     *psecret = (sasl_secret_t *)malloc(sizeof(sasl_secret_t) + len);
     (*psecret)->len = len;
-    strcpy_s(reinterpret_cast<char *>((*psecret)->data), len+1, pwd);
+    strncpy(reinterpret_cast<char *>((*psecret)->data), pwd, len);
     
     return SASL_OK;
 }

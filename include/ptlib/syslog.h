@@ -401,7 +401,7 @@ class PSystemLogToSyslog : public PSystemLogTarget
     PString m_ident;
     int     m_priority;
 };
-#endif _WIN32
+#endif // _WIN32
 
 
 /** Log a message to the system log.

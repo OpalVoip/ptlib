@@ -45,7 +45,7 @@
 #define TCGETA TIOCGETA
 #define TCSETAW TIOCSETAW
 
-##endif
+#endif // P_LINUX
 
 
 #ifndef  TCSETATTR
@@ -74,28 +74,28 @@
 void PSerialChannel::Construct()
 {
   // set control modes: 9600, N, 8, 1, local line
-  baudRate   = 9600;
-  dataBits   = 8;
-  parityBits = NoParity;
-  stopBits   = 1;
+  m_baudRate   = 9600;
+  m_dataBits   = 8;
+  m_parityBits = NoParity;
+  m_stopBits   = 1;
 
   // set input mode: ignore breaks, ignore parity errors, do not strip chars,
   // no CR/NL conversion, no case conversion, no XON/XOFF control,
   // no start/stop
-  Termio.c_iflag = IGNBRK | IGNPAR;
-  Termio.c_cflag = CS8 | CSTOPB | CREAD | CLOCAL;
+  m_currentTermio.c_iflag = IGNBRK | IGNPAR;
+  m_currentTermio.c_cflag = CS8 | CSTOPB | CREAD | CLOCAL;
 
 #if defined(P_FREEBSD) || defined(P_OPENBSD) || defined (P_NETBSD) || defined(P_MACOSX) || defined(P_IOS)
-  Termio.c_ispeed = Termio.c_ospeed = B9600;
+  m_currentTermio.c_ispeed = m_currentTermio.c_ospeed = B9600;
 #else
-  Termio.c_cflag |= B9600;
+  m_currentTermio.c_cflag |= B9600;
 #endif
 
   // set output mode: no post process output, 
-  Termio.c_oflag = 0;
+  m_currentTermio.c_oflag = 0;
 
   // set line discipline
-  Termio.c_lflag = 0;
+  m_currentTermio.c_lflag = 0;
 }
 
 bool PSerialChannel::Close()
@@ -106,7 +106,7 @@ bool PSerialChannel::Close()
     PFile::Remove(PString(LOCK_PREFIX) + m_portName);
 
     // restore the original terminal settings
-    TCSETATTR(os_handle, &oldTermio);
+    TCSETATTR(os_handle, &m_oldTermio);
   }
 
   return PChannel::Close();
@@ -187,10 +187,10 @@ bool PSerialChannel::Open(const PString & port,
   m_portName = port;
 
   // save the current port setup
-  TCGETATTR(os_handle, &oldTermio);
+  TCGETATTR(os_handle, &m_oldTermio);
 
   // set the default paramaters
-  TCSETATTR(os_handle, &Termio);
+  TCSETATTR(os_handle, &m_currentTermio);
 
   // now set the mode that was passed in
   if (!SetSpeed(speed) ||
@@ -211,7 +211,7 @@ bool PSerialChannel::Open(const PString & port,
 
 bool PSerialChannel::SetSpeed(uint32_t newBaudRate)
 {
-  if (newBaudRate == baudRate)
+  if (newBaudRate == m_baudRate)
     return true;
 
   if (os_handle < 0)
@@ -342,29 +342,29 @@ bool PSerialChannel::SetSpeed(uint32_t newBaudRate)
   }
 
   // save new baud rate
-  baudRate = newBaudRate;
+  m_baudRate = newBaudRate;
 
 #if defined(P_FREEBSD) || defined(P_OPENBSD) || defined (P_NETBSD) || defined(P_MACOSX) || defined(P_IOS)
   // The BSD way
-  Termio.c_ispeed = baud;
-  Termio.c_ospeed = baud;
+  m_currentTermio.c_ispeed = baud;
+  m_currentTermio.c_ospeed = baud;
 #else
   // The Linux way
-  Termio.c_cflag &= ~CBAUD;
-  Termio.c_cflag |= baud;
+  m_currentTermio.c_cflag &= ~CBAUD;
+  m_currentTermio.c_cflag |= baud;
 #endif
 
   if (os_handle < 0)
     return true;
 
   // initialise the port
-  return ConvertOSError(TCSETATTR(os_handle, &Termio));
+  return ConvertOSError(TCSETATTR(os_handle, &m_currentTermio));
 }
 
 
 bool PSerialChannel::SetDataBits(uint8_t data)
 {
-  if (data == dataBits)
+  if (data == m_dataBits)
     return true;
 
   int flags;
@@ -403,19 +403,19 @@ bool PSerialChannel::SetDataBits(uint8_t data)
   }
 
   // set the new number of data bits
-  dataBits = data;
-  Termio.c_cflag &= ~CSIZE;
-  Termio.c_cflag |= flags;
+  m_dataBits = data;
+  m_currentTermio.c_cflag &= ~CSIZE;
+  m_currentTermio.c_cflag |= flags;
 
   if (os_handle < 0)
     return true;
 
-  return ConvertOSError(TCSETATTR(os_handle, &Termio));
+  return ConvertOSError(TCSETATTR(os_handle, &m_currentTermio));
 }
 
 bool PSerialChannel::SetParity(Parity parity)
 {
-  if (parity == parityBits)
+  if (parity == m_parityBits)
     return true;
 
   int flags;
@@ -450,16 +450,16 @@ bool PSerialChannel::SetParity(Parity parity)
     return true;
 
   // set the new parity
-  parityBits = parity;
-  Termio.c_cflag &= ~(PARENB|PARODD);
-  Termio.c_cflag |= flags;
+  m_parityBits = parity;
+  m_currentTermio.c_cflag &= ~(PARENB|PARODD);
+  m_currentTermio.c_cflag |= flags;
 
-  return ConvertOSError(TCSETATTR(os_handle, &Termio));
+  return ConvertOSError(TCSETATTR(os_handle, &m_currentTermio));
 }
 
 bool PSerialChannel::SetStopBits(uint8_t stop)
 {
-  if (stop == stopBits)
+  if (stop == m_stopBits)
     return true;
 
   int flags;
@@ -484,31 +484,31 @@ bool PSerialChannel::SetStopBits(uint8_t stop)
     return true;
 
   // set the new number of stop bits
-  stopBits = stop;
-  Termio.c_cflag &= ~CSTOPB;
-  Termio.c_cflag |= flags;
+  m_stopBits = stop;
+  m_currentTermio.c_cflag &= ~CSTOPB;
+  m_currentTermio.c_cflag |= flags;
 
-  return ConvertOSError(TCSETATTR(os_handle, &Termio));
+  return ConvertOSError(TCSETATTR(os_handle, &m_currentTermio));
 }
 
 uint32_t PSerialChannel::GetSpeed() const
 {
-  return baudRate;
+  return m_baudRate;
 }
 
 uint8_t PSerialChannel::GetStopBits() const
 {
-  return stopBits;
+  return m_stopBits;
 }
 
 uint8_t PSerialChannel::GetDataBits() const
 {
-  return dataBits;
+  return m_dataBits;
 }
 
 PSerialChannel::Parity PSerialChannel::GetParity() const
 {
-  return parityBits;
+  return m_parityBits;
 }
 
 bool PSerialChannel::SetInputFlowControl(FlowControl)

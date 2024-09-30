@@ -67,7 +67,7 @@ static bool CheckError(OSStatus status, const char * fn, const char * prop = NUL
   if (status == 0 || !PTrace::CanTrace(1))
     return false;
 
-  static POrdinalToString::Initialiser ErrorMessagesInit[] = {
+  static std::map<PINDEX, PString> const ErrorMessages{
     { (PINDEX)-50,                                    "Invalid Parameter(s)" },
     { (PINDEX)kAudioUnitErr_InvalidProperty,          "Invalid Property" },
     { (PINDEX)kAudioUnitErr_InvalidParameter,         "Invalid Parameter" },
@@ -76,14 +76,14 @@ static bool CheckError(OSStatus status, const char * fn, const char * prop = NUL
     { (PINDEX)kAudioUnitErr_CannotDoInCurrentContext, "Cannot Do In Current Context" },
     { (PINDEX)kAudioUnitErr_InvalidPropertyValue,     "Invalid Property Value" }
   };
-  static POrdinalToString const ErrorMessages(PARRAYSIZE(ErrorMessagesInit), ErrorMessagesInit);
 
   const char * errCode = (const char *)&status;
 
   ostream & trace = PTRACE_BEGIN(1);
   trace << "Error ";
-  if (ErrorMessages.Contains(status))
-    trace << '"' << ErrorMessages[status] << "\" (" << status << ')';
+  auto errMsg = ErrorMessages.find(status);
+  if (errMsg != ErrorMessages.end())
+    trace << '"' << errMsg->second << "\" (" << status << ')';
   else if (status > -100000 && status < 100000)
     trace << status;
   else if (isprint(errCode[0]) && isprint(errCode[1]) && isprint(errCode[2]) && isprint(errCode[3]))
@@ -621,13 +621,13 @@ public:
   }
   
   
-  virtual PBoolean IsOpen() const override
+  virtual bool IsOpen() const override
   {
     return os_handle > 0;
   }
   
   
-  virtual PBoolean Close() override
+  virtual bool Close() override
   {
     PTRACE_IF(4, IsOpen(), "Closing \"" << GetName() << '"');
 
@@ -655,7 +655,7 @@ public:
   }
   
   
-  virtual PBoolean Abort() override
+  virtual bool Abort() override
   {
     if (!IsOpen())
       return false;
@@ -670,7 +670,7 @@ public:
   }
   
   
-  virtual PBoolean Write(const void * buf, PINDEX len) override
+  virtual bool Write(const void * buf, PINDEX len) override
   {
     SetLastWriteCount(0);
     
@@ -702,13 +702,13 @@ public:
   }
   
   
-  virtual PBoolean HasPlayCompleted() override
+  virtual bool HasPlayCompleted() override
   {
     return m_queue.GetLength() == 0;
   }
   
   
-  virtual PBoolean WaitForPlayCompletion() override
+  virtual bool WaitForPlayCompletion() override
   {
     while (!HasPlayCompleted()) {
       PThread::Sleep(m_bufferSize*1000/GetSampleRate());
@@ -719,7 +719,7 @@ public:
   }
   
   
-  virtual PBoolean Read(void * buf, PINDEX len) override
+  virtual bool Read(void * buf, PINDEX len) override
   {
     SetLastReadCount(0);
     
@@ -758,7 +758,7 @@ public:
   }
   
   
-  virtual PBoolean StartRecording() override
+  virtual bool StartRecording() override
   {
     if (!IsOpen() || !PAssert(m_activeDirection == Recorder, "Trying to start recording from player"))
       return false;
@@ -791,7 +791,7 @@ public:
   }
   
   
-  virtual PBoolean SetFormat(unsigned numChannels, unsigned sampleRate, unsigned bitsPerSample) override
+  virtual bool SetFormat(unsigned numChannels, unsigned sampleRate, unsigned bitsPerSample) override
   {
     if (numChannels == GetChannels()&&
         sampleRate == GetSampleRate() &&
@@ -844,7 +844,7 @@ public:
   }
   
   
-  virtual PBoolean SetBuffers(PINDEX size, PINDEX count) override
+  virtual bool SetBuffers(PINDEX size, PINDEX count) override
   {
     if (count == m_bufferCount && size == m_bufferSize)
       return true;
@@ -865,7 +865,7 @@ public:
   }
   
   
-  virtual PBoolean GetBuffers(PINDEX & size, PINDEX & count) override
+  virtual bool GetBuffers(PINDEX & size, PINDEX & count) override
   {
     size = m_bufferSize;
     count = m_bufferCount;
@@ -873,7 +873,7 @@ public:
   }
   
   
-  virtual PBoolean SetVolume(unsigned newVolume) override
+  virtual bool SetVolume(unsigned newVolume) override
   {
     if (!IsOpen() || m_activeDirection != Player)
       return false;
@@ -891,7 +891,7 @@ public:
   }
   
   
-  virtual PBoolean GetVolume(unsigned & oldVolume) override
+  virtual bool GetVolume(unsigned & oldVolume) override
   {
     oldVolume = 0;
     

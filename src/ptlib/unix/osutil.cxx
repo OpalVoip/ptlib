@@ -295,42 +295,42 @@ PFilePathString PFilePath::Canonicalise(const PFilePathString & path, bool isDir
 
 void PDirectory::Close()
 {
-  if (directory != NULL) {
-    PAssert(closedir(directory) == 0, POperatingSystemError);
-    directory = NULL;
+  if (m_directory != NULL) {
+    PAssert(closedir(m_directory) == 0, POperatingSystemError);
+    m_directory = NULL;
   }
 
-  if (entryBuffer != NULL) {
-    free(entryBuffer);
-    entryBuffer = NULL;
+  if (m_entryBuffer != NULL) {
+    free(m_entryBuffer);
+    m_entryBuffer = NULL;
   }
 
-  if (entryInfo != NULL) {
-    delete entryInfo;
-    entryInfo = NULL;
+  if (m_entryInfo != NULL) {
+    delete m_entryInfo;
+    m_entryInfo = NULL;
   }
 }
 
 void PDirectory::Construct ()
 {
-  directory   = NULL;
-  entryBuffer = NULL;
-  entryInfo   = NULL;
+  m_directory   = NULL;
+  m_entryBuffer = NULL;
+  m_entryInfo   = NULL;
 }
 
 bool PDirectory::Open(PFileInfo::FileTypes ScanMask)
 
 {
-  if (directory != NULL)
+  if (m_directory != NULL)
     Close();
 
   m_scanMask = ScanMask;
 
-  if ((directory = opendir(c_str())) == NULL)
+  if ((m_directory = opendir(c_str())) == NULL)
     return false;
 
-  entryBuffer = (struct dirent *)malloc(sizeof(struct dirent) + P_MAX_PATH);
-  entryInfo   = new PFileInfo;
+  m_entryBuffer = (struct dirent *)malloc(sizeof(struct dirent) + P_MAX_PATH);
+  m_entryInfo   = new PFileInfo;
 
   if (Next())
     return true;
@@ -342,17 +342,17 @@ bool PDirectory::Open(PFileInfo::FileTypes ScanMask)
 
 bool PDirectory::Next()
 {
-  if (directory == NULL)
+  if (m_directory == NULL)
     return false;
 
   do {
     do {
       struct dirent * entryPtr;
-      entryBuffer->d_name[0] = '\0';
+      m_entryBuffer->d_name[0] = '\0';
 #if P_HAS_POSIX_READDIR_R == 3
-      if (::readdir_r(directory, entryBuffer, &entryPtr) != 0)
+      if (::readdir_r(m_directory, m_entryBuffer, &entryPtr) != 0)
         return false;
-      if (entryPtr != entryBuffer)
+      if (entryPtr != m_entryBuffer)
         return false;
 #elif P_HAS_POSIX_READDIR_R == 2
       entryPtr = ::readdir_r(directory, entryBuffer);
@@ -364,12 +364,12 @@ bool PDirectory::Next()
       *entryBuffer = *entryPtr;
       strcpy(entryBuffer->d_name, entryPtr->d_name);
 #endif
-    } while (strcmp(entryBuffer->d_name, "." ) == 0 || strcmp(entryBuffer->d_name, "..") == 0);
+    } while (strcmp(m_entryBuffer->d_name, "." ) == 0 || strcmp(m_entryBuffer->d_name, "..") == 0);
 
     /* Ignore this file if we can't get info about it */
-    if (PFile::GetInfo(*this+entryBuffer->d_name, *entryInfo) == 0)
+    if (PFile::GetInfo(*this+m_entryBuffer->d_name, *m_entryInfo) == 0)
       continue;
-  } while ((entryInfo->type & m_scanMask) == 0);
+  } while ((m_entryInfo->type & m_scanMask) == 0);
 
   return true;
 }
@@ -377,35 +377,35 @@ bool PDirectory::Next()
 
 bool PDirectory::IsSubDir() const
 {
-  if (entryInfo == NULL)
+  if (m_entryInfo == NULL)
     return false;
 
-  return entryInfo->type == PFileInfo::SubDirectory;
+  return m_entryInfo->type == PFileInfo::SubDirectory;
 }
 
 bool PDirectory::Restart(PFileInfo::FileTypes newScanMask)
 {
   m_scanMask = newScanMask;
-  if (directory != NULL)
-    rewinddir(directory);
+  if (m_directory != NULL)
+    rewinddir(m_directory);
   return true;
 }
 
 PString PDirectory::GetEntryName() const
 {
-  if (entryBuffer == NULL)
+  if (m_entryBuffer == NULL)
     return PString();
 
-  return entryBuffer->d_name;
+  return m_entryBuffer->d_name;
 }
 
 
 bool PDirectory::GetInfo(PFileInfo & info) const
 {
-  if (entryInfo == NULL)
+  if (m_entryInfo == NULL)
     return false;
 
-  info = *entryInfo;
+  info = *m_entryInfo;
   return true;
 }
 

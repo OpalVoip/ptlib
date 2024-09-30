@@ -1687,7 +1687,6 @@ PTLIB_MODULE_OPTION(
       [#include <aws/core/Aws.h>],
       [Aws::InitAPI(Aws::SDKOptions())],
       [
-         AS_VAR_IF([CPLUSPLUS_STD], ["-std=c++20"],[AC_SUBST(CPLUSPLUS_STD,"-std=c++11")])
          AS_VAR_IF([target_os], [Darwin],[MY_ADD_FLAGS([-laws-crt-cpp -laws-c-common])])
          MY_PKG_CHECK_MODULE(
             [AWS_SDK_POLLY],

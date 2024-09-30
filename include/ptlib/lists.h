@@ -190,7 +190,7 @@ template <class T> class PQueue : public PObject, public std::queue<T *>
     ~PQueue() { PAssert(this->empty(), PLogicError); }
 
     /* Cloning a queue does not make sense */
-    virtual PObject * Clone() const
+    virtual PObject * Clone() const override
     {
       PAssertAlways(PUnsupportedFeature);
       return PNEW PQueue();

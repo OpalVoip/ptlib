@@ -1297,7 +1297,7 @@ template <class K, class D> class PSafeDictionary : public PSafeCollection
       PArray<key_type> keys;
       this->m_collectionMutex.Wait();
       for (const auto & it : m_collection)
-        keys.Append(it.first.CloneAs<key_type>());
+        keys.Append(it.first.template CloneAs<key_type>());
       this->m_collectionMutex.Signal();
       return keys;
     }

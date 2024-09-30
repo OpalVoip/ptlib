@@ -465,7 +465,7 @@ class PLDAPStructBase : public PObject {
     typedef PDictionary<PString, PLDAPAttributeBase> AttribDict;
     AttribDict & GetAttributes() { return m_attributes; }
     const AttribDict & GetAttributes() const { return m_attributes; }
-    PLDAPAttributeBase * GetAttribute(const char * name) const { return m_attributes.GetAt(name); }
+    PLDAPAttributeBase * GetAttribute(const char * name) const { return m_attributes.GetAt(name).get(); }
 
     void AddAttribute(PLDAPAttributeBase * var);
     static PLDAPStructBase & GetInitialiser() { return *PAssertNULL(m_initialiserInstance); }

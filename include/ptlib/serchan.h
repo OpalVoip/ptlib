@@ -199,7 +199,7 @@ class PSerialChannel : public PChannel
     ///  Close the channel
     /// </summary>
     /// <returns></returns>
-    virtual bool Close();
+    virtual bool Close() override;
 
     /**Get a list of the available serial ports. This returns a set of
        platform dependent strings which describe the serial ports of the
@@ -407,9 +407,6 @@ class PSerialChannel : public PChannel
     enum { InputQueueSize = 2048, OutputQueueSize = 1024 };
     DCB m_deviceControlBlock;
 #else
-  public:
-    bool Close();
-
   private:
     struct termios m_oldTermio;
     struct termios m_currentTermio;

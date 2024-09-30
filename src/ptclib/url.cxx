@@ -255,7 +255,7 @@ PString PURL::TranslateString(const PString & str, TranslationType type)
   
   for (PINDEX pos = 0; (pos = xlat.FindSpan(safeChars, pos)) != P_MAX_INDEX; ++pos) {
     char buf[10];
-    sprintf_s(buf, sizeof(buf), "%%%02X", (uint8_t)xlat[pos]);
+    snprintf(buf, sizeof(buf), "%%%02X", (uint8_t)xlat[pos]);
     xlat.Splice(buf, pos++, 1);
   }
 

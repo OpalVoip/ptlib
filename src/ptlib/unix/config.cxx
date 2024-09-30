@@ -57,9 +57,9 @@ static PTimeInterval const ConfigFlushTimeout(0, 1);
 // a list of sections
 //
 
-class PConfig::Cached : public PDictionary<PCaselessString, PStringOptions>
+class PConfig::Cached : public PObject, PUnorderedMap<PCaselessString, PStringOptions>
 {
-    typedef PDictionary<PCaselessString, PStringOptions> ParentClass;
+    typedef PUnorderedMap<PCaselessString, PStringOptions> ParentClass;
     PCLASSINFO(Cached, ParentClass);
   public:
     Cached(const PFilePath & filename);
@@ -112,7 +112,7 @@ class PConfigCache : public PProcessStartup
     PDECLARE_MUTEX(m_mutex);
     PConfig::Cached  * m_environmentCache;
 
-    typedef PDictionary<PFilePath, PConfig::Cached> CacheDict;
+    typedef PUnorderedMap<PFilePath, PConfig::Cached> CacheDict;
     CacheDict m_cache;
 };
 
@@ -140,7 +140,7 @@ PConfig::Cached::Cached(const PFilePath & path)
   if (!file.Open(m_filePath, PFile::ReadOnly))
     return;
 
-  PStringOptions * currentSection = NULL;
+  iterator itSection;
 
   // read lines in the file
   while (file.good()) {
@@ -152,22 +152,19 @@ PConfig::Cached::Cached(const PFilePath & path)
 
     // Preserve comments
     if (IsComment(line)) {
-      SetAt(line, new PStringOptions());
+      at(line);
       continue;
     }
 
-    if (line[0] == '[') {
-      PCaselessString sectionName = line(1, line.Find(']')-1).Trim();
-      if ((currentSection = GetAt(sectionName)) == NULL)
-        SetAt(sectionName, currentSection = new PStringOptions());
-    }
-    else if (currentSection != NULL) {
+    if (line[0] == '[')
+      at(line(1, line.Find(']')-1).Trim());
+    else if (itSection != end()) {
       PString keyStr, valStr;
       if (line.Split('=', keyStr, valStr, PString::SplitDefaultToBefore|PString::SplitTrimBefore|PString::SplitBeforeNonEmpty)) {
-        PStringOptions::iterator it = currentSection->find(keyStr);
-        if (it != currentSection->end())
+        auto it = itSection->second.find(keyStr);
+        if (it != itSection->second.end())
           valStr.Splice(it->second + '\n', 0, 0);
-        currentSection->SetAt(keyStr, valStr);
+        itSection->second[keyStr] = valStr;
       }
     }
   }
@@ -258,15 +255,14 @@ PConfig::Cached::Cached(char **envp)
 {
   PTRACE(4, "Created " << this << " for environment");
 
-  PStringOptions * envSection = new PStringOptions();
-  SetAt(PConfig::DefaultSectionName(), envSection);
+  auto & envSection = at(PConfig::DefaultSectionName());
 
   if (envp == NULL)
     return;
 
   while (*envp != NULL && **envp != '\0') {
     PStringStream strm(*envp++);
-    strm >> *envSection;
+    strm >> envSection;
   }
 }
 
@@ -287,7 +283,7 @@ PConfigCache::~PConfigCache()
 
 void PConfigCache::OnShutdown()
 {
-  m_cache.RemoveAll(); // And flush them
+  m_cache.clear(); // And flush them
 }
 
 
@@ -305,13 +301,13 @@ PConfig::Cached * PConfigCache::GetFileCache(const PFilePath & filename)
 {
   m_mutex.Wait();
 
-  PConfig::Cached * config = m_cache.GetAt(filename);
-  if (config == NULL)
-    m_cache.SetAt(filename, config = new PConfig::Cached(filename));
-  ++config->m_instanceCount;
+  auto it = m_cache.find(filename);
+  if (it == m_cache.end())
+    it = m_cache.emplace(filename, filename).first;
+  ++it->second.m_instanceCount;
 
   m_mutex.Signal();
-  return config;
+  return &it->second;
 }
 
 
@@ -320,7 +316,7 @@ void PConfigCache::Detach(PConfig::Cached * config)
   m_mutex.Wait();
 
   if (config != m_environmentCache) {
-    CacheDict::iterator it = m_cache.find(config->m_filePath);
+    auto it = m_cache.find(config->m_filePath);
     if (it != m_cache.end() && --config->m_instanceCount == 0)
       m_cache.erase(it);
   }
@@ -363,7 +359,7 @@ PStringArray PConfig::GetSections() const
   PAssert(m_config != NULL, "config instance not set");
   PWaitAndSignal(m_config->m_mutex);
 
-  PStringArray sections(m_config->GetSize());
+  PStringArray sections(m_config->size());
 
   PINDEX index = 0;
   for (Cached::iterator it = m_config->begin(); it != m_config->end(); ++it)
@@ -380,11 +376,11 @@ PStringArray PConfig::GetKeys(const PString & theSection) const
 
   PStringArray keys;
 
-  PStringOptions * section = m_config->GetAt(theSection);
-  if (section != NULL) {
-    keys.SetSize(section->GetSize());
+  auto section = m_config->find(theSection);
+  if (section != m_config->end()) {
+    keys.SetSize(section->second.GetSize());
     PINDEX index = 0;
-    for (PStringOptions::iterator it = section->begin(); it!= section->end(); ++it)
+    for (PStringOptions::iterator it = section->second.begin(); it!= section->second.end(); ++it)
       keys[index++] = it->first;
   }
 
@@ -397,11 +393,8 @@ void PConfig::DeleteSection(const PString & theSection)
   PAssert(m_config != NULL, "config instance not set");
   PWaitAndSignal(m_config->m_mutex);
 
-  PConfig::Cached::iterator it = m_config->find(theSection);
-  if (it != m_config->end()) {
-    m_config->erase(it);
+  if (m_config->erase(theSection) > 0)
     m_config->SetDirty();
-  }
 }
 
 
@@ -410,13 +403,10 @@ void PConfig::DeleteKey(const PString & theSection, const PString & theKey)
   PAssert(m_config != NULL, "config instance not set");
   PWaitAndSignal(m_config->m_mutex);
 
-  PStringOptions * section = m_config->GetAt(theSection);
-  if (section != NULL) {
-    PStringOptions::iterator it = section->find(theKey);
-    if (it != section->end()) {
-      section->erase(it);
+  auto section = m_config->find(theSection);
+  if (section != m_config->end()) {
+    if (section->second.erase(theKey) > 0)
       m_config->SetDirty();
-    }
   }
 }
 
@@ -426,8 +416,8 @@ bool PConfig::HasKey(const PString & theSection, const PString & theKey) const
   PAssert(m_config != NULL, "config instance not set");
   PWaitAndSignal(m_config->m_mutex);
 
-  PStringOptions * section = m_config->GetAt(theSection);
-  return section != NULL && section->Contains(theKey);
+  auto section = m_config->find(theSection);
+  return section != m_config->end() && section->second.find(theKey) != section->second.end();
 }
 
 
@@ -436,8 +426,8 @@ PString PConfig::GetString(const PString & theSection, const PString & theKey, c
   PAssert(m_config != NULL, "config instance not set");
   PWaitAndSignal(m_config->m_mutex);
 
-  PStringOptions * section = m_config->GetAt(theSection);
-  return section != NULL ? section->GetString(theKey, dflt) : dflt;
+  auto section = m_config->find(theSection);
+  return section != m_config->end() ? section->second.GetString(theKey, dflt) : dflt;
 }
 
 
@@ -448,11 +438,11 @@ void PConfig::SetString(const PString & theSection,
   PAssert(m_config != NULL, "config instance not set");
   PWaitAndSignal(m_config->m_mutex);
 
-  PStringOptions * section = m_config->GetAt(theSection);
-  if (section == NULL)
-    m_config->SetAt(theSection, section = new PStringOptions);
+  auto section = m_config->find(theSection);
+  if (section == m_config->end())
+    section = m_config->emplace(theSection, PStringOptions()).first;
 
-  section->SetAt(theKey, theValue);
+  section->second.SetAt(theKey, theValue);
   m_config->SetDirty();
 }
 

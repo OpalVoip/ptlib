@@ -103,7 +103,7 @@ class PSDL_System
 #ifdef P_MACOSX
   void ReturnToApplicationMain()
   {
-    PProcess::Current().InternalMain();
+    PProcess::Current().InternalMain(0, nullptr, nullptr);
     ForceQuit();
   }
   

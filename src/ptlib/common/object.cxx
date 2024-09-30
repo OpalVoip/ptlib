@@ -212,7 +212,7 @@ bool PAssertFunc(const PDebugLocation & location, PStandardAssertMessage msg)
     // a memory out situation as that would probably also fail!
     static const char fmt[] = "Out of memory at file %.100s, line %u, class %.30s";
     char msgbuf[sizeof(fmt)+100+10+30];
-    sprintf_s(msgbuf, sizeof(msgbuf), fmt, location.m_file, location.m_line, location.m_extra);
+    snprintf(msgbuf, sizeof(msgbuf)-1, fmt, location.m_file, location.m_line, location.m_extra);
     PPlatformAssertFunc(location, msgbuf, 'A');
     return false;
   }
@@ -237,7 +237,7 @@ bool PAssertFunc(const PDebugLocation & location, PStandardAssertMessage msg)
     InternalAssertFunc(location, textmsg[msg]);
   else {
     char msgbuf[20];
-    sprintf_s(msgbuf, sizeof(msgbuf), "Assertion %i", msg);
+    snprintf(msgbuf, sizeof(msgbuf)-1, "Assertion %i", msg);
     InternalAssertFunc(location, msgbuf);
   }
   return false;
@@ -2309,7 +2309,7 @@ namespace PProfiling
     }
 
 
-    HighWaterMarkData & Get(const type_info & ti)
+    HighWaterMarkData & Get(const std::type_info & ti)
     {
       std::string name = ti.name();
       if (name.compare(0, 6, "class ") == 0)
@@ -2363,7 +2363,7 @@ namespace PProfiling
   }
 
 
-  HighWaterMarkData & HighWaterMarkData::Get(const type_info & ti)
+  HighWaterMarkData & HighWaterMarkData::Get(const std::type_info & ti)
   {
     return GetHighWaterMarks().Get(ti);
   }

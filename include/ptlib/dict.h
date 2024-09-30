@@ -297,6 +297,8 @@ template <class T> class PSet : public PCollection<T, PSetBase<T>>
 
 //////////////////////////////////////////////////////////////////////////////
 
+template <typename K, class D> using PUnorderedMap = std::unordered_map<K, D, std::hash<PObject>>;
+
 /**An abstract dictionary container.
 */
 template <typename K, class D> class PDictionary : public PObject
@@ -572,7 +574,7 @@ template <typename K, class D> class PDictionary : public PObject
     virtual PObject * CloneContents(PDictionary * clone) const
     {
       for (const auto & it : this->m_map) {
-        clone->m_map.emplace(it.first, it.second->CloneAs<D>());
+        clone->m_map.emplace(it.first, it.second->template CloneAs<D>());
       }
       return clone;
     }

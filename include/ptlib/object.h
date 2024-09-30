@@ -119,7 +119,7 @@ struct PNonCopyable
 
 #define P_REMOVE_VIRTUAL_INTERNAL_BASE(fn) __inline virtual struct ptlib_virtual_function_changed_or_removed ****** fn { return 0; }
 
-#define P_REMOVE_VIRTUAL_INTERNAL(type, fn, body) __inline virtual [[deprecated("Virtual function signature changed or function deprecated")]] type fn body
+#define P_REMOVE_VIRTUAL_INTERNAL(type, fn, body) [[deprecated("Virtual function signature changed or function deprecated")]] __inline virtual type fn body
 #define P_REMOVE_VIRTUAL_VOID(fn)       P_REMOVE_VIRTUAL_INTERNAL(void, fn, {})
 #define P_REMOVE_VIRTUAL(type, fn, ret) P_REMOVE_VIRTUAL_INTERNAL(type, fn, { return ret; })
 #define P_DEPRECATED [[deprecated]]
@@ -145,13 +145,6 @@ struct PNonCopyable
 #else
   #define PIGNORE_RETURN(t,e)	do { t unused __attribute__((unused)) = (e); } while(0)
 #endif
-
-
-///////////////////////////////////////////////////////////////////////////////
-// Disable inlines when debugging for faster compiles (the compiler doesn't
-// actually inline the function with debug on any way).
-
-#define __inline __inline
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1501,7 +1494,7 @@ namespace PProfiling
 
     HighWaterMarkData(const std::string & name);
     void NewInstance();
-    static HighWaterMarkData & Get(const type_info & ti);
+    static HighWaterMarkData & Get(const std::type_info & ti);
     static std::map<std::string, unsigned> Get();
   };
 

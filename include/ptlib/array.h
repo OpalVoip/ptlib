@@ -538,7 +538,7 @@ template <class T> class PArray : public PCollection<T, std::vector<std::shared_
      */
     virtual void Append(
       value_type * obj   ///< New object to place into the collection.
-    )
+    ) override
     {
       this->m_collection.emplace_back(pointer_type(obj));
     }
@@ -707,7 +707,7 @@ template <class T> class PVector : public PObject, public std::vector<T>
 public:
   PVector() { }
 
-  virtual void PrintOn(std::ostream & strm) const
+  virtual void PrintOn(std::ostream & strm) const override
   {
     strm << PPrintValues(*this);
   }

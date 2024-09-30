@@ -215,12 +215,12 @@ bool PLDAPSession::StringModAttrib::IsBinary() const
 
 void PLDAPSession::StringModAttrib::SetLDAPModVars(struct ldapmod & mod)
 {
-  m_pointers.SetSize(m_values.GetSize()+1);
+  m_pointers.resize(m_values.GetSize()+1);
   PINDEX i;
   for (i = 0; i < m_values.GetSize(); i++)
     m_pointers[i] = m_values[i];
   m_pointers[i] = NULL;
-  mod.mod_values = (char **)m_pointers.GetPointer();
+  mod.mod_values = (char **)m_pointers.data();
 }
 
 
@@ -270,7 +270,7 @@ bool PLDAPSession::BinaryModAttrib::IsBinary() const
 
 void PLDAPSession::BinaryModAttrib::SetLDAPModVars(struct ldapmod & mod)
 {
-  m_pointers.SetSize(m_values.GetSize()+1);
+  m_pointers.resize(m_values.GetSize()+1);
   m_bervals.SetSize(m_values.GetSize()*sizeof(berval));
   berval * ber = (berval *)m_bervals.GetPointer();
   PINDEX i;
@@ -280,7 +280,7 @@ void PLDAPSession::BinaryModAttrib::SetLDAPModVars(struct ldapmod & mod)
     m_pointers[i] = &ber[i];
   }
   m_pointers[i] = NULL;
-  mod.mod_bvalues = m_pointers.GetPointer();
+  mod.mod_bvalues = m_pointers.data();
 }
 
 
@@ -819,7 +819,7 @@ void PLDAPAttributeBase::FromString(const PString & str)
 
 PBYTEArray PLDAPAttributeBase::ToBinary() const
 {
-  return PBYTEArray((const uint8_t *)m_pointer, m_size, false);
+  return PBYTEArray((const uint8_t *)m_pointer, m_size);
 }
 
 
@@ -846,7 +846,7 @@ PLDAPStructBase::PLDAPStructBase()
 PLDAPStructBase & PLDAPStructBase::operator=(const PLDAPStructBase & other)
 {
   for (AttribDict::iterator it = m_attributes.begin(); it != m_attributes.end(); ++it) {
-    PLDAPAttributeBase * otherAttrib = other.m_attributes.GetAt(it->first);
+    auto otherAttrib = other.m_attributes.GetAt(it->first);
     if (otherAttrib != NULL)
       it->second.Copy(*otherAttrib);
   }

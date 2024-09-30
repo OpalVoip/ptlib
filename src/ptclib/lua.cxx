@@ -464,7 +464,7 @@ static char * my_lua_tostring(lua_State * lua, int index)
     return NULL;
 
   char * buf = new char[len+1];
-  strcpy_s(buf, len+1, str);
+  strncpy(buf, str, len);
   return buf;
 }
 

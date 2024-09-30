@@ -2196,7 +2196,7 @@ public:
   __inline void clear() { std::stringstream::clear(); }
   __inline bool empty() const { return rdbuf()->pubseekoff(0, ios_base::cur, ios_base::out) == 0; }
 
-  void PrintOn(ostream & strm) const { strm << str(); }
+  void PrintOn(ostream & strm) const override { strm << str(); }
 
   // Backward compatibility
   PString MakeEmpty() { str(std::string()); return *this; }
@@ -2526,7 +2526,7 @@ class PStringList : public PObject, public std::list<PString>
        @return
        The PStringArray with the new items appended
      */
-    PStringList & operator +=(const PStringList & list) { insert(end(), list.begin(), list.end()); }
+    PStringList & operator +=(const PStringList & list) { insert(end(), list.begin(), list.end()); return *this; }
     PStringList & operator +=(const PString & str) { emplace_back(str);  return *this; }
     PStringList & operator +=(const char * cstr)   { emplace_back(cstr); return *this; }
 
@@ -2659,6 +2659,14 @@ class PSortedStringList : public PObject, public std::multiset<PString>
 
 
 template <> struct std::hash<PString>
+{
+  std::size_t operator()(const PString & obj) const noexcept
+  {
+    return obj.HashFunction();
+  }
+};
+
+template <> struct std::hash<PCaselessString>
 {
   std::size_t operator()(const PString & obj) const noexcept
   {
@@ -2862,7 +2870,7 @@ template <typename K> class PStringDictionary : public PObject, public std::unor
        @return
        true if the object was successfully added.
      */
-    virtual void SetAt(
+    void SetAt(
       const K & key,       // Key for position in dictionary to add object.
       const PString & str  // New string value to put into the dictionary.
     )
