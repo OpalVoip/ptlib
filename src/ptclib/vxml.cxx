@@ -3326,8 +3326,8 @@ bool PVXMLSession::GoToEventHandler(PXMLElement & element, const PString & event
                                 e_CatchNextDot);
       }
 
-      if (exitIfNotFound || m_closing) {
-        PTRACE(3, "Exiting script.");
+      if (exitIfNotFound) {
+        PTRACE(3, "Exiting script as no handler found at any level.");
         SetCurrentNode(NULL);
       }
       return false;
