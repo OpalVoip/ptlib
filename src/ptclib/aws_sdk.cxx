@@ -82,7 +82,7 @@ private:
       }
     }
 
-#if AWS_SDK_VERSION_MAJOR > 1 || AWS_SDK_VERSION_MINOR >= 11
+#if AWS_SDK_VERSION_MAJOR > 1 || AWS_SDK_VERSION_MINOR > 11 || (AWS_SDK_VERSION_MINOR == 11 && AWS_SDK_VERSION_PATCH > 300)
     virtual void vaLog(Aws::Utils::Logging::LogLevel logLevel, const char* /*tag*/, const char * formatStr, va_list args) override
     {
       auto level = static_cast<unsigned>(logLevel)-1;
