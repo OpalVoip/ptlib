@@ -290,9 +290,11 @@ void XMPP::C2S::StreamHandler::OnOpen(XMPP::Stream& stream, intptr_t extra)
         m_VersionMajor = 0;
         m_VersionMinor = 9;
       } else {
-        str = str.Mid(v + 9);
+        std::istringstream strm(str.Mid(v + 9));
         int maj, min;
-        if (sscanf(str, "%d.%d", &maj, &min) != 2) {
+        char dot;
+        strm >> maj >> dot >> min;
+        if (strm.bad() || dot != '.') {
           m_VersionMajor = 0;
           m_VersionMinor = 9;
         } else {

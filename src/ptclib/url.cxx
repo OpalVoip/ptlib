@@ -253,11 +253,8 @@ PString PURL::TranslateString(const PString & str, TranslationType type)
       break;    // Section 3.4, no reserved characters may be used
   }
   
-  for (PINDEX pos = 0; (pos = xlat.FindSpan(safeChars, pos)) != P_MAX_INDEX; ++pos) {
-    char buf[10];
-    snprintf(buf, sizeof(buf), "%%%02X", (uint8_t)xlat[pos]);
-    xlat.Splice(buf, pos++, 1);
-  }
+  for (PINDEX pos = 0; (pos = xlat.FindSpan(safeChars, pos)) != P_MAX_INDEX; ++pos)
+    xlat.Splice(psprintf("%%%02X", (uint8_t)xlat[pos]), pos++, 1);
 
   return xlat;
 }

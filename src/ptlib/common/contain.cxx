@@ -944,6 +944,12 @@ PObject::Comparison PString::NumCompare(const char * cstr, PINDEX count, PINDEX 
 }
 
 
+PObject::Comparison PString::InternalComparison(const std::string_view & str) const
+{
+  return InternalCompare(0, P_MAX_INDEX, str.data());
+}
+
+
 PObject::Comparison PString::InternalCompare(PINDEX offset, PINDEX length, const char * cstr) const
 {
 #if PINDEX_SIGNED
@@ -1572,23 +1578,21 @@ PString & PString::sprintf(const char * fmt, ...)
   return vsprintf(fmt, args);
 }
 
-#if defined(__GNUC__) || defined(__SUNPRO_CC)
-#define _vsnprintf vsnprintf
-#endif
-
+P_PUSH_MSVC_WARNINGS(4996)
 PString & PString::vsprintf(const char * fmt, va_list arg)
 {
-  PINDEX len = GetLength();
-  int providedSpace = 0;
-  int requiredSpace;
-  do {
-    providedSpace += 1000;
-    requiredSpace = vsnprintf(GetPointerAndSetLength(providedSpace+len), providedSpace-1, fmt, arg);
-  } while (requiredSpace == -1 || requiredSpace >= providedSpace);
-  resize(len + requiredSpace);
+  int result = vsnprintf(nullptr, 0, fmt, arg);
+  if (result < 0)
+    *this += "<<vsnprintf error>>";
+  else {
+    auto len = length();
+    resize(len + result);
+    vsnprintf(data()+len, result+1, fmt, arg);
+  }
 
   return *this;
 }
+P_POP_MSVC_WARNINGS()
 
 
 PString psprintf(const char * fmt, ...)

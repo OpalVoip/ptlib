@@ -704,16 +704,8 @@ class PMediaFile_FFMPEG : public PMediaFile
       if (level > 1 && !PTrace::CanTrace(level))
         return;
 
-      char buffer[512];
-      int len = vsnprintf(buffer, sizeof(buffer), fmt, arg);
-      if (len <= 0)
-        return;
-
-      // Drop trailing white space, in particular line feed, if present
-      while (len > 0 && isspace(buffer[len-1]))
-        buffer[--len] = '\0';
-
-      if (buffer[0] != '\0')
+      PString buffer = pvsprintf(fmt, arg).Trim();
+      if (!buffer.empty())
         PTRACE_BEGIN(level, "FFMPEG") << buffer << PTrace::End;
     }
 

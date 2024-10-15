@@ -144,9 +144,7 @@ static PString PSSLError(unsigned long err = ERR_peek_error())
 {
   char buf[200];
   ERR_error_string_n(err, buf, sizeof(buf));
-  if (buf[0] == '\0')
-    snprintf(buf, sizeof(buf), "code=%lu", err);
-  return buf;
+  return buf[0] != '\0' ? buf : psprintf("code=%lu", err);
 }
 
 #define PSSLAssert(prefix) PAssertAlways(prefix + PSSLError())

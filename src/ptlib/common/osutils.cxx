@@ -210,11 +210,11 @@ public:
     if (!mutEnv.empty())
       PTimedMutex::CtorDtorLogLevel = atoi(mutEnv);
 
-    if (levelEnv != NULL || fileEnv != NULL || optEnv != NULL)
-      InternalInitialise(levelEnv != NULL ? atoi(levelEnv) : m_thresholdLevel.load(),
+    if (!levelEnv.empty() || !fileEnv.empty() || !optEnv.empty())
+      InternalInitialise(levelEnv.empty() ? m_thresholdLevel.load() : levelEnv.AsUnsigned(),
                          fileEnv,
                          NULL,
-                         optEnv != NULL ? atoi(optEnv) : m_options.load());
+                         optEnv.empty() ? m_options.load() : optEnv.AsUnsigned());
   }
 
   ~PTraceInfo()
@@ -2441,6 +2441,11 @@ PProcess::PProcess(const char * manuf, const char * name,
   m_version.m_git = NULL;
 
   m_activeThreads[GetThreadId()] = this;
+#if defined(_WIN32)
+  m_nativeHandle = GetCurrentThread();
+#else
+  m_nativeHandle = pthread::self();
+#endif
   PThread::InternalThreadStarted();
 
 #if PTRACING
@@ -2881,11 +2886,11 @@ const char * PProcess::GetRunTimeSignalName(int signal)
     return it->second.c_str();
 
   /* Not strictly thread safe, but should be extremely rare for two signal
-     handlers in two differnt threads get an unknown signal at exactly
+     handlers in two different threads get an unknown signal at exactly
      the same time, and we don't want to do any heap operations here in
      case the heap is trashed and the signal is a SIGSEGV etc. */
   static char buffer[100];
-  snprintf(buffer, sizeof(buffer), "SIG%i", signal);
+  P_DISABLE_MSVC_WARNINGS(4996, _snprintf(buffer, sizeof(buffer), "SIG%i", signal));
   return buffer;
 }
 

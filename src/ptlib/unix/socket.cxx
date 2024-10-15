@@ -90,6 +90,8 @@
 
 #include <ptlib/sockets.h>
 
+#include <fstream>
+
 #if defined(SIOCGENADDR)
 #define SIO_Get_MAC_Address SIOCGENADDR
 #define  ifr_macaddr         ifr_ifru.ifru_enaddr
@@ -740,17 +742,18 @@ bool PIPSocket::GetRouteTable(RouteTable & table)
   if (procfile.Open("/proc/net/route", PFile::ReadOnly) && procfile.ReadLine(strLine)) {
     // Ignore heading line above
     while (procfile.ReadLine(strLine)) {
-      char iface[20];
+      std::string iface;
       uint32_t net_addr, dest_addr, net_mask;
       int flags, refcnt, use, metric;
-      if (sscanf(strLine, "%s%x%x%x%u%u%u%x",
-                 iface, &net_addr, &dest_addr, &flags, &refcnt, &use, &metric, &net_mask) == 8) {
-        RouteEntry * entry = new RouteEntry(net_addr);
-        entry->net_mask = net_mask;
-        entry->destination = dest_addr;
-        entry->interfaceName = iface;
-        entry->metric = metric;
-        table.Append(entry);
+      std::istringstream strm(strLine);
+      strm >> iface >> hex >> net_addr >> dest_addr >> flags >> dec >> refcnt >> use >> metric >> hex net_mask;
+      if (strm.good()) {
+        RouteEntry entry(net_addr);
+        entry.net_mask = net_mask;
+        entry.destination = dest_addr;
+        entry.interfaceName = iface;
+        entry.metric = metric;
+        table.emplace_back(entry);
       }
     }
   }
@@ -1505,22 +1508,14 @@ bool PIPSocket::GetInterfaceTable(InterfaceTable & list, bool includeDown)
   // build a table of IPV6 interface addresses
   // fe800000000000000202e3fffe1ee330 02 40 20 80     eth0
   // 00000000000000000000000000000001 01 80 10 80       lo
-  FILE * file;
+  std::ifstream file("/proc/net/if_inet6");
   int dummy;
-  int addr[16];
+  PBYTEArray addr;
   int scope;
-  char ifaceName[255];
-  if ((file = fopen("/proc/net/if_inet6", "r")) != NULL) {
-    while (fscanf(file, "%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x %x %x %x %x %255s\n",
-            &addr[0],  &addr[1],  &addr[2],  &addr[3], 
-            &addr[4],  &addr[5],  &addr[6],  &addr[7], 
-            &addr[8],  &addr[9],  &addr[10], &addr[11], 
-            &addr[12], &addr[13], &addr[14], &addr[15], 
-           &dummy, &dummy, &scope, &dummy, ifaceName) != EOF) {
-      uint8_t bytes[16];
-      for (PINDEX i = 0; i < 16; i++)
-        bytes[i] = addr[i];
-
+  std::string ifaceName;
+  if (file.is_open()) {
+    while (file.good()) {
+      file >> hex >> addr >> dummy >> dummy >> scope >> dummy >> ifaceName;
       PString macAddr;
 
 #if defined(SIO_Get_MAC_Address)
@@ -1535,7 +1530,7 @@ bool PIPSocket::GetInterfaceTable(InterfaceTable & list, bool includeDown)
       // so, we need to use the hack of assuming that if_nametoindex returns the correct scope
       // for link-local interfaces. if anyone knows how to do this better, contact craigs@postincrement.com
       scope = if_nametoindex(ifaceName);
-      list.Append(PNEW InterfaceEntry(ifaceName, Address(16, bytes, scope), Address::GetAny(6), macAddr));
+      list.Append(PNEW InterfaceEntry(ifaceName, Address(16, addr, scope), Address::GetAny(6), macAddr));
     }
     fclose(file);
   }

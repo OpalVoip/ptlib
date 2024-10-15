@@ -463,9 +463,7 @@ static char * my_lua_tostring(lua_State * lua, int index)
   if (str == NULL)
     return NULL;
 
-  char * buf = new char[len+1];
-  strncpy(buf, str, len);
-  return buf;
+  return _strdup(str);
 }
 
 bool PLua::Call(const PString & name, const char * signature, ...)

@@ -41,7 +41,7 @@ const PString & PConfig::DefaultSectionName() { static PConstString const s("Opt
 
 PString PConfig::GetEnv(const char* key, const char* dflt)
 {
-  const char * env = getenv(key);
+  P_DISABLE_MSVC_WARNINGS(4996, const char * env = getenv(key));
   return env ? env : dflt;
 }
 

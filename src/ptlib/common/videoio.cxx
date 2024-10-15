@@ -452,7 +452,10 @@ bool PVideoFrameInfo::ParseSize(const PString & str, unsigned & width, unsigned 
     }
   }
 
-  return sscanf(str, "%ux%u", &width, &height) == 2 && width > 0 && height > 0;
+  std::istringstream strm(str);
+  char sep;
+  strm >> width >> sep >> height;
+  return strm.good() && sep == 'x' && width > 0 && height > 0;
 }
 
 

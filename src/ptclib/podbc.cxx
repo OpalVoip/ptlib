@@ -1278,7 +1278,9 @@ void PODBC::Field::OnValueChanged()
       else {
         switch (m_odbcType) {
           case SQL_DATETIME :
+            P_DISABLE_MSVC_WARNINGS(4996,
             strncpy(m_extra->datetime, time.AsString("YYYY-MM-dd hh:mm:ss"), sizeof(m_extra->datetime)-1);
+            )
             m_extra->bindLenOrInd = sizeof(m_extra->datetime);
             break;
 

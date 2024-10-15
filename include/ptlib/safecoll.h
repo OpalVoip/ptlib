@@ -75,10 +75,10 @@ class PTimer;
 
   The "unused" state indicates the object exists in the collection but no
   threads anywhere is using it. It may be moved to any state by any thread
-  while in this state. An object cannot be deleted (ie memory deallocated)
+  while in this state. An object cannot be deleted (i.e. memory deallocated)
   until it is unused.
 
-  The "referenced" state indicates that a thread has a reference (eg pointer)
+  The "referenced" state indicates that a thread has a reference (e.g. pointer)
   to the object and it should not be deleted. It may be locked for reading or
   writing at any time thereafter.
 
@@ -108,7 +108,7 @@ class PTimer;
 
   There is one piece if important behaviour in the above. If while enumerating
   a specic object in the collection, that object is "safely deleted", you are
-  guaranteed that the object is still usable and has not been phsyically
+  guaranteed that the object is still usable and has not been physically
   deleted, however it will no longer be in the collection, so the enumeration
   will stop as it can no longer determine where in the collection it was.
 
@@ -154,10 +154,10 @@ class PSafeObject : public PObject, PNonCopyable
        deletion and the calling thread should immediately cease using the
        object.
 
-       A typical use of this would be when an entity (eg a thread) has a
-       pointer to the object but is not currenty accessing the objects data.
-       The LockXXX functions may be called independetly of the reference
-       system and the pointer beiong used for the LockXXX call is guaranteed
+       A typical use of this would be when an entity (e.g. a thread) has a
+       pointer to the object but is not current accessing the objects data.
+       The LockXXX functions may be called independently of the reference
+       system and the pointer being used for the LockXXX call is guaranteed
        to be usable.
 
        It is recommended that the PSafePtr<> class is used to manage this
@@ -774,7 +774,7 @@ template <class T, class BaseClass = PSafePtrBase> class PSafePtr : public BaseC
        If the safe pointer has an associated collection and the new object is
        in that collection, then the object is set to the same locking mode as
        the previous pointer value. This, in effect, jumps the enumeration of a
-       collection to the specifed object.
+       collection to the specified object.
 
        If the safe pointer has no associated collection or the object is not
        in the associated collection, then the object is always only referenced
@@ -1181,6 +1181,8 @@ template <class K, class D> class PSafeDictionary : public PSafeCollection
 
   /**@name Operations */
   //@{
+    PINDEX GetSize() const override { return m_collection.size(); }
+
     /**Add an object to the collection.
        This uses the PCollection::Append() function to add the object to the
        collection, with full mutual exclusion locking on the collection.
@@ -1269,7 +1271,7 @@ template <class K, class D> class PSafeDictionary : public PSafeCollection
         return false;
       auto itTo = m_collection.find(to);
       if (itTo != m_collection.end())
-        SafeRemove(itTo->second);
+        this->SafeRemove(itTo->second);
       itTo->second = itFrom->second;
       m_collection.erase(itFrom);
       return true;

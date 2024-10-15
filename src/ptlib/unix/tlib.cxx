@@ -116,7 +116,11 @@ bool PProcess::IsOSVersion(unsigned major, unsigned minor, unsigned build)
   struct utsname info;
   uname(&info);
   unsigned maj, min, bld;
-  sscanf(info.release, "%u.%u.%u", &maj, &min, &bld);
+  char dot1, dot2;
+  std::istringstream strm(info.release);
+  strm >> maj >> dot1 >> min >> dot2>> bld;
+  if (strm.bad() || dot1 != '.' || dot2 != '.')
+    return false;
   if (maj < major)
     return false;
   if (maj > major)

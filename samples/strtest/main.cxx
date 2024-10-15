@@ -14,26 +14,25 @@
 unsigned g_totalTests= 0;
 unsigned g_errorCount = 0;
 
-#define REQUIRE_QUIET(cond) \
-do { \
-  g_totalTests++; \
-  if (!(cond)) { \
-    cerr << "FAIL: " __FILE__ << "(" << __LINE__ << "): " << #cond << endl; \
-    g_errorCount++; \
-  } \
-} while (0)
+void TestResult(bool condResult, const char * condText, const char * file, int line, bool noisy)
+{
+  std::string filename(file);
+  size_t pos = filename.find_last_of("\\/");
+  if (pos != std::string::npos)
+    filename.erase(0, pos+1);
+  g_totalTests++;
+  if (condResult) {
+    if (noisy)
+      cout << "pass: " << filename << "(" << line << "): " << condText << endl;
+  }
+  else {
+    cerr << "FAIL: " << filename << "(" << line << "): " << condText << endl;
+    g_errorCount++;
+  }
+}
 
-#define REQUIRE(cond) \
-do { \
-  g_totalTests++; \
-  if (!(cond)) { \
-    cerr << "FAIL: " __FILE__ << "(" << __LINE__ << "): " << #cond << endl; \
-    g_errorCount++; \
-  } \
-  else { \
-    cout << "PASS: " __FILE__ << "(" << __LINE__ << "): " << #cond << endl; \
-  } \
-} while (0)
+#define REQUIRE_QUIET(cond) TestResult(cond, #cond, __FILE__, __LINE__, false)
+#define REQUIRE(cond) TestResult(cond, #cond, __FILE__, __LINE__, true)
 
 
 ////////////////////////////////////////////////
@@ -73,6 +72,18 @@ void Test1()
     PString pstring("Hell\xC7\x92 world");
     REQUIRE(pstring.Ellipsis(6)    == "Hell\xC7\x92\xE2\x80\xA6");
     REQUIRE(pstring.Ellipsis(9, 4) == "Hell\xE2\x80\xA6orld");
+  }
+
+  {
+    PString print;
+    print.sprintf("Hello %s", "world");
+    REQUIRE(print == "Hello world");
+    print.sprintf(" %d times", 2);
+    REQUIRE(print == "Hello world 2 times");
+
+    print = psprintf("%999s.", "");
+    REQUIRE(print.length() == 1000);
+    REQUIRE(print[print.length()-1] == '.');
   }
 }
 

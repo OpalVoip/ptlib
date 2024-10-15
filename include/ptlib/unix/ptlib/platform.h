@@ -129,12 +129,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 #if defined(P_LINUX)
 
-#define strcpy_s(dp,ds,sp) strcpy(dp,sp)
-#define strncpy_s(dp,ds,sp,sl) strncpy(dp,sp,sl)
-#define vsprintf_s vsnprintf
-#define sprintf_s snprintf
-#define sscanf_s sscanf
-
 #define HAS_IFREQ
 
 #if __GNU_LIBRARY__ < 6

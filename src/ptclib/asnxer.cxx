@@ -138,24 +138,13 @@ void PXER_Stream::BitStringEncode(const PASN_BitString & value)
 
 bool PXER_Stream::OctetStringDecode(PASN_OctetString & value)
 {
-  char elem[3] = { 0, 0, 0 };
-  PString data = position->GetData();
-  PINDEX len = data.GetLength();
-
-  if (len % 2)
+  PBYTEArray data;
+  std::istringstream strm(position->GetData());
+  strm >> data;
+  if (strm.bad())
     return false;
 
-  uint8_t * bin = value.GetPointer(len / 2);
-  unsigned octet;
-
-  for (PINDEX i = 0, j = 0 ; i < len ; i += 2, j++)
-  {
-    elem[0] = data[i];
-    elem[1] = data[i + 1];
-    sscanf(elem, "%x", &octet);
-    bin[j] = (uint8_t)octet;
-  }
-
+  value.SetValue(data);
   return true;
 }
 

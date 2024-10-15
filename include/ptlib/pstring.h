@@ -51,6 +51,7 @@ class PStringArray;
 class PRegularExpression;
 class PString;
 class PCaselessString;
+class PStringStream;
 
 /**The same as the standard C snprintf(fmt, 1000, ...), but returns a
    PString instead of a const char *.
@@ -72,6 +73,62 @@ PString pvsprintf(
 /// Wide character array, based on standard wchar_t
 using PWCharArray = PScalarArray<wchar_t>;
 
+
+class PStringComparisons
+{
+protected:
+  virtual PObject::Comparison InternalComparison(const std::string_view & str) const = 0;
+
+public:
+  inline bool operator==(nullptr_t) { return InternalComparison(std::string_view()) == PObject::EqualTo; }
+  inline bool operator!=(nullptr_t) { return InternalComparison(std::string_view()) != PObject::EqualTo; }
+  inline bool operator< (nullptr_t) { return InternalComparison(std::string_view()) == PObject::LessThan; }
+  inline bool operator>=(nullptr_t) { return InternalComparison(std::string_view()) != PObject::LessThan; }
+  inline bool operator> (nullptr_t) { return InternalComparison(std::string_view()) == PObject::GreaterThan; }
+  inline bool operator<=(nullptr_t) { return InternalComparison(std::string_view()) != PObject::GreaterThan; }
+
+  inline bool operator==(char c) { return InternalComparison(std::string_view(&c, 1)) == PObject::EqualTo; }
+  inline bool operator!=(char c) { return InternalComparison(std::string_view(&c, 1)) != PObject::EqualTo; }
+  inline bool operator< (char c) { return InternalComparison(std::string_view(&c, 1)) == PObject::LessThan; }
+  inline bool operator>=(char c) { return InternalComparison(std::string_view(&c, 1)) != PObject::LessThan; }
+  inline bool operator> (char c) { return InternalComparison(std::string_view(&c, 1)) == PObject::GreaterThan; }
+  inline bool operator<=(char c) { return InternalComparison(std::string_view(&c, 1)) != PObject::GreaterThan; }
+
+  inline bool operator==(const char * s) { return InternalComparison(s) == PObject::EqualTo; }
+  inline bool operator!=(const char * s) { return InternalComparison(s) != PObject::EqualTo; }
+  inline bool operator< (const char * s) { return InternalComparison(s) == PObject::LessThan; }
+  inline bool operator>=(const char * s) { return InternalComparison(s) != PObject::LessThan; }
+  inline bool operator> (const char * s) { return InternalComparison(s) == PObject::GreaterThan; }
+  inline bool operator<=(const char * s) { return InternalComparison(s) != PObject::GreaterThan; }
+
+  inline bool operator==(const std::string & s) { return operator==(s.c_str()); }
+  inline bool operator!=(const std::string & s) { return operator!=(s.c_str()); }
+  inline bool operator< (const std::string & s) { return operator< (s.c_str()); }
+  inline bool operator>=(const std::string & s) { return operator>=(s.c_str()); }
+  inline bool operator> (const std::string & s) { return operator> (s.c_str()); }
+  inline bool operator<=(const std::string & s) { return operator<=(s.c_str()); }
+
+  inline bool operator==(const PString & s);
+  inline bool operator!=(const PString & s);
+  inline bool operator< (const PString & s);
+  inline bool operator>=(const PString & s);
+  inline bool operator> (const PString & s);
+  inline bool operator<=(const PString & s);
+
+  inline bool operator==(const PCaselessString & s);
+  inline bool operator!=(const PCaselessString & s);
+  inline bool operator< (const PCaselessString & s);
+  inline bool operator>=(const PCaselessString & s);
+  inline bool operator> (const PCaselessString & s);
+  inline bool operator<=(const PCaselessString & s);
+
+  inline bool operator==(const PStringStream & s);
+  inline bool operator!=(const PStringStream & s);
+  inline bool operator<(const PStringStream & s);
+  inline bool operator<=(const PStringStream & s);
+  inline bool operator>(const PStringStream & s);
+  inline bool operator>=(const PStringStream & s);
+};
 
 /**The character string class. It supports a wealth of additional functions
    for string processing and conversion. Operators are provided so that
@@ -105,7 +162,7 @@ using PWCharArray = PScalarArray<wchar_t>;
    (typically Linux) this is UCS-4, 32 bit characters.
  */
 
-class PString : public PObject, public std::string
+class PString : public PObject, public PStringComparisons, public std::string
 {
   PCLASSINFO(PString, PObject);
 public:
@@ -342,7 +399,7 @@ public:
     PString(ConversionType type, unsigned char  value, unsigned param = 10);
     PString(ConversionType type,   signed char  value, unsigned param = 10);
 
-    /* Contruct a new string converting from the spcified data source into
+    /* Construct a new string converting from the specified data source into
        a string array.
      */
     PString(
@@ -863,90 +920,6 @@ public:
       return operator*=(str.c_str());
     }
 
-    /**Compare two strings using the <code>PObject::Compare()</code> function. This
-       is identical to the <code>PObject</code> class function but is necessary due
-       to other overloaded versions.
-
-       @return
-       true if equal.
-     */
-    bool operator==(
-      const PString & str  ///< PString object to compare against.
-    ) const
-    {
-      return InternalCompare(0, P_MAX_INDEX, str) == EqualTo;
-    }
-
-    /**Compare two strings using the <code>PObject::Compare()</code> function. This
-       is identical to the <code>PObject</code> class function but is necessary due
-       to other overloaded versions.
-
-       @return
-       true if not equal.
-     */
-    bool operator!=(
-      const PString & str  ///< PString object to compare against.
-    ) const
-    {
-      return InternalCompare(0, P_MAX_INDEX, str) != EqualTo;
-    }
-
-    /**Compare two strings using the <code>PObject::Compare()</code> function. This
-       is identical to the <code>PObject</code> class function but is necessary due
-       to other overloaded versions.
-
-       @return
-       true if less than.
-     */
-    bool operator<(
-      const PString & str  ///< PString object to compare against.
-    ) const
-    {
-      return InternalCompare(0, P_MAX_INDEX, str) == LessThan;
-    }
-
-    /**Compare two strings using the <code>PObject::Compare()</code> function. This
-       is identical to the <code>PObject</code> class function but is necessary due
-       to other overloaded versions.
-
-       @return
-       true if greater than.
-     */
-    bool operator>(
-      const PString & str  ///< PString object to compare against.
-    ) const
-    {
-      return InternalCompare(0, P_MAX_INDEX, str) == GreaterThan;
-    }
-
-    /**Compare two strings using the <code>PObject::Compare()</code> function. This
-       is identical to the <code>PObject</code> class function but is necessary due
-       to other overloaded versions.
-
-       @return
-       true if less than or equal.
-     */
-    bool operator<=(
-      const PString & str  ///< PString object to compare against.
-    ) const
-    {
-      return InternalCompare(0, P_MAX_INDEX, str) != GreaterThan;
-    }
-
-    /**Compare two strings using the <code>PObject::Compare()</code> function. This
-       is identical to the <code>PObject</code> class function but is necessary due
-       to other overloaded versions.
-
-       @return
-       true if greater than or equal.
-     */
-    bool operator>=(
-      const PString & str  ///< PString object to compare against.
-    ) const
-    {
-      return InternalCompare(0, P_MAX_INDEX, str) != LessThan;
-    }
-
     /**Compare a PString to a C string using a case insensitive compare
        function. The <code>cstr</code> parameter is typically a literal string,
        eg:
@@ -959,109 +932,7 @@ public:
      */
     bool operator*=(
       const char * cstr  ///< C string to compare against.
-    ) const;
-
-    /**Compare a PString to a C string using the <code>Compare()</code>
-       function. The <code>cstr</code> parameter is typically a literal string,
-       eg:
-<pre><code>
-          if (myStr == "fred")
-</code></pre>
-
-       @return
-       true if equal.
-     */
-    bool operator==(
-      const char * cstr  ///< C string to compare against.
-    ) const
-    {
-      return InternalCompare(0, P_MAX_INDEX, cstr) == EqualTo;
-    }
-
-    /**Compare a PString to a C string using the <code>PObject::Compare()</code>
-       function. The <code>cstr</code> parameter is typically a literal
-       string, eg:
-<pre><code>
-          if (myStr != "fred")
-</code></pre>
-
-       @return
-       true if not equal.
-     */
-    bool operator!=(
-      const char * cstr  ///< C string to compare against.
-    ) const
-    {
-      return InternalCompare(0, P_MAX_INDEX, cstr) != EqualTo;
-    }
-
-    /**Compare a PString to a C string using the <code>PObject::Compare()</code>
-       function. The <code>cstr</code> parameter is typically a literal
-       string, eg:
-<pre><code>
-          if (myStr < "fred")
-</code></pre>
-
-       @return
-       true if less than.
-     */
-    bool operator<(
-      const char * cstr  ///< C string to compare against.
-    ) const
-    {
-      return InternalCompare(0, P_MAX_INDEX, cstr) == LessThan;
-    }
-
-    /**Compare a PString to a C string using the <code>PObject::Compare()</code>
-       function. The <code>cstr</code> parameter is typically a literal
-       string, eg:
-<pre><code>
-          if (myStr > "fred")
-</code></pre>
-
-       @return
-       true if greater than.
-     */
-    bool operator>(
-      const char * cstr  ///< C string to compare against.
-    ) const
-    {
-      return InternalCompare(0, P_MAX_INDEX, cstr) == GreaterThan;
-    }
-
-    /**Compare a PString to a C string using the <code>PObject::Compare()</code>
-       function. The <code>cstr</code> parameter is typically a literal
-       string, eg:
-<pre><code>
-          if (myStr <= "fred")
-</code></pre>
-
-       @return
-       true if less than or equal.
-     */
-    bool operator<=(
-      const char * cstr  ///< C string to compare against.
-    ) const
-    {
-      return InternalCompare(0, P_MAX_INDEX, cstr) != GreaterThan;
-    }
-
-    /**Compare a PString to a C string using the <code>PObject::Compare()</code>
-       function. The <code>cstr</code> parameter is typically a literal
-       string, eg:
-<pre><code>
-          if (myStr >= "fred")
-</code></pre>
-
-       @return
-       true if greater than or equal.
-     */
-    bool operator>=(
-      const char * cstr  ///< C string to compare against.
-    ) const
-    {
-      return InternalCompare(0, P_MAX_INDEX, cstr) != LessThan;
-    }
+      ) const;
 
     /**Compare a PString to a C string using a case insensitive compare
        function. The <code>cstr</code> parameter is typically a literal string,
@@ -1076,117 +947,9 @@ public:
     friend bool operator*=(
       const char * cstr,  ///< C string to compare against.
       const PString & str ///< String to compare against
-    )
+      )
     {
       return str *= cstr;
-    }
-
-    /**Compare a PString to a C string using the <code>Compare()</code>
-       function. The <code>cstr</code> parameter is typically a literal string,
-       eg:
-<pre><code>
-          if ("fred" == myStr)
-</code></pre>
-
-       @return
-       true if equal.
-     */
-    friend bool operator==(
-      const char * cstr,  ///< C string to compare against.
-      const PString & str ///< String to compare against
-    )
-    {
-      return str.InternalCompare(0, P_MAX_INDEX, cstr) == PObject::EqualTo;
-    }
-
-    /**Compare a PString to a C string using the <code>PObject::Compare()</code>
-       function. The <code>cstr</code> parameter is typically a literal
-       string, eg:
-<pre><code>
-          if ("fred" != myStr)
-</code></pre>
-
-       @return
-       true if not equal.
-     */
-    friend bool operator!=(
-      const char * cstr,  ///< C string to compare against.
-      const PString & str ///< String to compare against
-    )
-    {
-      return str.InternalCompare(0, P_MAX_INDEX, cstr) != PObject::EqualTo;
-    }
-
-    /**Compare a PString to a C string using the <code>PObject::Compare()</code>
-       function. The <code>cstr</code> parameter is typically a literal
-       string, eg:
-<pre><code>
-          if ("fred" < myStr)
-</code></pre>
-
-       @return
-       true if less than.
-     */
-    friend bool operator<(
-      const char * cstr,  ///< C string to compare against.
-      const PString & str ///< String to compare against
-    )
-    {
-      return str.InternalCompare(0, P_MAX_INDEX, cstr) == PObject::GreaterThan;
-    }
-
-    /**Compare a PString to a C string using the <code>PObject::Compare()</code>
-       function. The <code>cstr</code> parameter is typically a literal
-       string, eg:
-<pre><code>
-          if ("fred" > myStr)
-</code></pre>
-
-       @return
-       true if greater than.
-     */
-    friend bool operator>(
-      const char * cstr,  ///< C string to compare against.
-      const PString & str ///< String to compare against
-    )
-    {
-      return str.InternalCompare(0, P_MAX_INDEX, cstr) == PObject::LessThan;
-    }
-
-    /**Compare a PString to a C string using the <code>PObject::Compare()</code>
-       function. The <code>cstr</code> parameter is typically a literal
-       string, eg:
-<pre><code>
-          if ("fred" <= myStr)
-</code></pre>
-
-       @return
-       true if less than or equal.
-     */
-    friend bool operator<=(
-      const char * cstr,  ///< C string to compare against.
-      const PString & str ///< String to compare against
-    )
-    {
-      return str.InternalCompare(0, P_MAX_INDEX, cstr) != PObject::LessThan;
-    }
-
-    /**Compare a PString to a C string using the <code>PObject::Compare()</code>
-       function. The <code>cstr</code> parameter is typically a literal
-       string, eg:
-<pre><code>
-          if ("fred" >= myStr)
-</code></pre>
-
-       @return
-       true if greater than or equal.
-     */
-    friend bool operator>=(
-      const char * cstr,  ///< C string to compare against.
-      const PString & str ///< String to compare against
-    )
-    {
-      return str.InternalCompare(0, P_MAX_INDEX, cstr) != PObject::GreaterThan;
     }
 
     /**Compare a string against a substring of the object.
@@ -1973,6 +1736,8 @@ public:
   protected:
     bool m_caseless;
 
+    virtual PObject::Comparison InternalComparison(const std::string_view & str) const override;
+
     void InternalFromWChar(
       const wchar_t * ptr,
       PINDEX len
@@ -1991,6 +1756,12 @@ public:
     ) const;
 };
 
+inline bool PStringComparisons::operator==(const PString & s) { return operator==(s.c_str()); }
+inline bool PStringComparisons::operator!=(const PString & s) { return operator!=(s.c_str()); }
+inline bool PStringComparisons::operator< (const PString & s) { return operator< (s.c_str()); }
+inline bool PStringComparisons::operator>=(const PString & s) { return operator>=(s.c_str()); }
+inline bool PStringComparisons::operator> (const PString & s) { return operator> (s.c_str()); }
+inline bool PStringComparisons::operator<=(const PString & s) { return operator<=(s.c_str()); }
 
 inline ostream & operator<<(ostream & stream, const PString & string)
 {
@@ -2142,6 +1913,12 @@ class PCaselessString : public PString
     virtual PObject * Clone() const override;
 };
 
+inline bool PStringComparisons::operator==(const PCaselessString & s) { return operator==(s.c_str()); }
+inline bool PStringComparisons::operator!=(const PCaselessString & s) { return operator!=(s.c_str()); }
+inline bool PStringComparisons::operator< (const PCaselessString & s) { return operator< (s.c_str()); }
+inline bool PStringComparisons::operator>=(const PCaselessString & s) { return operator>=(s.c_str()); }
+inline bool PStringComparisons::operator> (const PCaselessString & s) { return operator> (s.c_str()); }
+inline bool PStringComparisons::operator<=(const PCaselessString & s) { return operator<=(s.c_str()); }
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -2173,7 +1950,7 @@ template <typename T> inline PString PScaleSI(T value, unsigned significantFigur
    All of the standard stream I/O operators, manipulators etc will operate on
    the PStringStream class.
  */
-class PStringStream : public PObject, PNonCopyable, public std::stringstream
+class PStringStream : public PObject, PNonCopyable, public PStringComparisons, public std::stringstream
 {
   PCLASSINFO(PStringStream, PObject);
 
@@ -2193,6 +1970,13 @@ public:
   PStringStream & operator=(const char * s) { str(s); return *this; }
   PStringStream & operator=(char c) { str(std::string(1, c)); return *this; }
 
+  virtual Comparison Compare(
+    const PObject & obj   ///< Other PString to compare against.
+  ) const override
+  {
+    return Compare2(str(), dynamic_cast<const PStringStream &>(obj).str());
+  }
+
   __inline void clear() { std::stringstream::clear(); }
   __inline bool empty() const { return rdbuf()->pubseekoff(0, ios_base::cur, ios_base::out) == 0; }
 
@@ -2207,8 +1991,20 @@ public:
   PStringStream & Replace(const PString & target, const PString & subs, bool all = false, PINDEX offset = 0) { PString s = str(); s.Replace(target, subs, all, offset); str(s); return *this; }
   PStringStream & Splice(const PString & insert, PINDEX pos, PINDEX len = 0) { PString s = str(); s.Splice(insert, pos, len); str(s); return *this; }
   PStringStream & Delete(PINDEX start, PINDEX len) { PString s = str(); s.Delete(start, len); str(s); return *this; }
+
+protected:
+  virtual PObject::Comparison InternalComparison(const std::string_view & other) const override
+  {
+    return Compare2(std::string_view(str().c_str()), other);
+  }
 };
 
+inline bool PStringComparisons::operator==(const PStringStream & s) { return operator==(s.str().c_str()); }
+inline bool PStringComparisons::operator!=(const PStringStream & s) { return operator!=(s.str().c_str()); }
+inline bool PStringComparisons::operator< (const PStringStream & s) { return operator< (s.str().c_str()); }
+inline bool PStringComparisons::operator<=(const PStringStream & s) { return operator<=(s.str().c_str()); }
+inline bool PStringComparisons::operator> (const PStringStream & s) { return operator> (s.str().c_str()); }
+inline bool PStringComparisons::operator>=(const PStringStream & s) { return operator>=(s.str().c_str()); }
 
 __inline PString PSTRSTRM_support(const ostream & s) { return dynamic_cast<const std::stringstream &>(s).str(); }
 

@@ -201,7 +201,7 @@ void PHTML::Element::Output(PHTML & html) const
 
   AddAttr(html);
 
-  if (m_attr != NULL)
+  if (!m_attr.empty())
     html << ' ' << m_attr;
 
   html << '>';
@@ -792,13 +792,13 @@ PHTML::Form::Form(const char * method,
 
 void PHTML::Form::AddAttr(PHTML & html) const
 {
-  if (m_methodString != NULL)
+  if (!m_methodString.empty())
     html << " METHOD=" << m_methodString;
-  if (m_actionString != NULL)
+  if (!m_actionString.empty())
     html << " ACTION=\"" << m_actionString << '"';
-  if (m_mimeTypeString != NULL)
+  if (!m_mimeTypeString.empty())
     html << " ENCTYPE=\"" << m_mimeTypeString << '"';
-  if (m_scriptString != NULL)
+  if (!m_scriptString.empty())
     html << " SCRIPT=\"" << Escaped(m_scriptString) << '"';
 }
 
@@ -1026,7 +1026,7 @@ void PHTML::InputText::AddAttr(PHTML & html) const
     html << " SIZE=" << m_width;
   if (m_length > 0)
     html << " MAXLENGTH=" << m_length;
-  if (m_value != NULL)
+  if (!m_value.empty())
     html << " VALUE=\"" << Escaped(m_value) << '"';
 }
 

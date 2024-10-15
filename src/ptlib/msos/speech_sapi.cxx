@@ -441,7 +441,7 @@ class PTextToSpeech_SAPI : public PTextToSpeech, protected PSpStreamFormat
           break;
       };
 
-      if (m_currentVoice != NULL && !m_currentVoice.IsEmpty()) {
+      if (!m_currentVoice.empty()) {
         PTRACE(4, "Trying to set voice \"" << m_currentVoice << "\""
                   " of voices: " << setfill(',') << GetVoiceList());
 

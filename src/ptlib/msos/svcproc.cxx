@@ -211,17 +211,15 @@ class PSystemLogToEvent : public PSystemLogTarget
     if (hEventSource == NULL)
       return;
 
-    char errbuf[25];
+    PString errbuf;
     if (level > PSystemLog::StdError && level < PSystemLog::Info && err != 0)
-      ::sprintf_s(errbuf, sizeof(errbuf), "Error code = %lu", err);
-    else
-      errbuf[0] = '\0';
+      errbuf.sprintf("Error code = %lu", err);
 
     LPCTSTR strings[4];
     PString threadName = PThread::GetCurrentThreadName();
     strings[0] = threadName.GetPointer();
     strings[1] = msg;
-    strings[2] = errbuf;
+    strings[2] = errbuf.c_str();
     strings[3] = level != PSystemLog::Fatal ? "" : " Program aborted.";
 
     static const uint16_t levelType[PSystemLog::Info+1] = {

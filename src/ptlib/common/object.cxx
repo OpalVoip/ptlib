@@ -235,11 +235,8 @@ bool PAssertFunc(const PDebugLocation & location, PStandardAssertMessage msg)
 
   if (msg >= 0 && msg < PMaxStandardAssertMessage)
     InternalAssertFunc(location, textmsg[msg]);
-  else {
-    char msgbuf[20];
-    snprintf(msgbuf, sizeof(msgbuf)-1, "Assertion %i", msg);
-    InternalAssertFunc(location, msgbuf);
-  }
+  else
+    InternalAssertFunc(location, PSTRSTRM("Assertion " << int(msg)));
   return false;
 }
 
