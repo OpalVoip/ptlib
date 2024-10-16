@@ -3617,6 +3617,9 @@ PBoolean PVXMLSession::TraverseTransfer(PXMLElement & element)
 
 PBoolean PVXMLSession::TraversedTransfer(PXMLElement & element)
 {
+  if (IsFinalProcessing())
+    return true;
+
   if (m_transferStatus != NotTransfering)
     return ThrowSemanticError(element, "<transfer> already in progress");
 
