@@ -163,7 +163,7 @@
             line.clear();
         }
         DEBUG_CERR("InternalWalkStack: closing pipe=" << pipe);
-        fclose(pipe);
+        pclose(pipe);
       }
     }
 #endif // P_MACOSX
