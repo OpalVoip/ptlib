@@ -1701,7 +1701,7 @@ public:
         info = TrackInfo(16000, 1);
         if (codec != NULL) {
 #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(61, 0, 0)
-          const int * supported_samplerates = m_codecInfo->supported_samplerates;
+          const int * supported_samplerates = codec->supported_samplerates;
 #else
           const void * config = NULL;
           int num_configs = 0;
@@ -1718,7 +1718,7 @@ public:
         info = TrackInfo(PVideoFrameInfo::CIF4Width, PVideoFrameInfo::CIF4Height, 25);
         if (codec != NULL) {
 #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(61, 0, 0)
-          const AVRational * supported_framerates = m_codecInfo->supported_framerates;
+          const AVRational * supported_framerates = codec->supported_framerates;
 #else
           const void * config = NULL;
           int num_configs = 0;
