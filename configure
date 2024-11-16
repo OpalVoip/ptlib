@@ -15890,7 +15890,8 @@ ac_compiler_gnu=$ac_cv_cxx_compiler_gnu
 
 # Needs at least C++17
 oldCXXFLAGS="$CXXFLAGS"
-CXXFLAGS="$CXXFLAGS -std=c++17"
+V8_CPLUSPLUS_STD="-std=c++20"
+CXXFLAGS="$CXXFLAGS $V8_CPLUSPLUS_STD"
 
 
 
@@ -16121,7 +16122,7 @@ fi
 
    if test "x$usable" = "xyes"
 then :
-  CPLUSPLUS_STD="-std=c++17"
+  CPLUSPLUS_STD="$V8_CPLUSPLUS_STD"
 
 else case e in #(
   e)
@@ -16426,7 +16427,7 @@ fi
 
    if test "x$usable" = "xyes"
 then :
-  CPLUSPLUS_STD="-std=c++17"
+  CPLUSPLUS_STD="$V8_CPLUSPLUS_STD"
 
 else case e in #(
   e)
@@ -16505,8 +16506,8 @@ then :
   withval=$with_v8_dir;
                   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: Using directory $withval for V8 Javascript script support (Homebrew)" >&5
 printf "%s\n" "$as_me: Using directory $withval for V8 Javascript script support (Homebrew)" >&6;}
-                  V8_CFLAGS="-I$withval/include -I/opt/homebrew/opt/v8/include"
-                  V8_LIBS="-L$withval/lib -L/opt/homebrew/opt/v8/lib -lv8 -lv8_libplatform -lv8_libbase"
+                  V8_CFLAGS="-I$withval/include -I/opt/homebrew/include"
+                  V8_LIBS="-L$withval/lib -L/opt/homebrew/lib -lv8 -lv8_libplatform -lv8_libbase"
 
 else case e in #(
   e)
@@ -16652,8 +16653,8 @@ else case e in #(
 
    MY_LINK_IFELSE_CPPFLAGS="$CPPFLAGS"
    MY_LINK_IFELSE_LIBS="$LIBS"
-   CPPFLAGS="$CPPFLAGS -I/opt/homebrew/opt/v8/include"
-   LIBS="-L/opt/homebrew/opt/v8/lib -lv8 -lv8_libplatform -lv8_libbase $LIBS"
+   CPPFLAGS="$CPPFLAGS -I/opt/homebrew/include"
+   LIBS="-L/opt/homebrew/lib -lv8 -lv8_libplatform -lv8_libbase $LIBS"
    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for V8 Javascript script support (Homebrew) usability" >&5
 printf %s "checking for V8 Javascript script support (Homebrew) usability... " >&6; }
    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -16687,16 +16688,16 @@ then :
 
 
 
-      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: Adding CPPFLAGS: -I/opt/homebrew/opt/v8/include" >&5
-printf "%s\n" "$as_me: Adding CPPFLAGS: -I/opt/homebrew/opt/v8/include" >&6;}
-      CPPFLAGS="-I/opt/homebrew/opt/v8/include $CPPFLAGS"
+      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: Adding CPPFLAGS: -I/opt/homebrew/include" >&5
+printf "%s\n" "$as_me: Adding CPPFLAGS: -I/opt/homebrew/include" >&6;}
+      CPPFLAGS="-I/opt/homebrew/include $CPPFLAGS"
 
 
 
 
-      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: Adding LIBS: -L/opt/homebrew/opt/v8/lib -lv8 -lv8_libplatform -lv8_libbase" >&5
-printf "%s\n" "$as_me: Adding LIBS: -L/opt/homebrew/opt/v8/lib -lv8 -lv8_libplatform -lv8_libbase" >&6;}
-      LIBS="-L/opt/homebrew/opt/v8/lib -lv8 -lv8_libplatform -lv8_libbase $LIBS"
+      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: Adding LIBS: -L/opt/homebrew/lib -lv8 -lv8_libplatform -lv8_libbase" >&5
+printf "%s\n" "$as_me: Adding LIBS: -L/opt/homebrew/lib -lv8 -lv8_libplatform -lv8_libbase" >&6;}
+      LIBS="-L/opt/homebrew/lib -lv8 -lv8_libplatform -lv8_libbase $LIBS"
 
 
                            usable=yes
@@ -16731,7 +16732,7 @@ fi
 
    if test "x$usable" = "xyes"
 then :
-  CPLUSPLUS_STD="-std=c++17"
+  CPLUSPLUS_STD="$V8_CPLUSPLUS_STD"
 
 
 fi
@@ -17239,6 +17240,11 @@ fi
    if test "x$usable" = "xyes"
 then :
 
+         if test "x$CPLUSPLUS_STD" = x""
+then :
+  CPLUSPLUS_STD="-std=c++11"
+
+fi
          if test "x$target_os" = xDarwin
 then :
 

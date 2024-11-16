@@ -1602,7 +1602,8 @@ dnl MSWIN_FIND_FILE  v8,P_V8_LIB_RELEASE64,v8_monolith.lib,out.gn/x64.release/..
 
 # Needs at least C++17
 oldCXXFLAGS="$CXXFLAGS"
-CXXFLAGS="$CXXFLAGS -std=c++17"
+V8_CPLUSPLUS_STD="-std=c++20"
+CXXFLAGS="$CXXFLAGS $V8_CPLUSPLUS_STD"
 
 PTLIB_MODULE_OPTION(
    [V8],
@@ -1613,7 +1614,7 @@ PTLIB_MODULE_OPTION(
    [],
    [#include <v8.h>],
    [v8::V8::Initialize()],
-   [AC_SUBST(CPLUSPLUS_STD,"-std=c++17")],
+   [AC_SUBST(CPLUSPLUS_STD,"$V8_CPLUSPLUS_STD")],
    [MY_MODULE_OPTION(
       [V8],
       [v8],
@@ -1623,17 +1624,17 @@ PTLIB_MODULE_OPTION(
       [-lv8 -lv8_libplatform -lv8_libbase],
       [#include <v8.h>],
       [v8::V8::Initialize()],
-      [AC_SUBST(CPLUSPLUS_STD,"-std=c++17")],
+      [AC_SUBST(CPLUSPLUS_STD,"$V8_CPLUSPLUS_STD")],
       [MY_MODULE_OPTION(
          [V8],
          [v8],
          [V8 Javascript script support (Homebrew)],
          [],
-         [-I/opt/homebrew/opt/v8/include],
-         [-L/opt/homebrew/opt/v8/lib -lv8 -lv8_libplatform -lv8_libbase],
+         [-I/opt/homebrew/include],
+         [-L/opt/homebrew/lib -lv8 -lv8_libplatform -lv8_libbase],
          [#include <v8.h>],
          [v8::V8::Initialize()],
-         [AC_SUBST(CPLUSPLUS_STD,"-std=c++17")]
+         [AC_SUBST(CPLUSPLUS_STD,"$V8_CPLUSPLUS_STD")]
       )]
    )]
 )
@@ -1687,6 +1688,7 @@ PTLIB_MODULE_OPTION(
       [#include <aws/core/Aws.h>],
       [Aws::InitAPI(Aws::SDKOptions())],
       [
+         AS_VAR_IF([CPLUSPLUS_STD], [""], [AC_SUBST(CPLUSPLUS_STD,"-std=c++11")])
          AS_VAR_IF([target_os], [Darwin],[MY_ADD_FLAGS([-laws-crt-cpp -laws-c-common])])
          MY_PKG_CHECK_MODULE(
             [AWS_SDK_POLLY],
