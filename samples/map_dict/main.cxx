@@ -107,7 +107,7 @@ class Element : public PObject
 {
   PCLASSINFO(Element, PObject);
 
-  PObject * Clone() const { return new Element(*this); }
+  PObject * Clone() const override { return new Element(*this); }
 
   /*Sopme data held in this class */
   PString m_stuff;
