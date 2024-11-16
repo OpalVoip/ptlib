@@ -949,26 +949,37 @@ public:
         m_stream->codecpar->codec_id = m_codecInfo->id;
         switch (m_codecInfo->type) {
           case AVMEDIA_TYPE_AUDIO:
+          {
             m_stream->codecpar->bit_rate = m_options.GetInteger("BitRate", 128000);
-            if (m_codecInfo->supported_samplerates == NULL)
+
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(61, 0, 0)
+            const int * supported_samplerates = m_codecInfo->supported_samplerates;
+#else
+            const void * config = NULL;
+            int num_configs = 0;
+            avcodec_get_supported_config(m_codecContext, m_codecInfo, AV_CODEC_CONFIG_SAMPLE_RATE, 0, &config, &num_configs);
+            const int * supported_samplerates = (const int *)config;
+#endif
+            if (supported_samplerates == NULL)
               m_stream->codecpar->sample_rate = (int)m_rate;
             else {
-              m_stream->codecpar->sample_rate = m_codecInfo->supported_samplerates[0];
-              for (int i = 0; m_codecInfo->supported_samplerates[i]; i++) {
-                if (m_codecInfo->supported_samplerates[i] == m_rate) {
+              m_stream->codecpar->sample_rate = supported_samplerates[0];
+              for (int i = 0; supported_samplerates[i]; i++) {
+                if (supported_samplerates[i] == m_rate) {
                   m_stream->codecpar->sample_rate = (int)m_rate;
                   break;
                 }
               }
             }
 
-          #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(60, 0, 0)
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(60, 0, 0)
             m_stream->codecpar->channels = m_channels;
             m_stream->codecpar->channel_layout = av_get_default_channel_layout(m_channels);
-          #else
+#else
             av_channel_layout_default(&m_stream->codecpar->ch_layout, m_channels);
-          #endif
+#endif
             break;
+          }
 
           case AVMEDIA_TYPE_VIDEO:
             m_stream->codecpar->bit_rate = m_options.GetInteger("BitRate", 1000000);
@@ -993,13 +1004,23 @@ public:
 
         switch (m_codecContext->codec_type) {
           case AVMEDIA_TYPE_AUDIO:
-            m_codecContext->sample_fmt = m_codecInfo->sample_fmts ? m_codecInfo->sample_fmts[0] : AV_SAMPLE_FMT_FLTP;
+          {
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(61, 0, 0)
+            const AVSampleFormat * sample_fmts = m_codecInfo->sample_fmts;
+#else
+            const void * config = NULL;
+            int num_configs = 0;
+            avcodec_get_supported_config(m_codecContext, m_codecInfo, AV_CODEC_CONFIG_SAMPLE_FORMAT, 0, &config, &num_configs);
+            const AVSampleFormat * sample_fmts = (const AVSampleFormat *)config;
+#endif
+            m_codecContext->sample_fmt = sample_fmts ? sample_fmts[0] : AV_SAMPLE_FMT_FLTP;
             m_codecContext->time_base = av_make_q(1, m_codecContext->sample_rate);
 
             // AAC has been experimental for a decade ...
             if (m_codecContext->codec_id == AV_CODEC_ID_AAC)
               m_codecContext->strict_std_compliance = FF_COMPLIANCE_EXPERIMENTAL;
             break;
+          }
 
 #if P_VIDEO
           case AVMEDIA_TYPE_VIDEO:
@@ -1014,11 +1035,19 @@ public:
             else {
               m_codecContext->time_base = av_d2q(1/m_rate, 65535);
 
-              if (m_codecInfo->supported_framerates == NULL)
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(61, 0, 0)
+              const AVRational * supported_framerates = m_codecInfo->supported_framerates;
+#else
+              const void * config = NULL;
+              int num_configs = 0;
+              avcodec_get_supported_config(m_codecContext, m_codecInfo, AV_CODEC_CONFIG_FRAME_RATE, 0, &config, &num_configs);
+              const AVRational * supported_framerates = (const AVRational *)config;
+#endif
+              if (supported_framerates == NULL)
                 m_codecContext->framerate = av_make_q(1, 1);
               else {
-                int idx = av_find_nearest_q_idx(m_codecContext->framerate, m_codecInfo->supported_framerates);
-                m_codecContext->framerate = m_codecInfo->supported_framerates[idx];
+                int idx = av_find_nearest_q_idx(m_codecContext->framerate, supported_framerates);
+                m_codecContext->framerate = supported_framerates[idx];
               }
             }
 
@@ -1659,22 +1688,37 @@ public:
       if (m_formatContext == NULL)
         return false;
 
+      const AVCodec * codec = avcodec_find_encoder(m_formatContext->oformat->audio_codec);
       if (type == Audio()) {
         info = TrackInfo(16000, 1);
-        const AVCodec * codec = avcodec_find_encoder(m_formatContext->oformat->audio_codec);
         if (codec != NULL) {
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(61, 0, 0)
+          const int * supported_samplerates = m_codecInfo->supported_samplerates;
+#else
+          const void * config = NULL;
+          int num_configs = 0;
+          avcodec_get_supported_config(NULL, codec, AV_CODEC_CONFIG_SAMPLE_RATE, 0, &config, &num_configs);
+          const int * supported_samplerates = (const int *)config;
+#endif
           info.m_format = codec->name;
           info.m_channels = 1;
-          info.m_rate = codec->supported_samplerates ? codec->supported_samplerates[0] : 16000;
+          info.m_rate = supported_samplerates ? supported_samplerates[0] : 16000;
         }
       }
 #if P_VIDEO
       else if (type == Video()) {
         info = TrackInfo(PVideoFrameInfo::CIF4Width, PVideoFrameInfo::CIF4Height, 25);
-        const AVCodec * codec = avcodec_find_encoder(m_formatContext->oformat->video_codec);
         if (codec != NULL) {
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(61, 0, 0)
+          const AVRational * supported_framerates = m_codecInfo->supported_framerates;
+#else
+          const void * config = NULL;
+          int num_configs = 0;
+          avcodec_get_supported_config(NULL, codec, AV_CODEC_CONFIG_FRAME_RATE, 0, &config, &num_configs);
+          const AVRational * supported_framerates = (const AVRational *)config;
+#endif
           info.m_format = codec->name;
-          info.m_rate = codec->supported_framerates ? codec->supported_framerates[0].num : 25;
+          info.m_rate = supported_framerates ? supported_framerates[0].num : 25;
         }
       }
 #endif // P_VIDEO
