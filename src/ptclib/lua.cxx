@@ -463,7 +463,7 @@ static char * my_lua_tostring(lua_State * lua, int index)
   if (str == NULL)
     return NULL;
 
-  return strdup(str);
+  P_DISABLE_MSVC_WARNINGS(4996, return strdup(str));
 }
 
 bool PLua::Call(const PString & name, const char * signature, ...)
