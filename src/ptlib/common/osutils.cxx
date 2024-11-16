@@ -2444,7 +2444,7 @@ PProcess::PProcess(const char * manuf, const char * name,
 #if defined(_WIN32)
   m_nativeHandle = GetCurrentThread();
 #else
-  m_nativeHandle = pthread::self();
+  m_nativeHandle = pthread_self();
 #endif
   PThread::InternalThreadStarted();
 
@@ -2890,7 +2890,7 @@ const char * PProcess::GetRunTimeSignalName(int signal)
      the same time, and we don't want to do any heap operations here in
      case the heap is trashed and the signal is a SIGSEGV etc. */
   static char buffer[100];
-  P_DISABLE_MSVC_WARNINGS(4996, _snprintf(buffer, sizeof(buffer), "SIG%i", signal));
+  P_DISABLE_MSVC_WARNINGS(4996, snprintf(buffer, sizeof(buffer), "SIG%i", signal));
   return buffer;
 }
 
