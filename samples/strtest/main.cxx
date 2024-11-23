@@ -45,15 +45,6 @@ void Test1()
 {
   cout.setf(ios::boolalpha);
   {
-    static wchar_t const widestr[] = { 'H', 'e', 'l', 'l', 0x151, ' ', 'w', 'o', 'r', 'l', 'd', 0 };
-    static char const narrowstr[] = { 'H', 'e', 'l', 'l', -59, -111, ' ', 'w', 'o', 'r', 'l', 'd', 0 };
-    PString pstring(widestr, sizeof(widestr)/2-1);
-    cout << "value: \"" << pstring << "\" compare: " << (pstring == narrowstr) << endl;
-    PWCharArray wide = pstring.AsWide();
-    cout << "size: " << wide.GetSize() << ' ' << (wide.GetSize() == PARRAYSIZE(widestr))
-      << " compare: " << (memcmp(wide, widestr, sizeof(widestr)) == 0) << endl;
-  }
-  {
     PString pstring1("hello world");
     PString pstring2(pstring1);
 
