@@ -11,6 +11,30 @@
 #include <ptlib/pprocess.h>
 #include <string>
 
+unsigned g_totalTests = 0;
+unsigned g_errorCount = 0;
+
+void TestResult(bool condResult, const char * condText, const char * file, int line, bool noisy)
+{
+  std::string filename(file);
+  size_t pos = filename.find_last_of("\\/");
+  if (pos != std::string::npos)
+    filename.erase(0, pos+1);
+  g_totalTests++;
+  if (condResult) {
+    if (noisy)
+      cout << "pass: " << filename << "(" << line << "): " << condText << endl;
+  }
+  else {
+    cerr << "FAIL: " << filename << "(" << line << "): " << condText << endl;
+    g_errorCount++;
+  }
+}
+
+#define REQUIRE_QUIET(cond) TestResult(cond, #cond, __FILE__, __LINE__, false)
+#define REQUIRE(cond) TestResult(cond, #cond, __FILE__, __LINE__, true)
+
+
 ////////////////////////////////////////////////
 //
 // test #1 - PString test
@@ -18,24 +42,14 @@
 
 void Test1()
 {
-  cout.setf(ios::boolalpha);
-  {
-    static wchar_t const widestr[] = { 'H', 'e', 'l', 'l', 0x151, ' ', 'w', 'o', 'r', 'l', 'd', 0 };
-    static char const narrowstr[] = { 'H', 'e', 'l', 'l', -59, -111, ' ', 'w', 'o', 'r', 'l', 'd', 0 };
-    PString pstring(widestr, sizeof(widestr)/2-1);
-    cout << "value: \"" << pstring << "\" compare: " << (pstring == narrowstr) << endl;
-    PWCharArray wide = pstring.AsWide();
-    cout << "size: " << wide.GetSize() << ' ' << (wide.GetSize() == PARRAYSIZE(widestr))
-      << " compare: " << (memcmp(wide, widestr, sizeof(widestr)) == 0) << endl;
-  }
   {
     PString pstring1("hello world");
     PString pstring2(pstring1);
 
     strcpy((char *)(const char *)pstring2, "overwrite");
 
-    cout << pstring1 << endl;
-    cout << pstring2 << endl;
+    REQUIRE(pstring1 == "overwrite");
+    REQUIRE(pstring1 == "overwrite");
   }
   {
     PString pstring1("hello world");
@@ -43,41 +57,56 @@ void Test1()
 
     strcpy(pstring2.GetPointerAndSetLength(9), "overwrite");
 
-    cout << pstring1 << endl;
-    cout << pstring2 << endl;
+    REQUIRE(pstring1 == "hello world");
+    REQUIRE(pstring2 == "overwrite");
   }
 #ifdef P_HAS_WCHAR
   {
-    wchar_t widestr[] = L"Hell� world";
-    PString pstring(widestr, sizeof(widestr)/2-1);
-    cout << pstring << endl;
+    wchar_t widestr[] = L"Hell\x1D2 world";
+    PString pstring(widestr, sizeof(widestr)/sizeof(wchar_t)-1);
+    REQUIRE(pstring == widestr);
+    REQUIRE(pstring == "Hell\xC7\x92 world");
     PWCharArray wide = pstring.AsWide();
-    cout << boolalpha << (wide.GetSize() == PARRAYSIZE(widestr) && memcmp(wide, widestr, sizeof(widestr)) == 0) << endl;
+    REQUIRE(wide.GetSize() == PARRAYSIZE(widestr));
+    REQUIRE(memcmp(wide, widestr, sizeof(widestr)) == 0);
   }
 #endif
 
   {
     PCaselessString caseless("hello world");
     PString cased("Hello World");
-    cout << cased.ToLiteral() << " == \"Hello\" " << boolalpha << (cased == "Hello") << endl;
-    cout << cased.ToLiteral() << " == \"hello\" " << boolalpha << (cased == "hello") << endl;
-    cout << cased.ToLiteral() << " == \"Hello World\" " << boolalpha << (cased == "Hello World") << endl;
-    cout << cased.ToLiteral() << " == " << caseless.ToLiteral() << ' ' << boolalpha << (cased == caseless) << endl;
-    cout << cased.ToLiteral() << " == \"Hello\" " << boolalpha << (cased.NumCompare("Hello") == PObject::EqualTo) << endl;
-    cout << cased.ToLiteral() << " == \"hello\" " << boolalpha << (cased.NumCompare("hello") == PObject::EqualTo) << endl;
-    cout << caseless.ToLiteral() << " == " << cased.ToLiteral() << ' ' << boolalpha << (caseless == cased) << endl;
-    cout << caseless.ToLiteral() << " == \"Hello\" " << boolalpha << (caseless == "Hello") << endl;
-    cout << caseless.ToLiteral() << " == \"Hello\" " << boolalpha << (caseless.NumCompare("Hello") == PObject::EqualTo) << endl;
+
+    REQUIRE(cased != "Hello");
+    REQUIRE(cased != "hello");
+    REQUIRE(cased == "Hello World");
+    REQUIRE(cased != caseless);
+    REQUIRE(cased.NumCompare("Hello") == PObject::EqualTo);
+    REQUIRE(cased.NumCompare("hello") != PObject::EqualTo);
+    REQUIRE(caseless == cased);
+    REQUIRE(caseless != "Hello");
+    REQUIRE(caseless.NumCompare("Hello") == PObject::EqualTo);
   }
 
   {
-    wchar_t widestr[] = L"Hell� world";
-    PString pstring(widestr, sizeof(widestr)/2-1);
-    cout << pstring.Ellipsis(6) << endl;
-    cout << pstring.Ellipsis(9, 4) << endl;
+    // Use UTF-8 with special character so eillipsis counts are based on the
+    // number of characters, not the number of bytes.
+    PString pstring("Hell\xC7\x92 world");
+    REQUIRE(pstring.Ellipsis(6)    == "Hell\xC7\x92\xE2\x80\xA6");
+    REQUIRE(pstring.Ellipsis(9, 4) == "Hell\xE2\x80\xA6orld");
+  }
+
+  {
+    PString print;
+    print.sprintf("Hello %s", "world");
+    REQUIRE(print == "Hello world");
+    print.sprintf(" %d times", 2);
+    REQUIRE(print == "Hello world 2 times");
+
+    print = psprintf("%999s.", "");
+    REQUIRE(print.length() == 1000);
+    REQUIRE(print[print.length()-1] == '.');
   }
 }
-
 
 ////////////////////////////////////////////////
 //
@@ -86,44 +115,36 @@ void Test1()
 
 void Test2()
 {
-  for (PINDEX i = 0; i < 2000; ++i) 
-  {
+  for (PINDEX i = 0; i < 2000; ++i) {
     PStringStream str;
-    str << "Test #" << 2;
+    str   << "Test #" << 2;
+    REQUIRE_QUIET(str == "Test #2");
   }
 
   PStringStream s;
-  s << "This is a test of the string stream, integer: " << 5 << ", real: " << 5.6;
-  cout << '"' << s << '"' << endl;
+  s     << "This is a test of the string stream, integer: " << 5 << ", real: " << 5.6;
+  REQUIRE(s == "This is a test of the string stream, integer: 5, real: 5.6");
 }
 
 
 ////////////////////////////////////////////////
 //
-// test #3 - PBYTEArray test
+// test #3 - regex test
 //
 
 void Test3()
 {
-  {
-    PBYTEArray buffer1(1024);
-    PBYTEArray buffer2(buffer1);
+  PRegularExpression regex;
 
-    cout << "base address of PBYTEArray 1 = " << (void *)(buffer1.GetPointer()) << endl;
-    cout << "base address of PBYTEArray 2 = " << (void *)(buffer1.GetPointer()) << endl;
-  }
+  if (!regex.Compile("ab(cd)e(fg)", PRegularExpression::Extended))
+    cout << "Error " << regex.GetErrorText() << endl;
 
-  {
-    PString str1("hello");
-    PString str2(str1);
-
-    str2 = "world";
-
-    cout << "base address of PString 1 = " << (void *)(str1.GetPointer()) << endl;
-    cout << "base address of PString 2 = " << (void *)(str2.GetPointer()) << endl;
-  }
+  PStringArray substrings;
+  if (regex.Execute("abcdefgh", substrings))
+    cout << "Matched " << substrings[0].ToLiteral() << ' ' << substrings[1].ToLiteral() << ' ' << substrings[2].ToLiteral() << endl;
+  else
+    cout << "No match" << endl;
 }
-
 
 ////////////////////////////////////////////////
 //
@@ -133,68 +154,72 @@ void Test3()
 #define SPECIALNAME     "openH323"
 #define COUNT_MAX       2000000
 
-PBoolean finishFlag;
+bool finishFlag;
 
 template <class S>
-struct StringConv {
+struct StringConv
+{
   static const char * ToConstCharStar(const S &) { return NULL; }
 };
 
 template <class S, class C>
 class StringHolder
 {
+public:
+  StringHolder(const S & _str)
+    : str(_str)
+  { }
+  S GetString() const { return str; }
+  S str;
+
+  void TestString()
+  {
+    if (finishFlag)
+      return;
+
+    S s = GetString();
+    const char * ptr = C::ToConstCharStar(s);
+    //const char * ptr = s.c_str();
+    char buffer[20];
+    strncpy_s(buffer, sizeof(buffer), ptr, 20);
+
+    REQUIRE_QUIET(strcmp((const char *)buffer, SPECIALNAME) == 0);
+  }
+
+  class TestThread : public PThread
+  {
+    PCLASSINFO(TestThread, PThread);
   public:
-    StringHolder(const S & _str)
-      : str(_str) { }
-    S GetString() const { return str; }
-    S str;
-
-    void TestString(int count, const char * label)
+    TestThread(StringHolder & _holder)
+      : PThread(1000, NoAutoDeleteThread), holder(_holder)
     {
-      if (finishFlag)
-        return;
-
-      S s = GetString();
-      const char * ptr = C::ToConstCharStar(s);
-      //const char * ptr = s.c_str();
-      char buffer[20];
-      strncpy(buffer, ptr, 20);
-
-      if (strcmp((const char *)buffer, SPECIALNAME)) {
-        finishFlag = true;
-        cerr << "String compare failed at " << count << " in " << label << " thread" << endl;
-        return;
-      }
-      if (count % 10000 == 0)
-        cout << "tested " << count << " in " << label << " thread" << endl;
+      Resume();
     }
 
-    class TestThread : public PThread
+    void Main() override
     {
-      PCLASSINFO(TestThread, PThread);
-      public:
-        TestThread(StringHolder & _holder) 
-        : PThread(1000,NoAutoDeleteThread), holder(_holder)
-        { Resume(); }
-
-        void Main() 
-        { int count = 0; while (!finishFlag && count < COUNT_MAX) holder.TestString(count++, "sub"); }
-
-        StringHolder & holder;
-    };
-
-    PThread * StartThread()
-    {
-      return new TestThread(*this);
+      int count = 0;
+      while (!finishFlag && count < COUNT_MAX)
+        holder.TestString();
     }
+
+    StringHolder & holder;
+  };
+
+  PThread * StartThread()
+  {
+    return new TestThread(*this);
+  }
 
 };
 
-struct PStringConv : public StringConv<PString> {
+struct PStringConv : public StringConv<PString>
+{
   static const char * ToConstCharStar(const PString & s) { return (const char *)s; }
 };
 
-struct StdStringConv : public StringConv<std::string> {
+struct StdStringConv : public StringConv<std::string>
+{
   static const char * ToConstCharStar(const std::string & s) { return s.c_str(); }
 };
 
@@ -202,15 +227,17 @@ void Test4()
 {
   // uncomment this to test std::string
   //StringHolder<std::string, StdStringConv> holder(SPECIALNAME);
-  
+
   // uncomment this to test PString
   StringHolder<PString, PStringConv> holder(SPECIALNAME);
+
+  cerr << "testing string concurrency for " << COUNT_MAX << " iterations" << endl;
 
   PThread * thread = holder.StartThread();
   finishFlag = false;
   int count = 0;
-  while (!finishFlag && count < COUNT_MAX) 
-    holder.TestString(count++, "main");
+  while (!finishFlag && count < COUNT_MAX)
+    holder.TestString();
   finishFlag = true;
   thread->WaitForTermination(9000);
   cerr << "finish" << endl;
@@ -225,8 +252,8 @@ void Test4()
 class StringTest : public PProcess
 {
   PCLASSINFO(StringTest, PProcess)
-  public:
-    virtual void Main() override;
+public:
+  virtual void Main() override;
 };
 
 PCREATE_PROCESS(StringTest);
@@ -238,4 +265,9 @@ void StringTest::Main()
   Test2(); cout << "End of test #2\n" << endl;
   Test3(); cout << "End of test #3\n" << endl;
   Test4(); cout << "End of test #4\n" << endl;
+
+  if (g_errorCount == 0)
+    cout << "FINAL PASS: " << g_totalTests << " passed" << endl;
+  else
+    cout << "FINAL FAIL: " << g_errorCount << " failed of " << g_totalTests << endl;
 }
