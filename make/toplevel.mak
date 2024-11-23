@@ -87,6 +87,7 @@ endif
 ifeq (1, $(HAS_SAMPLES))
   SUBDIRS += $(PTLIB_TOP_LEVEL_DIR)/samples/hello_world \
              $(PTLIB_TOP_LEVEL_DIR)/samples/map_dict \
+             $(PTLIB_TOP_LEVEL_DIR)/samples/strtest \
              $(PTLIB_TOP_LEVEL_DIR)/samples/netif \
              $(PTLIB_TOP_LEVEL_DIR)/samples/sockbundle \
              $(PTLIB_TOP_LEVEL_DIR)/samples/timing \

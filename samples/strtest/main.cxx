@@ -178,10 +178,7 @@ void Test4()
 // test #5 - string concurrency test
 //
 
-#define SPECIALNAME     "openH323"
-#define COUNT_MAX       2000000
-
-bool finishFlag;
+static const char SPECIALNAME[] = "openH323";
 
 template <class S>
 struct StringConv
@@ -201,41 +198,37 @@ public:
 
   void TestString()
   {
-    if (finishFlag)
-      return;
-
     S s = GetString();
     const char * ptr = C::ToConstCharStar(s);
-    //const char * ptr = s.c_str();
-    char buffer[20];
-    strncpy_s(buffer, sizeof(buffer), ptr, 20);
-
-    REQUIRE_QUIET(strcmp((const char *)buffer, SPECIALNAME) == 0);
+    REQUIRE_QUIET(ptr != NULL);
+    REQUIRE_QUIET(strcmp(ptr, SPECIALNAME) == 0);
   }
 
   class TestThread : public PThread
   {
     PCLASSINFO(TestThread, PThread);
   public:
-    TestThread(StringHolder & _holder)
-      : PThread(1000, NoAutoDeleteThread), holder(_holder)
+    TestThread(StringHolder & holder, PTimer & timer)
+      : PThread(1000, NoAutoDeleteThread)
+      , m_holder(holder)
+      , m_timer(timer)
     {
       Resume();
     }
 
     void Main() override
     {
-      int count = 0;
-      while (!finishFlag && count < COUNT_MAX)
-        holder.TestString();
+      while (m_timer.IsRunning())
+        m_holder.TestString();
     }
 
-    StringHolder & holder;
+    StringHolder & m_holder;
+    PTimer & m_timer;
   };
 
-  PThread * StartThread()
+  PThread * StartThread(PTimer & timer)
   {
-    return new TestThread(*this);
+    return new TestThread(*this, timer);
   }
 
 };
@@ -258,15 +251,13 @@ void Test5()
   // uncomment this to test PString
   StringHolder<PString, PStringConv> holder(SPECIALNAME);
 
-  cerr << "testing string concurrency for " << COUNT_MAX << " iterations" << endl;
+  PTimer timer(0, 30);
+  cerr << "testing string concurrency for " << timer.GetResetTime() << " seconds" << endl;
 
-  PThread * thread = holder.StartThread();
-  finishFlag = false;
-  int count = 0;
-  while (!finishFlag && count < COUNT_MAX)
+  PThread * thread = holder.StartThread(timer);
+  while (timer.IsRunning())
     holder.TestString();
-  finishFlag = true;
-  thread->WaitForTermination(9000);
+  thread->WaitForTermination();
   cerr << "finish" << endl;
   delete thread;
 }
