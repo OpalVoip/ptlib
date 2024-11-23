@@ -11,29 +11,29 @@
 #include <ptlib/pprocess.h>
 #include <string>
 
-unsigned g_totalTests= 0;
+unsigned g_totalTests = 0;
 unsigned g_errorCount = 0;
 
-#define REQUIRE_QUIET(cond) \
-do { \
-  g_totalTests++; \
-  if (!(cond)) { \
-    cerr << "FAIL: " __FILE__ << "(" << __LINE__ << "): " << #cond << endl; \
-    g_errorCount++; \
-  } \
-} while (0)
+bool TestResult(bool condResult, const char * condText, const char * file, int line, bool noisy)
+{
+  std::string filename(file);
+  size_t pos = filename.find_last_of("\\/");
+  if (pos != std::string::npos)
+    filename.erase(0, pos+1);
+  g_totalTests++;
+  if (condResult) {
+    if (noisy)
+      cout << "pass: " << filename << "(" << line << "): " << condText << endl;
+  }
+  else {
+    cerr << "FAIL: " << filename << "(" << line << "): " << condText << endl;
+    g_errorCount++;
+  }
+  return condResult;
+}
 
-#define REQUIRE(cond) \
-do { \
-  g_totalTests++; \
-  if (!(cond)) { \
-    cerr << "FAIL: " __FILE__ << "(" << __LINE__ << "): " << #cond << endl; \
-    g_errorCount++; \
-  } \
-  else { \
-    cout << "PASS: " __FILE__ << "(" << __LINE__ << "): " << #cond << endl; \
-  } \
-} while (0)
+#define REQUIRE_QUIET(cond) TestResult(cond, #cond, __FILE__, __LINE__, false)
+#define REQUIRE(cond) TestResult(cond, #cond, __FILE__, __LINE__, true)
 
 
 ////////////////////////////////////////////////
@@ -96,6 +96,18 @@ void Test1()
     REQUIRE(pstring.Ellipsis(6)    == "Hell\xC7\x92\xE2\x80\xA6");
     REQUIRE(pstring.Ellipsis(9, 4) == "Hell\xE2\x80\xA6orld");
   }
+
+  {
+    PString print;
+    print.sprintf("Hello %s", "world");
+    REQUIRE(print == "Hello world");
+    print.sprintf(" %d times", 2);
+    REQUIRE(print == "Hello world 2 times");
+
+    print = psprintf("%999s.", "");
+    REQUIRE(print.length() == 1000);
+    REQUIRE(print[print.length()-1] == '.');
+  }
 }
 
 ////////////////////////////////////////////////
@@ -115,7 +127,6 @@ void Test2()
   s     << "This is a test of the string stream, integer: " << 5 << ", real: " << 5.6;
   REQUIRE(s == "This is a test of the string stream, integer: 5, real: 5.6");
 }
-
 
 ////////////////////////////////////////////////
 //
@@ -143,78 +154,107 @@ void Test3()
 
 ////////////////////////////////////////////////
 //
-// test #4 - string concurrency test
+// test #4 - regex test
+//
+
+void Test4()
+{
+  PRegularExpression regex;
+
+  if (!regex.Compile("b(cd)e(fg)", PRegularExpression::Extended))
+    cout << "Error " << regex.GetErrorText() << endl;
+
+  PStringArray substrings(3);
+  if (REQUIRE(regex.Execute("abcdefgh", substrings))) {
+    REQUIRE(substrings.GetSize() == 3);
+    REQUIRE(substrings[0] == "bcdefg");
+    REQUIRE(substrings[1] == "cd");
+    REQUIRE(substrings[2] == "fg");
+  }
+}
+
+////////////////////////////////////////////////
+//
+// test #5 - string concurrency test
 //
 
 #define SPECIALNAME     "openH323"
 #define COUNT_MAX       2000000
 
-PBoolean finishFlag;
+bool finishFlag;
 
 template <class S>
-struct StringConv {
+struct StringConv
+{
   static const char * ToConstCharStar(const S &) { return NULL; }
 };
 
 template <class S, class C>
 class StringHolder
 {
+public:
+  StringHolder(const S & _str)
+    : str(_str)
+  { }
+  S GetString() const { return str; }
+  S str;
+
+  void TestString()
+  {
+    if (finishFlag)
+      return;
+
+    S s = GetString();
+    const char * ptr = C::ToConstCharStar(s);
+    //const char * ptr = s.c_str();
+    char buffer[20];
+    strncpy_s(buffer, sizeof(buffer), ptr, 20);
+
+    REQUIRE_QUIET(strcmp((const char *)buffer, SPECIALNAME) == 0);
+  }
+
+  class TestThread : public PThread
+  {
+    PCLASSINFO(TestThread, PThread);
   public:
-    StringHolder(const S & _str)
-      : str(_str) { }
-    S GetString() const { return str; }
-    S str;
-
-    void TestString()
+    TestThread(StringHolder & _holder)
+      : PThread(1000, NoAutoDeleteThread), holder(_holder)
     {
-      if (finishFlag)
-        return;
-
-      S s = GetString();
-      char buffer[20] = {};
-      strncpy(buffer, C::ToConstCharStar(s), sizeof(buffer)-1);
-
-      REQUIRE_QUIET(strcmp((const char *)buffer, SPECIALNAME) == 0);
+      Resume();
     }
 
-    class TestThread : public PThread
+    void Main() override
     {
-      PCLASSINFO(TestThread, PThread);
-      public:
-        TestThread(StringHolder & _holder) 
-        : PThread(1000,NoAutoDeleteThread), holder(_holder)
-        { Resume(); }
-
-        void Main() override
-        {
-          int count = 0;
-          while (!finishFlag && count < COUNT_MAX)
-            holder.TestString();
-        }
-
-        StringHolder & holder;
-    };
-
-    PThread * StartThread()
-    {
-      return new TestThread(*this);
+      int count = 0;
+      while (!finishFlag && count < COUNT_MAX)
+        holder.TestString();
     }
+
+    StringHolder & holder;
+  };
+
+  PThread * StartThread()
+  {
+    return new TestThread(*this);
+  }
 
 };
 
-struct PStringConv : public StringConv<PString> {
+struct PStringConv : public StringConv<PString>
+{
   static const char * ToConstCharStar(const PString & s) { return (const char *)s; }
 };
 
-struct StdStringConv : public StringConv<std::string> {
+struct StdStringConv : public StringConv<std::string>
+{
   static const char * ToConstCharStar(const std::string & s) { return s.c_str(); }
 };
 
-void Test4()
+void Test5()
 {
   // uncomment this to test std::string
   //StringHolder<std::string, StdStringConv> holder(SPECIALNAME);
-  
+
   // uncomment this to test PString
   StringHolder<PString, PStringConv> holder(SPECIALNAME);
 
@@ -223,7 +263,7 @@ void Test4()
   PThread * thread = holder.StartThread();
   finishFlag = false;
   int count = 0;
-  while (!finishFlag && count < COUNT_MAX) 
+  while (!finishFlag && count < COUNT_MAX)
     holder.TestString();
   finishFlag = true;
   thread->WaitForTermination(9000);
@@ -239,8 +279,8 @@ void Test4()
 class StringTest : public PProcess
 {
   PCLASSINFO(StringTest, PProcess)
-  public:
-    virtual void Main() override;
+public:
+  virtual void Main() override;
 };
 
 PCREATE_PROCESS(StringTest);
@@ -252,6 +292,7 @@ void StringTest::Main()
   Test2(); cout << "End of test #2\n" << endl;
   Test3(); cout << "End of test #3\n" << endl;
   Test4(); cout << "End of test #4\n" << endl;
+  Test5(); cout << "End of test #4\n" << endl;
 
   if (g_errorCount == 0)
     cout << "FINAL PASS: " << g_totalTests << " passed" << endl;
