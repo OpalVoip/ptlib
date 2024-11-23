@@ -14,7 +14,7 @@
 unsigned g_totalTests = 0;
 unsigned g_errorCount = 0;
 
-void TestResult(bool condResult, const char * condText, const char * file, int line, bool noisy)
+bool TestResult(bool condResult, const char * condText, const char * file, int line, bool noisy)
 {
   std::string filename(file);
   size_t pos = filename.find_last_of("\\/");
@@ -29,6 +29,7 @@ void TestResult(bool condResult, const char * condText, const char * file, int l
     cerr << "FAIL: " << filename << "(" << line << "): " << condText << endl;
     g_errorCount++;
   }
+  return condResult;
 }
 
 #define REQUIRE_QUIET(cond) TestResult(cond, #cond, __FILE__, __LINE__, false)
@@ -126,29 +127,54 @@ void Test2()
   REQUIRE(s == "This is a test of the string stream, integer: 5, real: 5.6");
 }
 
-
 ////////////////////////////////////////////////
 //
-// test #3 - regex test
+// test #3 - PBYTEArray test
 //
 
 void Test3()
 {
-  PRegularExpression regex;
+  {
+    PBYTEArray buffer1(1024);
+    PBYTEArray buffer2(buffer1);
 
-  if (!regex.Compile("ab(cd)e(fg)", PRegularExpression::Extended))
-    cout << "Error " << regex.GetErrorText() << endl;
+    REQUIRE((void *)(buffer1.GetPointer() == (void *)buffer2.GetPointer()));
+  }
 
-  PStringArray substrings;
-  if (regex.Execute("abcdefgh", substrings))
-    cout << "Matched " << substrings[0].ToLiteral() << ' ' << substrings[1].ToLiteral() << ' ' << substrings[2].ToLiteral() << endl;
-  else
-    cout << "No match" << endl;
+  {
+    PString str1("hello");
+    PString str2(str1);
+
+    str2 = "world";
+
+    REQUIRE((void *)(str1.GetPointer() != (void *)str2.GetPointer()));
+  }
 }
 
 ////////////////////////////////////////////////
 //
-// test #4 - string concurrency test
+// test #4 - regex test
+//
+
+void Test4()
+{
+  PRegularExpression regex;
+
+  if (!regex.Compile("b(cd)e(fg)", PRegularExpression::Extended))
+    cout << "Error " << regex.GetErrorText() << endl;
+
+  PStringArray substrings(3);
+  if (REQUIRE(regex.Execute("abcdefgh", substrings))) {
+    REQUIRE(substrings.GetSize() == 3);
+    REQUIRE(substrings[0] == "bcdefg");
+    REQUIRE(substrings[1] == "cd");
+    REQUIRE(substrings[2] == "fg");
+  }
+}
+
+////////////////////////////////////////////////
+//
+// test #5 - string concurrency test
 //
 
 #define SPECIALNAME     "openH323"
@@ -223,7 +249,7 @@ struct StdStringConv : public StringConv<std::string>
   static const char * ToConstCharStar(const std::string & s) { return s.c_str(); }
 };
 
-void Test4()
+void Test5()
 {
   // uncomment this to test std::string
   //StringHolder<std::string, StdStringConv> holder(SPECIALNAME);
@@ -265,6 +291,7 @@ void StringTest::Main()
   Test2(); cout << "End of test #2\n" << endl;
   Test3(); cout << "End of test #3\n" << endl;
   Test4(); cout << "End of test #4\n" << endl;
+  Test5(); cout << "End of test #4\n" << endl;
 
   if (g_errorCount == 0)
     cout << "FINAL PASS: " << g_totalTests << " passed" << endl;
