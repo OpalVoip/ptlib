@@ -200,7 +200,6 @@ class PNamedSemaphore : public PSync
     PWin32Handle m_handle;
 #else
 protected:
-  #if defined(P_HAS_SEMAPHORES)
     mutable sem_t m_semaphore;
     #if defined(P_HAS_NAMED_SEMAPHORES)
       mutable struct SemPtr {
@@ -211,13 +210,6 @@ protected:
     #else
       __inline sem_t * GetSemPtr() const { return &m_semaphore; }
     #endif
-  #else
-    mutable pthread_mutex_t mutex;
-    mutable pthread_cond_t  condVar;
-    mutable unsigned currentCount;
-    mutable unsigned queuedLocks;
-    friend class PThread;
-  #endif
 #endif
 };
 

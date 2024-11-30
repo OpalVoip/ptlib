@@ -497,14 +497,6 @@ class PThread : public PObject, PProfiling::HighWaterMark<PThread>, PNonCopyable
 
   protected:
     int m_threadUnblockPipe[2];
-
-  #ifndef P_HAS_SEMAPHORES
-  public:
-    void PXSetWaitingSemaphore(PSemaphore * sem);
-  protected:
-    PSemaphore      * m_waitingSemaphore;
-    pthread_mutex_t   m_waitSemMutex;
-  #endif
 #endif
 };
 

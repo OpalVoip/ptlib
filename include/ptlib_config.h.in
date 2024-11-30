@@ -171,7 +171,6 @@
   #define HAVE_LINUX_ERRQUEUE_H 1
   #define HAVE_NETINET_IF_ETHER_H 1
 
-  #define P_HAS_SEMAPHORES 1
   #define P_HAS_POLL 1
   #define P_HAS_RECVMSG 1
   #define P_HAS_RECVMSG_MSG_ERRQUEUE 1
@@ -216,7 +215,6 @@
   #undef HAVE_NETINET_IF_ETHER_H
 
   #undef P_NO_PTHREAD_KILL
-  #undef P_HAS_SEMAPHORES
   #undef P_HAS_POLL
   #undef P_HAS_RECVMSG
   #undef P_HAS_RECVMSG_MSG_ERRQUEUE

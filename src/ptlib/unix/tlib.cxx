@@ -1029,10 +1029,6 @@ static int GetSchedParam(PThread::Priority priority, sched_param& param)
 
 void PThread::PlatformConstruct()
 {
-  #ifndef P_HAS_SEMAPHORES
-    PX_waitingSemaphore = NULL;
-    PX_WaitSemMutex = MutexInitialiser;
-  #endif
   PAssertOS(::pipe(m_threadUnblockPipe) == 0);
 }
 
@@ -1049,10 +1045,6 @@ void PThread::PlatformDestroy()
   // close I/O unblock pipes
   ::close(m_threadUnblockPipe[0]);
   ::close(m_threadUnblockPipe[1]);
-
-  #ifndef P_HAS_SEMAPHORES
-    pthread_mutex_destroy(&PX_WaitSemMutex);
-  #endif
 }
 
 
@@ -1295,16 +1287,6 @@ PThread::Priority PThread::GetPriority() const
 }
 
 
-#ifndef P_HAS_SEMAPHORES
-void PThread::PXSetWaitingSemaphore(PSemaphore* sem)
-{
-  PAssertWithRetry(pthread_mutex_lock, &PX_WaitSemMutex);
-  PX_waitingSemaphore = sem;
-  PAssertWithRetry(pthread_mutex_unlock, &PX_WaitSemMutex);
-}
-#endif
-
-
 //
 //  Terminate the specified thread
 //
@@ -1332,17 +1314,6 @@ void PThread::Terminate()
   PXAbortBlock();
   if (WaitForTermination(100))
     return;
-
-  #ifndef P_HAS_SEMAPHORES
-  PAssertWithRetry(pthread_mutex_lock, &PX_WaitSemMutex);
-  if (PX_waitingSemaphore != NULL) {
-    PAssertWithRetry(pthread_mutex_lock, &PX_waitingSemaphore->mutex);
-    PX_waitingSemaphore->queuedLocks--;
-    PAssertWithRetry(pthread_mutex_unlock, &PX_waitingSemaphore->mutex);
-    PX_waitingSemaphore = NULL;
-  }
-  PAssertWithRetry(pthread_mutex_unlock, &PX_WaitSemMutex);
-  #endif
 
   if (m_threadId != PNullThreadIdentifier) {
     pthread_kill(m_nativeHandle, SIGKILL);
@@ -1467,9 +1438,8 @@ void PThread::PXAbortBlock() const
 
 ///////////////////////////////////////////////////////////////////////////////
 
-PSemaphore::~PSemaphore()
+PNamedSemaphore::~PNamedSemaphore()
 {
-  #if defined(P_HAS_SEMAPHORES)
   #if defined(P_HAS_NAMED_SEMAPHORES)
   if (m_namedSemaphore.ptr != NULL) {
     PAssertWithRetry(sem_close, m_namedSemaphore.ptr);
@@ -1477,20 +1447,14 @@ PSemaphore::~PSemaphore()
   else
     #endif
     PAssertWithRetry(sem_destroy, &m_semaphore);
-  #else
-  PAssert(queuedLocks == 0, "Semaphore destroyed with queued locks");
-  PAssertWithRetry(pthread_mutex_destroy, &mutex);
-  PAssertWithRetry(pthread_cond_destroy, &condVar);
-  #endif
 }
 
 
-void PSemaphore::Reset(unsigned initial, unsigned maximum)
+void PNamedSemaphore::Reset(unsigned initial, unsigned maximum)
 {
   m_maximum = std::min(maximum, (unsigned)INT_MAX);
   m_initial = std::min(initial, m_maximum);
 
-  #if defined(P_HAS_SEMAPHORES)
     /* Due to bug in some Linux/Kernel versions, need to clear structure manually, sem_init does not do the job.
        See http://stackoverflow.com/questions/1832395/sem-timedwait-not-supported-properly-on-redhat-enterprise-linux-5-3-onwards
        While the above link was for RHEL, seems to happen on some Fedoras as well. */
@@ -1525,50 +1489,16 @@ void PSemaphore::Reset(unsigned initial, unsigned maximum)
   if (m_name.IsEmpty())
     PAssertWithRetry(sem_init, &m_semaphore, 0, m_initial);
   #endif
-  #else
-  if (m_name.IsEmpty()) {
-    PAssertWithRetry(pthread_mutex_init, &mutex, NULL);
-    PAssertWithRetry(pthread_cond_init, &condVar, NULL);
-    currentCount = initial;
-  }
-  else
-    currentCount = INT_MAX;
-  queuedLocks = 0;
-  #endif
 }
 
 
-void PSemaphore::Wait()
+void PNamedSemaphore::Wait()
 {
-  #if defined(P_HAS_SEMAPHORES)
   PAssertWithRetry(sem_wait, GetSemPtr());
-  #else
-  if (currentCount == INT_MAX)
-    return;
-
-  PAssertWithRetry(pthread_mutex_lock, &mutex);
-
-  queuedLocks++;
-  PThread::Current()->PXSetWaitingSemaphore(this);
-
-  while (currentCount == 0) {
-    PPROFILE_SYSTEM(
-      int err = pthread_cond_wait(&condVar, &mutex);
-    );
-    PAssert(err == 0 || err == EINTR, psprintf("wait error = %i", err));
-  }
-
-  PThread::Current()->PXSetWaitingSemaphore(NULL);
-  queuedLocks--;
-
-  currentCount--;
-
-  PAssertWithRetry(pthread_mutex_unlock, &mutex);
-  #endif
 }
 
 
-bool PSemaphore::Wait(const PTimeInterval& waitTime)
+bool PNamedSemaphore::Wait(const PTimeInterval& waitTime)
 {
   if (waitTime == PMaxTimeInterval) {
     Wait();
@@ -1579,7 +1509,6 @@ bool PSemaphore::Wait(const PTimeInterval& waitTime)
   PTime finishTime;
   finishTime += waitTime;
 
-  #if defined(P_HAS_SEMAPHORES)
   #ifdef P_HAS_SEMAPHORES_XPG6
     // use proper timed spinlocks if supported.
     // http://www.opengroup.org/onlinepubs/007904975/functions/sem_timedwait.html
@@ -1618,63 +1547,11 @@ bool PSemaphore::Wait(const PTimeInterval& waitTime)
   #endif
 
   return false;
-
-  #else
-  if (currentCount == INT_MAX)
-    return false;
-
-  struct timespec absTime;
-  absTime.tv_sec = finishTime.GetTimeInSeconds();
-  absTime.tv_nsec = finishTime.GetMicrosecond() * 1000;
-
-  PPROFILE_PRE_SYSTEM();
-
-  PAssertWithRetry(pthread_mutex_lock, &mutex);
-
-  PThread* thread = PThread::Current();
-  thread->PXSetWaitingSemaphore(this);
-  queuedLocks++;
-
-  bool ok = true;
-  while (currentCount == 0) {
-    int err = pthread_cond_timedwait(&condVar, &mutex, &absTime);
-    if (err == ETIMEDOUT) {
-      ok = false;
-      break;
-    }
-    else
-      PAssert(err == 0 || err == EINTR, psprintf("timed wait error = %i", err));
-  }
-
-  thread->PXSetWaitingSemaphore(NULL);
-  queuedLocks--;
-
-  if (ok)
-    currentCount--;
-
-  PAssertWithRetry(pthread_mutex_unlock, &mutex);
-
-  PPROFILE_POST_SYSTEM();
-
-  return ok;
-  #endif
 }
 
 
-void PSemaphore::Signal()
+void PNamedSemaphore::Signal()
 {
-  #if defined(P_HAS_SEMAPHORES)
   PAssertWithRetry(sem_post, GetSemPtr());
-  #else
-  PAssertWithRetry(pthread_mutex_lock, &mutex);
-
-  if (currentCount < m_maximum)
-    currentCount++;
-
-  if (queuedLocks > 0)
-    PAssertWithRetry(pthread_cond_signal, &condVar);
-
-  PAssertWithRetry(pthread_mutex_unlock, &mutex);
-  #endif
 }
 
