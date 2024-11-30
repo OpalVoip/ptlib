@@ -50,8 +50,8 @@ void Test1()
 
     strcpy((char *)(const char *)pstring2, "overwrite");
 
-    REQUIRE(pstring1 == "overwrite");
-    REQUIRE(pstring1 == "overwrite");
+    REQUIRE(pstring1 == "hello world");
+    REQUIRE(pstring2 == "overwrite");
   }
   {
     PString pstring1("hello world");

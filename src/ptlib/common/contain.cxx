@@ -2044,9 +2044,7 @@ void PRegularExpression::PrintOn(ostream &strm) const
 
 std::regex::flag_type PRegularExpression::MapFlags(CompileOptions opts)
 {
-  flag_type flags = basic;
-  if (opts&Extended)
-    flags |= extended;
+  flag_type flags = (opts&Extended) ? extended : basic;
   if (opts&IgnoreCase)
     flags |= icase;
   return flags;

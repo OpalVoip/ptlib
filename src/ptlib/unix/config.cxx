@@ -152,12 +152,12 @@ PConfig::Cached::Cached(const PFilePath & path)
 
     // Preserve comments
     if (IsComment(line)) {
-      at(line);
+      emplace(line, PStringOptions());
       continue;
     }
 
     if (line[0] == '[')
-      at(line(1, line.Find(']')-1).Trim());
+      emplace(line(1, line.Find(']')-1).Trim(), PStringOptions());
     else if (itSection != end()) {
       PString keyStr, valStr;
       if (line.Split('=', keyStr, valStr, PString::SplitDefaultToBefore|PString::SplitTrimBefore|PString::SplitBeforeNonEmpty)) {
@@ -255,7 +255,7 @@ PConfig::Cached::Cached(char **envp)
 {
   PTRACE(4, "Created " << this << " for environment");
 
-  auto & envSection = at(PConfig::DefaultSectionName());
+  auto & envSection = (*this)[PConfig::DefaultSectionName()];
 
   if (envp == NULL)
     return;
