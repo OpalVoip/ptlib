@@ -48,7 +48,7 @@ void Test1()
     PString pstring1("hello world");
     PString pstring2(pstring1);
 
-    strcpy((char *)(const char *)pstring2, "overwrite");
+    P_DISABLE_MSVC_WARNINGS(4996, strcpy((char *)(const char *)pstring2, "overwrite"));
 
     REQUIRE(pstring1 == "hello world");
     REQUIRE(pstring2 == "overwrite");
@@ -57,7 +57,7 @@ void Test1()
     PString pstring1("hello world");
     PString pstring2(pstring1);
 
-    strcpy(pstring2.GetPointerAndSetLength(9), "overwrite");
+    P_DISABLE_MSVC_WARNINGS(4996, strcpy(pstring2.GetPointerAndSetLength(9), "overwrite"));
 
     REQUIRE(pstring1 == "hello world");
     REQUIRE(pstring2 == "overwrite");
@@ -139,7 +139,7 @@ void Test3()
     PBYTEArray buffer1(1024);
     PBYTEArray buffer2(buffer1);
 
-    REQUIRE((void *)(buffer1.GetPointer() == (void *)buffer2.GetPointer()));
+    REQUIRE(buffer1 == buffer2);
   }
 
   {
@@ -209,11 +209,11 @@ public:
     PCLASSINFO(TestThread, PThread);
   public:
     TestThread(StringHolder & holder, PTimer & timer)
-      : PThread(1000, NoAutoDeleteThread)
+      : PThread(NoAutoDeleteThread)
       , m_holder(holder)
       , m_timer(timer)
     {
-      Resume();
+      Start();
     }
 
     void Main() override

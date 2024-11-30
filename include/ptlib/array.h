@@ -125,13 +125,15 @@ template <typename T> class PScalarArray : public PObject, public std::vector<T>
     {
       const PScalarArray & t1 = *this;
       const PScalarArray & t2 = dynamic_cast<const PScalarArray &>(obj);
-      const auto & it1 = t1.begin();
-      const auto & it2 = t2.begin();
+      auto it1 = t1.begin();
+      auto it2 = t2.begin();
       while (it1 != t1.end() && it2 != t2.end()) {
         if (*it1 < *it2)
           return PObject::LessThan;
         if (*it1 > *it2)
           return PObject::GreaterThan;
+        ++it1;
+        ++it2;
       }
       if (it2 != t2.end())
         return PObject::LessThan;
