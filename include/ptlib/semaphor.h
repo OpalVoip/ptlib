@@ -37,6 +37,8 @@
 #include <ptlib/psync.h>
 #include <limits.h>
 #include <ptlib/atomic.h>
+#include <semaphore>
+
 
 /**This class defines a thread synchronisation object. This is in the form of a
    integer semaphore. The semaphore has a count and a maximum value. The
@@ -51,47 +53,79 @@
    unblock the first one that was blocked. If no waiting threads and the count
    is less than the maximum then increment the semaphore.
 
-   The most common is to create a mutual exclusion zone. A mutex is where a
-   piece of code or data cannot be accessed by more than one thread at a time.
-   To prevent this the PSemaphore is used in the following manner:
-<pre><code>
-      PSemaphore mutex(1, 1);  // Maximum value of 1 and initial value of 1.
-
-      ...
-
-      mutex.Wait();
-
-      ... critical section - only one thread at a time here.
-
-      mutex.Signal();
-
-      ...
 </code></pre>
     The first thread will pass through the Wait() function, a second
     thread will block on that function until the first calls the
     Signal() function, releasing the second thread.
  */
-class PSemaphore : public PSync
+template <ptrdiff_t max_value = PTRDIFF_MAX>
+class PSemaphoreT : public PSync, public std::counting_semaphore<max_value>
 {
-  PCLASSINFO(PSemaphore, PSync);
+  PCLASSINFO(PSemaphoreT, PSync);
+
+public:
+/**@name Construction */
+//@{
+  /**Create a new semaphore with maximum count and initial value specified.
+     If the initial value is larger than the maximum value then is is set to
+     the maximum value.
+   */
+  PSemaphoreT(
+    unsigned initial = 0         ///< Initial value for semaphore count.
+  ) : std::counting_semaphore<max_value>(initial) { }
+//@}
+
+/**@name Operations */
+//@{
+  /**If the semaphore count is > 0, decrement the semaphore and return. If
+     if is = 0 then wait (block).
+   */
+  virtual void Wait() override
+  {
+    this->acquire();
+  }
+
+  /**If the semaphore count is > 0, decrement the semaphore and return. If
+     if is = 0 then wait (block) for the specified amount of time.
+
+     @return
+     true if semaphore was signalled, false if timed out.
+   */
+  virtual bool Wait(
+    const PTimeInterval & timeout // Amount of time to wait for semaphore.
+  ) override
+  {
+    return this->try_acquire_for(timeout.AsChronoUS());
+  }
+
+  /**If there are waiting (blocked) threads then unblock the first one that
+     was blocked. If no waiting threads and the count is less than the
+     maximum then increment the semaphore.
+   */
+  virtual void Signal() override
+  {
+    this->release();
+  }
+//@}
+};
+
+using PSemaphore = PSemaphoreT<>;
+
+
+/** A named semapore unique cross processes.
+*/
+class PNamedSemaphore : public PSync
+{
+  PCLASSINFO(PNamedSemaphore, PSync);
 
   public:
   /**@name Construction */
   //@{
-    /**Create a new semaphore with maximum count and initial value specified.
-       If the initial value is larger than the maximum value then is is set to
-       the maximum value.
-     */
-    PSemaphore(
-      unsigned initial = 0,         ///< Initial value for semaphore count.
-      unsigned maximum = UINT_MAX   ///< Maximum value for semaphore count.
-    ) { Reset(initial, maximum); }
-
     /**Create a new system global semaphore with maximum count and initial value specified.
        If the initial value is larger than the maximum value then is is set to
        the maximum value.
      */
-    PSemaphore(
+    PNamedSemaphore(
       const PString & name,
       unsigned initial = 0,         ///< Initial value for semaphore count.
       unsigned maximum = UINT_MAX   ///< Maximum value for semaphore count.
@@ -99,7 +133,7 @@ class PSemaphore : public PSync
 
     /** Create a new semaphore with the same initial and maximum values as the original.
      */
-    PSemaphore(const PSemaphore & sem)
+    PNamedSemaphore(const PNamedSemaphore & sem)
       : PSync()
       , m_name(sem.m_name)
     { Reset(sem.m_initial, sem.m_maximum); }
@@ -107,7 +141,7 @@ class PSemaphore : public PSync
     /**Destroy the semaphore. This will assert if there are still waiting
        threads on the semaphore.
      */
-    ~PSemaphore();
+    ~PNamedSemaphore();
   //@}
 
   /**@name Operations */
@@ -133,20 +167,20 @@ class PSemaphore : public PSync
      */
     virtual void Signal() override;
 
-    /** Reset the semaphore to the specified inital and maximum values.
+    /** Reset the semaphore to the specified initial and maximum values.
         Note that the behaviour is undetermined if something is waiting on the
-        semaphire when this is called.
+        semaphore when this is called.
       */
     virtual void Reset(
       unsigned initial = 0,         ///< Initial value for semaphore count.
       unsigned maximum = UINT_MAX   ///< Maximum value for semaphore count.
     );
 
-    /** Get the initial value semaphore was creted with.
+    /** Get the initial value semaphore was created with.
       */
     unsigned GetInitial() const  { return m_initial; }
 
-    /** Get the initial value semaphore was creted with.
+    /** Get the initial value semaphore was created with.
       */
     unsigned GetMaximum() const { return m_maximum; }
   //@}

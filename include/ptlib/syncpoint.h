@@ -35,7 +35,7 @@
 #endif
 
 #include <ptlib/semaphor.h>
-#include <condition_variable>
+#include <semaphore>
 
 
 /** This class defines a thread synchronisation object.
@@ -61,15 +61,12 @@
   are waiting on the event, only one thread will be released. As you cannot know
   which thread will be released this mode of use is not recommended.
  */
-class PSyncPoint : public PSync
+class PSyncPoint : public PSync, public std::binary_semaphore
 {
   PCLASSINFO(PSyncPoint, PSync);
 
   public:
-    /** Create a new sync point.
-     */
-    PSyncPoint();
-    PSyncPoint(const PSyncPoint &);
+    PSyncPoint() : std::binary_semaphore(0) { }
 
     /**Block until the synchronisation object is available.
      */
@@ -87,11 +84,6 @@ class PSyncPoint : public PSync
     /**Signal that the synchronisation object is available.
      */
     virtual void Signal() override;
-
-  protected:
-    std::mutex              m_mutex;
-    std::condition_variable m_cv;
-    bool                    m_signalled;
 };
 
 

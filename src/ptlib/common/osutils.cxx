@@ -2998,7 +2998,7 @@ PTime PProcess::GetStartTime() const
 
 bool PProcess::IsMultipleInstance() const
 {
-  static PSemaphore s_multiTest(GetName()+" UniqueProcessSeampahore", 1, 1);
+  static PNamedSemaphore s_multiTest(GetName()+" UniqueProcessSeampahore", 1, 1);
   static bool s_multiple = !s_multiTest.Wait(0);
   return s_multiple;
 }
@@ -3963,24 +3963,10 @@ void PInstrumentedMutex::ReleasedLock(const PObject & mutex, uint64_t startHeldS
 
 ///////////////////////////////////////////////////////////////////////////////
 
-PSyncPoint::PSyncPoint()
-  : m_signalled(false)
-{
-}
-
-
-PSyncPoint::PSyncPoint(const PSyncPoint &)
-  : PSyncPoint()
-{
-}
-
-
 void PSyncPoint::Wait()
 {
   PPROFILE_PRE_SYSTEM();
-  std::unique_lock<std::mutex> lock(m_mutex);
-  m_cv.wait(lock, [this] { return m_signalled; });
-  m_signalled = false;
+  acquire();
   PPROFILE_POST_SYSTEM();
 }
 
@@ -3988,22 +3974,15 @@ void PSyncPoint::Wait()
 bool PSyncPoint::Wait(const PTimeInterval & waitTime)
 {
   PPROFILE_PRE_SYSTEM();
-  std::unique_lock<std::mutex> lock(m_mutex);
-  bool success = m_cv.wait_for(lock, waitTime.AsChronoNS(), [this] { return m_signalled; });
-  if (success)
-    m_signalled = false;
+  auto result = try_acquire_for(waitTime.AsChronoUS());
   PPROFILE_POST_SYSTEM();
-  return success;
+  return result;
 }
 
 
 void PSyncPoint::Signal()
 {
-  {
-    std::lock_guard<std::mutex> lock(m_mutex);
-    m_signalled = true;
-  }
-  m_cv.notify_all();
+  release();
 }
 
 

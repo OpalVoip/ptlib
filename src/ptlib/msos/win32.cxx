@@ -1381,37 +1381,37 @@ bool PProcess::HostSystemURLHandlerInfo::Register()
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// PSemaphore
+// PNamedSemaphore
 
-void PSemaphore::Reset(unsigned initial, unsigned maximum)
+void PNamedSemaphore::Reset(unsigned initial, unsigned maximum)
 {
   m_maximum = std::min(maximum, (unsigned)INT_MAX);
   m_initial = std::min(initial, m_maximum);
 
   m_handle.Close();
-  m_handle = CreateSemaphore(NULL, m_initial, m_maximum, m_name.IsEmpty() ? NULL : m_name.GetPointer());
+  m_handle = CreateSemaphore(NULL, m_initial, m_maximum, m_name.GetPointer());
   PAssertOS(m_handle.IsValid());
 }
 
 
-PSemaphore::~PSemaphore()
+PNamedSemaphore::~PNamedSemaphore()
 {
 }
 
 
-void PSemaphore::Wait()
+void PNamedSemaphore::Wait()
 {
   m_handle.Wait(INFINITE);
 }
 
 
-bool PSemaphore::Wait(const PTimeInterval & timeout)
+bool PNamedSemaphore::Wait(const PTimeInterval & timeout)
 {
   return m_handle.Wait(timeout.GetInterval());
 }
 
 
-void PSemaphore::Signal()
+void PNamedSemaphore::Signal()
 {
   if (PAssertOS(ReleaseSemaphore(m_handle, 1, NULL) || ::GetLastError() == ERROR_INVALID_HANDLE))
     SetLastError(ERROR_SUCCESS);

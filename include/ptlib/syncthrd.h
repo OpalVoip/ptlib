@@ -568,7 +568,6 @@ template <class T> class PSyncQueue : public PObject, PNonCopyable
     /// Construct synchronous queue
     PSyncQueue()
       : m_state(e_Open)
-      , m_available(0, INT_MAX)
     {
     }
 

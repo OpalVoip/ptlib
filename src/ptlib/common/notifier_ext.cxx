@@ -80,8 +80,7 @@ class PAsyncNotifierQueue : std::queue<PAsyncNotifierCallback *>
 
 public:
   PAsyncNotifierQueue(PAsyncNotifierTarget * target)
-    : m_count(0, INT_MAX)
-    , m_target(target)
+    : m_target(target)
   {
   }
 
@@ -153,7 +152,7 @@ public:
 
     do {
       id = m_nextId++;
-    } while (!insert(value_type(id, target)).second);
+    } while (!emplace(id, target).second);
 
     m_mutex.Signal();
 
