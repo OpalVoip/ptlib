@@ -164,10 +164,16 @@ bool PAwsClientBase::SetProfile(const PString & profile)
   if (profile.empty() || (profile == "default")) {
     PTRACE(4, "Default client config");
     m_clientConfig.reset(new Aws::Client::ClientConfiguration());
+    if (m_lastRegion.empty())
+      m_lastRegion = m_clientConfig->region;
+    else
+      m_clientConfig->region = m_lastRegion;
   }
   else {
     PTRACE(4, "Client config for \"" << profile << '"');
     m_clientConfig.reset(new Aws::Client::ClientConfiguration(profile.c_str()));
+    if (!m_clientConfig->region.empty())
+      m_lastRegion = m_clientConfig->region;
   }
 
   if (m_clientConfig->profileName.empty())
@@ -193,13 +199,13 @@ bool PAwsClientBase::SetProfile(const PString & profile)
 
 void PAwsClientBase::SetRegion(const PString & region)
 {
-  m_clientConfig->region = region.c_str();
+  m_lastRegion = m_clientConfig->region = region.c_str();
 }
 
 
 PString PAwsClientBase::GetRegion() const
 {
-  return m_clientConfig->region.c_str();
+  return m_lastRegion;
 }
 
 
