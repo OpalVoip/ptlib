@@ -187,16 +187,17 @@ class PVXMLGrammar : public PObject, protected PVXMLGrammarInit
       NoMatch,      ///< recognized something but didn't match the grammar
       Help,         ///< help keyword
       Illegal,      ///< Illegal, could not be initialised
+      BadLanguage,  ///< Could not set language
       BadFetch      ///< Could not get dependent resource
     );
 
     GrammarState GetState() const { return m_state; }
 
-    virtual bool Start();
+    virtual bool Start(bool forced = false);
     virtual void Stop();
     virtual bool Process();
 
-    void SetTimeout(const PTimeInterval & timeout);
+    void Setup(const PTimeInterval & timeout, bool canBargeIn);
 
   protected:
     PDECLARE_NOTIFIER(PTimer, PVXMLGrammar, OnTimeout);
@@ -207,6 +208,7 @@ class PVXMLGrammar : public PObject, protected PVXMLGrammarInit
     virtual void SetFilled(const PString & value, bool overwrite = false);
     virtual void Finished();
 
+    bool                 m_cannotBargeIn;
     PSpeechRecognition * m_recogniser;
     bool                 m_allowDTMF;
     PString              m_fieldName;
@@ -569,7 +571,6 @@ class PVXMLSession : public PIndirectChannel, public PSSLCertificateInfo
     void NextElseIfNode(PXMLElement & ifElement, PINDEX pos);
     bool SelectMenuChoice(PXMLElement & choice);
     bool ExecuteCondition(PXMLElement & element);
-    void ClearBargeIn();
     void FlushInput();
     bool IsFinalProcessing() const { return m_closing || m_promptMode == e_FinalProcessing; }
 
@@ -644,7 +645,7 @@ class PVXMLSession : public PIndirectChannel, public PSSLCertificateInfo
     PAutoPtr<PXML>   m_currentXML;
     PXMLObject  *    m_currentNode;
     bool             m_speakNodeData;
-    bool             m_bargeIn;
+    bool             m_canBargeIn;
     bool             m_bargingIn;
     PStringSet       m_dialogFieldNames;
     unsigned         m_promptCount;

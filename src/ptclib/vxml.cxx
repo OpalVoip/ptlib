@@ -1347,7 +1347,7 @@ PVXMLSession::PVXMLSession()
   , m_abortVXML(false)
   , m_currentNode(NULL)
   , m_speakNodeData(true)
-  , m_bargeIn(true)
+  , m_canBargeIn(true)
   , m_bargingIn(false)
   , m_promptCount(0)
   , m_promptMode(e_NormalPrompt)
@@ -1670,7 +1670,7 @@ bool PVXMLSession::InternalLoadVXML(const PURL & url, const PString & xmlText, c
   PWaitAndSignal mutex(m_sessionMutex);
 
   m_speakNodeData = true;
-  m_bargeIn = true;
+  m_canBargeIn = true;
   m_bargingIn = false;
   m_recordingStatus = NotRecording;
   m_transferElement = NULL;
@@ -1766,7 +1766,6 @@ PURL PVXMLSession::NormaliseResourceName(const PString & src)
 
 bool PVXMLSession::SetCurrentForm(const PString & searchId, bool fullURI)
 {
-  ClearBargeIn();
   m_eventCount.clear();
 
   if (IsFinalProcessing())
@@ -1774,6 +1773,7 @@ bool PVXMLSession::SetCurrentForm(const PString & searchId, bool fullURI)
 
   m_promptMode = e_NormalPrompt;
   m_promptCount = 0;
+  m_bargingIn = false;
 
   PTRACE(4, "Setting current form to \"" << searchId << '"');
 
@@ -2094,14 +2094,10 @@ bool PVXMLSession::ProcessEvents()
       }
     }
     else if (vxmlChannel->IsPlaying()) {
-      if (m_bargeIn) {
+      if (m_canBargeIn) {
         PTRACE_IF(3, !m_bargingIn, "Executing bargein");
         m_bargingIn = true;
         vxmlChannel->FlushQueue();
-      }
-      else {
-        PTRACE(3, "No bargein");
-        FlushInput(); // Ignore input so far
       }
     }
     else if (!m_bargingIn) {
@@ -2110,6 +2106,11 @@ bool PVXMLSession::ProcessEvents()
   }
 
   if (vxmlChannel->IsPlaying()) {
+    if (m_canBargeIn && IsGrammarRunning()) {
+      PTRACE_IF(3, !m_bargingIn, "Executing bargein");
+      m_bargingIn = true;
+      vxmlChannel->FlushQueue();
+    }
     PTRACE(4, "Is playing, awaiting event");
   }
   else if (vxmlChannel->IsRecording()) {
@@ -2125,7 +2126,7 @@ bool PVXMLSession::ProcessEvents()
     }
   }
   else if (IsGrammarRunning()) {
-    PTRACE(4, "Grammar awaiting input, awaiting event");
+    PTRACE(4, "Grammar needs input, awaiting event");
   }
   else {
     switch (m_transferStatus) {
@@ -2318,13 +2319,6 @@ bool PVXMLSession::SelectMenuChoice(PXMLElement & choice)
     return true;
 
   return !next.empty() && GoToEventHandler(choice, next, false);
-}
-
-
-void PVXMLSession::ClearBargeIn()
-{
-  PTRACE_IF(4, m_bargingIn, "Ending barge in");
-  m_bargingIn = false;
 }
 
 
@@ -2769,33 +2763,40 @@ PBoolean PVXMLSession::PlayResource(const PString & src, PINDEX repeat, PINDEX d
 
 void PVXMLSession::LoadGrammar(const PVXMLGrammarInit & init)
 {
-  PVXMLGrammar * grammar = PVXMLGrammarFactory::CreateInstance(init.m_type, init);
-  if (grammar == NULL) {
+  PAutoPtr<PVXMLGrammar> grammar(PVXMLGrammarFactory::CreateInstance(init.m_type, init));
+  if (grammar.get() == NULL) {
     ThrowError(init.m_field, "error.unsupported.builtin", "Could not set grammar of type \"" << init.m_type << '"');
     return;
   }
-  PTRACE_CONTEXT_ID_TO(grammar);
+  PTRACE_CONTEXT_ID_TO(*grammar);
 
-  PVXMLGrammar::GrammarState state = grammar->GetState();
-  if (state != PVXMLGrammar::Idle) {
-    delete grammar;
-    if (state == PVXMLGrammar::BadFetch)
+  switch (grammar->GetState()) {
+    case PVXMLGrammar::Idle:
+      PTRACE(2, "Grammar set to " << *grammar << " from \"" << init.m_type << '"');
+      m_grammersMutex.Wait();
+      m_grammars.Append(grammar.release());
+      m_grammersMutex.Signal();
+      break;
+
+    case PVXMLGrammar::BadFetch:
       ThrowBadFetchError(init.m_field, "Bad fetch in grammar " << *grammar);
-    else
+      break;
+
+    case PVXMLGrammar::BadLanguage:
+      ThrowError(init.m_field, "error.unsupported.language", "Could not set speech recognition language");
+      break;
+
+    default :
       ThrowError(init.m_field, "error.unsupported.format", "Illegal/unsupported grammar of type \"" << init.m_type << '"');
-    return;
   }
 
-  PTRACE(2, "Grammar set to " << *grammar << " from \"" << init.m_type << '"');
-  m_grammersMutex.Wait();
-  m_grammars.Append(grammar);
-  m_grammersMutex.Signal();
 }
 
 
 void PVXMLSession::ClearGrammars()
 {
-  ClearBargeIn();
+  m_bargingIn = false;
+
   PWaitAndSignal lock(m_grammersMutex);
   if (m_grammars.empty())
     return;
@@ -2812,7 +2813,7 @@ void PVXMLSession::StartGrammars()
   PWaitAndSignal lock(m_grammersMutex);
   PTRACE(3, "Starting " << m_grammars.size() << " grammars");
   for (Grammars::iterator it = m_grammars.begin(); it != m_grammars.end(); ++it)
-    it->Start();
+    it->Start(true);
   OnUserInputToGrammars();
 }
 
@@ -2857,6 +2858,7 @@ bool PVXMLSession::IsGrammarRunning() const
     }
   }
 
+  // No grammars are filled or in error
   return true;
 }
 
@@ -3889,26 +3891,28 @@ PBoolean PVXMLSession::TraversePrompt(PXMLElement & element)
     return false;
   }
 
-  if (GetProperty(BargeInProperty, &element).IsFalse()) {
-    PTRACE(3, "Prompt bargein disabled.");
-    m_bargeIn = false;
-    ClearBargeIn();
-    FlushInput();
-  }
+  m_bargingIn = false;
+  m_canBargeIn = !GetProperty(BargeInProperty, &element).IsFalse(); // Default to true
+  PTRACE(3, "Prompt bargein: " << std::boolalpha << m_canBargeIn);
+
+  // Update timeout of current recognition (if 'timeout' attribute is set)
+  m_grammersMutex.Wait();
+  for (Grammars::iterator it = m_grammars.begin(); it != m_grammars.end(); ++it)
+    it->Setup(element.GetAttribute(TimeoutProperty), m_canBargeIn);
+  m_grammersMutex.Signal();
 
   return true;
 }
 
 
-PBoolean PVXMLSession::TraversedPrompt(PXMLElement& element)
+PBoolean PVXMLSession::TraversedPrompt(PXMLElement &)
 {
-  // Update timeout of current recognition (if 'timeout' attribute is set)
-  m_grammersMutex.Wait();
-  for (Grammars::iterator it = m_grammars.begin(); it != m_grammars.end(); ++it)
-    it->SetTimeout(element.GetAttribute(TimeoutProperty));
-  m_grammersMutex.Signal();
+  if (!m_canBargeIn) {
+    PTRACE(3, "No bargein, flushing input at end of prompt");
+    FlushInput(); // Ignore input so far
+  }
 
-  m_bargeIn = !GetProperty(BargeInProperty).IsFalse();
+  StartGrammars();
   return true;
 }
 
@@ -3938,6 +3942,7 @@ PBoolean PVXMLSession::TraverseField(PXMLElement & element)
 
 PBoolean PVXMLSession::TraversedField(PXMLElement &)
 {
+  m_bargingIn = false;
   StartGrammars();
   return false;
 }
@@ -4114,14 +4119,84 @@ bool PVXMLSession::VideoSenderDevice::InternalGetFrameData(BYTE * buffer, PINDEX
 
 PVXMLGrammar::PVXMLGrammar(const PVXMLGrammarInit & init)
   : PVXMLGrammarInit(init)
+  , m_cannotBargeIn(true)
   , m_recogniser(NULL)
   , m_allowDTMF(true)
   , m_fieldName(m_field.GetAttribute(NameAttribute))
+  , m_terminators(m_session.GetProperty(TermCharProperty))
   , m_usingDTMF(false)
   , m_confidence(1.0)
   , m_state(Idle)
+  , m_noInputTimeout(m_session.GetTimeProperty(TimeoutProperty))
+  , m_interDigitTimeout(m_session.GetTimeProperty(InterDigitTimeoutProperty))
+  , m_completeTimeout(m_session.GetTimeProperty(CompleteTimeoutProperty))
+  , m_incompleteTimeout(m_session.GetTimeProperty(IncompleteTimeoutProperty))
 {
   m_timer.SetNotifier(PCREATE_NOTIFIER(OnTimeout), "VXMLGrammar");
+
+  PString inputModes = m_session.GetProperty(InputModesProperty, m_grammarElement, ModeAttribute);
+
+  // Can't be empty, default to DTMF
+  m_allowDTMF = inputModes.empty() || inputModes.Find(DtmfAttribute) != P_MAX_INDEX;
+
+  bool allowVoice = inputModes.Find(VoiceAttribute) != P_MAX_INDEX;
+  if (m_grammarElement != NULL) {
+    PCaselessString attrib = m_grammarElement->GetAttribute(ModeAttribute);
+    if (!attrib.empty())
+      allowVoice = attrib == VoiceAttribute;
+  }
+
+  if (allowVoice) {
+    m_recogniser = m_session.CreateSpeechRecognition();
+    if (m_recogniser == NULL) {
+      PTRACE(2, "Grammar " << *this << " could not create speech recognition on \"" << m_session.GetSpeechRecognition() << '"');
+      m_allowDTMF = true; // Turn on despite element indication, as no other way for input!
+    }
+    else {
+      PTRACE_CONTEXT_ID_TO(m_recogniser);
+      PStringToString options = m_session.m_speechRecognitionOptions;
+      options.MakeUnique();
+      m_session.m_httpMutex.Wait();
+      m_session.m_httpProxies.ToOptions(options);
+      m_session.m_httpMutex.Signal();
+      m_recogniser->SetOptions(options);
+
+      PString lang;
+      if (m_grammarElement != NULL)
+        lang = m_grammarElement->GetAttribute("xml:lang");
+      if (lang.empty())
+        lang = m_session.GetLanguage();
+      if (!lang.empty() && !m_recogniser->SetLanguage(lang)) {
+        m_state = BadLanguage;
+        return;
+      }
+
+#if 0
+    // Currently, in AWS world, it takes several seconds to create a vocabulary.
+    // So we need to figure out another solution than setting it up here.
+      PStringArray words;
+      GetWordsToRecognise(words);
+      m_recogniser->CreateVocabulary("grammar_words", words);
+      m_recogniser->ActivateVocabulary("grammar_words");
+#endif
+
+      m_recogniser->ActivateVocabulary(m_session.GetProperty("vocabularynames").Tokenise(","),
+                                       m_session.GetProperty("vocabularylanguages").Tokenise(","));
+
+      if (!m_recogniser->Open(PCREATE_NOTIFIER(OnRecognition))) {
+        PTRACE(2, "Grammar " << *this << " could not open speech recognition.");
+        delete m_recogniser;
+        m_recogniser = NULL;
+        m_allowDTMF = true; // Turn on despite element indication, as no other way for input!
+      }
+    }
+  }
+
+  PTRACE(3, "Grammar " << *this << " created:"
+         " inputModes=" << inputModes << ","
+         " dtmf=" << boolalpha << m_allowDTMF << ","
+         " voice=" << (m_recogniser != NULL) << ","
+         " noInputTimeout=" << m_noInputTimeout);
 }
 
 
@@ -4153,8 +4228,10 @@ void PVXMLGrammar::OnAudioInput(const short * samples, size_t count)
 }
 
 
-void PVXMLGrammar::SetTimeout(const PTimeInterval & timeout)
+void PVXMLGrammar::Setup(const PTimeInterval & timeout, bool canBargeIn)
 {
+  m_cannotBargeIn = !canBargeIn;
+
   if (timeout > 0) {
     m_noInputTimeout = timeout;
     PTRACE(4, "Grammar " << *this << " set timeout=" << m_noInputTimeout << ", state=" << m_state);
@@ -4164,83 +4241,20 @@ void PVXMLGrammar::SetTimeout(const PTimeInterval & timeout)
 }
 
 
-bool PVXMLGrammar::Start()
+bool PVXMLGrammar::Start(bool forced)
 {
+  if (forced)
+    m_cannotBargeIn = false;
+  else if (m_cannotBargeIn)
+      return false;
+
   GrammarState prev = Idle;
   if (!m_state.compare_exchange_strong(prev, Started))
     return prev == Started || prev == PartFill;
 
-  if (m_terminators.empty())
-    m_terminators = m_session.GetProperty(TermCharProperty);
-  if (m_noInputTimeout == 0)
-    m_noInputTimeout = m_session.GetTimeProperty(TimeoutProperty);
-  m_interDigitTimeout = m_session.GetTimeProperty(InterDigitTimeoutProperty);
-  m_completeTimeout = m_session.GetTimeProperty(CompleteTimeoutProperty);
-  m_incompleteTimeout = m_session.GetTimeProperty(IncompleteTimeoutProperty);
-
-  PString inputModes = m_session.GetProperty(InputModesProperty, m_grammarElement, ModeAttribute);
-
-  // Can't be empty, default to DTMF
-  m_allowDTMF = inputModes.empty() || inputModes.Find(DtmfAttribute) != P_MAX_INDEX;
-
-  bool allowVoice = inputModes.Find(VoiceAttribute) != P_MAX_INDEX;
-  if (m_grammarElement != NULL) {
-    PCaselessString attrib = m_grammarElement->GetAttribute(ModeAttribute);
-    if (!attrib.empty())
-      allowVoice = attrib == VoiceAttribute;
-  }
-
-  if (allowVoice) {
-    m_recogniser = m_session.CreateSpeechRecognition();
-    if (m_recogniser == NULL) {
-      PTRACE(2, "Grammar " << *this << " could not create speech recognition on \"" << m_session.GetSpeechRecognition() << '"');
-      m_allowDTMF = true; // Turn on despite element indication, as no other way for input!
-    }
-    else {
-      PTRACE_CONTEXT_ID_TO(m_recogniser);
-      PStringToString options = m_session.m_speechRecognitionOptions;
-      options.MakeUnique();
-      m_session.m_httpMutex.Wait();
-      m_session.m_httpProxies.ToOptions(options);
-      m_session.m_httpMutex.Signal();
-      m_recogniser->SetOptions(options);
-    }
-  }
-
   m_timer = m_noInputTimeout;
-
-  if (m_recogniser != NULL) {
-    PString lang;
-    if (m_grammarElement != NULL)
-      lang = m_grammarElement->GetAttribute("xml:lang");
-    if (lang.empty())
-      lang = m_session.GetLanguage();
-    if (!lang.empty() && !m_recogniser->SetLanguage(lang))
-      return ThrowError2(m_session, m_field, "error.unsupported.language",
-                         "Grammar " << *this << " could not set speech recognition language to \"" << lang << '"');
-
-    // Currently, in AWS world, it takes several seconds to create a vocabulary.
-    // So we need to figure out another solution than setting it up here.
-    //PStringArray words;
-    //GetWordsToRecognise(words);
-    //m_recogniser->CreateVocabulary("grammar_words", words);
-    //m_recogniser->ActivateVocabulary("grammar_words");
-
-    m_recogniser->ActivateVocabulary(m_session.GetProperty("vocabularynames").Tokenise(","),
-                                     m_session.GetProperty("vocabularylanguages").Tokenise(","));
-
-    if (!m_recogniser->Open(PCREATE_NOTIFIER(OnRecognition))) {
-      PTRACE(2, "Grammar " << *this << " could not open speech recognition.");
-      delete m_recogniser;
-      m_recogniser = NULL;
-    }
-  }
-
-  PTRACE(3, "Grammar " << *this << " started:"
-         " inputModes=" << inputModes << ","
-         " dtmf=" << boolalpha << m_allowDTMF << ","
-         " voice=" << (m_recogniser != NULL) << ","
-         " noInputTimeout=" << m_noInputTimeout);
+  PTRACE(3, "Grammar " << *this << " started: noInputTimeout=" << m_noInputTimeout);
+  m_session.Trigger();
   return true;
 }
 
@@ -4259,7 +4273,6 @@ void PVXMLGrammar::SetPartFilled(const PString & input, bool overwrite)
   GrammarState prev = Started;
   if (m_state.compare_exchange_strong(prev, PartFill)) {
     PTRACE(3, "Grammar " << *this << " start part fill: value=" << m_value.ToLiteral() << ", timeout=" << timeout);
-    m_session.ClearBargeIn();
   }
   else {
     PTRACE_IF(4, !m_value.empty(), "Grammar " << *this << " part filled: value=" << m_value.ToLiteral() << ", timeout=" << timeout);
