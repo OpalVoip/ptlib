@@ -990,6 +990,7 @@ enable_cpp11
 enable_cpp14
 enable_cpp17
 enable_cpp20
+enable_cpp23
 enable_graviton2
 enable_force32
 enable_deprecated
@@ -1783,6 +1784,7 @@ Optional Features:
   --enable-cpp14          Enable C++14 build
   --enable-cpp17          Enable C++17 build
   --enable-cpp20          Enable C++20 build
+  --enable-cpp23          Enable C++23 build
   --enable-graviton2      Optimise compiler for Graviton2 processor
   --enable-force32        Force 32-bit x86 build
   --enable-deprecated     Generate compiler warnings about deprecated
@@ -6987,6 +6989,7 @@ DEBUGINFOEXT="debug"
 ARFLAGS="rc"
 
 
+CPLUSPLUS_STD="-std=c++11"
 
 # Check whether --enable-cpp11 was given.
 if test ${enable_cpp11+y}
@@ -7013,6 +7016,13 @@ fi
 if test ${enable_cpp20+y}
 then :
   enableval=$enable_cpp20; CPLUSPLUS_STD="-std=c++20"
+
+fi
+
+# Check whether --enable-cpp23 was given.
+if test ${enable_cpp23+y}
+then :
+  enableval=$enable_cpp23; CPLUSPLUS_STD="-std=c++23"
 
 fi
 
