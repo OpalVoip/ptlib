@@ -57,6 +57,7 @@ class PAwsClientBase
 protected:
   std::unique_ptr<Aws::Client::ClientConfiguration> m_clientConfig;
   std::unique_ptr<Aws::Auth::AWSCredentials> m_credentials;
+  std::string m_lastRegion;
 public:
   PAwsClientBase();
   ~PAwsClientBase();
