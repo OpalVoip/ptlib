@@ -960,8 +960,8 @@ void PHTTPClient::SetAuthenticationInfo(const PString & userName,const PString &
 ////////////////////////////////////////////////////////////////////////////////////
 
 PHTTPClientAuthentication::PHTTPClientAuthentication()
+  : m_isProxy(false)
 {
-  isProxy = false;
 }
 
 
@@ -1035,7 +1035,7 @@ PObject::Comparison PHTTPClientBasicAuthentication::Compare(const PObject & othe
 
 PBoolean PHTTPClientBasicAuthentication::Parse(const PString & /*auth*/, PBoolean proxy)
 {
-  isProxy = proxy;
+  m_isProxy = proxy;
   return true;
 }
 
@@ -1043,41 +1043,41 @@ PBoolean PHTTPClientBasicAuthentication::Authorise(AuthObject & authObject) cons
 {
   PBase64 digestor;
   digestor.StartEncoding();
-  digestor.ProcessEncoding(username + ":" + password);
+  digestor.ProcessEncoding(m_username + ":" + m_password);
   PString result = digestor.CompleteEncoding();
 
   PStringStream auth;
   auth << "Basic " << result;
 
-  authObject.GetMIME().SetAt(isProxy ? "Proxy-Authorization" : "Authorization", auth);
+  authObject.GetMIME().SetAt(m_isProxy ? "Proxy-Authorization" : "Authorization", auth);
   return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////
 
 PHTTPClientDigestAuthentication::PHTTPClientDigestAuthentication()
-  : algorithm(NumAlgorithms)
-  , qopAuth(false)
-  , qopAuthInt(false)
-  , stale(false)
-  , nonceCount(0)
+  : m_algorithm(NumAlgorithms)
+  , m_qopAuth(false)
+  , m_qopAuthInt(false)
+  , m_stale(false)
+  , m_nonceCount(1)
 {
 }
 
 PHTTPClientDigestAuthentication & PHTTPClientDigestAuthentication::operator =(const PHTTPClientDigestAuthentication & auth)
 {
-  isProxy   = auth.isProxy;
-  authRealm = auth.authRealm;
-  username  = auth.username;
-  password  = auth.password;
-  nonce     = auth.nonce;
-  opaque    = auth.opaque;
+  m_isProxy   = auth.m_isProxy;
+  m_authRealm = auth.m_authRealm;
+  m_username  = auth.m_username;
+  m_password  = auth.m_password;
+  m_nonce     = auth.m_nonce;
+  m_opaque    = auth.m_opaque;
           
-  qopAuth    = auth.qopAuth;
-  qopAuthInt = auth.qopAuthInt;
-  stale      = auth.stale;
-  cnonce     = auth.cnonce;
-  nonceCount = (uint32_t)auth.nonceCount;
+  m_qopAuth    = auth.m_qopAuth;
+  m_qopAuthInt = auth.m_qopAuthInt;
+  m_stale      = auth.m_stale;
+  m_cnonce     = auth.m_cnonce;
+  m_nonceCount = auth.m_nonceCount.load();
 
   return *this;
 }
@@ -1088,15 +1088,15 @@ PObject::Comparison PHTTPClientDigestAuthentication::Compare(const PObject & oth
   if (otherAuth == NULL)
     return LessThan;
 
-  if (stale || otherAuth->stale)
+  if (m_stale || otherAuth->m_stale)
     return LessThan;
 
-  if (algorithm < otherAuth->algorithm)
+  if (m_algorithm < otherAuth->m_algorithm)
     return LessThan;
-  if (algorithm > otherAuth->algorithm)
+  if (m_algorithm > otherAuth->m_algorithm)
     return GreaterThan;
 
-  Comparison result = authRealm.Compare(otherAuth->authRealm);
+  Comparison result = m_authRealm.Compare(otherAuth->m_authRealm);
   if (result != EqualTo)
     return result;
 
@@ -1107,46 +1107,39 @@ PBoolean PHTTPClientDigestAuthentication::Parse(const PString & p_auth, PBoolean
 {
   PCaselessString auth = p_auth;
 
-  authRealm.MakeEmpty();
-  nonce.MakeEmpty();
-  opaque.MakeEmpty();
-  algorithm = NumAlgorithms;
-
-  qopAuth = qopAuthInt = false;
-  cnonce.MakeEmpty();
-  nonceCount = 1;
-
   if (auth.Find("digest") == P_MAX_INDEX) {
-    PTRACE(1, "Digest auth does not contian digest keyword");
+    PTRACE(1, "Digest auth does not contain digest keyword");
     return false;
   }
 
-  algorithm = Algorithm_MD5;  // default
+  m_algorithm = Algorithm_MD5;  // default
   PCaselessString str = GetAuthParam(auth, "algorithm");
   if (!str.IsEmpty()) {
-    while (str != AlgorithmNames[algorithm]) {
-      algorithm = (Algorithm)(algorithm+1);
-      if (algorithm >= PHTTPClientDigestAuthentication::NumAlgorithms) {
+    while (str != AlgorithmNames[m_algorithm]) {
+      m_algorithm = (Algorithm)(m_algorithm+1);
+      if (m_algorithm >= PHTTPClientDigestAuthentication::NumAlgorithms) {
         PTRACE(1, "Unknown digest algorithm " << str);
         return false;
       }
     }
   }
 
-  authRealm = GetAuthParam(auth, "realm");
-  if (authRealm.IsEmpty()) {
+  PString authRealm = GetAuthParam(auth, "realm");
+  if (!authRealm.empty())
+    m_authRealm = authRealm;
+  if (m_authRealm.IsEmpty()) {
     PTRACE(1, "No realm in authentication");
     return false;
   }
 
-  nonce = GetAuthParam(auth, "nonce");
-  if (nonce.IsEmpty()) {
+  m_nonce = GetAuthParam(auth, "nonce");
+  if (m_nonce.IsEmpty()) {
     PTRACE(1, "No nonce in authentication");
     return false;
   }
 
-  opaque = GetAuthParam(auth, "opaque");
-  if (!opaque.IsEmpty()) {
+  m_opaque = GetAuthParam(auth, "opaque");
+  if (!m_opaque.IsEmpty()) {
     PTRACE(2, "Authentication contains opaque data");
   }
 
@@ -1154,16 +1147,17 @@ PBoolean PHTTPClientDigestAuthentication::Parse(const PString & p_auth, PBoolean
   if (!qopStr.IsEmpty()) {
     PTRACE(3, "Authentication contains qop-options " << qopStr);
     PStringList options = qopStr.Tokenise(',', true);
-    qopAuth    = options.GetStringsIndex("auth") != P_MAX_INDEX;
-    qopAuthInt = options.GetStringsIndex("auth-int") != P_MAX_INDEX;
-    cnonce = PGloballyUniqueID().AsString();
+    m_qopAuth    = options.GetStringsIndex("auth") != P_MAX_INDEX;
+    m_qopAuthInt = options.GetStringsIndex("auth-int") != P_MAX_INDEX;
+    if (m_cnonce.empty())
+      m_cnonce = PGloballyUniqueID().AsString();
   }
 
   PCaselessString staleStr = GetAuthParam(auth, "stale");
   PTRACE_IF(3, !staleStr.IsEmpty(), "Authentication contains stale flag \"" << staleStr << '"');
-  stale = staleStr.Find("true") != P_MAX_INDEX;
+  m_stale = staleStr.Find("true") != P_MAX_INDEX;
 
-  isProxy = proxy;
+  m_isProxy = proxy;
   return true;
 }
 
@@ -1181,14 +1175,14 @@ PBoolean PHTTPClientDigestAuthentication::Authorise(AuthObject & authObject) con
     uriText = uriText.Left(pos);
 
   digestor.Start();
-  digestor.Process(username);
+  digestor.Process(m_username);
   digestor.Process(":");
-  digestor.Process(authRealm);
+  digestor.Process(m_authRealm);
   digestor.Process(":");
-  digestor.Process(password);
+  digestor.Process(m_password);
   digestor.Complete(a1);
 
-  if (qopAuthInt) {
+  if (m_qopAuthInt) {
     digestor.Start();
     PHTTPContentProcessor * processor = authObject.GetContentProcessor();
     if (processor == NULL)
@@ -1207,7 +1201,7 @@ PBoolean PHTTPClientDigestAuthentication::Authorise(AuthObject & authObject) con
   digestor.Process(authObject.GetMethod());
   digestor.Process(":");
   digestor.Process(uriText);
-  if (qopAuthInt) {
+  if (m_qopAuthInt) {
     digestor.Process(":");
     digestor.Process(AsHex(entityBodyCode));
   }
@@ -1215,29 +1209,29 @@ PBoolean PHTTPClientDigestAuthentication::Authorise(AuthObject & authObject) con
 
   PStringStream auth;
   auth << "Digest "
-          "username=\"" << username << "\", "
-          "realm=\"" << authRealm << "\", "
-          "nonce=\"" << nonce << "\", "
+          "username=\"" << m_username << "\", "
+          "realm=\"" << m_authRealm << "\", "
+          "nonce=\"" << m_nonce << "\", "
           "uri=\"" << uriText << "\", "
-          "algorithm=" << AlgorithmNames[algorithm];
+          "algorithm=" << AlgorithmNames[m_algorithm];
 
   digestor.Start();
   digestor.Process(AsHex(a1));
   digestor.Process(":");
-  digestor.Process(nonce);
+  digestor.Process(m_nonce);
   digestor.Process(":");
 
-  if (qopAuthInt || qopAuth) {
-    PString nc(psprintf("%08x", (unsigned int)nonceCount));
-    ++nonceCount;
+  if (m_qopAuthInt || m_qopAuth) {
+    PString nc(psprintf("%08x", (unsigned int)m_nonceCount));
+    ++m_nonceCount;
     PString qop;
-    if (qopAuthInt)
+    if (m_qopAuthInt)
       qop = "auth-int";
     else
       qop = "auth";
     digestor.Process(nc);
     digestor.Process(":");
-    digestor.Process(cnonce);
+    digestor.Process(m_cnonce);
     digestor.Process(":");
     digestor.Process(qop);
     digestor.Process(":");
@@ -1245,7 +1239,7 @@ PBoolean PHTTPClientDigestAuthentication::Authorise(AuthObject & authObject) con
     digestor.Complete(response);
     auth << ", "
          << "response=\"" << AsHex(response) << "\", "
-         << "cnonce=\"" << cnonce << "\", "
+         << "cnonce=\"" << m_cnonce << "\", "
          << "nc=" << nc << ", "
          << "qop=" << qop;
   }
@@ -1255,10 +1249,10 @@ PBoolean PHTTPClientDigestAuthentication::Authorise(AuthObject & authObject) con
     auth << ", response=\"" << AsHex(response) << "\"";
   }
 
-  if (!opaque.IsEmpty())
-    auth << ", opaque=\"" << opaque << "\"";
+  if (!m_opaque.IsEmpty())
+    auth << ", opaque=\"" << m_opaque << "\"";
 
-  authObject.GetMIME().SetAt(isProxy ? "Proxy-Authorization" : "Authorization", auth);
+  authObject.GetMIME().SetAt(m_isProxy ? PHTTP::ProxyAuthorizationTag() : PHTTP::AuthorizationTag(), auth);
   return true;
 }
 
