@@ -412,14 +412,14 @@ class PHTTPClientAuthentication : public PObject
       AuthObject & pdu
     ) const =  0;
 
-    virtual PBoolean IsProxy() const               { return isProxy; }
+    virtual PBoolean IsProxy() const               { return m_isProxy; }
 
-    virtual PString GetUsername() const   { return username; }
-    virtual PString GetPassword() const   { return password; }
+    virtual PString GetUsername() const   { return m_username; }
+    virtual PString GetPassword() const   { return m_password; }
     virtual PString GetAuthRealm() const  { return PString::Empty(); }
 
-    virtual void SetUsername(const PString & user) { username = user; }
-    virtual void SetPassword(const PString & pass) { password = pass; }
+    virtual void SetUsername(const PString & user) { m_username = user; }
+    virtual void SetPassword(const PString & pass) { m_password = pass; }
     virtual void SetAuthRealm(const PString &)     { }
 
     PString GetAuthParam(const PString & auth, const char * name) const;
@@ -430,9 +430,9 @@ class PHTTPClientAuthentication : public PObject
 
 
   protected:
-    PBoolean  isProxy;
-    PString   username;
-    PString   password;
+    bool     m_isProxy;
+    PString  m_username;
+    PString  m_password;
 };
 
 typedef PFactory<PHTTPClientAuthentication> PHTTPClientAuthenticationFactory;
@@ -504,29 +504,31 @@ class PHTTPClientDigestAuthentication : public PHTTPClientAuthentication
       AuthObject & pdu
     ) const override;
 
-    virtual PString GetAuthRealm() const override         { return authRealm; }
-    virtual void SetAuthRealm(const PString & r) override { authRealm = r; }
+    virtual PString GetAuthRealm() const override         { return m_authRealm; }
+    virtual void SetAuthRealm(const PString & r) override { m_authRealm = r; }
 
     enum Algorithm {
       Algorithm_MD5,
       NumAlgorithms
     };
-    const PString & GetNonce() const       { return nonce; }
-    Algorithm GetAlgorithm() const         { return algorithm; }
-    const PString & GetOpaque() const      { return opaque; }
-    bool GetStale() const                  { return stale; }
+    const PString & GetNonce() const       { return m_nonce; }
+    Algorithm GetAlgorithm() const         { return m_algorithm; }
+    const PString & GetOpaque() const      { return m_opaque; }
+    bool GetStale() const                  { return m_stale; }
+
+    void SetClientNonce(const PString & cnonce) { m_cnonce = cnonce; }
 
   protected:
-    PString   authRealm;
-    PString   nonce;
-    Algorithm algorithm;
-    PString   opaque;
+    PString   m_authRealm;
+    PString   m_nonce;
+    Algorithm m_algorithm;
+    PString   m_opaque;
 
-    bool    qopAuth;
-    bool    qopAuthInt;
-    bool    stale;
-    PString cnonce;
-    mutable atomic<uint32_t> nonceCount;
+    bool    m_qopAuth;
+    bool    m_qopAuthInt;
+    bool    m_stale;
+    PString m_cnonce;
+    mutable atomic<uint32_t> m_nonceCount;
 };
 
 

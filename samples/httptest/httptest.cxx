@@ -197,7 +197,7 @@ public:
   {
     PArgList & args = GetArguments();
     args.Parse("h-help.       print this help message.\n"
-               "O-operation:  do a GET/POST/PUT/DELETE, if absent then acts as server\n"
+               "O-operation:  do a GET/POST/PUT/DELETE/auth, if absent then acts as server\n"
                "P-pool.       do above operation using client pool"
                "p-port:       port number to listen on (default 80 or 443).\n"
 #if P_SSL
@@ -219,7 +219,41 @@ public:
     }
 
     if (args.HasOption('O')) {
-      PINDEX cmd = PHTTPClient().GetCommandFromName(args.GetOptionString('O'));
+      PCaselessString op = args.GetOptionString('O');
+      if (op == "auth") {
+        if (args.GetCount() < 3) {
+          cerr << args.Usage("<cmd> <uri> <header-string>");
+          // -O auth REGISTER http://example.org "Digest realm=http-auth@example.org,qop=auth,auth-int,algorithm=MD5,nonce=7ypfxwf94BcCAzFZH4GiTo0v"
+          return;
+        }
+
+        struct PHTTPClientAuthenticator : PHTTPClientAuthentication::AuthObject
+        {
+          PString m_cmd;
+          PString m_uri;
+          PMIMEInfo m_mime;
+          virtual PMIMEInfo & GetMIME() { return m_mime; }
+          virtual PString GetURI() { return m_uri; }
+          virtual PHTTPContentProcessor * GetContentProcessor() { return NULL; }
+          virtual PString GetMethod() { return m_cmd; }
+        } authObject;
+        authObject.m_cmd = args[0];
+        authObject.m_uri = args[1];
+        PHTTPClientDigestAuthentication authDigest;
+        authDigest.SetUsername("username");
+        authDigest.SetPassword("password");
+        authDigest.SetAuthRealm("realm");
+        authDigest.SetClientNonce("cnonce");
+        if (!authDigest.Parse(args[2], false))
+          cerr << "Could not parse digest authentication header." << endl;
+        else if (authDigest.Authorise(authObject))
+          cout << "Authorisation successful: " <<   authObject.GetMIME().GetString(PHTTP::AuthorizationTag);
+        else
+          cout << "Authorisation failed." << endl;
+        return;
+      }
+
+      PINDEX cmd = PHTTPClient().GetCommandFromName(op);
       if (cmd == P_MAX_INDEX) {
         cerr << args.Usage("[ options] [ url [ file ] ]");
         return;
