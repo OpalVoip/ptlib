@@ -433,11 +433,11 @@
       #endif
     #else
       #ifdef _DEBUG
-        #define P_SSL_LIB1 "@SSL_WIN64_DIR@/lib/VC/libcrypto64MDd.lib"
-        #define P_SSL_LIB2 "@SSL_WIN64_DIR@/lib/VC/libssl64MDd.lib"
+        #define P_SSL_LIB1 "@SSL_WIN64_DIR@/lib/VC/x64/MDd/libcrypto.lib"
+        #define P_SSL_LIB2 "@SSL_WIN64_DIR@/lib/VC/x64/MDd/libssl.lib"
       #else
-        #define P_SSL_LIB1 "@SSL_WIN64_DIR@/lib/VC/libcrypto64MD.lib"
-        #define P_SSL_LIB2 "@SSL_WIN64_DIR@/lib/VC/libssl64MD.lib"
+        #define P_SSL_LIB1 "@SSL_WIN64_DIR@/lib/VC/x64/MD/libcrypto.lib"
+        #define P_SSL_LIB2 "@SSL_WIN64_DIR@/lib/VC/x64/MD/libssl.lib"
       #endif
     #endif
 
@@ -458,11 +458,11 @@
       #endif
     #else
       #ifdef _DEBUG
-        #define P_SSL_LIB1 "@SSL_WIN32_DIR@/lib/VC/libcrypto32MTd.lib"
-        #define P_SSL_LIB2 "@SSL_WIN32_DIR@/lib/VC/libssl32MTd.lib"
+        #define P_SSL_LIB1 "@SSL_WIN32_DIR@/lib/VC/x86/MTd/libcrypto.lib"
+        #define P_SSL_LIB2 "@SSL_WIN32_DIR@/lib/VC/x86/MTd/libssl.lib"
       #else
-        #define P_SSL_LIB1 "@SSL_WIN32_DIR@/lib/VC/libcrypto32MT.lib"
-        #define P_SSL_LIB2 "@SSL_WIN32_DIR@/lib/VC/libssl32MD.lib"
+        #define P_SSL_LIB1 "@SSL_WIN32_DIR@/lib/VC/x86/MT/libcrypto.lib"
+        #define P_SSL_LIB2 "@SSL_WIN32_DIR@/lib/VC/x86/MT/libssl.lib"
       #endif
     #endif
 
