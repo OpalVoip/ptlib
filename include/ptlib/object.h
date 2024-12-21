@@ -111,6 +111,8 @@ using namespace std; // Not a good practice (name space polution), but will take
       explicit PAutoPtr(T * p) : std::auto_ptr<T>(p) { }
       PAutoPtr(PAutoPtr & other) : std::auto_ptr<T>(other.release()) { }
       void transfer(PAutoPtr & other) { this->reset(other.release()); }
+      bool operator!() const { return this->get() == NULL; }
+      operator bool() const { return this->get() != NULL; }
   };
 #else
   struct PNonCopyable
