@@ -250,6 +250,7 @@ class PVXMLDigitsGrammar : public PVXMLGrammar
   public:
     PVXMLDigitsGrammar(const PVXMLGrammarInit & init);
 
+    virtual void OnRecognition(PSpeechRecognition &, PSpeechRecognition::Transcript transcript) override;
     virtual void OnInput(const PString & input) override;
 
   protected:
@@ -308,8 +309,8 @@ class PVXMLGrammarSRGS : public PVXMLGrammar
     {
       unsigned          m_minRepeat;
       unsigned          m_maxRepeat;
-      PString           m_token;
-      PString           m_value;
+      PCaselessString   m_token;
+      PCaselessString   m_value;
       unsigned          m_repeatCount;
       typedef std::vector< std::vector<Item> > Items;
       Items m_items; // A sequence of alternatives
@@ -413,7 +414,6 @@ class PVXMLSession : public PIndirectChannel, public PSSLCertificateInfo
     virtual PBoolean PlayCommand(const PString & data, PINDEX repeat = 1, PINDEX delay = 0);
     virtual PBoolean PlayResource(const PString & src, PINDEX repeat = 1, PINDEX delay = 0, PXMLElement * element = NULL);
     virtual PBoolean PlayTone(const PString & toneSpec, PINDEX repeat = 1, PINDEX delay = 0);
-    virtual PBoolean PlayElement(PXMLElement & element);
 
     //virtual PBoolean PlayMedia(const PURL & url, PINDEX repeat = 1, PINDEX delay = 0);
     virtual PBoolean PlaySilence(PINDEX msecs = 0);
