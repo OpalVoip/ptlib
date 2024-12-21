@@ -64,6 +64,8 @@ class VxmlTest : public PProcess
     VxmlTest();
     virtual void Main() override;
 
+    void OnEndSession();
+
   protected:
     PDECLARE_NOTIFIER(PCLI::Arguments, VxmlTest, SimulateInput);
     PDECLARE_NOTIFIER(PCLI::Arguments, VxmlTest, SetVar);
@@ -71,6 +73,9 @@ class VxmlTest : public PProcess
     PDECLARE_NOTIFIER(PCLI::Arguments, VxmlTest, TransferStatus);
     PDECLARE_NOTIFIER(PCLI::Arguments, VxmlTest, Disconnect);
     std::vector< PSharedPtr<TestInstance> > m_tests;
+    bool m_exitOnCompletion;
+    PCLIStandard m_cli;
+
 };
 
 

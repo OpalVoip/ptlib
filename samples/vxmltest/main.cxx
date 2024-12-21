@@ -30,6 +30,8 @@ PCREATE_PROCESS(VxmlTest);
 
 VxmlTest::VxmlTest()
   : PProcess("Equivalence", "vxmltest", 1, 0, AlphaCode, 1)
+  , m_exitOnCompletion(false)
+  , m_cli("VXML-Test> ")
 {
 }
 
@@ -58,6 +60,7 @@ void VxmlTest::Main()
                   "S-sr: Speech recognition method\n"
                   "c-cache: Text to speech cache directory\n"
                   "-clear-cache. Clear the cache on execution\n"
+                  "-exit-on-completion. Exit the application on completion of the script\n"
                   "d-record-dir: Record directory\n"
                   "r-property: Set default property value: name=value\n"
 #if P_VXML_VIDEO
@@ -86,6 +89,8 @@ void VxmlTest::Main()
     cout << "Using sign language analyser." << endl;
   }
 
+  m_exitOnCompletion = args.HasOption("exit-on-completion");
+
   do {
     PSharedPtr<TestInstance> instance(new TestInstance());
     if (instance->Initialise(m_tests.size(), args))
@@ -106,24 +111,30 @@ void VxmlTest::Main()
 #endif
   ));
 
-  PCLIStandard cli("VXML-Test> ");
-  cli.SetCommand("input", PCREATE_NOTIFIER(SimulateInput), "Simulate input for VXML instance (1..n)", "<digit> [ <n> ]");
-  cli.SetCommand("0", PCREATE_NOTIFIER(SimulateInput), "Simulate input 0 for VXML instance (1..n)", "[ <n> ]");
-  cli.SetCommand("1", PCREATE_NOTIFIER(SimulateInput), "Simulate input 1 for VXML instance (1..n)", "[ <n> ]");
-  cli.SetCommand("2", PCREATE_NOTIFIER(SimulateInput), "Simulate input 2 for VXML instance (1..n)", "[ <n> ]");
-  cli.SetCommand("3", PCREATE_NOTIFIER(SimulateInput), "Simulate input 3 for VXML instance (1..n)", "[ <n> ]");
-  cli.SetCommand("4", PCREATE_NOTIFIER(SimulateInput), "Simulate input 4 for VXML instance (1..n)", "[ <n> ]");
-  cli.SetCommand("5", PCREATE_NOTIFIER(SimulateInput), "Simulate input 5 for VXML instance (1..n)", "[ <n> ]");
-  cli.SetCommand("6", PCREATE_NOTIFIER(SimulateInput), "Simulate input 6 for VXML instance (1..n)", "[ <n> ]");
-  cli.SetCommand("7", PCREATE_NOTIFIER(SimulateInput), "Simulate input 7 for VXML instance (1..n)", "[ <n> ]");
-  cli.SetCommand("8", PCREATE_NOTIFIER(SimulateInput), "Simulate input 8 for VXML instance (1..n)", "[ <n> ]");
-  cli.SetCommand("9", PCREATE_NOTIFIER(SimulateInput), "Simulate input 9 for VXML instance (1..n)", "[ <n> ]");
-  cli.SetCommand("set", PCREATE_NOTIFIER(SetVar), "Set variable for VXML instance (1..n)", "<var> <value> [ <n> ]");
-  cli.SetCommand("get", PCREATE_NOTIFIER(GetVar), "Get variable for VXML instance (1..n)", "<var> [ <n> ]");
-  cli.SetCommand("transfer\nxf", PCREATE_NOTIFIER(TransferStatus), "Set transfer status (1..n)", "<status> [ <n> ]");
-  cli.SetCommand("disconnect", PCREATE_NOTIFIER(Disconnect), "Disconnect VXML instance (1..n)", "[ <n> ]");
-  cli.Start(false);
+  m_cli.SetCommand("input", PCREATE_NOTIFIER(SimulateInput), "Simulate input for VXML instance (1..n)", "<digit> [ <n> ]");
+  for (PINDEX i = 0; i < 10; ++i)
+    m_cli.SetCommand(PString(PString::Unsigned, i), PCREATE_NOTIFIER(SimulateInput),
+                     PSTRSTRM("Simulate input " << i << " for VXML instance(1..n)"), "[<n>]");
+  m_cli.SetCommand("set", PCREATE_NOTIFIER(SetVar), "Set variable for VXML instance (1..n)", "<var> <value> [ <n> ]");
+  m_cli.SetCommand("get", PCREATE_NOTIFIER(GetVar), "Get variable for VXML instance (1..n)", "<var> [ <n> ]");
+  m_cli.SetCommand("transfer\nxf", PCREATE_NOTIFIER(TransferStatus), "Set transfer status (1..n)", "<status> [ <n> ]");
+  m_cli.SetCommand("disconnect", PCREATE_NOTIFIER(Disconnect), "Disconnect VXML instance (1..n)", "[ <n> ]");
+  m_cli.Start(false);
   m_tests.clear();
+}
+
+
+void VxmlTest::OnEndSession()
+{
+  bool allDone = true;
+  for (std::vector< PSharedPtr<TestInstance> >::iterator it = m_tests.begin(); it != m_tests.end(); ++it) {
+    if ((*it)->IsOpen()) {
+      allDone = false;
+      break;
+    }
+  }
+  if (allDone && m_exitOnCompletion)
+    m_cli.Stop();
 }
 
 
@@ -463,7 +474,9 @@ void TestInstance::OnEndDialog()
 
 void TestInstance::OnEndSession()
 {
+  PVXMLSession::OnEndSession();
   cout << "VXML Session ended." << endl;
+  dynamic_cast<VxmlTest &>(PProcess::Current()).OnEndSession();
 }
 
 
