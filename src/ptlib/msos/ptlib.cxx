@@ -807,16 +807,25 @@ PBoolean PConsoleChannel::Close()
     return false;
 
   PTRACE(4, "PTLib", "Closing console channel.");
+
+  bool isInput = os_handle == StandardInput;
   os_handle = -1;
 
-  INPUT_RECORD input;
-  memset(&input, 0, sizeof(input));
-  DWORD written = 0;
-  if (!WriteConsoleInput(m_hConsole, &input, 1, &written) || written != 1) {
-    PTRACE(2, "WriteConsoleInput failed: error=" << ::GetLastError());
+  if (isInput) {
+    INPUT_RECORD input;
+    memset(&input, 0, sizeof(input));
+    input.EventType = KEY_EVENT;
+    input.Event.KeyEvent.bKeyDown = TRUE;
+    input.Event.KeyEvent.uChar.AsciiChar = '\r';
+    input.Event.KeyEvent.wRepeatCount = 1;
+    DWORD written = 0;
+    if (!WriteConsoleInput(m_hConsole, &input, 1, &written) || written != 1) {
+      PTRACE(2, "WriteConsoleInput failed: error=" << ::GetLastError());
+    }
   }
 
   m_hConsole.Close();
+
   return true;
 }
 
@@ -868,7 +877,11 @@ bool PConsoleChannel::InternalSetConsoleMode(DWORD bit, bool on)
   else
     mode &= ~bit;
 
-  return SetConsoleMode(m_hConsole, mode);
+  if (SetConsoleMode(m_hConsole, mode))
+    return true;
+
+  PTRACE(2, "SetConsoleMode failed: error=" << ::GetLastError());
+  return false;
 }
 
 
