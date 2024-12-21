@@ -19,23 +19,24 @@
     <property name="timeout" value="30s"/>
 
     <!-- A prompt outputs to the remote -->
-    <prompt bargein="false" count="1">
+    <prompt count="1">
       <!-- Audio plays the URI in src, or if absent uses speech synthesis of the body text -->
       <audio src="file:menu_prompt.wav">
-        Welcome to the P T lib I V R test script
-      </audio>
-      on
-      <say-as interpret-as="vxml:date">
-        <value expr="Date()"/>
-      </say-as>
-    </prompt>
-    <prompt count="2">
-      <audio src="file:menu_prompt.wav">
-        Test script.
+        <catch event="error.badfetch">
+          Welcome to the P T lib I V R test script
+        </catch>
       </audio>
     </prompt>
 
-    <!-- The next attribute here indicats what <form> to go to when the menu is selected -->
+    <prompt bargein="false" count="2">
+      <audio src="file:menu_prompt.wav">
+        <catch event="error.badfetch">
+          I said this was a test script. Now you cannot barge into this message, and have to wait until I finish.
+        </catch>
+      </audio>
+    </prompt>
+
+    <!-- The next attribute here indicates what <form> to go to when the menu is selected -->
     <choice dtmf="1" next="#PlayFile">
       <grammar>
         <rule id="1">
@@ -85,7 +86,9 @@
     <!-- This section is executed when a timeout occurs -->
     <noinput>
       <audio src="file:menu_timeout.wav">
-        Nothing entered, disconnecting.
+        <catch event="error.badfetch">
+          Nothing entered, disconnecting.
+        </catch>
       </audio>
       
       <!-- hang up the call -->
@@ -95,25 +98,28 @@
     <!-- This section is executed when does not match any <choice> -->
     <nomatch>
       <audio src="file:menu_nomatch.wav">
-        Please enter 1 to 4, or 0.
+        <catch event="error.badfetch">
+          Please enter 1 to 4, or 0.
+        </catch>
       </audio>
     </nomatch>
     <nomatch count="2">
       <audio>
         Get it right!
       </audio>
+      <reprompt/>
     </nomatch>
   </menu>
 
   <!-- This form is demonstrates how to just play some things -->
   <form id="PlayFile">
     <log expr="'Playing WAV file'"/>
-    <audio expr="application.base_url+'0.mp4'">Could not find first file</audio>
-    <audio expr="application.base_url+'1.mp4'">Could not find second file</audio>
-    <audio expr="application.base_url+'2.mp4'">Could not find third file</audio>
-    <audio expr="application.base_url+'3.mp4'">Could not find fourth file</audio>
-    <audio expr="application.base_url+'4.mp4'">Could not find fifth file</audio>
-    <audio expr="application.base_url+'5.mp4'">Could not find sixth file</audio>
+    <audio expr="application.base_url+'0.mp4'"><catch event="error.badfetch">Could not find first file</catch></audio>
+    <audio expr="application.base_url+'1.mp4'"><catch event="error.badfetch">Could not find second file</catch></audio>
+    <audio expr="application.base_url+'2.mp4'"><catch event="error.badfetch">Could not find third file</catch></audio>
+    <audio expr="application.base_url+'3.mp4'"><catch event="error.badfetch">Could not find fourth file</catch></audio>
+    <audio expr="application.base_url+'4.mp4'"><catch event="error.badfetch">Could not find fifth file</catch></audio>
+    <audio expr="application.base_url+'5.mp4'"><catch event="error.badfetch">Could not find sixth file</catch></audio>
     <goto next="#MainMenu"/>
   </form>
 
@@ -124,7 +130,9 @@
     <record name="MyMessage" dtmfterm="true" finalsilence="5s" maxtime="60s">
       <prompt>
         <audio expr="application.path+'/ogm.wav'">
-          Please leave a message.
+           <catch event="error.badfetch">
+              Please leave a message.
+           </catch>
         </audio>
       </prompt>
 
@@ -133,7 +141,9 @@
         <log expr="'Recorded '+MyMessage$.duration+' seconds'"/>
 
         <audio src="file:message_recorded.wav">
-          Message recorded.
+          <catch event="error.badfetch">
+            Message recorded.
+          </catch>
         </audio>
 
         <!-- No stack, have to go back to main menu explicitly  -->
@@ -146,7 +156,9 @@
   <form id="PlayRecording">
     <log expr="'Playing recorded file '+MyMessage$.uri"/>
     <audio src="file:replaying.wav">
-      Replaying call of duration
+      <catch event="error.badfetch">
+        Replaying call of duration
+      </catch>
       <value expr="MyMessage$.duration"/>
       milliseconds
     </audio>
@@ -179,18 +191,22 @@
     <!-- This happens if a timeout occurs -->
     <noinput>
       <audio src="file:transfer_timeout.wav">
-        Nothing entered, returning to main menu.
+        <catch event="error.badfetch">
+          Nothing entered, returning to main menu.
+        </catch>
       </audio>
       <goto next="#MainMenu"/>
     </noinput>
   </form>
 
-  <!-- This form demonstrates how to play a mesage and hang up -->
+  <!-- This form demonstrates how to play a message and hang up -->
   <form id="HangUp">
     <log expr="'Hanging up'"/>
     
     <audio src="file:goodbye.wav">
-      Good bye.
+      <catch event="error.badfetch">
+        Good bye.
+      </catch>
     </audio>
 
     <!-- Seems obvious -->

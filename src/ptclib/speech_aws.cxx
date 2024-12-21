@@ -714,7 +714,7 @@ public:
       return true;
     }
 
-    PTRACE(2, "Could not create vocubulary: " << outcome.GetResult().GetFailureReason());
+    PTRACE(2, "Could not create vocabulary: " << outcome.GetResult().GetFailureReason());
     return false;
   }
 
@@ -732,7 +732,7 @@ public:
     PWaitAndSignal lock(m_openMutex);
     Close();
 
-    PTRACE(4, "Opening speech recognition.");
+    PTRACE(4, "Opening " << *this);
 
     m_notifier = notifier;
 
@@ -782,7 +782,7 @@ public:
     if (!IsOpen())
       return false;
 
-    PTRACE(3, "Closing speech recognition.");
+    PTRACE(3, "Closing " << *this);
     m_webSocket.Close();
     PThread::WaitAndDelete(m_eventThread);
 

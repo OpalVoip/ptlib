@@ -306,7 +306,7 @@ protected:
       session.m_promptMode = PVXMLSession::e_NormalPrompt;
 
     // We got moved to another node
-    if (session.m_currentNode != NULL)
+    if (dynamic_cast<PXMLElement *>(session.m_currentNode) != NULL)
       return false;
 
     // See if there is another event handler up the heirarchy
@@ -2640,7 +2640,7 @@ PCaselessString PVXMLSession::GetProperty(const PString & propName,
       return *value;
     }
   }
-  PTRACE(4, "No property " << propName << " in stack of " << m_properties.size());
+  PTRACE(4, "No property " << propName << " in stack of " << m_properties.size() << " contexts");
   return PString::Empty();
 }
 
@@ -2693,23 +2693,6 @@ PBoolean PVXMLSession::PlayData(const PBYTEArray & data, PINDEX repeat, PINDEX d
 PBoolean PVXMLSession::PlayTone(const PString & toneSpec, PINDEX repeat, PINDEX delay)
 {
   return IsOpen() && GetVXMLChannel()->QueuePlayable("Tone", toneSpec, repeat, delay, true);
-}
-
-
-PBoolean PVXMLSession::PlayElement(PXMLElement & element)
-{
-  if (m_bargingIn)
-    return false;
-
-  PString src = element.GetAttribute(SrcAttribute).Trim();
-  if (src.IsEmpty()) {
-    bool retval = EvaluateExpr(element, ExprAttribute, src);
-    if (src.IsEmpty())
-      return retval;
-  }
-
-  return PlayResource(src, std::max(DWORD(1), element.GetAttribute("repeat").AsUnsigned()), 0, &element) ||
-         ThrowBadFetchError(element, "Could not load audio from \"" << src << '"');
 }
 
 
@@ -2967,15 +2950,33 @@ PBoolean PVXMLSession::TraverseReprompt(PXMLElement &)
 }
 
 
+static PConstString const AudioFetchErrorAttributeName("PTLibInternalAudioFetchError");
+
 PBoolean PVXMLSession::TraverseAudio(PXMLElement & element)
 {
-  if (PlayElement(element))
+  if (element.GetAttribute(AudioFetchErrorAttributeName).IsTrue()) {
+    element.SetAttribute(AudioFetchErrorAttributeName, false);
+    PTRACE(4, "Skipping audio element due to previous fetch error");
+    return false; // Already processed in <catch>
+  }
+
+  if (m_bargingIn)
+    return false;
+
+  PString src = element.GetAttribute(SrcAttribute).Trim();
+  if (src.IsEmpty()) {
+    if (EvaluateExpr(element, ExprAttribute, src, true))
+      return false; // If threw error don't do children
+    if (src.IsEmpty())
+      return true; // Process children for voice synthesis
+  }
+
+  if (PlayResource(src, std::max(DWORD(1), element.GetAttribute("repeat").AsUnsigned()), 0, &element))
     return false; // Playing files, so don't process children
 
-#if P_VXML_VIDEO
-  SetRealVideoSender(NULL);
-#endif // P_VXML_VIDEO
-  return true;
+  element.SetAttribute(AudioFetchErrorAttributeName, true);
+  ThrowBadFetchError(element, "Could not load audio from \"" << src << '"');
+  return false;
 }
 
 
@@ -3905,14 +3906,15 @@ PBoolean PVXMLSession::TraversePrompt(PXMLElement & element)
 }
 
 
-PBoolean PVXMLSession::TraversedPrompt(PXMLElement &)
+PBoolean PVXMLSession::TraversedPrompt(PXMLElement & element)
 {
   if (!m_canBargeIn) {
     PTRACE(3, "No bargein, flushing input at end of prompt");
     FlushInput(); // Ignore input so far
   }
 
-  StartGrammars();
+  if (element.GetParent()->GetName() != MenuElement)
+    StartGrammars();
   return true;
 }
 
@@ -4480,6 +4482,15 @@ PVXMLDigitsGrammar::PVXMLDigitsGrammar(const PVXMLGrammarInit & init)
 
   if (m_maxDigits < m_minDigits)
     m_maxDigits = m_minDigits;
+}
+
+
+void PVXMLDigitsGrammar::OnRecognition(PSpeechRecognition & sr, PSpeechRecognition::Transcript transcript)
+{
+  if (transcript.m_final)
+    PVXMLGrammar::OnRecognition(sr, transcript);
+  else
+    m_timer = m_noInputTimeout;
 }
 
 
