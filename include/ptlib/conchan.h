@@ -53,7 +53,7 @@ class PConsoleChannel : public PChannel
       StandardError
     };
 
-    /// Special retrun codes from console input
+    /// Special return codes from console input
     enum {
       KeyLeft = 0x10000, // Larger than possible Unicode character return
       KeyRight,
@@ -98,7 +98,7 @@ class PConsoleChannel : public PChannel
 
   /**@name Construction */
   //@{
-    /// Create a new console channel object, leaving it unopen.
+    /// Create a new console channel object, leaving it unopened.
     PConsoleChannel();
 
     /// Create a new console channel object, connecting to the I/O stream.
@@ -158,7 +158,7 @@ class PConsoleChannel : public PChannel
 
   /**@name New functions */
   //@{
-    /**Open a serial channal.
+    /**Open a serial channel.
        The channel is opened it on the specified port and with the specified
        attributes.
      */
