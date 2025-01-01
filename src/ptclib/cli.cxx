@@ -343,19 +343,19 @@ bool PCLI::Context::ProcessInput(int ch)
     return true;
   }
 
+  if (m_ignoreNextEOL) {
+    m_ignoreNextEOL = false;
+    return true;
+  }
+
+  m_ignoreNextEOL = ch == '\r';
+
   if (m_commandLine.IsEmpty())
     return WritePrompt();
 
   m_pagedLines = 0;
   m_editPosition = 0;
   m_historyPosition = m_commandHistory.GetSize()+1;
-
-  if (m_ignoreNextEOL) {
-    m_ignoreNextEOL = false;
-    return true;
-  }
-
-  m_ignoreNextEOL = true;
 
   switch (m_state) {
     case e_Username :
