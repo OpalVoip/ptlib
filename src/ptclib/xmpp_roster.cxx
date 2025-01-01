@@ -129,7 +129,7 @@ PXMLElement * XMPP::Roster::Item::AsXML(PXMLElement * parent) const
     return NULL;
 
   PXMLElement * item = parent->AddElement("item");
-  item->SetAttribute("jid", GetJID());
+  item->SetAttribute("jid", GetJID().AsString());
   item->SetAttribute("name", GetName());
 
   PString s;
@@ -180,7 +180,7 @@ XMPP::Roster::~Roster()
 XMPP::Roster::Item * XMPP::Roster::FindItem(const PString& jid)
 {
   for (ItemList::iterator i = m_Items.begin(); i != m_Items.end(); i++) {
-    if (i->GetJID() == jid)
+    if (i->GetJID().AsString() == jid)
       return &*i;
   }
 
@@ -194,7 +194,7 @@ PBoolean XMPP::Roster::SetItem(Item * item, PBoolean localOnly)
     return false;
 
   if (localOnly) {
-    Item * existingItem = FindItem(item->GetJID());
+    Item * existingItem = FindItem(item->GetJID().AsString());
 
     if (existingItem != NULL)
       m_Items.Remove(existingItem);
@@ -244,7 +244,7 @@ PBoolean XMPP::Roster::RemoveItem(Item * item, PBoolean localOnly)
   if (item == NULL)
     return false;
 
-  return RemoveItem(item->GetJID(), localOnly);
+  return RemoveItem(item->GetJID().AsString(), localOnly);
 }
 
 

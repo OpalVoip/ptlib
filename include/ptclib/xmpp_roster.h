@@ -70,7 +70,7 @@ namespace XMPP
       const PresenceInfo& GetPresence() const   { return m_Presence; }
 
       virtual void  SetJID(const JID& jid, PBoolean dirty = true)
-                                                { m_JID = jid; if (dirty) SetDirty(); }
+                                                { m_JID = jid.AsString(); if (dirty) SetDirty(); }
       virtual void  SetType(ItemType type, PBoolean dirty = true)
                                                 { m_Type = type; if (dirty) SetDirty(); }
       virtual void  SetName(const PString& name, PBoolean dirty = true) 

@@ -88,7 +88,7 @@ XMPP::JID& XMPP::JID::operator=(const PString & jid)
 }
 
 
-XMPP::JID::operator const PString&() const
+const PString& XMPP::JID::AsString() const
 {
   if (m_IsDirty)
     BuildJID();
@@ -1118,7 +1118,7 @@ PXMLElement * XMPP::Disco::Item::AsXML(PXMLElement * parent) const
     return 0;
 
   PXMLElement * item = parent->AddElement("item");
-  item->SetAttribute("jid", m_JID);
+  item->SetAttribute("jid", m_JID.AsString());
   if (!m_Node.IsEmpty())
     item->SetAttribute("node", m_Node);
   return item;

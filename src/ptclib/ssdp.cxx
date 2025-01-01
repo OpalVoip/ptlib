@@ -47,7 +47,7 @@ const PCaselessString & PSSDP::NickNameTag() { static const PConstCaselessString
 //////////////////////////////////////////////////////////////////////////////
 // PSSDP
 
-static const char * const SSDPCommands[PSSDP::NumCommands-PHTTP::NumCommands] = 
+static const char * const SSDPCommands[unsigned(PSSDP::NumCommands) - unsigned(PHTTP::NumCommands)] =
 {
   "M-SEARCH", "NOTIFY"
 };

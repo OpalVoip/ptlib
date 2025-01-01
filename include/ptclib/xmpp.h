@@ -69,7 +69,7 @@ namespace XMPP
       const PString & jid  ///< New JID to assign.
       );
 
-    operator const PString&() const;
+    const PString& AsString() const;
 
     virtual PObject * Clone() const override { return new JID(m_JID); }
 
@@ -105,6 +105,7 @@ namespace XMPP
   public:
     BareJID(const char * jid = 0) : JID(jid) { }
     BareJID(const PString& jid) : JID(jid) { }
+    BareJID(const JID & jid) : JID(jid) { }
     BareJID(const PString& user, const PString& server, const PString& resource = PString::Empty())
       : JID(user, server, resource) { }
 

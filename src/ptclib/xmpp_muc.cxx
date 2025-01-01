@@ -92,7 +92,7 @@ PBoolean XMPP::MUC::Room::Enter()
   ourUser.SetResource(m_User.m_Nick);
 
   XMPP::Presence pre;
-  pre.SetTo(ourUser);
+  pre.SetTo(ourUser.AsString());
   pre.SetStatus("Available");
   pre.SetPriority(0);
 
@@ -109,7 +109,7 @@ PBoolean XMPP::MUC::Room::Leave()
     return false;
 
   XMPP::Presence pre;
-  pre.SetTo(m_RoomJID);
+  pre.SetTo(m_RoomJID.AsString());
   pre.SetType(XMPP::Presence::Unavailable);
 
   return m_Handler->Write(pre);
@@ -130,7 +130,7 @@ PBoolean XMPP::MUC::Room::SendMessage(Message& msg)
   if (PAssertNULL(m_Handler) == NULL)
     return false;
 
-  msg.SetTo(m_RoomJID);
+  msg.SetTo(m_RoomJID.AsString());
   msg.SetType(XMPP::Message::GroupChat);
 
   return m_Handler->Write(msg);
