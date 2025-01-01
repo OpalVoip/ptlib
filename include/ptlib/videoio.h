@@ -1409,7 +1409,7 @@ PCREATE_PLUGIN_DEVICE(PVideoOutputDevice);
 #define PCREATE_VIDOUTPUT_PLUGIN(name) PCREATE_VIDOUTPUT_PLUGIN_EX(name,)
 
 #define P_NULL_VIDEO_DRIVER "NULLOutput"
-#define P_NULL_VIDEO_DEVICE "Null Video Out"
+#define P_NULL_VIDEO_DEVICE "Null"
 PPLUGIN_STATIC_LOAD(NULLOutput, PVideoOutputDevice);
 
 

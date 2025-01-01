@@ -1465,7 +1465,7 @@ PCREATE_VIDINPUT_PLUGIN_EX(FakeVideo,
   virtual bool ValidateDeviceName(const PString & devName, P_INT_PTR /*userData*/) const
   {
     for (PINDEX chan = 0; chan < PARRAYSIZE(FakeDeviceNames) - 1; ++chan) {
-      if (devName.Left(devName.Find('=')) *= FakeDeviceNames[chan])
+      if (devName.Left(devName.FindOneOf("=:")) *= FakeDeviceNames[chan])
         return true;
     }
     return false;
@@ -1491,7 +1491,7 @@ PVideoInputDevice_FakeVideo::PVideoInputDevice_FakeVideo()
 PBoolean PVideoInputDevice_FakeVideo::Open(const PString & devName, PBoolean /*startImmediate*/)
 {
   for (PINDEX chan = 0; chan < PARRAYSIZE(FakeDeviceNames)-1; ++chan) {
-    PINDEX equals = devName.Find('=');
+    PINDEX equals = devName.FindOneOf("=:");
     if (devName.Left(equals) *= FakeDeviceNames[chan]) {
       m_deviceName = FakeDeviceNames[chan];
       SetChannel(chan);
@@ -2087,8 +2087,10 @@ void PVideoInputDevice_FakeVideo::FillRect(BYTE * frame,
 }
 
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+// PVideoOutputDevice_NULLOutput
 
+static PConstString const NullVideoOut(P_NULL_VIDEO_DEVICE);
 
 /**This class defines a NULL video output device.
    This will do precisely nothing with the output.
@@ -2100,114 +2102,86 @@ class PVideoOutputDevice_NULLOutput : public PVideoOutputDevice
   public:
     /** Create a new video output device.
      */
-    PVideoOutputDevice_NULLOutput();
+    PVideoOutputDevice_NULLOutput()
+    {
+      m_deviceName = NullVideoOut;
+    }
 
     /**Get a list of all of the drivers available.
       */
-    static PStringArray GetOutputDeviceNames();
+    static PStringArray GetOutputDeviceNames()
+    {
+      return NullVideoOut;
+    }
 
     virtual PStringArray GetDeviceNames() const override
-      { return GetOutputDeviceNames(); }
+    {
+      return GetOutputDeviceNames();
+    }
 
     /**Open the device given the device name.
       */
-    virtual PBoolean Open(
-      const PString & deviceName,   /// Device name to open
-      PBoolean startImmediate = true    /// Immediately start device
-    ) override;
+    virtual PBoolean Open(const PString &,PBoolean) override
+    {
+      return true;
+    }
 
     /**Start the video device I/O.
       */
-    PBoolean Start() override;
+    PBoolean Start() override
+    {
+      return true;
+    }
 
     /**Stop the video device I/O capture.
       */
-    PBoolean Stop() override;
+    PBoolean Stop() override
+    {
+      return true;
+    }
 
     /**Close the device.
       */
-    virtual PBoolean Close() override;
+    virtual PBoolean Close() override
+    {
+      return true;
+    }
 
     /**Determine if the device is currently open.
       */
-    virtual PBoolean IsOpen() override;
+    virtual PBoolean IsOpen() override
+    {
+      return true;
+    }
 
     /**Set a section of the output frame buffer.
       */
-    virtual PBoolean SetFrameData(const FrameData & frameData) override;
+    virtual PBoolean SetFrameData(const FrameData &) override
+    {
+      return true;
+    }
 
     /**Indicate frame may be displayed.
       */
-    virtual PBoolean EndFrame();
+    virtual PBoolean EndFrame()
+    {
+      return true;
+    }
 
 	/**Decide whether to disable Decode
 	  */
-	virtual PBoolean DisableDecode() override;
-
+	virtual PBoolean DisableDecode() override
+    {
+      return true;
+    }
 };
 
-PCREATE_VIDOUTPUT_PLUGIN(NULLOutput);
-
-///////////////////////////////////////////////////////////////////////////////
-// PVideoOutputDevice_NULLOutput
-
-static PConstString const NullVideoOut(P_NULL_VIDEO_DEVICE);
-
-PVideoOutputDevice_NULLOutput::PVideoOutputDevice_NULLOutput()
-{
-  m_deviceName = NullVideoOut;
-}
-
-
-PBoolean PVideoOutputDevice_NULLOutput::Open(const PString & /*deviceName*/, PBoolean /*startImmediate*/)
-{
-  return true;
-}
-
-PBoolean PVideoOutputDevice_NULLOutput::Close()
-{
-  return true;
-}
-
-PBoolean PVideoOutputDevice_NULLOutput::Start()
-{
-  return true;
-}
-
-PBoolean PVideoOutputDevice_NULLOutput::Stop()
-{
-  return true;
-}
-
-PBoolean PVideoOutputDevice_NULLOutput::IsOpen()
-{
-  return true;
-}
-
-
-PStringArray PVideoOutputDevice_NULLOutput::GetOutputDeviceNames()
-{
-  return NullVideoOut;
-}
-
-
-PBoolean PVideoOutputDevice_NULLOutput::SetFrameData(const FrameData &)
-{
-  return true;
-}
-
-
-PBoolean PVideoOutputDevice_NULLOutput::EndFrame()
-{
-  return true;
-}
-
-
-PBoolean PVideoOutputDevice_NULLOutput::DisableDecode()
-{
-  return true; 
-}
-
+PCREATE_VIDOUTPUT_PLUGIN_EX(NULLOutput,
+  virtual bool ValidateDeviceName(const PString & devName, P_INT_PTR /*userData*/) const
+  {
+    return devName.Left(NullVideoOut.length()) *= NullVideoOut;
+  }
+);
 
 #endif // P_VIDEO
 
