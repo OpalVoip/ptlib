@@ -97,7 +97,7 @@ XMPP::C2S::StreamHandler::StreamHandler(const JID& jid, const PString& pwd, PBoo
     m_NewAccount(newAccount),
     m_JID(jid), m_Password(pwd),
 #if P_SASL
-    m_SASL("xmpp", BareJID(m_JID), m_JID.GetUser(), m_Password),
+    m_SASL("xmpp", BareJID(m_JID).AsString(), m_JID.GetUser(), m_Password),
 #endif
     m_HasBind(false), m_HasSession(false),
     m_State(XMPP::C2S::StreamHandler::Null)
