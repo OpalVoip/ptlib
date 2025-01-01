@@ -56,7 +56,7 @@ class PDTMFDecoder : public PObject
     calling tones and DTMF) at a sample rate of 8khz.
 
     The class contains a  master volume which is applied as well as the
-    individual tone volumes. Thus a master volume ot 50% and a tone voluem
+    individual tone volumes. Thus a master volume to 50% and a tone volume
     of 50%  would result in a net volume of 25%.
 
     Tones may be described via a list of descriptor strings based on an
@@ -96,7 +96,7 @@ class PDTMFDecoder : public PObject
                                        400ms on, 100ms off, where second tone is
                                        reduced in volume by 50%
 
-      A database of tones for all contries in the worls is available at:
+      A database of tones for all countries in the world is available at:
           http://www.3amsystems.com/wireline/tone-search.htm
 
   */
@@ -140,7 +140,7 @@ class PTones : public PShortArray
 
     /** Generate a tone using the specified values.
         The operation parameter may be '+', 'x', '-' or ' ' for summing, modulation,
-        pure tone or silence resepctively.
+        pure tone or silence respectively.
         The tones duration is always rounded up to the nearest even multiple of the
         tone cycle to assure correct zero crossing when tones change.
       */
@@ -277,7 +277,7 @@ class PDTMFEncoder : public PTones
     char DtmfChar(
         PINDEX i    ///< index of tone
     );
-    // Overiding GetSize() screws up the SetSize()
+    // Overriding GetSize() screws up the SetSize()
 };
 
 

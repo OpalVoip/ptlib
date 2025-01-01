@@ -50,7 +50,7 @@
     same command set. For example several telnet sessions.
 
     Note that the various command interpreters could be operating in different
-    threads, so care should be taken for sybchronisation issues on the object
+    threads, so care should be taken for synchronisation issues on the object
     being acted upon via the PNotifiers.
   */
 class PCLI : public PObject
@@ -117,7 +117,7 @@ class PCLI : public PObject
           */
         bool Run();
 
-        /**Call back frunction for when context is started.
+        /**Call back function for when context is started.
            This is usually called from within a background thread.
 
            The default behaviour displays the prompt.
@@ -169,7 +169,7 @@ class PCLI : public PObject
 
         /// Handle Broadcast
         virtual void Broadcast(
-          const PString & message  ///< Message to broadcase
+          const PString & message  ///< Message to broadcast
         );
       //@}
 
@@ -252,7 +252,7 @@ class PCLI : public PObject
 
   /**@name Construction */
   //@{
-    /** Contracut a new command line interpreter.
+    /** Construct a new command line interpreter.
       */
     PCLI(
       const char * prompt = NULL
@@ -308,7 +308,7 @@ class PCLI : public PObject
     virtual Context * StartForeground();
 
     /**Run a command line interpreter context.
-       This will run the interpreter synchonously, continuously reading from
+       This will run the interpreter synchronously, continuously reading from
        the channel supplied until the context is stopped or the channel is
        closed or returns end of file.
       */
@@ -327,7 +327,7 @@ class PCLI : public PObject
     );
 
     /** Run a context.
-       This will run the interpreter synchonously, continuously reading from
+       This will run the interpreter synchronously, continuously reading from
        the channel supplied until the context is stopped or the channel is
        closed or returns end of file.
     */
@@ -369,14 +369,14 @@ class PCLI : public PObject
       Arguments & line
     );
 
-    /**Received a login name/pasword to be verified.
+    /**Received a login name/password to be verified.
        Note that the m_username or m_password field must be non-empty for a
        log in sequence to occur, even if this function is overridden and the
-       memnbers not actually used for validation.
+       members not actually used for validation.
 
        If the m_username is an empty string, but m_password is not, then it
        the username not prompted for, just the password is required. The
-       reverse is also poassible and only a username entry required.
+       reverse is also possible and only a username entry required.
 
        Default returns true if parameters are equal to m_username, m_password
        respectively.
@@ -399,7 +399,7 @@ class PCLI : public PObject
        The command may also contain spaces which separates sub-commands, e.g.
        "list users".
 
-       Returns false if one of the command synonyms was a dupicate of an
+       Returns false if one of the command synonyms was a duplicate of an
                existing command.
       */
     bool SetCommand(
