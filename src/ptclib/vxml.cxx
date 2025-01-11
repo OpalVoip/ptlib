@@ -1230,6 +1230,9 @@ bool PVXMLCache::StartCache(Params & params)
 {
   PAssert(!params.m_prefix.IsEmpty() && !params.m_key.IsEmpty(), PInvalidParameter);
 
+  if (params.m_maxAge <= 0)
+    return false;
+
   if (!LockReadWrite())
     return false;
 
@@ -1237,7 +1240,7 @@ bool PVXMLCache::StartCache(Params & params)
   PFilePath keyFilePath = params.m_file.GetFilePath();
   keyFilePath.SetType(KeyFileType);
 
-  if (PFile::Exists(keyFilePath) && params.m_maxAge > 0) {
+  if (PFile::Exists(keyFilePath)) {
     PXML xml;
     if (!xml.LoadFile(keyFilePath)) {
       PTRACE(2, "Cannot open cache key file"
@@ -1262,7 +1265,7 @@ bool PVXMLCache::StartCache(Params & params)
       if (key == NULL || key->GetData() != params.m_key) {
         PTRACE(2, "Cache coherence problem for \"" << params.m_key << '"');
       }
-      else if (params.m_maxAge >= 0 && date.IsValid() && now > date + params.m_maxAge) {
+      else if (date.IsValid() && now > date + params.m_maxAge) {
         PTRACE(2, "Cache age reached for \"" << params.m_key << '"');
       }
       else if (params.m_maxStale >= 0 && expires.IsValid() && now > expires + params.m_maxStale) {
