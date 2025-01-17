@@ -213,6 +213,16 @@ template <class T> class PSmartPtr : public PSmartPointer
     /// Access to the value of the smart pointer.
     operator T*() const
       { return (T *)object; }
+
+    // Some std::smart_ptr compatible functions
+    T * get() const
+    {
+      return (T *)object;
+    }
+    void reset(T * ptr = NULL)
+    {
+      PSmartPointer::operator=(PSmartPtr(ptr));
+    }
 };
 
 
