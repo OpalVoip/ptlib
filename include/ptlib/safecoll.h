@@ -106,8 +106,8 @@ class PTimer;
   </CODE>
 
   There is one piece if important behaviour in the above. If while enumerating
-  a specic object in the collection, that object is "safely deleted", you are
-  guaranteed that the object is still usable and has not been phsyically
+  a specific object in the collection, that object is "safely deleted", you are
+  guaranteed that the object is still usable and has not been physically
   deleted, however it will no longer be in the collection, so the enumeration
   will stop as it can no longer determine where in the collection it was.
 
@@ -154,9 +154,9 @@ class PSafeObject : public PObject, PNonCopyable
        object.
 
        A typical use of this would be when an entity (eg a thread) has a
-       pointer to the object but is not currenty accessing the objects data.
-       The LockXXX functions may be called independetly of the reference
-       system and the pointer beiong used for the LockXXX call is guaranteed
+       pointer to the object but is not currently accessing the objects data.
+       The LockXXX functions may be called independently of the reference
+       system and the pointer being used for the LockXXX call is guaranteed
        to be usable.
 
        It is recommended that the PSafePtr<> class is used to manage this
@@ -243,7 +243,7 @@ class PSafeObject : public PObject, PNonCopyable
     __inline void UnlockReadWrite(const PDebugLocation & location) const { InternalUnlockReadWrite(&location); }
 
     /**Set the removed flag.
-       This flags the object as beeing removed but does not physically delete
+       This flags the object as being removed but does not physically delete
        the memory being used by it. The SafelyCanBeDeleted() can then be used
        to determine when all references to the object have been released so it
        may be safely deleted.
@@ -257,7 +257,7 @@ class PSafeObject : public PObject, PNonCopyable
        Note this returns the value outside of any mutexes, so it could change
        at any moment. Care must be exercised in its use.
       */
-    unsigned IsSafelyBeingRemoved() const { return m_safelyBeingRemoved; }
+    unsigned IsSafelyBeingRemoved() const { return m_safeRemovalTime.IsValid(); }
 
     /**Determine if the object can be safely deleted.
        This determines if the object has been flagged for deletion and all
@@ -304,7 +304,8 @@ class PSafeObject : public PObject, PNonCopyable
 
     mutable PCriticalSection m_safetyMutex;
     unsigned          m_safeReferenceCount;
-    bool              m_safelyBeingRemoved;
+    PTime             m_safeRemovalTime;
+    PTRACE_THROTTLE(  m_safeRemovalLogThrottle, 2, 7, 5000);
     bool              m_safeMutexCreated;
     PReadWriteMutex * m_safeInUseMutex;
 
@@ -604,7 +605,7 @@ class PSafePtrBase : public PObject
     PSafePtrBase(
       const PSafeCollection & safeCollection, ///< Collection pointer will enumerate
       PSafetyMode mode,                       ///< Locking mode for the object
-      PSafeObject * obj                       ///< Inital object in collection to point to
+      PSafeObject * obj                       ///< Initial object in collection to point to
     );
 
     /**Copy the pointer to the PSafeObject.
@@ -716,8 +717,8 @@ class PSafePtrBase : public PObject
   thread safe. Any thread can add, read, write or remove an object with both
   the object and the database of objects itself kept thread safe.
 
-  NOTE: unlikel PSafePtrBase, pointers based on this class are thread safe
-  themseleves, at the expense of performance on every operation.
+  NOTE: unlike PSafePtrBase, pointers based on this class are thread safe
+  themselves, at the expense of performance on every operation.
 
   See the PSafeObject class for more details.
  */
@@ -929,7 +930,7 @@ template <class T, class BaseClass = PSafePtrBase> class PSafePtr : public BaseC
        If the safe pointer has an associated collection and the new object is
        in that collection, then the object is set to the same locking mode as
        the previous pointer value. This, in effect, jumps the enumeration of a
-       collection to the specifed object.
+       collection to the specified object.
 
        If the safe pointer has no associated collection or the object is not
        in the associated collection, then the object is always only referenced
@@ -945,7 +946,7 @@ template <class T, class BaseClass = PSafePtrBase> class PSafePtr : public BaseC
 
     /**Set the new pointer to a collection index.
        This will set the pointer to the new object to the index entry in the
-       colelction that the pointer was created with. The old object pointed to
+       collection that the pointer was created with. The old object pointed to
        will be unlocked and dereferenced and the new object referenced and set
        to the same locking mode as the previous pointer value.
 
