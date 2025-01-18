@@ -42,11 +42,12 @@
 atomic<unsigned> PSafeObject::m_traceObjectContext(1234567890);
 atomic<unsigned> PSafeObject::m_traceObjectLevel(3);
 atomic<unsigned> PSafeObject::m_traceDetailLevel(7);
+static PTimeInterval const g_deleteTakingTooLong(5000);
 #endif // PTRACING
 
 PSafeObject::PSafeObject()
   : m_safeReferenceCount(0)
-  , m_safelyBeingRemoved(false)
+  , m_safeRemovalTime(0)
   , m_safeMutexCreated(true)
   , m_safeInUseMutex(NULL)
 {
@@ -56,7 +57,7 @@ PSafeObject::PSafeObject()
 PSafeObject::PSafeObject(const PSafeObject & other)
   : PObject(other)
   , m_safeReferenceCount(0)
-  , m_safelyBeingRemoved(false)
+  , m_safeRemovalTime(0)
   , m_safeMutexCreated(true)
   , m_safeInUseMutex(NULL)
 {
@@ -65,7 +66,7 @@ PSafeObject::PSafeObject(const PSafeObject & other)
 
 PSafeObject::PSafeObject(PSafeObject * indirectLock)
   : m_safeReferenceCount(0)
-  , m_safelyBeingRemoved(false)
+  , m_safeRemovalTime(0)
   , m_safeMutexCreated(false)
 {
   if (PAssert(indirectLock != NULL, PNullPointerReference))
@@ -77,7 +78,7 @@ PSafeObject::PSafeObject(PSafeObject * indirectLock)
 
 PSafeObject::PSafeObject(PReadWriteMutex & mutex)
   : m_safeReferenceCount(0)
-  , m_safelyBeingRemoved(false)
+  , m_safeRemovalTime(0)
   , m_safeMutexCreated(false)
   , m_safeInUseMutex(&mutex)
 {
@@ -97,7 +98,7 @@ PBoolean PSafeObject::SafeReference()
   unsigned count = 0;
   {
     PWaitAndSignal mutex(m_safetyMutex);
-    if (!m_safelyBeingRemoved)
+    if (!m_safeRemovalTime.IsValid())
       count = ++m_safeReferenceCount;
   }
 
@@ -117,7 +118,7 @@ PBoolean PSafeObject::SafeReference()
   return count > 0;
 #else
   PWaitAndSignal mutex(m_safetyMutex);
-  if (m_safelyBeingRemoved)
+  if (m_safeRemovalTime.IsValid())
     return false;
   ++m_safeReferenceCount;
   return true;
@@ -132,7 +133,7 @@ PBoolean PSafeObject::SafeDereference()
   m_safetyMutex.Wait();
   if (PAssert(m_safeReferenceCount > 0, PLogicError)) {
     m_safeReferenceCount--;
-    mayBeDeleted = m_safeReferenceCount == 0 && !m_safelyBeingRemoved;
+    mayBeDeleted = m_safeReferenceCount == 0 && !m_safeRemovalTime.IsValid();
   }
 #if PTRACING
   unsigned count = m_safeReferenceCount;
@@ -161,7 +162,7 @@ bool PSafeObject::InternalLockReadOnly(const PDebugLocation * location) const
   PTRACE(GetTraceLogLevel(), "Waiting read ("<<(void *)this<<")");
   m_safetyMutex.Wait();
 
-  if (m_safelyBeingRemoved) {
+  if (m_safeRemovalTime.IsValid()) {
     m_safetyMutex.Signal();
     PTRACE(GetTraceLogLevel(), "Being removed while waiting read ("<<(void *)this<<")");
     return false;
@@ -187,7 +188,7 @@ bool PSafeObject::InternalLockReadWrite(const PDebugLocation * location) const
   PTRACE(GetTraceLogLevel(), "Waiting readWrite ("<<(void *)this<<")");
   m_safetyMutex.Wait();
 
-  if (m_safelyBeingRemoved) {
+  if (m_safeRemovalTime.IsValid()) {
     m_safetyMutex.Signal();
     PTRACE(GetTraceLogLevel(), "Being removed while waiting readWrite ("<<(void *)this<<")");
     return false;
@@ -210,16 +211,14 @@ void PSafeObject::InternalUnlockReadWrite(const PDebugLocation * location) const
 
 void PSafeObject::SafeRemove()
 {
-  m_safetyMutex.Wait();
-  m_safelyBeingRemoved = true;
-  m_safetyMutex.Signal();
+  m_safeRemovalTime.SetCurrentTime();
 }
 
 
 PBoolean PSafeObject::SafelyCanBeDeleted() const
 {
   PWaitAndSignal mutex(m_safetyMutex);
-  return m_safelyBeingRemoved && m_safeReferenceCount == 0;
+  return m_safeReferenceCount == 0 && m_safeRemovalTime.IsValid();
 }
 
 
@@ -296,7 +295,7 @@ PSafeCollection::~PSafeCollection()
     else {
       // If anything still has a PSafePtr .. "detach" it from the collection so
       // will be deleted when that PSafePtr finally goes out of scope.
-      i->m_safelyBeingRemoved = false;
+      i->m_safeRemovalTime.SetTimestamp(0);
     }
   }
 
@@ -415,8 +414,15 @@ PBoolean PSafeCollection::DeleteObjectsToBeRemoved()
         it = m_toBeRemoved.begin(); // Restart looking through list
       }
       else {
+#if PTRACING
+        if (it->m_safeRemovalTime.GetElapsed() > g_deleteTakingTooLong) {
+          PTRACE(it->m_safeRemovalLogThrottle, it->GetClassName() << ' ' << (void *)&*it
+                 << " has been pending deletion for " << g_deleteTakingTooLong
+                 << " seconds: references = " << it->GetSafeReferenceCount());
+        }
         PTRACE(it->GetTraceLogLevel(), it->GetClassName() << ' ' << (void *)&*it
                << " awaiting delete: references=" << it->GetSafeReferenceCount());
+#endif // PTRACING
         ++it;
       }
     }
