@@ -257,7 +257,7 @@ class PSafeObject : public PObject, PNonCopyable
        Note this returns the value outside of any mutexes, so it could change
        at any moment. Care must be exercised in its use.
       */
-    unsigned IsSafelyBeingRemoved() const { return m_safeRemovalTime.IsValid(); }
+    bool IsSafelyBeingRemoved() const { return m_safeRemovalTime.IsValid(); }
 
     /**Determine if the object can be safely deleted.
        This determines if the object has been flagged for deletion and all
