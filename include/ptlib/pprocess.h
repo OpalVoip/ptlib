@@ -734,8 +734,7 @@ class PProcess : public PThread
     void InternalHandleRunTimeSignal(const RunTimeSignalInfo & signalInfo);
 
 #if PTRACING
-    PDECLARE_NOTIFIER(PTimer, PProcess, ProfileUpdateLogTimer) { PTRACE(3, "PTLibProfile", *this); }
-    void PrintProfileOn(ostream & strm);
+    PDECLARE_NOTIFIER(PTimer, PProcess, ProfileUpdateLogTimer);
     PTimer         * m_profileProcessTimer;
     PCriticalSection m_profileProcessMutex;
     Times            m_profileLastProcessTimes;

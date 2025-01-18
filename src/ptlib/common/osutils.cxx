@@ -3133,14 +3133,16 @@ PObject::Comparison PProcess::Compare(const PObject & obj) const
 
 void PProcess::PrintOn(ostream & strm) const
 {
-  strm << fixed << setprecision(1) << GetName() << " v" << GetVersion(true) << "; ";
-#if PTRACING
-  const_cast<PProcess *>(this)->PrintProfileOn(strm);
+  strm << fixed << setprecision(1) << GetName() << " v" << GetVersion(true);
 }
 
 
-void PProcess::PrintProfileOn(ostream & strm)
+#if PTRACING
+void PProcess::ProfileUpdateLogTimer(PTimer&, P_INT_PTR)
 {
+  ostream & strm = PTRACE_BEGIN(3, "PTLibProfile");
+  strm<< *this << "; ";
+
   PWaitAndSignal lock(m_profileProcessMutex);
 
   Times processTimes;
@@ -3158,16 +3160,14 @@ void PProcess::PrintProfileOn(ostream & strm)
     strm << ", max=" << PString(PString::ScaleSI, mem.m_max, 4) << 'B';
   if (mem.m_current > 0)
     strm << ", current=" << PString(PString::ScaleSI, mem.m_current, 4) << 'B';
-  strm << "; ";
 
   std::map<std::string, unsigned> highWaterMarks = PProfiling::HighWaterMarkData::Get();
-  strm << "High water marks:";
+  strm << "\n  PTLibProfile - High water marks:";
   char sep = ' ';
   for (std::map<std::string, unsigned>::iterator it = highWaterMarks.begin(); it != highWaterMarks.end(); ++it) {
     strm << sep << it->first << '=' << it->second;
     sep = ',';
   }
-  strm << "; ";
 
   set<Times> threads;
   GetTimes(threads);
@@ -3192,11 +3192,17 @@ void PProcess::PrintProfileOn(ostream & strm)
       topThreads[percentage] = it->m_name;
     m_profileLastThreadTimes.insert(*it);
   }
-  strm << "Threads: " << threads.size();
-  for (std::map<float, PString>::reverse_iterator it = topThreads.rbegin(); it != topThreads.rend(); ++it)
-    strm << ',' << it->second << '=' << it->first << '%';
-#endif // PTRACING
+
+  strm << "\n  PTLibProfile - Threads: " << threads.size();
+  sep = ';';
+  for (std::map<float, PString>::reverse_iterator it = topThreads.rbegin(); it != topThreads.rend(); ++it) {
+    strm << sep << it->second << '=' << it->first << '%';
+    sep = ',';
+  }
+
+  strm << PTrace::End;
 }
+#endif // PTRACING
 
 
 void PProcess::Terminate()
