@@ -251,10 +251,8 @@
     <ProjectReference Include="..\..\src\ptlib\msos\PTLib_2022.vcxproj">
       <Project>{85f4f26a-1a5d-4685-a48a-448102c5c5bc}</Project>
     </ProjectReference>
-    <ProjectReference Include="SLAnalyserTest\SLAnalyserTest.vcxproj">
+    <ProjectReference Include="SLAnalyserTest\SLAnalyserTest_2022.vcxproj">
       <Project>{84f81908-a9a8-41ef-a14c-1665e22aceac}</Project>
-      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-      <LinkLibraryDependencies>false</LinkLibraryDependencies>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
