@@ -211,7 +211,8 @@ void PSafeObject::InternalUnlockReadWrite(const PDebugLocation * location) const
 
 void PSafeObject::SafeRemove()
 {
-  m_safeRemovalTime.SetCurrentTime();
+  if (!m_safeRemovalTime.IsValid())
+    m_safeRemovalTime.SetCurrentTime();
 }
 
 
