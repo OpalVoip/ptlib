@@ -2733,7 +2733,7 @@ PProcess::~PProcess()
 #if PTRACING
   if (m_profileProcessTimer) {
     m_profileProcessTimer->Stop();
-    ProfileUpdateLogTimer(*m_profileProcessTimer, 0);
+    ProfileUpdateLogTimer(*m_profileProcessTimer, -1);
     delete m_profileProcessTimer;
   }
 #endif
@@ -3138,7 +3138,7 @@ void PProcess::PrintOn(ostream & strm) const
 
 
 #if PTRACING
-void PProcess::ProfileUpdateLogTimer(PTimer&, P_INT_PTR)
+void PProcess::ProfileUpdateLogTimer(PTimer&, P_INT_PTR shuttingDown)
 {
   ostream & strm = PTRACE_BEGIN(3, "PTLibProfile");
   strm<< *this << "; ";
@@ -3188,7 +3188,7 @@ void PProcess::ProfileUpdateLogTimer(PTimer&, P_INT_PTR)
       percentage = (*it - *prev).AsPercentage();
       m_profileLastThreadTimes.erase(prev);
     }
-    if (percentage > 0.05)
+    if (shuttingDown < 0 || percentage > 0.05)
       topThreads[percentage] = it->m_name;
     m_profileLastThreadTimes.insert(*it);
   }
