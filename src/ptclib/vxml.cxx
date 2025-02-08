@@ -4406,9 +4406,11 @@ void PVXMLMenuGrammar::OnInput(const PString & input)
   for (PINDEX i = 0; i < input.length(); ++i) {
     if (ValidMenuDTMF.Find(input[i]) != P_MAX_INDEX) {
       SetFilled(input);
-      break;
+      return;
     }
   }
+  // Primarily for voice recognition, so barge in can happen on first utterance
+  SetPartFilled(PString::Empty());
 }
 
 
@@ -4554,6 +4556,8 @@ void PVXMLBooleanGrammar::OnInput(const PString & input)
     SetFilled(PString(true));
   else if (m_no == input || (input *= "no"))
     SetFilled(PString(false));
+  else
+    SetPartFilled(PString::Empty());   // Primarily for voice recognition, so barge in can happen on first utterance
 }
 
 
@@ -4595,7 +4599,7 @@ void PVXMLTextGrammar::OnRecognition(PSpeechRecognition& sr, PSpeechRecognition:
   if (transcript.m_final)
     PVXMLGrammar::OnRecognition(sr, transcript);
   else
-    m_timer = m_noInputTimeout;
+    SetPartFilled(PString::Empty());   // Primarily for voice recognition, so barge in can happen on first utterance
 }
 
 
