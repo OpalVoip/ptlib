@@ -55,6 +55,7 @@ static PConstString const SessionScope("session");
 static PConstString const RootURIVar("root_uri");
 static PConstString const DocumentURIVar("uri");
 
+static PConstString const PropertyElement("property");
 static PConstString const TimeoutProperty("timeout");
 static PConstString const BargeInProperty("bargein");
 static PConstString const CachingProperty("caching");
@@ -212,7 +213,7 @@ bool PVXMLNodeHandler::StartTraversal(PVXMLSession & session, PXMLElement & node
 
   PTRACE(4, &session, "Traversing " << GetDescription() << ' ' << node.PrintTrace());
   node.SetAttribute(InternalTraversingNodeAttribute, true);
-  if (node.GetName() != "property")
+  if (node.GetName() != PropertyElement)
     session.m_properties.push_back(PVXMLSession::Properties(PTRACE_PARAM(node)));
   return true;
 }
@@ -220,7 +221,7 @@ bool PVXMLNodeHandler::StartTraversal(PVXMLSession & session, PXMLElement & node
 bool PVXMLNodeHandler::FinishTraversal(PVXMLSession & session, PXMLElement & node) const
 {
   bool traversing = IsTraversing(node);
-  if (traversing && node.GetName() != "property")
+  if (traversing && node.GetName() != PropertyElement)
     session.m_properties.pop_back();
   PTRACE(4, &session, (traversing ? "Traversed " : "Traversal skipped ") << GetDescription() << ' ' << node.PrintTrace());
   node.SetAttribute(InternalTraversingNodeAttribute, false);
@@ -3783,6 +3784,17 @@ void PVXMLSession::CompletedTransfer()
 }
 
 
+void PVXMLSession::PushDialogScope(PXMLElement & element)
+{
+  while (m_scriptContext->GetScopeChain().back() != ApplicationScope && m_scriptContext->GetScopeChain().back() != DocumentScope)
+    m_scriptContext->PopScopeChain(true);
+  m_scriptContext->PushScopeChain(DialogScope, true);
+
+  PXMLElement * property;
+  for (PINDEX i = 0; (property = element.GetElement(PropertyElement, i)) != NULL; ++i)
+    TraverseProperty(*property);
+}
+
 PBoolean PVXMLSession::TraverseMenu(PXMLElement & element)
 {
   if (IsFinalProcessing())
@@ -3791,9 +3803,7 @@ PBoolean PVXMLSession::TraverseMenu(PXMLElement & element)
   if (element.GetParent() && element.GetParent()->GetName() != "vxml")
     return ThrowSemanticError(element, "<menu> must be at top level.");
 
-  while (m_scriptContext->GetScopeChain().back() != ApplicationScope && m_scriptContext->GetScopeChain().back() != DocumentScope)
-    m_scriptContext->PopScopeChain(true);
-  m_scriptContext->PushScopeChain(DialogScope, true);
+  PushDialogScope(element);
 
   LoadGrammar(PVXMLGrammarInit(MenuElement, *this, element));
   m_defaultMenuDTMF = element.GetAttribute(DtmfAttribute).IsTrue() ? '1' : 'N';
@@ -3868,9 +3878,8 @@ PBoolean PVXMLSession::TraverseForm(PXMLElement & element)
     m_dialogFieldNames += name;
   }
 
-  while (m_scriptContext->GetScopeChain().back() != ApplicationScope && m_scriptContext->GetScopeChain().back() != DocumentScope)
-    m_scriptContext->PopScopeChain(true);
-  m_scriptContext->PushScopeChain(DialogScope, true);
+  PushDialogScope(element);
+
   ++m_promptCount;
   return true;
 }

@@ -577,6 +577,8 @@ class PVXMLSession : public PIndirectChannel, public PSSLCertificateInfo
     PURL NormaliseResourceName(const PString & src);
     PHTTPClient * InternalCreateHTTPClient();
 
+    void PushDialogScope(PXMLElement & element);
+
     PDECLARE_MUTEX(m_sessionMutex);
 
     PString          m_xmlLanguage;
