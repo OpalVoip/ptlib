@@ -365,14 +365,16 @@ class PSpeechRecognition_AWS : public PSpeechRecognition, PAwsClient<Aws::Transc
 {
   PCLASSINFO(PSpeechRecognition_AWS, PSpeechRecognition);
 
-  unsigned m_sampleRate;
-  Aws::TranscribeService::Model::LanguageCode m_language;
+  unsigned m_sampleRate = 8000;
+  unsigned m_bufferSize = 800; // Default 100ms
+  Aws::TranscribeService::Model::LanguageCode m_language = Aws::TranscribeService::Model::LanguageCode::en_US;
   PStringSet m_createdVocabularies;
   PStringSet m_activeVocabularies;
   PStringSet m_activeLanguages;
 
   PWebSocket m_webSocket;
-  PThread  * m_eventThread;
+  PThread  * m_eventThread = nullptr;
+  std::vector<int16_t> m_buffer;
   PDECLARE_MUTEX(m_openMutex);
   PDECLARE_MUTEX(m_eventMutex);
 
@@ -621,13 +623,6 @@ class PSpeechRecognition_AWS : public PSpeechRecognition, PAwsClient<Aws::Transc
 
 
 public:
-  PSpeechRecognition_AWS()
-    : m_sampleRate(8000)
-    , m_language(Aws::TranscribeService::Model::LanguageCode::en_US)
-    , m_eventThread(NULL)
-  { }
-
-
   ~PSpeechRecognition_AWS()
   {
     Close();
@@ -639,8 +634,11 @@ public:
 
   virtual bool SetOptions(const PStringOptions & options) override
   {
+    unsigned bufferMilliseconds = options.GetVar("AWS-Buffer-Duration", m_bufferSize * 1000 / m_sampleRate);
+    bool ok1 = PSpeechRecognition::SetOptions(options); // Set sample rate (maybe)
+    m_bufferSize = bufferMilliseconds * m_sampleRate / 1000;
     m_webSocket.SetProxies(options);
-    return PAwsClient<Aws::TranscribeService::TranscribeServiceClient>::SetOptions(options) && PSpeechRecognition::SetOptions(options);
+    return PAwsClient<Aws::TranscribeService::TranscribeServiceClient>::SetOptions(options) && ok1;
   }
 
 
@@ -803,9 +801,18 @@ public:
     if (!wavFile.Open(fn, PFile::ReadOnly))
       return false;
 
-    vector<int16_t> buffer(4096);
-    while (wavFile.Read(buffer.data(), buffer.size()*sizeof(int16_t))) {
-      if (!WriteAudioEvent(buffer.data(), wavFile.GetLastReadCount()/sizeof(int16_t)))
+    if (wavFile.GetFormat() != PWAVFile::fmt_PCM ||
+        wavFile.GetChannels() != 1 ||
+        wavFile.GetSampleSize() != 16 ||
+        !SetSampleRate(wavFile.GetSampleRate()))
+    {
+      PTRACE(1, "Invalid WAV file: " << fn);
+      return false;
+    }
+
+    m_buffer.resize(4096);
+    while (wavFile.Read(m_buffer.data(), m_buffer.size()*sizeof(int16_t))) {
+      if (!WriteAudioEvent(m_buffer.data(), wavFile.GetLastReadCount()/sizeof(int16_t)))
         return false;
     }
 
@@ -818,7 +825,18 @@ public:
   virtual bool Listen(const int16_t * samples, size_t sampleCount) override
   {
     PWaitAndSignal lock(m_openMutex);
-    return m_webSocket.IsOpen() && WriteAudioEvent(samples, sampleCount);
+    if (!m_webSocket.IsOpen())
+      return false;
+
+    m_buffer.insert(m_buffer.end(), samples, samples+sampleCount);
+    if (m_buffer.size() < m_bufferSize)
+      return true;
+
+    if (!WriteAudioEvent(m_buffer.data(), m_bufferSize))
+      return false;
+
+    m_buffer.erase(m_buffer.begin(), m_buffer.begin() + m_bufferSize);
+    return true;
   }
 };
 
