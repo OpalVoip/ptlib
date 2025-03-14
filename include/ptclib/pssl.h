@@ -1224,7 +1224,7 @@ class PSSLChannelDTLS : public PSSLChannel
 class PSSLCertificateInfo
 {
 public:
-  PSSLCertificateInfo(bool withDefaults = false) { }
+  PSSLCertificateInfo(bool = false) { }
   void SetSSLCredentials(const PSSLCertificateInfo &) { }
 };
 
