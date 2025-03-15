@@ -63,6 +63,7 @@ static PConstString const InputModesProperty("inputmodes");
 static PConstString const InterDigitTimeoutProperty("interdigittimeout");
 static PConstString const TermTimeoutProperty("termtimeout");
 static PConstString const TermCharProperty("termchar");
+static PConstString const MaxSpeechTimeoutProperty("maxspeechtimeout");
 static PConstString const CompleteTimeoutProperty("completetimeout");
 static PConstString const IncompleteTimeoutProperty("incompletetimeout");
 static PConstString const FetchTimeoutProperty("fetchtimeout");
@@ -1388,6 +1389,7 @@ PVXMLSession::PVXMLSession()
   props.SetAt(InterDigitTimeoutProperty, "5s");
   props.SetAt(TermTimeoutProperty, "0");
   props.SetAt(TermCharProperty, "#");
+  props.SetAt(MaxSpeechTimeoutProperty, "60s");
   props.SetAt(CompleteTimeoutProperty, "0.5s");
   props.SetAt(IncompleteTimeoutProperty, "5s");
   props.SetAt(FetchTimeoutProperty, "5s");
@@ -2800,7 +2802,7 @@ void PVXMLSession::StartGrammars()
   PWaitAndSignal lock(m_grammersMutex);
   PTRACE(3, "Starting " << m_grammars.size() << " grammars");
   for (Grammars::iterator it = m_grammars.begin(); it != m_grammars.end(); ++it)
-    it->Start(true);
+    it->Start(PVXMLGrammar::FromVXML);
   OnUserInputToGrammars();
 }
 
@@ -4141,6 +4143,7 @@ PVXMLGrammar::PVXMLGrammar(const PVXMLGrammarInit & init)
   , m_usingDTMF(false)
   , m_confidence(1.0)
   , m_state(Idle)
+  , m_maxSpeechTimeout(false)
   , m_noInputTimeout(m_session.GetTimeProperty(TimeoutProperty))
   , m_interDigitTimeout(m_session.GetTimeProperty(InterDigitTimeoutProperty))
   , m_completeTimeout(m_session.GetTimeProperty(CompleteTimeoutProperty))
@@ -4216,7 +4219,7 @@ PVXMLGrammar::PVXMLGrammar(const PVXMLGrammarInit & init)
 
 void PVXMLGrammar::OnRecognition(PSpeechRecognition &, PSpeechRecognition::Transcript transcript)
 {
-  if (Start()) {
+  if (Start(FromInput)) {
     m_usingDTMF = false;
     if (m_confidence > transcript.m_confidence)
       m_confidence = transcript.m_confidence;
@@ -4227,7 +4230,7 @@ void PVXMLGrammar::OnRecognition(PSpeechRecognition &, PSpeechRecognition::Trans
 
 void PVXMLGrammar::OnUserInput(const PString & input)
 {
-  if (m_allowDTMF && Start()) {
+  if (m_allowDTMF && Start(FromInput)) {
     m_usingDTMF = true;
     m_confidence = 1.0;
     OnInput(input);
@@ -4249,15 +4252,15 @@ void PVXMLGrammar::Setup(const PTimeInterval & timeout, bool canBargeIn)
   if (timeout > 0) {
     m_noInputTimeout = timeout;
     PTRACE(4, "Grammar " << *this << " set timeout=" << m_noInputTimeout << ", state=" << m_state);
-    if (m_state == Started)
+    if (m_state == Started && !m_maxSpeechTimeout)
       m_timer = timeout;
   }
 }
 
 
-bool PVXMLGrammar::Start(bool forced)
+bool PVXMLGrammar::Start(StartMode mode)
 {
-  if (forced)
+  if (mode == FromVXML)
     m_preventStartOnInput = false;
   else if (m_preventStartOnInput)
       return false;
@@ -4266,8 +4269,15 @@ bool PVXMLGrammar::Start(bool forced)
   if (!m_state.compare_exchange_strong(prev, Started))
     return prev == Started || prev == PartFill;
 
-  m_timer = m_noInputTimeout;
-  PTRACE(3, "Grammar " << *this << " started: noInputTimeout=" << m_noInputTimeout);
+  if (mode == FromUtterance) {
+    m_maxSpeechTimeout = true;
+    m_timer = m_session.GetTimeProperty(MaxSpeechTimeoutProperty);
+    PTRACE(3, "Grammar " << *this << " started: maxSpeechTimeout=" << m_timer.GetResetTime());
+  }
+  else {
+    m_timer = m_noInputTimeout;
+    PTRACE(3, "Grammar " << *this << " started: noInputTimeout=" << m_noInputTimeout);
+  }
   m_session.Trigger();
   return true;
 }
@@ -4378,7 +4388,7 @@ bool PVXMLGrammar::Process()
       break;
 
     case NoInput:
-      handler = NoInputElement;
+      handler = m_maxSpeechTimeout ? MaxSpeechTimeoutProperty : NoInputElement;
       break;
 
     case NoMatch:
@@ -4504,7 +4514,7 @@ void PVXMLDigitsGrammar::OnRecognition(PSpeechRecognition & sr, PSpeechRecogniti
   if (transcript.m_final)
     PVXMLGrammar::OnRecognition(sr, transcript);
   else
-    Start();   // So barge in can happen on first utterance
+    Start(FromUtterance);   // So barge in can happen on first utterance and maxspeechtimeout used
 }
 
 
@@ -4608,7 +4618,7 @@ void PVXMLTextGrammar::OnRecognition(PSpeechRecognition& sr, PSpeechRecognition:
   if (transcript.m_final)
     PVXMLGrammar::OnRecognition(sr, transcript);
   else
-    Start();   // So barge in can happen on first utterance
+    Start(FromUtterance);   // So barge in can happen on first utterance and maxspeechtimeout used
 }
 
 

@@ -193,7 +193,12 @@ class PVXMLGrammar : public PObject, protected PVXMLGrammarInit
 
     GrammarState GetState() const { return m_state; }
 
-    virtual bool Start(bool forced = false);
+    enum StartMode {
+      FromVXML,
+      FromInput,
+      FromUtterance
+    };
+    virtual bool Start(StartMode);
     virtual void Stop();
     virtual bool Process();
 
@@ -217,6 +222,7 @@ class PVXMLGrammar : public PObject, protected PVXMLGrammarInit
     bool                 m_usingDTMF;
     float                m_confidence;
     atomic<GrammarState> m_state;
+    bool                 m_maxSpeechTimeout;
     PTimeInterval        m_noInputTimeout;
     PTimeInterval        m_interDigitTimeout;
     PTimeInterval        m_completeTimeout;
