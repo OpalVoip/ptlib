@@ -208,7 +208,7 @@ class PVXMLGrammar : public PObject, protected PVXMLGrammarInit
     virtual void SetFilled(const PString & value, bool overwrite = false);
     virtual void Finished();
 
-    bool                 m_cannotBargeIn;
+    bool                 m_preventStartOnInput;
     PSpeechRecognition * m_recogniser;
     bool                 m_allowDTMF;
     PString              m_fieldName;

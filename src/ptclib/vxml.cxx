@@ -4133,7 +4133,7 @@ bool PVXMLSession::VideoSenderDevice::InternalGetFrameData(BYTE * buffer, PINDEX
 
 PVXMLGrammar::PVXMLGrammar(const PVXMLGrammarInit & init)
   : PVXMLGrammarInit(init)
-  , m_cannotBargeIn(true)
+  , m_preventStartOnInput(true)
   , m_recogniser(NULL)
   , m_allowDTMF(true)
   , m_fieldName(m_field.GetAttribute(NameAttribute))
@@ -4244,7 +4244,7 @@ void PVXMLGrammar::OnAudioInput(const short * samples, size_t count)
 
 void PVXMLGrammar::Setup(const PTimeInterval & timeout, bool canBargeIn)
 {
-  m_cannotBargeIn = !canBargeIn;
+  m_preventStartOnInput = !canBargeIn;
 
   if (timeout > 0) {
     m_noInputTimeout = timeout;
@@ -4258,8 +4258,8 @@ void PVXMLGrammar::Setup(const PTimeInterval & timeout, bool canBargeIn)
 bool PVXMLGrammar::Start(bool forced)
 {
   if (forced)
-    m_cannotBargeIn = false;
-  else if (m_cannotBargeIn)
+    m_preventStartOnInput = false;
+  else if (m_preventStartOnInput)
       return false;
 
   GrammarState prev = Idle;
@@ -4504,7 +4504,7 @@ void PVXMLDigitsGrammar::OnRecognition(PSpeechRecognition & sr, PSpeechRecogniti
   if (transcript.m_final)
     PVXMLGrammar::OnRecognition(sr, transcript);
   else
-    m_timer = m_noInputTimeout;
+    Start();   // So barge in can happen on first utterance
 }
 
 
@@ -4608,7 +4608,7 @@ void PVXMLTextGrammar::OnRecognition(PSpeechRecognition& sr, PSpeechRecognition:
   if (transcript.m_final)
     PVXMLGrammar::OnRecognition(sr, transcript);
   else
-    SetPartFilled(PString::Empty());   // Primarily for voice recognition, so barge in can happen on first utterance
+    Start();   // So barge in can happen on first utterance
 }
 
 
