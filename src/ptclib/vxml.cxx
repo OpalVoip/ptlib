@@ -55,6 +55,7 @@ static PConstString const SessionScope("session");
 static PConstString const RootURIVar("root_uri");
 static PConstString const DocumentURIVar("uri");
 
+static PConstString const PropertyElement("property");
 static PConstString const TimeoutProperty("timeout");
 static PConstString const BargeInProperty("bargein");
 static PConstString const CachingProperty("caching");
@@ -62,6 +63,7 @@ static PConstString const InputModesProperty("inputmodes");
 static PConstString const InterDigitTimeoutProperty("interdigittimeout");
 static PConstString const TermTimeoutProperty("termtimeout");
 static PConstString const TermCharProperty("termchar");
+static PConstString const MaxSpeechTimeoutProperty("maxspeechtimeout");
 static PConstString const CompleteTimeoutProperty("completetimeout");
 static PConstString const IncompleteTimeoutProperty("incompletetimeout");
 static PConstString const FetchTimeoutProperty("fetchtimeout");
@@ -212,7 +214,7 @@ bool PVXMLNodeHandler::StartTraversal(PVXMLSession & session, PXMLElement & node
 
   PTRACE(4, &session, "Traversing " << GetDescription() << ' ' << node.PrintTrace());
   node.SetAttribute(InternalTraversingNodeAttribute, true);
-  if (node.GetName() != "property")
+  if (node.GetName() != PropertyElement)
     session.m_properties.push_back(PVXMLSession::Properties(PTRACE_PARAM(node)));
   return true;
 }
@@ -220,7 +222,7 @@ bool PVXMLNodeHandler::StartTraversal(PVXMLSession & session, PXMLElement & node
 bool PVXMLNodeHandler::FinishTraversal(PVXMLSession & session, PXMLElement & node) const
 {
   bool traversing = IsTraversing(node);
-  if (traversing && node.GetName() != "property")
+  if (traversing && node.GetName() != PropertyElement)
     session.m_properties.pop_back();
   PTRACE(4, &session, (traversing ? "Traversed " : "Traversal skipped ") << GetDescription() << ' ' << node.PrintTrace());
   node.SetAttribute(InternalTraversingNodeAttribute, false);
@@ -1387,6 +1389,7 @@ PVXMLSession::PVXMLSession()
   props.SetAt(InterDigitTimeoutProperty, "5s");
   props.SetAt(TermTimeoutProperty, "0");
   props.SetAt(TermCharProperty, "#");
+  props.SetAt(MaxSpeechTimeoutProperty, "60s");
   props.SetAt(CompleteTimeoutProperty, "0.5s");
   props.SetAt(IncompleteTimeoutProperty, "5s");
   props.SetAt(FetchTimeoutProperty, "5s");
@@ -2799,7 +2802,7 @@ void PVXMLSession::StartGrammars()
   PWaitAndSignal lock(m_grammersMutex);
   PTRACE(3, "Starting " << m_grammars.size() << " grammars");
   for (Grammars::iterator it = m_grammars.begin(); it != m_grammars.end(); ++it)
-    it->Start(true);
+    it->Start(PVXMLGrammar::FromVXML);
   OnUserInputToGrammars();
 }
 
@@ -3783,6 +3786,17 @@ void PVXMLSession::CompletedTransfer()
 }
 
 
+void PVXMLSession::PushDialogScope(PXMLElement & element)
+{
+  while (m_scriptContext->GetScopeChain().back() != ApplicationScope && m_scriptContext->GetScopeChain().back() != DocumentScope)
+    m_scriptContext->PopScopeChain(true);
+  m_scriptContext->PushScopeChain(DialogScope, true);
+
+  PXMLElement * property;
+  for (PINDEX i = 0; (property = element.GetElement(PropertyElement, i)) != NULL; ++i)
+    TraverseProperty(*property);
+}
+
 PBoolean PVXMLSession::TraverseMenu(PXMLElement & element)
 {
   if (IsFinalProcessing())
@@ -3791,9 +3805,7 @@ PBoolean PVXMLSession::TraverseMenu(PXMLElement & element)
   if (element.GetParent() && element.GetParent()->GetName() != "vxml")
     return ThrowSemanticError(element, "<menu> must be at top level.");
 
-  while (m_scriptContext->GetScopeChain().back() != ApplicationScope && m_scriptContext->GetScopeChain().back() != DocumentScope)
-    m_scriptContext->PopScopeChain(true);
-  m_scriptContext->PushScopeChain(DialogScope, true);
+  PushDialogScope(element);
 
   LoadGrammar(PVXMLGrammarInit(MenuElement, *this, element));
   m_defaultMenuDTMF = element.GetAttribute(DtmfAttribute).IsTrue() ? '1' : 'N';
@@ -3868,9 +3880,8 @@ PBoolean PVXMLSession::TraverseForm(PXMLElement & element)
     m_dialogFieldNames += name;
   }
 
-  while (m_scriptContext->GetScopeChain().back() != ApplicationScope && m_scriptContext->GetScopeChain().back() != DocumentScope)
-    m_scriptContext->PopScopeChain(true);
-  m_scriptContext->PushScopeChain(DialogScope, true);
+  PushDialogScope(element);
+
   ++m_promptCount;
   return true;
 }
@@ -4124,7 +4135,7 @@ bool PVXMLSession::VideoSenderDevice::InternalGetFrameData(BYTE * buffer, PINDEX
 
 PVXMLGrammar::PVXMLGrammar(const PVXMLGrammarInit & init)
   : PVXMLGrammarInit(init)
-  , m_cannotBargeIn(true)
+  , m_preventStartOnInput(true)
   , m_recogniser(NULL)
   , m_allowDTMF(true)
   , m_fieldName(m_field.GetAttribute(NameAttribute))
@@ -4132,6 +4143,7 @@ PVXMLGrammar::PVXMLGrammar(const PVXMLGrammarInit & init)
   , m_usingDTMF(false)
   , m_confidence(1.0)
   , m_state(Idle)
+  , m_maxSpeechTimeout(false)
   , m_noInputTimeout(m_session.GetTimeProperty(TimeoutProperty))
   , m_interDigitTimeout(m_session.GetTimeProperty(InterDigitTimeoutProperty))
   , m_completeTimeout(m_session.GetTimeProperty(CompleteTimeoutProperty))
@@ -4207,7 +4219,7 @@ PVXMLGrammar::PVXMLGrammar(const PVXMLGrammarInit & init)
 
 void PVXMLGrammar::OnRecognition(PSpeechRecognition &, PSpeechRecognition::Transcript transcript)
 {
-  if (Start()) {
+  if (Start(FromInput)) {
     m_usingDTMF = false;
     if (m_confidence > transcript.m_confidence)
       m_confidence = transcript.m_confidence;
@@ -4218,7 +4230,7 @@ void PVXMLGrammar::OnRecognition(PSpeechRecognition &, PSpeechRecognition::Trans
 
 void PVXMLGrammar::OnUserInput(const PString & input)
 {
-  if (m_allowDTMF && Start()) {
+  if (m_allowDTMF && Start(FromInput)) {
     m_usingDTMF = true;
     m_confidence = 1.0;
     OnInput(input);
@@ -4235,30 +4247,37 @@ void PVXMLGrammar::OnAudioInput(const short * samples, size_t count)
 
 void PVXMLGrammar::Setup(const PTimeInterval & timeout, bool canBargeIn)
 {
-  m_cannotBargeIn = !canBargeIn;
+  m_preventStartOnInput = !canBargeIn;
 
   if (timeout > 0) {
     m_noInputTimeout = timeout;
     PTRACE(4, "Grammar " << *this << " set timeout=" << m_noInputTimeout << ", state=" << m_state);
-    if (m_state == Started)
+    if (m_state == Started && !m_maxSpeechTimeout)
       m_timer = timeout;
   }
 }
 
 
-bool PVXMLGrammar::Start(bool forced)
+bool PVXMLGrammar::Start(StartMode mode)
 {
-  if (forced)
-    m_cannotBargeIn = false;
-  else if (m_cannotBargeIn)
+  if (mode == FromVXML)
+    m_preventStartOnInput = false;
+  else if (m_preventStartOnInput)
       return false;
 
   GrammarState prev = Idle;
   if (!m_state.compare_exchange_strong(prev, Started))
     return prev == Started || prev == PartFill;
 
-  m_timer = m_noInputTimeout;
-  PTRACE(3, "Grammar " << *this << " started: noInputTimeout=" << m_noInputTimeout);
+  if (mode == FromUtterance) {
+    m_maxSpeechTimeout = true;
+    m_timer = m_session.GetTimeProperty(MaxSpeechTimeoutProperty);
+    PTRACE(3, "Grammar " << *this << " started: maxSpeechTimeout=" << m_timer.GetResetTime());
+  }
+  else {
+    m_timer = m_noInputTimeout;
+    PTRACE(3, "Grammar " << *this << " started: noInputTimeout=" << m_noInputTimeout);
+  }
   m_session.Trigger();
   return true;
 }
@@ -4369,7 +4388,7 @@ bool PVXMLGrammar::Process()
       break;
 
     case NoInput:
-      handler = NoInputElement;
+      handler = m_maxSpeechTimeout ? MaxSpeechTimeoutProperty : NoInputElement;
       break;
 
     case NoMatch:
@@ -4495,7 +4514,7 @@ void PVXMLDigitsGrammar::OnRecognition(PSpeechRecognition & sr, PSpeechRecogniti
   if (transcript.m_final)
     PVXMLGrammar::OnRecognition(sr, transcript);
   else
-    m_timer = m_noInputTimeout;
+    Start(FromUtterance);   // So barge in can happen on first utterance and maxspeechtimeout used
 }
 
 
@@ -4599,7 +4618,7 @@ void PVXMLTextGrammar::OnRecognition(PSpeechRecognition& sr, PSpeechRecognition:
   if (transcript.m_final)
     PVXMLGrammar::OnRecognition(sr, transcript);
   else
-    SetPartFilled(PString::Empty());   // Primarily for voice recognition, so barge in can happen on first utterance
+    Start(FromUtterance);   // So barge in can happen on first utterance and maxspeechtimeout used
 }
 
 

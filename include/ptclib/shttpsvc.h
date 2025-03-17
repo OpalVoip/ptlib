@@ -31,6 +31,7 @@
 #pragma interface
 #endif
 
+#if P_SSL
 
 #include <ptclib/httpsvc.h>
 #include <ptclib/pssl.h>
@@ -94,6 +95,7 @@ class PSecureHTTPServiceProcess : public PHTTPServiceProcess
 };
 
 
+#endif // P_SSL
 #endif // PTLIB_SHTTPSVC_H
 
 

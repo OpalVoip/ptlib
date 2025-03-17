@@ -982,11 +982,11 @@ cd "%(RootDir)%(Directory)"
 PATH=$(PATH);"$(DevEnvDir)\CommonExtensions\Microsoft\TeamFoundation\Team Explorer\Git\usr/bin";"$(DevEnvDir)\CommonExtensions\Microsoft\TeamFoundation\Team Explorer\Git\cmd";"C:\Program Files\git\bin"
 sh -c './tools/get_revision.sh %(FileName)'
 if errorlevel 1 copy "%(FullPath)"+nul "%(RootDir)%(Directory)%(FileName)"</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">if not exist "$(PTLibGitRootDir)\.git" (
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">if not exist "$(PTLibGitRootDir)" (
   rem we do this so it doesn't rebuild every time in non GIT tree
-  mkdir "$(PTLibGitRootDir)\.git"
-  copy nul "$(PTLibGitRootDir)\.git\index" &gt; nul
-  echo Created "$(PTLibGitRootDir)\.git\index"
+  mkdir "$(PTLibGitRootDir)"
+  copy nul "$(PTLibGitRootDir)\index" &gt; nul
+  echo Created "$(PTLibGitRootDir)\index"
 )
 cd "%(RootDir)%(Directory)"
 PATH=$(PATH);"$(DevEnvDir)\CommonExtensions\Microsoft\TeamFoundation\Team Explorer\Git\usr/bin";"$(DevEnvDir)\CommonExtensions\Microsoft\TeamFoundation\Team Explorer\Git\cmd";"C:\Program Files\git\bin"
@@ -1006,11 +1006,11 @@ cd "%(RootDir)%(Directory)"
 PATH=$(PATH);"$(DevEnvDir)\CommonExtensions\Microsoft\TeamFoundation\Team Explorer\Git\usr/bin";"$(DevEnvDir)\CommonExtensions\Microsoft\TeamFoundation\Team Explorer\Git\cmd";"C:\Program Files\git\bin"
 sh -c './tools/get_revision.sh %(FileName)'
 if errorlevel 1 copy "%(FullPath)"+nul "%(RootDir)%(Directory)%(FileName)"</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='No Trace|x64'">if not exist "$(PTLibGitRootDir)\.git" (
+      <Command Condition="'$(Configuration)|$(Platform)'=='No Trace|x64'">if not exist "$(PTLibGitRootDir)" (
   rem we do this so it doesn't rebuild every time in non GIT tree
-  mkdir "$(PTLibGitRootDir)\.git"
-  copy nul "$(PTLibGitRootDir)\.git\index" &gt; nul
-  echo Created "$(PTLibGitRootDir)\.git\index"
+  mkdir "$(PTLibGitRootDir)"
+  copy nul "$(PTLibGitRootDir)\index" &gt; nul
+  echo Created "$(PTLibGitRootDir)\index"
 )
 cd "%(RootDir)%(Directory)"
 PATH=$(PATH);"$(DevEnvDir)\CommonExtensions\Microsoft\TeamFoundation\Team Explorer\Git\usr/bin";"$(DevEnvDir)\CommonExtensions\Microsoft\TeamFoundation\Team Explorer\Git\cmd";"C:\Program Files\git\bin"
@@ -1030,11 +1030,11 @@ cd "%(RootDir)%(Directory)"
 PATH=$(PATH);"$(DevEnvDir)\CommonExtensions\Microsoft\TeamFoundation\Team Explorer\Git\usr/bin";"$(DevEnvDir)\CommonExtensions\Microsoft\TeamFoundation\Team Explorer\Git\cmd";"C:\Program Files\git\bin"
 sh -c './tools/get_revision.sh %(FileName)'
 if errorlevel 1 copy "%(FullPath)"+nul "%(RootDir)%(Directory)%(FileName)"</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">if not exist "$(PTLibGitRootDir)\.git" (
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">if not exist "$(PTLibGitRootDir)" (
   rem we do this so it doesn't rebuild every time in non GIT tree
-  mkdir "$(PTLibGitRootDir)\.git"
-  copy nul "$(PTLibGitRootDir)\.git\index" &gt; nul
-  echo Created "$(PTLibGitRootDir)\.git\index"
+  mkdir "$(PTLibGitRootDir)"
+  copy nul "$(PTLibGitRootDir)\index" &gt; nul
+  echo Created "$(PTLibGitRootDir)\index"
 )
 cd "%(RootDir)%(Directory)"
 PATH=$(PATH);"$(DevEnvDir)\CommonExtensions\Microsoft\TeamFoundation\Team Explorer\Git\usr/bin";"$(DevEnvDir)\CommonExtensions\Microsoft\TeamFoundation\Team Explorer\Git\cmd";"C:\Program Files\git\bin"
@@ -1045,11 +1045,11 @@ if errorlevel 1 copy "%(FullPath)"+nul "%(RootDir)%(Directory)%(FileName)"</Comm
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(RootDir)%(Directory)%(Filename)</Outputs>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(RootDir)%(Directory)%(Filename)</Outputs>
       <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(PTLibGitRootDir)\.git\index</AdditionalInputs>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(PTLibGitRootDir)\.git\index</AdditionalInputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(PTLibGitRootDir)\index</AdditionalInputs>
       <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='No Trace|Win32'">$(PTLibGitRootDir)\.git\index</AdditionalInputs>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='No Trace|x64'">$(PTLibGitRootDir)\.git\index</AdditionalInputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='No Trace|x64'">$(PTLibGitRootDir)\index</AdditionalInputs>
       <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(PTLibGitRootDir)\.git\index</AdditionalInputs>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(PTLibGitRootDir)\.git\index</AdditionalInputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(PTLibGitRootDir)\index</AdditionalInputs>
     </CustomBuild>
     <None Include="..\..\..\include\ptlib\unix\ptlib\ptlib.inl" />
     <None Include="..\..\..\tools\get_revision.sh" />

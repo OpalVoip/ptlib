@@ -576,6 +576,7 @@
   #pragma P_SSL_INCLUDE(openssl/conftypes.h)
   #pragma P_SSL_INCLUDE(openssl/sslerr_legacy.h)
   #pragma P_SSL_INCLUDE(openssl/prov_ssl.h)
+  #pragma P_SSL_INCLUDE(openssl/indicator.h)
 #endif
 
 // For backward compatibility, should always be present now
