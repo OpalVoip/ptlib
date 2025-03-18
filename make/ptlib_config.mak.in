@@ -27,11 +27,12 @@
 # Contributor(s): ______________________________________.
 #
 
-PTLIB_MAJOR :=@PTLIB_MAJOR@
-PTLIB_MINOR :=@PTLIB_MINOR@
-PTLIB_STAGE :=@PTLIB_STAGE@
-PTLIB_PATCH :=@PTLIB_PATCH@
-PTLIB_OEM   :=@PTLIB_OEM@
+PTLIB_MAJOR   :=@PTLIB_MAJOR@
+PTLIB_MINOR   :=@PTLIB_MINOR@
+PTLIB_STAGE   :=@PTLIB_STAGE@
+PTLIB_PATCH   :=@PTLIB_PATCH@
+PTLIB_OEM     :=@PTLIB_OEM@
+PTLIB_VERSION :=@PTLIB_VERSION@
 
 # detected platform
 target      := @target@
