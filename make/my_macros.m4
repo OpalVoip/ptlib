@@ -223,6 +223,8 @@ AC_DEFUN([MY_MODULE_OPTION],[
                         [$8],
                         [
                            MY_ADD_FLAGS([$6], [$5])
+                           AC_SUBST($1[_CFLAGS], $5)
+                           AC_SUBST($1[_LIBS], $6)
                            usable=yes
                         ],
                         [usable=no]
@@ -247,6 +249,9 @@ AC_DEFUN([MY_MODULE_OPTION],[
                $1[_CFLAGS]=
                $1[_LIBS]=
                AC_MSG_NOTICE(Using internal source for $3)
+            ],
+            [
+               AC_MSG_NOTICE(Using system for $3: $1[_CFLAGS]=$[$1[_CFLAGS]] $1[_LIBS]=$[$1[_LIBS]])
             ])
          ])
       ])
@@ -370,7 +375,7 @@ AC_DEFUN([MY_OUTPUT_SUMMARY],[
 
 dnl ##################################################################
 
-dnl Now the common stuff, checks for stuffwe always use
+dnl Now the common stuff, checks for stuff we always use
 
 PKG_PROG_PKG_CONFIG()
 AS_VAR_SET_IF([PKG_CONFIG], , AC_MSG_ERROR(pkg-config is required, 1))
@@ -404,6 +409,7 @@ AS_CASE([$enable_ios],
       AC_MSG_ERROR([Unknown iOS variant ${enable_ios} - use either iphone or simulator])
 )
 
+AC_MSG_NOTICE([Platform: $target_os release $target_release on $target_cpu])
 
 dnl Set up compiler by platform
 oldCFLAGS="$CFLAGS"
