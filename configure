@@ -14370,6 +14370,9 @@ printf "%s\n" "$as_me: Adding LIBS: -ljpeg" >&6;}
       LIBS="-ljpeg $LIBS"
 
 
+
+                           LIBJPEG_LIBS=-ljpeg
+
                            usable=yes
 
 else case e in #(
@@ -15009,6 +15012,9 @@ then :
 printf "%s\n" "$as_me: Adding LIBS: -lldap -llber" >&6;}
       LIBS="-lldap -llber $LIBS"
 
+
+
+                           OPENLDAP_LIBS=-lldap -llber
 
                            usable=yes
 
@@ -15873,6 +15879,9 @@ then :
 printf "%s\n" "$as_me: Adding LIBS: -lexpat" >&6;}
       LIBS="-lexpat $LIBS"
 
+
+
+                           EXPAT_LIBS=-lexpat
 
                            usable=yes
 
@@ -16977,6 +16986,10 @@ printf "%s\n" "$as_me: Adding LIBS: -lv8 -lv8_libplatform -lv8_libbase" >&6;}
       LIBS="-lv8 -lv8_libplatform -lv8_libbase $LIBS"
 
 
+                           V8_CFLAGS=-I/usr/include/v8
+
+                           V8_LIBS=-lv8 -lv8_libplatform -lv8_libbase
+
                            usable=yes
 
 else case e in #(
@@ -17281,6 +17294,10 @@ printf "%s\n" "$as_me: Adding CPPFLAGS: -I/opt/homebrew/include" >&6;}
 printf "%s\n" "$as_me: Adding LIBS: -L/opt/homebrew/lib -lv8 -lv8_libplatform -lv8_libbase" >&6;}
       LIBS="-L/opt/homebrew/lib -lv8 -lv8_libplatform -lv8_libbase $LIBS"
 
+
+                           V8_CFLAGS=-I/opt/homebrew/include
+
+                           V8_LIBS=-L/opt/homebrew/lib -lv8 -lv8_libplatform -lv8_libbase
 
                            usable=yes
 
@@ -22609,6 +22626,9 @@ printf "%s\n" "$as_me: Adding LIBS: -lncurses" >&6;}
       LIBS="-lncurses $LIBS"
 
 
+
+                           CURSES_LIBS=-lncurses
+
                            usable=yes
 
 else case e in #(
@@ -23980,6 +24000,9 @@ printf "%s\n" "$as_me: Adding LIBS: -lodbc" >&6;}
       LIBS="-lodbc $LIBS"
 
 
+
+                           ODBC_LIBS=-lodbc
+
                            usable=yes
 
 else case e in #(
@@ -24282,6 +24305,9 @@ then :
 printf "%s\n" "$as_me: Adding LIBS: -lodbc" >&6;}
       LIBS="-lodbc $LIBS"
 
+
+
+                           ODBC_LIBS=-lodbc
 
                            usable=yes
 
@@ -25825,6 +25851,9 @@ then :
 printf "%s\n" "$as_me: Adding LIBS: -;portaudio" >&6;}
       LIBS="-;portaudio $LIBS"
 
+
+
+                           PORTAUDIO_LIBS=-;portaudio
 
                            usable=yes
 
