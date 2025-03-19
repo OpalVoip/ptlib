@@ -200,7 +200,7 @@ ifeq ($(AUTOCONF_AVAILABLE),yes)
 
   $(CONFIGURE): $(CONFIGURE).ac $(M4_FILES) $(ACLOCAL_M4)
 	$(AUTOCONF)
-	patch --posix < make/crlf.patch
+	patch --posix < $(dir $(abspath $(lastword $(MAKEFILE_LIST))))crlf.patch
 
   $(ACLOCAL_M4):
 	cd $(dir $@) && $(ACLOCAL)
