@@ -41,7 +41,7 @@ ifndef AUTOCONF
 endif
 
 ifndef AUTOCONF_VERSION
-  AUTOCONF_VERSION :=71
+  AUTOCONF_VERSION :=72
 endif
 
 ifndef ACLOCAL
@@ -200,6 +200,7 @@ ifeq ($(AUTOCONF_AVAILABLE),yes)
 
   $(CONFIGURE): $(CONFIGURE).ac $(M4_FILES) $(ACLOCAL_M4)
 	$(AUTOCONF)
+	patch --posix < make/crlf.patch
 
   $(ACLOCAL_M4):
 	cd $(dir $@) && $(ACLOCAL)
