@@ -73,7 +73,7 @@
         PThreadPoolWorkerBase and must define the following member functions:
  
             Constructor with one parameter declared as "PThreadPoolBase & threadPool"
-            unsigned GetWorkSize() const;
+            size_t GetWorkSize() const;
             void AddWork(Work_T *);
             void RemoveWork(Work_T *);
 
@@ -97,7 +97,7 @@
 
           bool Work();
           void Shutdown();
-          unsigned GetWorkSize() const;
+          size_t GetWorkSize() const;
           void AddWork(Work_T * work);
           void RemoveWork(Work_T * work);
       };
@@ -118,7 +118,7 @@
        bool Work()
           Called continuously by worker thread, until it returns false
 
-       unsigned GetWorkSize()
+       size_t GetWorkSize()
           Called whenever the thread pool wants to know how "busy" the
           thread is. This is used when deciding how to allocate new work units
              
@@ -159,7 +159,7 @@ class PThreadPoolBase : public PObject
       public:
         virtual bool Work() = 0;
         virtual void Shutdown() = 0;
-        virtual unsigned GetWorkSize() const = 0;
+        virtual size_t GetWorkSize() const = 0;
 
         PThreadPoolBase & m_pool;
         bool              m_shutdown;
@@ -446,9 +446,9 @@ class PQueuedThreadPool : public PThreadPool<Work_T>
           delete work;
         }
 
-        unsigned GetWorkSize() const
+        size_t GetWorkSize() const override
         {
-          unsigned work = this->m_queue.size();
+          size_t work = this->m_queue.size();
           if (this->m_working)
               ++work;
           return work;

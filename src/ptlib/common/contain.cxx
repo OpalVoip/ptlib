@@ -1829,7 +1829,7 @@ PString & PString::Splice(const char * cstr, PINDEX pos, PINDEX len)
 }
 
 
-bool PString::InternalSplit(const PString & delimiter, PString & before, PString & after, SplitOptions_Bits options) const
+bool PString::InternalSplit(const PString & delimiter, PString & before, PString & after, const SplitOptions options) const
 {
   PINDEX pos = Find(delimiter);
 
