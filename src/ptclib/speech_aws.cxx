@@ -371,6 +371,7 @@ class PSpeechRecognition_AWS : public PSpeechRecognition, PAwsClient<Aws::Transc
   PStringSet m_createdVocabularies;
   PStringSet m_activeVocabularies;
   PStringSet m_activeLanguages;
+  HeaderMap  m_additionalHeaders;
 
   PWebSocket m_webSocket;
   PThread  * m_eventThread = nullptr;
@@ -638,6 +639,14 @@ public:
     bool ok1 = PSpeechRecognition::SetOptions(options); // Set sample rate (maybe)
     m_bufferSize = bufferMilliseconds * m_sampleRate / 1000;
     m_webSocket.SetProxies(options);
+
+    m_additionalHeaders.clear();
+    for (const auto & hdr : options.GetString("AWS-Header").Lines()) {
+      PString name, value;
+      if (hdr.Split(':', name, value))
+        m_additionalHeaders[name] = value;
+    }
+
     return PAwsClient<Aws::TranscribeService::TranscribeServiceClient>::SetOptions(options) && ok1;
   }
 
@@ -755,6 +764,8 @@ public:
         headers["language-options"] = PSTRSTRM(setfill(',') << m_activeLanguages);
       }
     }
+
+    headers.insert(m_additionalHeaders.begin(), m_additionalHeaders.end());
 
     PURL url = SignURL("wss://transcribestreaming:8443/stream-transcription-websocket", "transcribe", headers);
 
