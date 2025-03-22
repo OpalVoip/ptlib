@@ -4266,8 +4266,15 @@ bool PVXMLGrammar::Start(StartMode mode)
       return false;
 
   GrammarState prev = Idle;
-  if (!m_state.compare_exchange_strong(prev, Started))
-    return prev == Started || prev == PartFill;
+  if (!m_state.compare_exchange_strong(prev, Started)) {
+    if (prev != Started && prev != PartFill)
+      return false;
+    if (mode == FromUtterance && !m_maxSpeechTimeout) {
+      m_timer = m_session.GetTimeProperty(MaxSpeechTimeoutProperty);
+      PTRACE(3, "Grammar " << *this << " already started: maxSpeechTimeout=" << m_timer.GetResetTime());
+    }
+    return true;
+  }
 
   if (mode == FromUtterance) {
     m_maxSpeechTimeout = true;
@@ -4303,6 +4310,7 @@ void PVXMLGrammar::SetPartFilled(const PString & input, bool overwrite)
   }
 
   m_timer = timeout;
+  m_maxSpeechTimeout = false;
 }
 
 
