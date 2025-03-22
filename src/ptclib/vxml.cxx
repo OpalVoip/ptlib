@@ -4173,6 +4173,7 @@ PVXMLGrammar::PVXMLGrammar(const PVXMLGrammarInit & init)
       PTRACE_CONTEXT_ID_TO(m_recogniser);
       PStringToString options = m_session.m_speechRecognitionOptions;
       options.MakeUnique();
+      options.Merge(PStringToString(m_session.GetProperty("speechrecognitionoptions").Replace("\\n", "\n", true)), PStringToString::e_MergeOverwrite);
       m_session.m_httpMutex.Wait();
       m_session.m_httpProxies.ToOptions(options);
       m_session.m_httpMutex.Signal();
