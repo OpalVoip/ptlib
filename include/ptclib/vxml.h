@@ -915,6 +915,23 @@ class PVXMLPlayableFileList : public PVXMLPlayableFile
 
 //////////////////////////////////////////////////////////////////
 
+class PVXMLPlayableTTS : public PVXMLPlayable
+{
+    PCLASSINFO(PVXMLPlayableFileList, PVXMLPlayable);
+  public:
+    PVXMLPlayableTTS();
+    virtual PBoolean Open(PVXMLChannel & chan, const PString & arg, PINDEX delay, PINDEX repeat, PBoolean autoDelete) override;
+    virtual bool OnStart() override;
+    virtual bool OnRepeat() override;
+    virtual void OnStop() override;
+protected:
+    PTextToSpeech * m_textToSpeech;
+    PString m_textToPlay;
+    PTextToSpeech::TextType m_type;
+};
+
+//////////////////////////////////////////////////////////////////
+
 PQUEUE(PVXMLQueue, PVXMLPlayable);
 
 //////////////////////////////////////////////////////////////////

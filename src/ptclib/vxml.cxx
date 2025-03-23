@@ -58,7 +58,6 @@ static PConstString const DocumentURIVar("uri");
 static PConstString const PropertyElement("property");
 static PConstString const TimeoutProperty("timeout");
 static PConstString const BargeInProperty("bargein");
-static PConstString const CachingProperty("caching");
 static PConstString const InputModesProperty("inputmodes");
 static PConstString const InterDigitTimeoutProperty("interdigittimeout");
 static PConstString const TermTimeoutProperty("termtimeout");
@@ -977,6 +976,71 @@ PFACTORY_CREATE(PFactory<PVXMLPlayable>, PVXMLPlayableFileList, "FileList");
 
 ///////////////////////////////////////////////////////////////
 
+PVXMLPlayableTTS::PVXMLPlayableTTS()
+  : m_textToSpeech(NULL)
+  , m_type(PTextToSpeech::Default)
+{
+}
+
+
+PBoolean PVXMLPlayableTTS::Open(PVXMLChannel & chan, const PString & args, PINDEX delay, PINDEX repeat, PBoolean autoDelete)
+{
+  PString type;
+  if (args.Split('\n', type, m_textToPlay, PString::SplitDefaultToAfter))
+    m_type = PTextToSpeech::TextTypeFromString(type);
+
+  return PVXMLPlayable::Open(chan, args, delay, repeat, autoDelete);
+}
+
+
+bool PVXMLPlayableTTS::OnStart()
+{
+  if (PAssertNULL(m_vxmlChannel) == NULL)
+    return false;
+
+  if (m_textToSpeech == NULL) {
+    m_textToSpeech = m_vxmlChannel->GetSession().GetTextToSpeech();
+    if (m_textToSpeech == NULL) {
+      PTRACE(2, "Cannot queue text as no TTS engine.");
+      return false;
+    }
+  }
+
+  if (!m_textToSpeech->SetSampleRate(m_vxmlChannel->GetSampleRate()) ||
+      !m_textToSpeech->SetChannels(m_vxmlChannel->GetChannels()))
+    return false;
+
+  m_subChannel = m_textToSpeech->SpeakToChannel(m_textToPlay, m_type);
+  if (m_subChannel == NULL) {
+    PTRACE(2, "TTS engine cannot do streams.");
+    return false;
+  }
+
+  return m_vxmlChannel->SetReadChannel(m_subChannel, false);
+}
+
+bool PVXMLPlayableTTS::OnRepeat()
+{
+  if (!PVXMLPlayable::OnRepeat())
+    return false;
+
+  PVXMLPlayable::OnStop();
+  return OnStart();
+}
+
+
+void PVXMLPlayableTTS::OnStop()
+{
+  if (m_textToSpeech != NULL)
+    m_textToSpeech->Close();
+}
+
+
+PFACTORY_CREATE(PFactory<PVXMLPlayable>, PVXMLPlayableTTS, "TTS");
+
+
+///////////////////////////////////////////////////////////////
+
 #if P_PIPECHAN
 
 PBoolean PVXMLPlayableCommand::Open(PVXMLChannel & chan, const PString & cmd, PINDEX delay, PINDEX repeat, PBoolean autoDelete)
@@ -1384,7 +1448,6 @@ PVXMLSession::PVXMLSession()
 #endif
   props.SetAt(TimeoutProperty, "10s");
   props.SetAt(BargeInProperty, true);
-  props.SetAt(CachingProperty, "86400s");
   props.SetAt(InputModesProperty, DtmfAttribute & VoiceAttribute);
   props.SetAt(InterDigitTimeoutProperty, "5s");
   props.SetAt(TermTimeoutProperty, "0");
@@ -2857,30 +2920,22 @@ PBoolean PVXMLSession::PlayText(const PString & textToPlay,
                                 PINDEX repeat,
                                 PINDEX delay)
 {
-  if (!IsOpen() || textToPlay.IsEmpty() || m_bargingIn)
+  if (!IsOpen() || textToPlay.IsEmpty() || m_bargingIn || m_textToSpeech == NULL)
     return false;
 
   PTRACE(4, "Converting " << textToPlay.ToLiteral() << " to speech");
 
   CachePtr cache = m_resourceCache;
+  PVXMLCache::Params cacheParams;
+  cacheParams.m_maxAge = GetTimeProperty(AudioMaxAgeProperty);
 
-  if (cache == NULL || GetProperty(CachingProperty) == SafeKeyword) {
-    PFilePath fn("tts", NULL, ".wav");
-    return m_textToSpeech != NULL &&
-      m_textToSpeech->SetSampleRate(GetVXMLChannel()->GetSampleRate()) &&
-      m_textToSpeech->SetChannels(GetVXMLChannel()->GetChannels()) &&
-      m_textToSpeech->OpenFile(fn) &&
-      m_textToSpeech->Speak(textToPlay, type) &&
-      m_textToSpeech->Close() &&
-      PlayFile(fn, repeat, delay, true);
-  }
+  if (cache == NULL || cacheParams.m_maxAge <= 0)
+    return GetVXMLChannel()->QueuePlayable("TTS", PSTRSTRM(type << '\n' << textToPlay), repeat, delay);
 
   PString fileList;
 
-  PVXMLCache::Params cacheParams;
   cacheParams.m_prefix.sprintf("tts%i", type);
   cacheParams.m_suffix = GetVXMLChannel()->GetMediaFileSuffix() + ".wav";
-  cacheParams.m_maxAge = GetTimeProperty(AudioMaxAgeProperty);
 
   // Convert each line into it's own cached WAV file.
   PStringArray lines = textToPlay.Lines();
@@ -2904,7 +2959,6 @@ PBoolean PVXMLSession::PlayText(const PString & textToPlay,
     cacheParams.m_file.Close();
 
     cache->FinishCache(cacheParams,
-                       m_textToSpeech != NULL &&
                        m_textToSpeech->SetSampleRate(GetVXMLChannel()->GetSampleRate()) &&
                        m_textToSpeech->SetChannels(GetVXMLChannel()->GetChannels()) &&
                        m_textToSpeech->OpenFile(cacheParams.m_file.GetFilePath()) &&
@@ -5082,8 +5136,8 @@ PBoolean PVXMLChannel::Read(void * buffer, PINDEX amount)
       m_totalData += GetLastReadCount();
 #if P_VXML_VIDEO
       if (m_vxmlSession->m_videoSender.IsRunning())
-        return true; // Already done real time delay
 #endif
+        return true; // Already done real time delay
     }
 
     // if a timeout, send silence, try again in a bit

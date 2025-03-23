@@ -73,7 +73,104 @@ class PTextToSpeech_AWS : public PTextToSpeech, PAwsClient<Aws::Polly::PollyClie
   PString      m_defaultEngine;
   bool         m_sampleRate8k{ true };
   PWAVFile     m_file;
-  PChannel   * m_channel{ NULL };
+  typedef std::shared_ptr<Aws::Polly::Model::SynthesizeSpeechResult> ResultPtr;
+  ResultPtr m_speechResult;
+
+  struct PollyChannel : public PChannel
+  {
+    PCLASSINFO(PollyChannel, PChannel)
+    ResultPtr m_speechResult;
+
+    PollyChannel(const ResultPtr & outcome)
+      : m_speechResult(outcome)
+    {
+    }
+
+    ~PollyChannel()
+    {
+      Close();
+    }
+
+    virtual PString GetName() const
+    {
+      return "PollyChannel";
+    }
+
+    virtual bool IsOpen() const
+    {
+      return !!m_speechResult;
+    }
+
+    virtual bool Close()
+    {
+      m_speechResult.reset();
+      return true;
+    }
+
+    virtual bool Read(void * buffer, PINDEX size) override
+    {
+      if (!m_speechResult)
+        return false;
+
+      auto & strm = m_speechResult->GetAudioStream();
+      strm.read((char *)buffer, size);
+      auto count = strm.gcount();
+      SetLastReadCount(count);
+      return count > 0;
+    }
+  };
+
+  bool InternalSpeak(Aws::Polly::Model::SynthesizeSpeechOutcome & outcome, const PString & text, TextType hint)
+  {
+    if (!SetVoice(PString::Empty()))
+      return false;
+
+    Aws::Polly::Model::SynthesizeSpeechRequest request;
+
+    request.SetOutputFormat(Aws::Polly::Model::OutputFormat::pcm);
+    request.SetSampleRate(m_sampleRate8k ? "8000" : "16000");
+    request.SetVoiceId(Aws::Polly::Model::VoiceIdMapper::GetVoiceIdForName(m_voice.Get(VoiceName).c_str()));
+    request.SetLanguageCode(Aws::Polly::Model::LanguageCodeMapper::GetLanguageCodeForName(m_voice.Get(VoiceLanguage).c_str()));
+    request.SetEngine(Aws::Polly::Model::EngineMapper::GetEngineForName(m_voice.Get(VoiceEngine).c_str()));
+
+    static const char * HintToAWS[TextType::NumTextType] = {
+      NULL, // Default,
+      NULL, // Literal,
+      "digits", // Digits,
+      "cardinal", // Number,
+      "cardinal", // Currency,
+      "time", // Time,
+      "date", // Date,
+      NULL, // DateAndTime,
+      "telephone", // Phone,
+      NULL, // IPAddress,
+      NULL, // Duration,
+      "characters", // Spell,
+      NULL, // Boolean
+    };
+    if (HintToAWS[hint] == NULL)
+      request.SetText(text.c_str());
+    else {
+      PStringStream strm;
+      strm << "<say-as interpret-as=\"" << HintToAWS[hint] << '"';
+      if (hint == Date) {
+        static const char * DateOrder[] = { "mdy", "dmy", "ymd" };
+        strm << " format=\"" << DateOrder[PTime::GetDateOrder()] << '"';
+      }
+      strm << '>'
+        << PXML::EscapeSpecialChars(text)
+        << "</say-as>";
+      request.SetText(strm.c_str());
+      request.SetTextType(Aws::Polly::Model::TextType::ssml);
+    }
+
+    outcome = GetClient()->SynthesizeSpeech(request);
+    if (outcome.IsSuccess())
+      return true;
+
+    PTRACE(2, "Could not synthesize speech: " << outcome.GetError().GetMessage());
+    return false;
+  }
 
 public:
   ~PTextToSpeech_AWS()
@@ -256,6 +353,8 @@ public:
 
   bool OpenFile(const PFilePath & fn) override
   {
+    Close();
+
     if (m_file.Open(fn, PFile::WriteOnly))
       return true;
 
@@ -264,76 +363,28 @@ public:
   }
 
 
-  bool OpenChannel(PChannel * channel) override
-  {
-    Close();
-    return m_channel = channel;
-  }
-
-
   bool IsOpen() const override
   {
-    return m_channel != NULL || m_file.IsOpen();
+    return !!m_speechResult || m_file.IsOpen();
   }
 
 
   bool Close() override
   {
+    m_speechResult.reset();
     m_file.Close();
-    m_channel = NULL;
     return true;
   }
 
 
   bool Speak(const PString & text, TextType hint) override
   {
-    if (!IsOpen() || !SetVoice(PString::Empty()))
+    if (!IsOpen())
       return false;
 
-    Aws::Polly::Model::SynthesizeSpeechRequest request;
-
-    request.SetOutputFormat(Aws::Polly::Model::OutputFormat::pcm);
-    request.SetSampleRate(m_sampleRate8k ? "8000" : "16000");
-    request.SetVoiceId(Aws::Polly::Model::VoiceIdMapper::GetVoiceIdForName(m_voice.Get(VoiceName).c_str()));
-    request.SetLanguageCode(Aws::Polly::Model::LanguageCodeMapper::GetLanguageCodeForName(m_voice.Get(VoiceLanguage).c_str()));
-    request.SetEngine(Aws::Polly::Model::EngineMapper::GetEngineForName(m_voice.Get(VoiceEngine).c_str()));
-
-    static const char * HintToAWS[TextType::NumTextType] = {
-      NULL, // Default,
-      NULL, // Literal,
-      "digits", // Digits,
-      "cardinal", // Number,
-      "cardinal", // Currency,
-      "time", // Time,
-      "date", // Date,
-      NULL, // DateAndTime,
-      "telephone", // Phone,
-      NULL, // IPAddress,
-      NULL, // Duration,
-      "characters", // Spell,
-      NULL, // Boolean
-    };
-    if (HintToAWS[hint] == NULL)
-      request.SetText(text.c_str());
-    else {
-      PStringStream strm;
-      strm << "<say-as interpret-as=\"" << HintToAWS[hint] << '"';
-      if (hint == Date) {
-        static const char * DateOrder[] = { "mdy", "dmy", "ymd" };
-        strm << " format=\"" << DateOrder[PTime::GetDateOrder()] << '"';
-      }
-      strm << '>'
-           << PXML::EscapeSpecialChars(text)
-           << "</say-as>";
-      request.SetText(strm.c_str());
-      request.SetTextType(Aws::Polly::Model::TextType::ssml);
-    }
-
-    auto outcome = GetClient()->SynthesizeSpeech(request);
-    if (!outcome.IsSuccess()) {
-      PTRACE(2, "Could not synthesize speech: " << outcome.GetError().GetMessage());
+    Aws::Polly::Model::SynthesizeSpeechOutcome outcome;
+    if (!InternalSpeak(outcome, text, hint))
       return false;
-    }
 
     auto & strm = outcome.GetResult().GetAudioStream();
     for (;;) {
@@ -343,7 +394,7 @@ public:
       if (count == 0)
         break;
 
-      if (m_channel != NULL ? m_channel->Write(buf, count) : m_file.Write(buf, count))
+      if (m_file.Write(buf, count))
         continue;
 
       PTRACE(2, "Write failure to \"" << m_file.GetFilePath() << "\" - " << m_file.GetErrorText());
@@ -351,6 +402,16 @@ public:
     }
 
     return true;
+  }
+
+  PChannel * SpeakToChannel(const PString & text, TextType hint) override
+  {
+    Aws::Polly::Model::SynthesizeSpeechOutcome outcome;
+    if (!InternalSpeak(outcome, text, hint))
+      return NULL;
+
+    m_speechResult = std::make_shared<Aws::Polly::Model::SynthesizeSpeechResult>(outcome.GetResultWithOwnership());
+    return new PollyChannel(m_speechResult);
   }
 };
 

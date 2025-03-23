@@ -64,7 +64,6 @@ class PTextToSpeech : public PObject
     virtual unsigned GetVolume() const = 0;
 
     virtual bool OpenFile(const PFilePath & fn) = 0;
-    virtual bool OpenChannel(PChannel * chanel) = 0;
     virtual bool IsOpen() const = 0;
     virtual bool Close() = 0;
 
@@ -85,6 +84,7 @@ class PTextToSpeech : public PObject
     );
 
     virtual bool Speak(const PString & text, TextType hint = Default) = 0;
+    virtual PChannel * SpeakToChannel(const PString & text, TextType hint = Default);
 
     static const PCaselessString & VoiceName();
     static const PCaselessString & VoiceLanguage();

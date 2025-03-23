@@ -147,6 +147,12 @@ PString PTextToSpeech::GetVoice() const
 }
 
 
+PChannel * PTextToSpeech::SpeakToChannel(const PString &, TextType)
+{
+  return NULL;
+}
+
+
 //////////////////////////////////////////////////////////////////////////////////
 
 class PTextToSpeech_WAV : public PTextToSpeech
@@ -188,16 +194,6 @@ public:
     m_opened = true;
 
     PTRACE(3, "Writing speech to " << fn);
-
-    return true;
-  }
-  PBoolean OpenChannel(PChannel * /*channel*/)
-  {
-    PWaitAndSignal m(mutex);
-
-    Close();
-    m_usingFile = false;
-    m_opened = false;
 
     return true;
   }
