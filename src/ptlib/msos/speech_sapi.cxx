@@ -399,13 +399,6 @@ class PTextToSpeech_SAPI : public PTextToSpeech, protected PSpStreamFormat
     }
 
 
-    bool OpenChannel(PChannel * /*channel*/)
-    {
-      Close();
-      return false;
-    }
-
-
     bool IsOpen() const
     {
       return m_opened;

@@ -63,7 +63,6 @@ class PTextToSpeech_Festival : public PTextToSpeech
     unsigned GetVolume() const;
 
     PBoolean OpenFile(const PFilePath & fn);
-    PBoolean OpenChannel(PChannel * channel);
     PBoolean IsOpen() const { return !m_filePath.empty(); }
 
     PBoolean Close();
@@ -96,12 +95,6 @@ PTextToSpeech_Festival::~PTextToSpeech_Festival()
   PWaitAndSignal mutex(m_mutex);
   Close();
   PTRACE(4, "Destroyed " << this);
-}
-
-
-PBoolean PTextToSpeech_Festival::OpenChannel(PChannel *)
-{
-  return false;
 }
 
 
