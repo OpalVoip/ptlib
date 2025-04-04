@@ -1574,7 +1574,10 @@
 #undef P_AWS_SDK_RELEASE32
 #undef P_AWS_SDK_DEBUG64
 #undef P_AWS_SDK_RELEASE64
+#ifndef _DEBUG
+// the vcpkg version only has release version of std headers
 #undef P_AWS_SDK_VCPKG
+#endif
 
 #if defined(P_AWS_SDK_VCPKG)
   #define P_AWS_SDK 1
