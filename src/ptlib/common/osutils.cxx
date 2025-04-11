@@ -397,9 +397,11 @@ PTHREAD_MUTEX_RECURSIVE_NP
       SetStream(&cerr);
     else if (m_filename == "stdout")
       SetStream(&cout);
-#ifdef _WIN32
     else if (m_filename == "DEBUGSTREAM")
+#ifdef _WIN32
       SetStream(new PDebugStream);
+#else
+      SetStream(&clog);
 #endif
 #if P_SYSTEMLOG
 #ifdef P_SYSTEMLOG_TO_SYSLOG
@@ -806,7 +808,10 @@ PINDEX PTrace::GetMaxLength()
 
 void PTrace::SetOptionsByName(const char * options)
 {
-  SetOptions(OptionsFromString(options, GetOptions()));
+  PTraceInfo & info = PTraceInfo::Instance();
+  if (info.AdjustOptions(OptionsFromString(options, info.m_options), UINT_MAX)) {
+    PTRACE(2, "Trace options set to 0x" << info.m_options);
+  }
 }
 
 
@@ -3140,7 +3145,11 @@ void PProcess::PrintOn(ostream & strm) const
 #if PTRACING
 void PProcess::ProfileUpdateLogTimer(PTimer&, P_INT_PTR shuttingDown)
 {
-  ostream & strm = PTRACE_BEGIN(3, "PTLibProfile");
+  static unsigned Level = 3;
+  if (!PTrace::CanTrace(Level))
+    return;
+
+  ostream & strm = PTRACE_BEGIN(Level, "PTLibProfile");
   strm<< *this << "; ";
 
   PWaitAndSignal lock(m_profileProcessMutex);
