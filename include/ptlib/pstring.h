@@ -1562,15 +1562,15 @@ class PString : public PCharArray
       const PString & delimiter,  ///< Delimiter around which tom plit the substrings
       PString & before,           ///< Substring before delimiter
       PString & after,            ///< Substring after delimiter
-      SplitOptions options = SplitTrim  ///< Options for how to split the string
+      const SplitOptions options = SplitTrim  ///< Options for how to split the string
       ) const
     { return InternalSplit(delimiter, before, after, options); }
 
     // The insanity below is all to maintain backward compatibility with the previous API
-    __inline bool Split(char delimiter, PString & before, PString & after, SplitOptions options) const              { return InternalSplit(delimiter, before, after, options); }
-    __inline bool Split(char delimiter, PString & before, PString & after, SplitOptions_Bits options) const         { return InternalSplit(delimiter, before, after, options); }
-    __inline bool Split(const char * delimiter, PString & before, PString & after, SplitOptions options) const      { return InternalSplit(delimiter, before, after, options); }
-    __inline bool Split(const char * delimiter, PString & before, PString & after, SplitOptions_Bits options) const { return InternalSplit(delimiter, before, after, options); }
+    __inline bool Split(char delimiter, PString & before, PString & after, const SplitOptions options) const              { return InternalSplit(delimiter, before, after, options); }
+    __inline bool Split(char delimiter, PString & before, PString & after, const SplitOptions_Bits options) const         { return InternalSplit(delimiter, before, after, options); }
+    __inline bool Split(const char * delimiter, PString & before, PString & after, const SplitOptions options) const      { return InternalSplit(delimiter, before, after, options); }
+    __inline bool Split(const char * delimiter, PString & before, PString & after, const SplitOptions_Bits options) const { return InternalSplit(delimiter, before, after, options); }
     __inline bool Split(char delimiter, PString & before, PString & after, bool trim) const                         { return InternalSplit(delimiter, before, after, trim ? SplitTrim : SplitOnly); }
 
 
@@ -1983,7 +1983,7 @@ class PString : public PCharArray
       const PString & delimiter,  // Delimiter around which tom plit the substrings
       PString & before,           // Substring before delimiter
       PString & after,            // Substring after delimiter
-      SplitOptions_Bits options   // options
+      const SplitOptions options   // options
     ) const;
 
     /* Internal function to compare the current string value against the
