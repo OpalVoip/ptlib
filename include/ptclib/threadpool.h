@@ -435,13 +435,13 @@ class PQueuedThreadPool : public PThreadPool<Work_T>
             this->WaitForTermination();
         }
 
-        void AddWork(Work_T * work, const string & group)
+        virtual void AddWork(Work_T * work, const string & group) override
         {
           if (PAssertNULL(work) != NULL)
             this->m_queue.Enqueue(QueuedWork(work, group));
         }
 
-        void RemoveWork(Work_T * work)
+        virtual void RemoveWork(Work_T * work) override
         {
           delete work;
         }

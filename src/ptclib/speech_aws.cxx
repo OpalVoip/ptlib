@@ -91,17 +91,17 @@ class PTextToSpeech_AWS : public PTextToSpeech, PAwsClient<Aws::Polly::PollyClie
       Close();
     }
 
-    virtual PString GetName() const
+    virtual PString GetName() const override
     {
       return "PollyChannel";
     }
 
-    virtual bool IsOpen() const
+    virtual bool IsOpen() const override
     {
       return !!m_speechResult;
     }
 
-    virtual bool Close()
+    virtual bool Close() override
     {
       m_speechResult.reset();
       return true;
