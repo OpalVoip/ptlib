@@ -446,7 +446,7 @@ class PQueuedThreadPool : public PThreadPool<Work_T>
           delete work;
         }
 
-        unsigned GetWorkSize() const
+        unsigned GetWorkSize() const override
         {
           unsigned work = this->m_queue.size();
           if (this->m_working)
@@ -454,7 +454,7 @@ class PQueuedThreadPool : public PThreadPool<Work_T>
           return work;
         }
 
-        virtual bool Work()
+        virtual bool Work() override
         {
           QueuedWork item;
           if (!this->m_queue.Dequeue(item))
@@ -477,7 +477,7 @@ class PQueuedThreadPool : public PThreadPool<Work_T>
           return true;
         }
 
-        void Shutdown()
+        void Shutdown() override
         {
           this->m_shutdown = true;
           this->m_queue.Close(true);
