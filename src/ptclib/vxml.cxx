@@ -4576,7 +4576,7 @@ void PVXMLDigitsGrammar::OnRecognition(PSpeechRecognition & sr, PSpeechRecogniti
 {
   if (transcript.m_final)
     PVXMLGrammar::OnRecognition(sr, transcript);
-  else if (transcript.m_confidence > 0.5)
+  else if (transcript.m_confidence > 0)
     Start(FromUtterance);   // So barge in can happen on first utterance and maxspeechtimeout used
 }
 
@@ -4680,7 +4680,7 @@ void PVXMLTextGrammar::OnRecognition(PSpeechRecognition& sr, PSpeechRecognition:
 {
   if (transcript.m_final)
     PVXMLGrammar::OnRecognition(sr, transcript);
-  else if (transcript.m_confidence > 0.5)
+  else if (transcript.m_confidence > 0)
     Start(FromUtterance);   // So barge in can happen on first utterance and maxspeechtimeout used
 }
 
