@@ -157,7 +157,8 @@
 
       bool Initialise(ostream & strm)
       {
-        if (!GetFunction("SymInitialize", (Function &)m_SymInitialize) ||
+        if (!IsLoaded() ||
+            !GetFunction("SymInitialize", (Function &)m_SymInitialize) ||
             !GetFunction("SymCleanup", (Function &)m_SymCleanup) ||
             !GetFunction("SymGetOptions", (Function &)m_SymGetOptions) ||
             !GetFunction("SymSetOptions", (Function &)m_SymSetOptions) ||
@@ -270,9 +271,6 @@
 
       void WalkStack(ostream & strm, PThreadIdentifier id, unsigned framesToSkip)
       {
-        if (!Initialise(strm))
-          return;
-
         // The thread information.
         HANDLE hThread;
         int resumeCount = -1;
@@ -307,6 +305,14 @@
           }
         }
 
+        WalkStack(strm, hThread, threadContext, framesToSkip);
+
+        if (resumeCount >= 0)
+          ResumeThread(hThread);
+      }
+
+      void WalkStack(ostream & strm, HANDLE hThread, CONTEXT & threadContext, unsigned framesToSkip)
+      {
         STACKFRAME64 frame;
         memset(&frame, 0, sizeof(frame));
         frame.AddrPC.Mode    = AddrModeFlat;
@@ -361,9 +367,6 @@
           if (frame.AddrReturn.Offset == 0)
             break;
         }
-
-        if (resumeCount >= 0)
-          ResumeThread(hThread);
       }
   };
 
@@ -371,7 +374,7 @@
   void PPlatformWalkStack(ostream & strm, PThreadIdentifier id, PUniqueThreadIdentifier, unsigned framesToSkip, bool, bool)
   {
     PDebugDLL debughelp;
-    if (debughelp.IsLoaded())
+    if (debughelp.Initialise(strm))
       debughelp.WalkStack(strm, id, framesToSkip);
   }
 
@@ -447,6 +450,14 @@ LONG WINAPI PExceptionHandler(PEXCEPTION_POINTERS info)
 {
   ostringstream strm;
   switch (info->ExceptionRecord->ExceptionCode) {
+    case 0x406D1388: // Thread name change
+      {
+        LPCSTR threadName = ((THREADNAME_INFO *)&info->ExceptionRecord->ExceptionInformation[0])->szName;
+        PThread * thread = PThread::Current();
+        if (thread != NULL && threadName != NULL)
+          thread->SetThreadName(threadName);
+      }
+      return EXCEPTION_CONTINUE_EXECUTION;
     case EXCEPTION_ACCESS_VIOLATION:
       strm << "Access violation: " << (info->ExceptionRecord->ExceptionInformation[0] ? "Write" : "Read")
            << " at " << (void *)(info->ExceptionRecord->ExceptionInformation[1]);
@@ -469,16 +480,10 @@ LONG WINAPI PExceptionHandler(PEXCEPTION_POINTERS info)
 
   strm << ", when=" << PTime().AsString(PTime::LoggingFormat PTRACE_PARAM(, PTrace::GetTimeZone()));
 
-  PDebugDLL debughelp;
-  if (debughelp.Initialise(strm)) {
-#ifdef _M_IX86
-    // normally, call ImageNtHeader() and use machine info from PE header
-    debughelp.OutputSymbol(strm, info->ContextRecord->Eip);
-#elif _M_X64
-    debughelp.OutputSymbol(strm, info->ContextRecord->Rip);
-#elif _M_IA64
-    debughelp.OutputSymbol(strm, info->ContextRecord->StIIP);
-#endif
+  if (info->ContextRecord) {
+    PDebugDLL debughelp;
+    if (debughelp.Initialise(strm))
+      debughelp.WalkStack(strm, GetCurrentThread(), *info->ContextRecord, 0);
   }
 
   string msg = strm.str();
@@ -488,17 +493,16 @@ LONG WINAPI PExceptionHandler(PEXCEPTION_POINTERS info)
   else if (PProcess::Current().IsServiceProcess())
     PSYSTEMLOG(Fatal, "Caught Exception: " << msg);
   else {
+#if PTRACING
+    PTrace::Begin(0, NULL, 0, NULL, "PException") << msg << PTrace::End;
+#endif
     if (PProcess::Current().IsGUIProcess()) {
       PVarString boxMsg = msg;
       PVarString boxTitle = PProcess::Current().GetName();
-      MessageBox(NULL, boxMsg, "Exception", MB_OK | MB_ICONHAND | MB_TASKMODAL);
+      MessageBox(NULL, boxMsg, boxTitle, MB_OK | MB_ICONHAND | MB_TASKMODAL);
     }
     else {
       cerr << msg << endl;
-#if PTRACING
-      if (PTrace::GetStream() != &PError)
-        PTrace::Begin(0, NULL, 0, NULL, "PException") << msg << PTrace::End;
-#endif
       PProcess::Current().WaitOnExitConsoleWindow();
     }
     ExitProcess(1);

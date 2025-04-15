@@ -888,27 +888,6 @@ bool PConsoleChannel::InternalSetConsoleMode(DWORD bit, bool on)
 ///////////////////////////////////////////////////////////////////////////////
 // PProcess
 
-#ifdef _WIN32
-
-LONG WINAPI MyExceptionHandler(_EXCEPTION_POINTERS * info)
-{
-  ostringstream str;
-  str << "Unhandled exception: code=" << info->ExceptionRecord->ExceptionCode
-      << ", when=" << PTime().AsString(PTime::LoggingFormat PTRACE_PARAM(, PTrace::GetTimeZone())) << ends;
-  
-  PAssertAlways(str.str().c_str());
-  ExitProcess(1);
-}
-
-#else // _WIN32
-
-PBoolean PProcess::IsGUIProcess() const
-{
-  return false;
-}
-
-#endif // _WIN32
-
 static void StaticSignalHandler(int signal)
 {
   PProcess::Current().AsynchronousRunTimeSignal(signal, 0);
