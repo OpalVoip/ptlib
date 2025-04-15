@@ -56,6 +56,7 @@
 #define PTraceModule() "PTLib"
 
 static const char DefaultRollOverPattern[] = "_yyyy_MM_dd_hh_mm";
+static PConstString const ExternalThreadName("External thread");
 
 class PExternalThread : public PThread
 {
@@ -64,7 +65,7 @@ class PExternalThread : public PThread
     PExternalThread()
       : PThread(false)
     {
-      SetThreadName("External thread");
+      SetThreadName(ExternalThreadName);
       PTRACE(5, "Created external thread " << this << ","
                 " thread-id=" << GetCurrentThreadId() << ","
                 " unique-id=" << GetCurrentUniqueIdentifier());
@@ -3619,13 +3620,7 @@ PString PThread::GetThreadName() const
 
 static void SetOperatingSystemThreadName(DWORD threadId, const char * threadName)
 {
-  struct THREADNAME_INFO
-  {
-    DWORD dwType;      // must be 0x1000
-    LPCSTR szName;     // pointer to name (in user addr space)
-    DWORD dwThreadID;  // thread ID (-1=caller thread, but seems to set more than one thread's name)
-    DWORD dwFlags;     // reserved for future use, must be zero
-  } threadInfo = { 0x1000, threadName, threadId, 0 };
+  THREADNAME_INFO threadInfo = { 0x1000, threadName, threadId, 0 };
 
   __try
   {
@@ -3672,7 +3667,7 @@ void PThread::SetThreadName(const PString & name)
       m_threadName += idStr;
   }
 
-  if (&PProcess::Current() != this)
+  if (&PProcess::Current() != this && name != ExternalThreadName)
     SetOperatingSystemThreadName(GetThreadId(), m_threadName);
 }
  

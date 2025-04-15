@@ -91,17 +91,17 @@ class PTextToSpeech_AWS : public PTextToSpeech, PAwsClient<Aws::Polly::PollyClie
       Close();
     }
 
-    virtual PString GetName() const
+    virtual PString GetName() const override
     {
       return "PollyChannel";
     }
 
-    virtual bool IsOpen() const
+    virtual bool IsOpen() const override
     {
       return !!m_speechResult;
     }
 
-    virtual bool Close()
+    virtual bool Close() override
     {
       m_speechResult.reset();
       return true;
@@ -615,6 +615,8 @@ class PSpeechRecognition_AWS : public PSpeechRecognition, PAwsClient<Aws::Transc
                             transcript.m_when = PTimeInterval::Seconds((double)item.GetNumber("StartTime"));
                             transcript.m_content = item.GetString("Content");
                             transcript.m_confidence = (float)item.GetNumber("Confidence");
+                            if (transcript.m_confidence <= 0 && item.GetString("Type") == "pronunciation")
+                              transcript.m_confidence = 0.1f; // Need _some_ confidence in it!
                             if (!transcript.m_content.empty()) {
                               PTRACE(4, "Sending notification of " << transcript);
                               m_notifier(*this, transcript);

@@ -114,7 +114,7 @@
   typedef unsigned char  BYTE;  //  8 bit unsigned integer quantity
   typedef unsigned short WORD;  // 16 bit unsigned integer quantity
   typedef unsigned long  DWORD; // 32 bit unsigned integer quantity
-  typedef int            BOOL;  // type returned by expresion (i != j)
+  typedef int            BOOL;  // type returned by expression (i != j)
 
   #define TRUE 1
   #define FALSE 0
@@ -154,7 +154,7 @@
 
 
 /////////////////////////////////////////////////////////////////
-// Some backward compatbility stuff, really should use stdint now
+// Some backward compatibility stuff, really should use stdint now
 
 // Declaration for signed integer that is 16 bits
 typedef int16_t PInt16;
@@ -343,6 +343,13 @@ typedef int socklen_t;
   #define NETDB_SUCCESS 0
 #endif
 
+struct THREADNAME_INFO
+{
+  DWORD dwType;      // must be 0x1000
+  LPCSTR szName;     // pointer to name (in user addr space)
+  DWORD dwThreadID;  // thread ID (-1=caller thread, but seems to set more than one thread's name)
+  DWORD dwFlags;     // reserved for future use, must be zero
+};
 
 
 #endif // PTLIB_PLATFORM_H
