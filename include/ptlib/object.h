@@ -780,6 +780,22 @@ public:
   */
   static ostream * GetStream();
 
+  /** Get the trace output stream and lock it until out of scope.
+   */
+  class LockedStream
+  {
+    private:
+      ostream * m_stream;
+    public:
+      LockedStream();
+      ~LockedStream();
+      ostream & operator*() const { return *m_stream; }
+      ostream * operator->() const { return m_stream; }
+      operator bool() const { return m_stream != NULL; }
+      bool operator!() const { return m_stream == NULL; }
+    friend class PTrace;
+  };
+
   /// Get the time zone being used for logging.
   static int GetTimeZone();
 

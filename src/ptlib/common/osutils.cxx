@@ -542,6 +542,20 @@ ostream * PTrace::GetStream()
 }
 
 
+PTrace::LockedStream::LockedStream()
+{
+  PTraceInfo & info = PTraceInfo::Instance();
+  info.Lock();
+  m_stream = info.m_stream;
+}
+
+
+PTrace::LockedStream::~LockedStream()
+{
+  PTraceInfo::Instance().Unlock();
+}
+
+
 int PTrace::GetTimeZone()
 {
   return (GetOptions()&PTrace::GMTTime) ? PTime::GMT : PTime::Local;
