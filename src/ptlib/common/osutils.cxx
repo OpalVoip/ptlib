@@ -2861,8 +2861,8 @@ PProcess::~PProcess()
 
   // Can't do any more tracing after this ...
 #if PTRACING
-  PTrace::SetStream(NULL);
   PTrace::SetLevel(0);
+  PTrace::SetStream(NULL);
 #endif
 
   PProcessInstance.store(NULL);
