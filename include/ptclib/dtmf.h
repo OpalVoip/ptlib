@@ -69,11 +69,12 @@ class PDTMFDecoder : public PObject
           [volume % ] frequency ':' cadence [ '/' ... ]
 
       where frequency is one of
-          frequency         single frequency tone
+          frequency         single frequency tone, zero indicates silence
           freq1 '+' freq2   two frequency juxtaposed (simple mixing)
           freq1 'x' freq2   first frequency modulated by second frequency
           freq1 '-' freq2   Alternate frequencies, generated tone is freq1
-                            used for compatibility with tone filters
+                            and freq2 is ignored. Used for compatibility
+                            with tone filters
           Af0-G#9           Standard musical note codes, letters A to G
                             followed by optional 'f' or '#' for flat or sharp,
                             then on optional octave number from 0 to 9.
