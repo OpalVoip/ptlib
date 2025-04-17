@@ -433,6 +433,7 @@ bool PTones::Generate(const PString & descriptor, unsigned sampleRate, unsigned 
     }
   }
 
+  PTRACE(4, "Generated " << GetSize() << " samples from \"" << descriptor << '"');
   return SetSize(m_addPosition);
 }
 
@@ -449,6 +450,8 @@ bool PTones::Generate(char operation, unsigned frequency1, unsigned frequency2, 
     m_angle1 = 0;
     m_angle2 = 0;
   }
+  if (frequency1 == 0)
+    return Silence(milliseconds);
 
   switch (operation) {
     case '+':
