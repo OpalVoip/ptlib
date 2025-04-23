@@ -29,11 +29,11 @@
 #define _PTLIB_CONFIG_H
 
 
-#undef    PTLIB_MAJOR
-#undef    PTLIB_MINOR
-#undef    PTLIB_PATCH
-#undef    PTLIB_OEM
-#undef    PTLIB_VERSION
+#cmakedefine    PTLIB_MAJOR     @PTLIB_MAJOR@
+#cmakedefine    PTLIB_MINOR     @PTLIB_MINOR@
+#cmakedefine    PTLIB_PATCH     @PTLIB_PATCH@
+#cmakedefine    PTLIB_OEM       @PTLIB_OEM@
+#cmakedefine    PTLIB_VERSION   "@PTLIB_VERSION@"
 
 #define PTLIB_VERSION_INT_OEM(major,minor,patch,oem) ((major<<24)|(minor<<16)|(patch<<8)|(oem))
 #define PTLIB_CHECK_VERSION_OEM(major,minor,patch,oem) \
@@ -48,18 +48,18 @@
 // host type
 //
 
-#undef    P_LINUX
-#undef    P_FREEBSD
-#undef    P_OPENBSD
-#undef    P_NETBSD
-#undef    P_SOLARIS
-#undef    P_MACOSX
-#undef    P_IOS
-#undef    P_CYGWIN
-#undef    P_MINGW
-#undef    P_GNU_HURD
-#undef    P_ANDROID
-#undef    P_UNKNOWN_OS
+#cmakedefine    P_LINUX        @P_LINUX@
+#cmakedefine    P_FREEBSD      @P_FREEBSD@
+#cmakedefine    P_OPENBSD      @P_OPENBSD@
+#cmakedefine    P_NETBSD       @P_NETBSD@
+#cmakedefine    P_SOLARIS      @P_SOLARIS@
+#cmakedefine    P_MACOSX       @P_MACOSX@
+#cmakedefine    P_IOS          @P_IOS@
+#cmakedefine    P_CYGWIN       @P_CYGWIN@
+#cmakedefine    P_MINGW        @P_MINGW@
+#cmakedefine    P_GNU_HURD     @P_GNU_HURD@
+#cmakedefine    P_ANDROID      @P_ANDROID@
+#cmakedefine    P_UNKNOWN_OS   @P_UNKNOWN_OS@
 
 // Windows API version for compile
 #if !defined(WINVER)
@@ -97,7 +97,7 @@
 #else
   #undef SIZEOF_INT
   #undef HAVE_INTTYPES_H
-  #undef HAVE_STDINT_H
+  #cmakedefine HAVE_STDINT_H @HAVE_STDINT_H@
   #undef int8_t
   #undef int16_t
   #undef int32_t
