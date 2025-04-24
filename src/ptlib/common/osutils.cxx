@@ -1050,14 +1050,16 @@ ostream & PTraceInfo::InternalEnd(ostream & paramStream)
   else
     output << message;
 
+#if P_SYSTEMLOG
   if (HasOption(SystemLogStream))
     PSystemLog::OutputToTarget(PSystemLog::LevelFromInt(context->m_level), output);
-  else {
+  else 
+#endif
+  {
     Lock();
     *m_stream << output << endl;
     Unlock();
   }
-
   delete context;
 
   return paramStream;

@@ -27,7 +27,7 @@
 #define _PTLib_REVISION_H
 
 #define SVN_REVISION 0
-#define GIT_COMMIT ""
+#define GIT_COMMIT "${GIT_HASH}"
 
 #endif  // _PTLib_REVISION_H
 

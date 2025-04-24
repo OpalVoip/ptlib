@@ -29,11 +29,11 @@
 #define _PTLIB_CONFIG_H
 
 
-#cmakedefine    PTLIB_MAJOR     @PTLIB_MAJOR@
-#cmakedefine    PTLIB_MINOR     @PTLIB_MINOR@
-#cmakedefine    PTLIB_PATCH     @PTLIB_PATCH@
-#cmakedefine    PTLIB_OEM       @PTLIB_OEM@
-#cmakedefine    PTLIB_VERSION   "@PTLIB_VERSION@"
+#define    PTLIB_MAJOR     @PTLIB_MAJOR@
+#define    PTLIB_MINOR     @PTLIB_MINOR@
+#define    PTLIB_PATCH     @PTLIB_PATCH@
+#define    PTLIB_OEM       @PTLIB_OEM@
+#define    PTLIB_VERSION   "@PTLIB_VERSION@"
 
 #define PTLIB_VERSION_INT_OEM(major,minor,patch,oem) ((major<<24)|(minor<<16)|(patch<<8)|(oem))
 #define PTLIB_CHECK_VERSION_OEM(major,minor,patch,oem) \
@@ -49,6 +49,7 @@
 //
 
 #cmakedefine    P_LINUX        @P_LINUX@
+#cmakedefine    P_WINDOWS      @P_WINDOWS@
 #cmakedefine    P_FREEBSD      @P_FREEBSD@
 #cmakedefine    P_OPENBSD      @P_OPENBSD@
 #cmakedefine    P_NETBSD       @P_NETBSD@
@@ -57,7 +58,6 @@
 #cmakedefine    P_IOS          @P_IOS@
 #cmakedefine    P_CYGWIN       @P_CYGWIN@
 #cmakedefine    P_MINGW        @P_MINGW@
-#cmakedefine    P_GNU_HURD     @P_GNU_HURD@
 #cmakedefine    P_ANDROID      @P_ANDROID@
 #cmakedefine    P_UNKNOWN_OS   @P_UNKNOWN_OS@
 
@@ -74,8 +74,8 @@
 // Language stuff
 //
 
-#undef P_EXCEPTIONS
-#define P_USE_ASSERTS 1
+#cmakedefine P_EXCEPTIONS @P_EXCEPTIONS@
+#cmakedefine P_USE_ASSERTS @P_USE_ASSERTS@
 
 
 /////////////////////////////////////////////////
@@ -95,32 +95,19 @@
   #define HAVE_UNSIGNED_LONG_LONG_INT 1
   #define HAVE_LONG_DOUBLE 1
 #else
-  #undef SIZEOF_INT
-  #undef HAVE_INTTYPES_H
-  #cmakedefine HAVE_STDINT_H @HAVE_STDINT_H@
-  #undef int8_t
-  #undef int16_t
-  #undef int32_t
-  #undef int64_t
-  #undef intptr_t
-  #undef uint8_t
-  #undef uint16_t
-  #undef uint32_t
-  #undef uint64_t
-  #undef uintptr_t
+  #cmakedefine SIZEOF_INT                  @SIZEOF_INT@
+  #cmakedefine HAVE_LONG_LONG_INT          @HAVE_LONG_LONG_INT@
+  #cmakedefine HAVE_UNSIGNED_LONG_LONG_INT @HAVE_UNSIGNED_LONG_LONG_INT@
+  #cmakedefine HAVE_LONG_DOUBLE            @HAVE_LONG_DOUBLE@
+#endif // _MSC_VER
 
-  #undef HAVE_LONG_LONG_INT
-  #undef HAVE_UNSIGNED_LONG_LONG_INT
-  #undef HAVE_LONG_DOUBLE
-#endif
-
-#undef P_HAS_WCHAR
+#cmakedefine P_HAS_WCHAR @P_HAS_WCHAR@
 #if P_HAS_WCHAR
-  #undef P_HAS_WOSTREAM
+  #cmakedefine P_HAS_WOSTREAM @P_HAS_WOSTREAM@
 #endif
-#undef P_HAS_SET_RDBUF
+#cmakedefine P_HAS_SET_RDBUF @P_HAS_SET_RDBUF@
 
-#undef PBYTE_ORDER
+#cmakedefine PBYTE_ORDER @PBYTE_ORDER@
 #ifndef PBYTE_ORDER
   #if defined(__BIG_ENDIAN__)
     #define PBYTE_ORDER PBIG_ENDIAN
@@ -135,10 +122,10 @@
 // Runtime dynamic link libraries
 //
 
-#undef P_DYNALINK
-#undef P_PLUGINMGR
-#undef P_PLUGINS
-#undef P_DEFAULT_PLUGIN_DIR
+#cmakedefine P_DYNALINK           @P_DYNALINK@
+#cmakedefine P_PLUGINMGR          @P_PLUGINMGR@
+#cmakedefine P_PLUGINS            @P_PLUGINS@
+#cmakedefine P_DEFAULT_PLUGIN_DIR "@P_DEFAULT_PLUGIN_DIR@"
 
 
 /////////////////////////////////////////////////
@@ -154,7 +141,6 @@
   #define HAVE_UNSIGNED_LONG_LONG_INT 1
   #define HAVE_LONG_DOUBLE 1
 
-  #define HAVE_LIMITS_H 1
   #define HAVE_UNISTD_H 1
   #define HAVE_ALLOCA_H 1
   #define HAVE_SYS_TYPES_H 1
@@ -180,7 +166,6 @@
 
   #define P_PTHREADS 1
   #define P_HAS_SEMAPHORES 1
-  #define P_ATOMICITY_BUILTIN 1
   #define P_HAS_RECURSIVE_MUTEX 1
   #define P_HAS_POLL 1
   #define P_HAS_RECVMSG 1
@@ -191,57 +176,52 @@
 
 #else // P_ANDROID
 
-  #undef HAVE_LIMITS_H
-  #undef HAVE_UNISTD_H
-  #undef HAVE_ALLOCA_H
-  #undef HAVE_SYS_TYPES_H
-  #undef HAVE_DIRENT_H
-  #undef HAVE_SYS_NDIR_H
-  #undef HAVE_SYS_DIR_H
-  #undef HAVE_NDIR_H
-  #undef HAVE_SYS_STAT_H
-  #undef STDC_HEADERS
-  #undef HAVE_STDLIB_H
-  #undef HAVE_STRING_H
-  #undef HAVE_STRINGS_H
-  #undef HAVE_SIGNAL_H
-  #undef HAVE_FCNTL_H
-  #undef HAVE_TERMIOS_H
-  #undef HAVE_SYS_TERMIOS_H
-  #undef HAVE_IOCTL_H
-  #undef HAVE_SYS_IOCTL_H
-  #undef HAVE_SYS_TIME_H
-  #undef HAVE_SYS_SOCKET_H
-  #undef HAVE_NETDB_H
-  #undef HAVE_NETINET_IN_H
-  #undef HAVE_NETINET_TCP_H
-  #undef HAVE_ARPA_INET_H
-  #undef HAVE_NET_IF_H
-  #undef HAVE_IFADDRS_H
-  #undef HAVE_SYS_SOCKIO_H
-  #undef HAVE_SYS_SYSCTL_H
-  #undef HAVE_LINUX_ERRQUEUE_H
-  #undef HAVE_NET_IF_DL_H
-  #undef HAVE_NET_IF_TYPES_H
-  #undef HAVE_NETINET_IF_ETHER_H
+  #cmakedefine HAVE_UNISTD_H           @HAVE_UNISTD_H@
+  #cmakedefine HAVE_ALLOCA_H           @HAVE_ALLOCA_H@
+  #cmakedefine HAVE_SYS_TYPES_H        @HAVE_SYS_TYPES_H@
+  #cmakedefine HAVE_DIRENT_H           @HAVE_DIRENT_H@
+  #cmakedefine HAVE_SYS_NDIR_H         @HAVE_SYS_NDIR_H@
+  #cmakedefine HAVE_SYS_DIR_H          @HAVE_SYS_DIR_H@
+  #cmakedefine HAVE_NDIR_H             @HAVE_NDIR_H@
+  #cmakedefine HAVE_SYS_STAT_H         @HAVE_SYS_STAT_H@
+  #cmakedefine STDC_HEADERS            @STDC_HEADERS@
+  #cmakedefine HAVE_STDLIB_H           @HAVE_STDLIB_H@
+  #cmakedefine HAVE_STRING_H           @HAVE_STRING_H@
+  #cmakedefine HAVE_STRINGS_H          @HAVE_STRINGS_H@
+  #cmakedefine HAVE_SIGNAL_H           @HAVE_SIGNAL_H@
+  #cmakedefine HAVE_FCNTL_H            @HAVE_FCNTL_H@
+  #cmakedefine HAVE_TERMIOS_H          @HAVE_TERMIOS_H@
+  #cmakedefine HAVE_SYS_TERMIOS_H      @HAVE_SYS_TERMIOS_H@
+  #cmakedefine HAVE_IOCTL_H            @HAVE_IOCTL_H@
+  #cmakedefine HAVE_SYS_IOCTL_H        @HAVE_SYS_IOCTL_H@
+  #cmakedefine HAVE_SYS_TIME_H         @HAVE_SYS_TIME_H@
+  #cmakedefine HAVE_SYS_SOCKET_H       @HAVE_SYS_SOCKET_H@
+  #cmakedefine HAVE_NETDB_H            @HAVE_NETDB_H@
+  #cmakedefine HAVE_NETINET_IN_H       @HAVE_NETINET_IN_H@
+  #cmakedefine HAVE_NETINET_TCP_H      @HAVE_NETINET_TCP_H@
+  #cmakedefine HAVE_ARPA_INET_H        @HAVE_ARPA_INET_H@
+  #cmakedefine HAVE_NET_IF_H           @HAVE_NET_IF_H@
+  #cmakedefine HAVE_IFADDRS_H          @HAVE_IFADDRS_H@
+  #cmakedefine HAVE_SYS_SOCKIO_H       @HAVE_SYS_SOCKIO_H@
+  #cmakedefine HAVE_SYS_SYSCTL_H       @HAVE_SYS_SYSCTL_H@
+  #cmakedefine HAVE_LINUX_ERRQUEUE_H   @HAVE_LINUX_ERRQUEUE_H@
+  #cmakedefine HAVE_NET_IF_DL_H        @HAVE_NET_IF_DL_H@
+  #cmakedefine HAVE_NET_IF_TYPES_H     @HAVE_NET_IF_TYPES_H@
+  #cmakedefine HAVE_NETINET_IF_ETHER_H @HAVE_NETINET_IF_ETHER_H@
 
-  #undef P_PTHREADS
-  #undef P_NO_PTHREAD_KILL
-  #undef P_HAS_SEMAPHORES
-  #undef P_STD_ATOMIC
-  #undef P_ATOMICITY_BUILTIN
-  #undef P_ATOMICITY_HEADER
-  #undef P_ATOMICITY_NAMESPACE
-  #undef P_HAS_RECURSIVE_MUTEX
-  #undef P_HAS_POLL
-  #undef P_HAS_RECVMSG
-  #undef P_HAS_RECVMSG_MSG_ERRQUEUE
-  #undef P_HAS_RECVMSG_IP_RECVERR
-  #undef P_HAS_RT_MSGHDR
-  #undef P_HAS_NETLINK
-  #undef P_SETPGRP_NOPARM
+  #cmakedefine P_PTHREADS                 @P_PTHREADS@ 
+  #cmakedefine P_NO_PTHREAD_KILL          @P_NO_PTHREAD_KILL@
+  #cmakedefine P_HAS_SEMAPHORES           @P_HAS_SEMAPHORES@ 
+  #cmakedefine P_HAS_RECURSIVE_MUTEX      @P_HAS_RECURSIVE_MUTEX@
+  #cmakedefine P_HAS_POLL                 @P_HAS_POLL@ 
+  #cmakedefine P_HAS_RECVMSG              @P_HAS_RECVMSG@
+  #cmakedefine P_HAS_RECVMSG_MSG_ERRQUEUE @P_HAS_RECVMSG_MSG_ERRQUEUE@
+  #cmakedefine P_HAS_RECVMSG_IP_RECVERR   @P_HAS_RECVMSG_IP_RECVERR@
+  #cmakedefine P_HAS_RT_MSGHDR            @P_HAS_RT_MSGHDR@
+  #cmakedefine P_HAS_NETLINK              @P_HAS_NETLINK@ 
+  #cmakedefine P_SETPGRP_NOPARM           @P_SETPGRP_NOPARM@
 
-  #undef P_GNU_ALLOCATOR
+  #cmakedefine P_GNU_ALLOCATOR           @P_GNU_ALLOCATOR@  
   #undef P_HAS_MALLOC_INFO
   #undef P_HAS_NAMED_SEMAPHORES
   #undef P_PTHREADS_XPG6      
@@ -255,10 +235,10 @@
   #undef P_GETPWUID_R5
   #undef P_GETPWNAM_R4
   #undef P_GETPWNAM_R5
-  #undef P_GETGRGID_R4
-  #undef P_GETGRGID_R5
-  #undef P_GETGRNAM_R4
-  #undef P_GETGRNAM_R5
+  #cmakedefine P_GETGRGID_R4 @P_GETGRGID_R4@
+  #cmakedefine P_GETGRGID_R5 @P_GETGRGID_R5@
+  #cmakedefine P_GETGRNAM_R4 @P_GETGRNAM_R4@
+  #cmakedefine P_GETGRNAM_R5 @P_GETGRNAM_R5@
   #undef P_GETHOSTBYNAME_R
 
   #undef P_HAS_BACKTRACE
@@ -284,7 +264,7 @@
 #undef P_HAS_RDTSC
 
 #if P_HAS_WCHAR
-  #undef P_HAS_ICONV
+  #cmakedefine P_HAS_ICONV @P_HAS_ICONV@
 #endif
 
 
@@ -293,77 +273,79 @@
 // various non-platform specific features
 //
 
-#undef PMEMORY_CHECK
+#cmakedefine PMEMORY_CHECK @PMEMORY_CHECK@
 
-#undef P_AUDIO
-#undef P_VIDEO
+#cmakedefine P_AUDIO @P_AUDIO@
+#cmakedefine P_VIDEO @P_VIDEO@
 
-#undef P_TIMERS
-#undef P_REGEX
-#undef P_TEXT_TO_SPEECH
-#undef P_SPEECH_RECOGNITION
-#undef P_ASN
-#undef P_PIPECHAN
-#undef P_DTMF
-#undef P_WAVFILE
-#undef P_SOCKS
-#undef P_FTP
-#undef P_TELNET
-#undef P_CLI
-#undef P_CURSES
-#undef P_ODBC
-#undef P_ODBC_DEFINES_WINDOWS_TYPES
-#undef P_SERIAL
-#undef P_POP3SMTP
-#undef P_CONFIG_FILE
-#undef P_CYPHER
-#undef P_VARTYPE
-#undef P_GUID
+#cmakedefine P_TIMERS @P_TIMERS@
+#cmakedefine P_REGEX @P_REGEX@
+#cmakedefine P_TEXT_TO_SPEECH @P_TEXT_TO_SPEECH@
+#cmakedefine P_SPEECH_RECOGNITION @P_SPEECH_RECOGNITION@
+#cmakedefine P_ASN @P_ASN@
+#cmakedefine P_PIPECHAN @P_PIPECHAN@
+#cmakedefine P_DTMF @P_DTMF@
+#cmakedefine P_WAVFILE @P_WAVFILE@
+#cmakedefine P_SOCKS @P_SOCKS@
+#cmakedefine P_FTP @P_FTP@
+#cmakedefine P_TELNET @P_TELNET@
+#cmakedefine P_CLI @P_CLI@
+#cmakedefine P_CURSES @P_CURSES@
+#cmakedefine P_ODBC @P_ODBC@
+#cmakedefine P_ODBC_DEFINES_WINDOWS_TYPES @P_ODBC_DEFINES_WINDOWS_TYPES@
+#cmakedefine P_SERIAL @P_SERIAL@
+#cmakedefine P_POP3SMTP @P_POP3SMTP@
+#cmakedefine P_CONFIG_FILE @P_CONFIG_FILE@
+#cmakedefine P_CYPHER @P_CYPHER@
+#cmakedefine P_VARTYPE @P_VARTYPE@  
+#cmakedefine P_GUID @P_GUID@
+#cmakedefine P_SYSTEMLOG @P_SYSTEMLOG@
+#cmakedefine P_CHANNEL_UTILS @P_CHANNEL_UTILS@
+#cmakedefine P_NETWORKING @P_NETWORKING@
+
 #if P_GUID
-  #undef P_SPOOLDIR
+  #cmakedefine P_SPOOLDIR @P_SPOOLDIR@
 #endif
-#undef P_SYSTEMLOG
-#undef P_CHANNEL_UTILS
-#undef P_NETWORKING
 
 #if _WIN32 || P_PIPECHAN
-  #undef P_REMCONN
+  #cmakedefine P_REMCONN @P_REMCONN@
 #endif
 
 #if P_ASN
-  #undef P_SNMP
+  #cmakedefine P_SNMP @P_SNMP@
 #endif
 
-#undef P_NAT
+#cmakedefine P_NAT @P_NAT@
 #if P_NAT
-  #undef P_STUN
+  #cmakedefine P_STUN @P_STUN@
   #if P_STUN
-    #undef P_STUNSRVR
+    #cmakedefine P_STUNSRVR @P_STUNSRVR@
     #if P_SSL
-      #undef P_TURN
+      #cmakedefine P_TURN @P_TURN@
     #endif
   #endif
 #endif
 
-#undef P_URL
-#ifdef P_URL
-  #undef P_VCARD
-  #undef P_HTTP
+#cmakedefine P_URL @P_URL@
+#if P_URL
+  #cmakedefine P_VCARD @P_VCARD@
+  #cmakedefine P_HTTP @P_HTTP@
   #if P_HTTP
+    #cmakedefine P_CONFIG_FILE @P_CONFIG_FILE@
     #if P_CONFIG_FILE
-      #undef P_HTTPFORMS
+      #cmakedefine P_HTTPFORMS @P_HTTPFORMS@
       #if P_HTTPFORMS
-        #undef P_HTTPSVC
+        #cmakedefine P_HTTPSVC @P_HTTPSVC@
       #endif
     #endif
-    #undef P_SSDP
+    #cmakedefine P_SSDP @P_SSDP@
   #endif
 #endif
 
-#undef P_MEDIAFILE
-#undef P_VIDFILE
-#undef P_PORTAUDIO
-#undef P_PORTMIXER
+#cmakedefine P_MEDIAFILE @P_MEDIAFILE@
+#cmakedefine P_VIDFILE @P_VIDFILE@
+#cmakedefine P_PORTAUDIO @P_PORTAUDIO@
+#cmakedefine P_PORTMIXER @P_PORTMIXER@
 
 /////////////////////////////////////////////////
 //
@@ -590,7 +572,7 @@
 //
 
 #if P_VARTYPE
-  #undef P_SCRIPTS
+  #cmakedefine P_SCRIPTS @P_SCRIPTS@
 #endif
 
 

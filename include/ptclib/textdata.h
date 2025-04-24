@@ -32,6 +32,7 @@
 #include <ptlib/textfile.h>
 #include <ptclib/vartype.h>
 
+#if P_VARTYPE
 
 class PTextDataFormat : public PSmartObject
 {
@@ -42,6 +43,7 @@ class PTextDataFormat : public PSmartObject
 
     virtual bool ReadHeadings(PChannel & channel);
     virtual bool WriteHeadings(PChannel & channel);
+    
     virtual bool ReadRecord(PChannel & channel, PVarData::Record & data);
     virtual bool WriteRecord(PChannel & channel, const PVarData::Record & data);
 
@@ -169,5 +171,6 @@ protected:
     virtual PBoolean WriteString(const PString & str) override;
 };
 
+#endif // P_VARTYPE
 
 #endif // PTLIB_TEXTDATA_H

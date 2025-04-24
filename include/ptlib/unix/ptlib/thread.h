@@ -55,11 +55,7 @@
     static void * PX_ThreadMain(void *);
     static void PX_ThreadEnd(void *);
 
-#if P_STD_ATOMIC
-    atomic<Priority> PX_priority;
-#else
-    atomic<int>      PX_priority;
-#endif
+    std::atomic<Priority> PX_priority;
     
 #if defined(P_LINUX)
     PTimeInterval     PX_startTick;
@@ -74,11 +70,8 @@
       PX_finishing,
       PX_finished
     };
-#if P_STD_ATOMIC
-    atomic<PX_states> PX_state;
-#else
-    atomic<int> PX_state;
-#endif
+
+    std::atomic<PX_states> PX_state;
 
     PAutoPtr<PSyncPoint> PX_synchroniseThreadFinish;
 

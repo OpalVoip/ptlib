@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.14)
 project(ptlib
     VERSION 3.0.0
-    DESCRIPTION "Reduced Opal"
-    LANGUAGES CXX)
+    DESCRIPTION "Opal VoIP Library"
+    LANGUAGES C CXX)
 
 #----------------------------------------------------------------------------------------------------------------------
 # general settings and options
@@ -10,7 +10,14 @@ project(ptlib
 
 include(cmake/utils.cmake)
 include(GNUInstallDirs)
+include(TestBigEndian)
+include(CheckIncludeFile)
+include(CheckSymbolExists)
+include(CheckCSourceCompiles)
 include(CheckIncludeFileCXX)
+include(CheckCXXSymbolExists)
+include(CheckCXXSourceCompiles)
+include(CheckTypeSize)
 
 string(COMPARE EQUAL "${CMAKE_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}" is_top_level)
 
@@ -37,11 +44,14 @@ set_if_undefined(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
 add_library(ptlib) # initialized below
 add_library(ptlib::ptlib ALIAS ptlib)
 
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 #----------------------------------------------------------------------------------------------------------------------
 # extract ptlib version
 #----------------------------------------------------------------------------------------------------------------------
 
-file(READ "version.h" ptver)
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/version.h" ptver)
 
 # extract ptlib major version
 string(REGEX MATCH " MAJOR_VERSION ([0-9]*)" PTLIB_MAJOR ${ptver})
@@ -55,14 +65,20 @@ set(PTLIB_MINOR ${CMAKE_MATCH_1})
 string(REGEX MATCH " PATCH_VERSION ([0-9]*)" _ ${ptver})
 set(PTLIB_PATCH ${CMAKE_MATCH_1})
 
+# extract ptlib build type
+string(REGEX MATCH " BUILD_TYPE ([a-zA-Z]*)" _ ${ptver})
+set(PTLIB_BUILD_TYPE ${CMAKE_MATCH_1})
+
 # extract ptlib OEM version
 string(REGEX MATCH " OEM_VERSION ([0-9]*)" _ ${ptver})
 set(PTLIB_OEM ${CMAKE_MATCH_1})
 
-message("ptlib version: ${PTLIB_MAJOR}.${PTLIB_MINOR}.${PTLIB_PATCH}")
+message("ptlib version: ${PTLIB_MAJOR}.${PTLIB_MINOR}.${PTLIB_PATCH}-${PTLIB_BUILD_TYPE}")
 
 # set ptlib version string
-set(PTLIB_VERSION "${PTLIB_MAJOR}.${PTLIB_MINOR}.${PTLIB_PATCH}")
+set(PTLIB_VERSION "${PTLIB_MAJOR}.${PTLIB_MINOR}.${PTLIB_PATCH}-${PTLIB_BUILD_TYPE}")
+
+set(P_DEFAULT_PLUGIN_DIR "${CMAKE_INSTALL_FULL_LIBDIR}/ptlib-${PTLIB_VERSION}")
 
 #----------------------------------------------------------------------------------------------------------------------
 # extract OS version
@@ -71,32 +87,142 @@ set(PTLIB_VERSION "${PTLIB_MAJOR}.${PTLIB_MINOR}.${PTLIB_PATCH}")
 message("system: ${CMAKE_SYSTEM_NAME}")
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-  set(P_LINUX 1)
+  execute_process(COMMAND uname -r OUTPUT_VARIABLE LINUX_KERNEL_VERSION)
+  message("linux kernel version: ${LINUX_KERNEL_VERSION}")
+  set(P_LINUX ${LINUX_KERNEL_VERSION})
+elseif (CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
+  set(P_FREEBSD 1)
+elseif (CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
+  set(P_OPENBSD 1)
+elseif (CMAKE_SYSTEM_NAME STREQUAL "NetBSD")
+  set(P_NETBSD 1)
+elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+  set(P_DARWIN 1)
+elseif (CMAKE_SYSTEM_NAME STREQUAL "SunOS")
+  set(P_SOLARIS 1)
+elseif (CMAKE_SYSTEM_NAME STREQUAL "Android")
+  set(P_ANDROID 1)
+elseif (CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  set(P_WINDOWS 1)
+  set(WIN32 1)
+elseif (CMAKE_SYSTEM_NAME STREQUAL "MacOSX")
+  set(P_MACOSX 1)
+elseif (CMAKE_SYSTEM_NAME STREQUAL "iOS")
+  set(P_IOS 1)
 endif ()
 
 #----------------------------------------------------------------------------------------------------------------------
-# create ptlib_config.h file
+# ptlib configuration options
 #----------------------------------------------------------------------------------------------------------------------
 
-check_include_file_cxx("stdint.h" HAVE_STDINT_H)
-if (HAVE_STDINT_H)
-  set(HAVE_STDINT_H 1)
-else()
-  check_include_file_cxx("inttypes.h" HAVE_INTTYPES_H)
-  if (HAVE_INTTYPES_H)
-    set(HAVE_INTTYPES_H 1)
+set(P_EXCEPTIONS 1)
+set(P_USE_ASSERTS 1)
+set(P_PLUGINMGR 1)
+set(P_DEFAULT_PLUGIN_DIR "${P_DEFAULT_PLUGIN_DIR}")
+set(P_PINDEX_IS_SIZE_T 1)
+set(PTLIB_ALLOCATOR_TYPE "std")
+
+# non-platform specific features
+#undef PMEMORY_CHECK
+
+set(P_AUDIO 1)
+set(P_VIDEO 1)
+
+set(P_TIMERS 1)
+set(P_REGEX 1)
+set(P_TEXT_TO_SPEECH 1)
+set(P_SPEECH_RECOGNITION 1)
+set(P_ASN 1)
+set(P_PIPECHAN 1)
+set(P_DTMF 1)
+set(P_WAVFILE 1)
+set(P_SOCKS 1)
+set(P_FTP 1)
+set(P_TELNET 1)
+set(P_CLI 1)
+set(P_CURSES 1)
+set(P_ODBC 1)
+set(P_SERIAL 1)
+set(P_POP3SMTP 1)
+set(P_CONFIG_FILE 1)
+set(P_CYPHER 1)
+set(P_GUID 1)
+set(P_SYSTEMLOG 1)
+set(P_CHANNEL_UTILS 1)
+set(P_NETWORKING 1)
+set(P_NAT 1)
+set(P_URL 1)
+set(P_MEDIAFILE 1)
+set(P_VIDFILE 1)
+set(P_PORTAUDIO 1)
+set(P_PORTMIXER 1)
+
+# additional feature dependencies
+if (P_GUID)
+  set(P_SPOOLDIR 1)
+endif()
+
+if (_WIN32 OR P_PIPECHAN)
+  set(P_REMCONN 1)
+endif()
+
+if(P_ASN)
+  set(P_SNMP)
+endif()
+
+if (P_NAT)
+  set(P_STUN)
+  if (P_STUN)
+    set(P_STUNSRVR)
+    if (P_SSL)
+      set(P_TURN)
+    endif()
+  endif()
+endif()
+
+if (P_URL)
+  set(P_VCARD)
+  set(P_HTTP)
+  if (P_HTTP)
+    if (P_CONFIG_FILE)
+      set(P_HTTPFORMS)
+      if (P_HTTPFORMS)
+        set(P_HTTPSVC)
+      endif()
+    endif()
+    set(P_SSDP)
   endif()
 endif()
 
 
-# create ptlib_config.h file
-configure_file(include/ptlib_config.h.in include/ptlib_config.h)
+#set(P_NO_PTHREAD_KILL 0)
 
 #----------------------------------------------------------------------------------------------------------------------
 # ptlib dependencies
 #----------------------------------------------------------------------------------------------------------------------
 
-# Search for your dependencies here
+include(cmake/dependencies.cmake)
+# create ptlib_config.h file
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/include/ptlib_config.h.in ${CMAKE_CURRENT_SOURCE_DIR}/include/ptlib_config.h)
+
+#----------------------------------------------------------------------------------------------------------------------
+# create revision.h file
+#----------------------------------------------------------------------------------------------------------------------
+
+find_package(Git REQUIRED)
+execute_process(COMMAND ${GIT_EXECUTABLE} rev-parse HEAD
+                OUTPUT_VARIABLE GIT_HASH
+                OUTPUT_STRIP_TRAILING_WHITESPACE)
+if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/revision.h)
+  file(READ "${CMAKE_CURRENT_SOURCE_DIR}/revision.h" gitver)
+  string(REGEX MATCH " GIT_COMMIT \"(.*)\"" _ ${gitver})
+  set(OLD_GIT_HASH ${CMAKE_MATCH_1})
+endif()
+
+if(NOT OLD_GIT_HASH STREQUAL GIT_HASH)
+  message("GIT_HASH: ${GIT_HASH}")
+  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/revision.h.in ${CMAKE_CURRENT_SOURCE_DIR}/revision.h)
+endif()
 
 #----------------------------------------------------------------------------------------------------------------------
 # ptlib sources
@@ -111,13 +237,16 @@ endif()
 
 generate_export_header(ptlib EXPORT_FILE_NAME include/ptlib/${export_file_name})
 
-set(sources
-    src/ptlib/common/object.cxx
-    )
-#    include/ptlib/ptlib/object.h)
-#    include/ptlib/ptlib.h
-#    src/ptlib.cpp)
+set(PTLIB_COMMON_SRC_DIR    "${CMAKE_CURRENT_SOURCE_DIR}/src/ptlib/common")
+set(PTLIB_COMPONENT_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/ptclib")
+if (P_WINDOWS)
+  set(PTLIB_PLATFORM_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/ptlib/msos")
+else()
+  set(PTLIB_PLATFORM_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/ptlib/unix")
+endif()
 
+include(cmake/toplevel.cmake)
+    
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${sources})
 
 #----------------------------------------------------------------------------------------------------------------------
@@ -126,7 +255,7 @@ source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${sources})
 
 include(CMakePackageConfigHelpers)
 
-target_sources(ptlib PRIVATE ${sources})
+#target_sources(ptlib PRIVATE ${sources})
 target_compile_definitions(ptlib PUBLIC "$<$<NOT:$<BOOL:${BUILD_SHARED_LIBS}>>:PTLIB_STATIC_DEFINE>")
 
 target_include_directories(ptlib

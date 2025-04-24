@@ -42,15 +42,13 @@
 #include <ptlib/msos/ptlib/debstrm.h>
 #if defined(_MSC_VER)
 #include <crtdbg.h>
-#endif
-#elif defined(__NUCLEUS_PLUS__)
-#include <ptlib/NucleusDebstrm.h>
-#else
+#endif // _MSC_VER
+#else // _WIN32
 #include <signal.h>
-#endif
+#endif // _WIN32
 #if P_HAS_DEMANGLE
  #include <cxxabi.h>
-#endif
+#endif // P_HAS_DEMANGLE
 
 
 PDebugLocation::PDebugLocation(const PDebugLocation * location)

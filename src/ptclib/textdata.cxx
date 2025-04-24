@@ -27,6 +27,8 @@
 
 #include <ptlib.h>
 
+#if P_VARTYPE
+
 #include <ptclib/textdata.h>
 
 
@@ -440,3 +442,5 @@ PBoolean PTextDataFile::WriteString(const PString &)
 {
   return false;
 }
+
+#endif // P_VARTYPE

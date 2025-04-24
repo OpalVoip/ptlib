@@ -2428,69 +2428,6 @@ MY_COMPILE_IFELSE(
 )
 
 
-dnl ########################################################################
-dnl see if using GNU glibc++, because then we have atomic integer operations
-
-dnl MSWIN_DISPLAY    atomic,Has std::atomic
-dnl MSWIN_DEFINE     atomic,P_STD_ATOMIC
-
-MY_COMPILE_IFELSE(
-   [if has std::atomic],
-   [$CPLUSPLUS_STD],
-   [#include <atomic>],
-   [
-      std::atomic<unsigned> val;
-      val.exchange(1);
-   ],
-   [
-      AC_DEFINE(P_STD_ATOMIC, 1)
-   ],
-   [
-   MY_LINK_IFELSE(
-      [if has builtin atomic],
-      [],
-      [],
-      [],
-      [
-         int val;
-         __sync_fetch_and_add(&val, 1);
-      ],
-      [
-         AC_DEFINE(P_ATOMICITY_BUILTIN,1)
-      ],
-      MY_COMPILE_IFELSE(
-         [if has bits/atomicity.h],
-         [],
-         [#include <bits/atomicity.h>],
-         [_Atomic_word val],
-         [P_ATOMICITY_HEADER="<bits/atomicity.h>"],
-         MY_COMPILE_IFELSE(
-            [if has ext/atomicity.h],
-            [],
-            [#include <ext/atomicity.h>],
-            [_Atomic_word val],
-            [P_ATOMICITY_HEADER="<ext/atomicity.h>"],
-            [AC_MSG_RESULT([no (SIMULATING!)])]
-         )
-      )
-   )
-
-   if test -n "$P_ATOMICITY_HEADER" ; then
-      AC_MSG_RESULT(yes $P_ATOMICITY_HEADER)
-      AC_DEFINE_UNQUOTED(P_ATOMICITY_HEADER, $P_ATOMICITY_HEADER)
-
-      AC_MSG_CHECKING(if atomic __exchange_and_add is in __gnu_cxx namespace)
-      AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include P_ATOMICITY_HEADER]], [[
-            _Atomic_word val;
-            __gnu_cxx::__exchange_and_add(&val, 1);
-         ]])],[
-            AC_MSG_RESULT(yes)
-            AC_DEFINE_UNQUOTED(P_ATOMICITY_NAMESPACE, __gnu_cxx::)
-         ],[AC_MSG_RESULT(no)
-      ])
-   fi
-   ]
-)
 
 
 dnl ########################################################################

@@ -1450,27 +1450,29 @@ PString PString::Ellipsis(PINDEX maxLength, PINDEX fromEnd, bool ansi) const
   if (GetLength() <= maxLength)
     return *this;
 
-  if (ansi) {
-    maxLength -= 3;
+#if P_HAS_WCHAR
+  if (!ansi) {
+    PWCharArray wide = AsWide();
+    PINDEX wideLength = wide.GetSize()-1;
+    if (wideLength <= maxLength)
+      return *this;
+
+    --maxLength;
     if (fromEnd > maxLength)
       fromEnd = maxLength;
 
-    return Left(maxLength-fromEnd) + "..." + Right(fromEnd);
+    PString left(wide.GetPointer(), maxLength - fromEnd);
+    static PConstString const ellipsis("\xE2\x80\xA6");
+    PString right(wide.GetPointer()+wideLength-fromEnd, fromEnd);
+    return left + ellipsis + right;
   }
-
-  PWCharArray wide = AsWide();
-  PINDEX wideLength = wide.GetSize()-1;
-  if (wideLength <= maxLength)
-    return *this;
-
-  --maxLength;
+#endif // P_HAS_WCHAR
+    
+  maxLength -= 3;
   if (fromEnd > maxLength)
     fromEnd = maxLength;
 
-  PString left(wide.GetPointer(), maxLength - fromEnd);
-  static PConstString const ellipsis("\xE2\x80\xA6");
-  PString right(wide.GetPointer()+wideLength-fromEnd, fromEnd);
-  return left + ellipsis + right;
+  return Left(maxLength-fromEnd) + "..." + Right(fromEnd);
 }
 
 
@@ -2157,20 +2159,20 @@ PWCharArray PString::AsWide() const
     PINDEX i = 0;
     PINDEX length = GetLength()+1; // Include the trailing '\0'
     while (i < length) {
-      int c = theArray[i];
+      int c = m_theArray[i];
       if ((c&0x80) == 0)
-        wide[count++] = (BYTE)theArray[i++];
+        wide[count++] = (BYTE)m_theArray[i++];
       else if ((c&0xe0) == 0xc0) {
         if (i < length-1)
-          wide[count++] = (WORD)(((theArray[i  ]&0x1f)<<6)|
-                                  (theArray[i+1]&0x3f));
+          wide[count++] = (WORD)(((m_theArray[i  ]&0x1f)<<6)|
+                                  (m_theArray[i+1]&0x3f));
         i += 2;
       }
       else if ((c&0xf0) == 0xe0) {
         if (i < length-2)
-          wide[count++] = (WORD)(((theArray[i  ]&0x0f)<<12)|
-                                 ((theArray[i+1]&0x3f)<< 6)|
-                                  (theArray[i+2]&0x3f));
+          wide[count++] = (WORD)(((m_theArray[i  ]&0x0f)<<12)|
+                                 ((m_theArray[i+1]&0x3f)<< 6)|
+                                  (m_theArray[i+2]&0x3f));
         i += 3;
       }
       else {
@@ -2267,7 +2269,7 @@ void PString::InternalFromWChar(const wchar_t * wstr, PINDEX len)
     return;
   }
 
-  char * out = theArray;
+  char * out = m_theArray;
   for (ptr = wstr, i = 0; i < len; i++) {
     unsigned v = *ptr++;
     if (v > 0 && v < 0x80) // Allow for an embedded zero
