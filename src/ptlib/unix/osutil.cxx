@@ -48,9 +48,6 @@
 #ifndef _REENTRANT
 #define _REENTRANT
 #endif
-#elif defined(P_SOLARIS)
-#define _POSIX_PTHREAD_SEMANTICS
-#endif
 
 #include <ptlib.h>
 
@@ -107,15 +104,6 @@
 #include <fstab.h>
 #include <sys/stat.h>
 
-#elif defined(P_SOLARIS) 
-#define P_USE_LANGINFO
-#include <sys/timeb.h>
-#include <sys/statvfs.h>
-#include <sys/mnttab.h>
-
-#elif defined(P_SUN4)
-#include <sys/timeb.h>
-
 #elif defined(__BEOS__)
 #define P_USE_STRFTIME
 
@@ -170,17 +158,6 @@
 #else
 #include "ptlib/unix/ptlib/ptlib.inl"
 #endif
-#endif
-
-#ifdef P_SUN4
-extern "C" {
-int on_exit(void (*f)(void), caddr_t);
-int atexit(void (*f)(void))
-{
-  return on_exit(f, 0);
-}
-static char *tzname[2] = { "STD", "DST" };
-};
 #endif
 
 #define new PNEW
@@ -564,20 +541,6 @@ PString PDirectory::GetVolume() const
     endmntent(fp);
   #endif
 
-#elif defined(P_SOLARIS)
-
-    FILE * fp = fopen("/etc/mnttab", "r");
-    if (fp != NULL) {
-      struct mnttab mnt;
-      while (getmntent(fp, &mnt) == 0) {
-        if (stat(mnt.mnt_mountp, &status) != -1 && status.st_dev == my_dev) {
-          volume = mnt.mnt_special;
-          break;
-        }
-      }
-    }
-    fclose(fp);
-
 #elif defined(P_FREEBSD) || defined(P_OPENBSD) || defined(P_NETBSD) || defined(P_MACOSX) || defined(P_IOS)
 
     struct statfs * mnt;
@@ -641,18 +604,6 @@ bool PDirectory::GetVolumeSpace(PInt64 & total, PInt64 & free, DWORD & clusterSi
   free = fs.f_bavail*(PInt64)fs.f_bsize;
   return true;
 
-#elif defined(P_SOLARIS)
-
-  struct statvfs buf;
-  if (statvfs(operator+("."), &buf) != 0)
-    return false;
-
-  clusterSize = buf.f_frsize;
-  total = buf.f_blocks * buf.f_frsize;
-  free  = buf.f_bfree  * buf.f_frsize;
-
-  return true;
-  
 #elif defined(P_IRIX)
 
   struct statfs fs;
@@ -1230,7 +1181,7 @@ PString PTime::GetTimePM()
 
 PString PTime::GetTimeSeparator()
 {
-#if defined(P_LINUX) || defined(P_HPUX9) || defined(P_SOLARIS) || defined(P_IRIX) || defined(P_GNU_HURD)
+#if defined(P_LINUX) || defined(P_HPUX9) || defined(P_IRIX) || defined(P_GNU_HURD)
 #  if defined(P_USE_LANGINFO)
      char * p = nl_langinfo(T_FMT);
 #  elif defined(P_LINUX) || defined(P_GNU_HURD)
@@ -1414,7 +1365,7 @@ PBoolean PTime::IsDaylightSavings()
 
 int PTime::GetTimeZone(PTime::TimeZoneType type) 
 {
-#if defined(P_LINUX) || defined(P_SOLARIS) || defined (P_AIX) || defined(P_IRIX) || defined(P_GNU_HURD)
+#if defined(P_LINUX) || defined (P_AIX) || defined(P_IRIX) || defined(P_GNU_HURD)
   long tz = -::timezone/60;
   if (type == StandardTime)
     return tz;
@@ -1446,7 +1397,7 @@ int PTime::GetTimeZone(PTime::TimeZoneType type)
 
 PString PTime::GetTimeZoneString(PTime::TimeZoneType type) 
 {
-#if defined(P_LINUX) || defined(P_SUN4) || defined(P_SOLARIS) || defined (P_AIX) || defined(P_IRIX) || defined(P_QNX) || defined(P_GNU)
+#if defined(P_LINUX) || defined (P_AIX) || defined(P_IRIX) || defined(P_QNX) || defined(P_GNU)
   const char * str = (type == StandardTime) ? ::tzname[0] : ::tzname[1]; 
   if (str != NULL)
     return str;

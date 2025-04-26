@@ -72,7 +72,7 @@
 #endif
 #endif
 
-#if defined(P_LINUX) || defined(P_SUN4) || defined(P_SOLARIS) || defined(P_FREEBSD) || defined(P_OPENBSD) || defined(P_NETBSD) || defined(P_MACOSX) || defined(P_IOS) || defined (P_AIX) || defined(P_BEOS) || defined(P_IRIX) || defined(P_QNX) || defined(P_GNU_HURD) || defined(P_ANDROID)
+#if defined(P_LINUX) || defined(P_FREEBSD) || defined(P_OPENBSD) || defined(P_NETBSD) || defined(P_MACOSX) || defined(P_IOS) || defined (P_AIX) || defined(P_BEOS) || defined(P_IRIX) || defined(P_QNX) || defined(P_GNU_HURD) || defined(P_ANDROID)
 #include <sys/utsname.h>
 #define  HAS_UNAME
 #elif defined(P_RTEMS)
@@ -105,11 +105,7 @@ PString PProcess::GetOSName()
 #if defined(HAS_UNAME)
   struct utsname info;
   uname(&info);
-#ifdef P_SOLARIS
-  return PString(info.sysname) & info.release;
-#else
   return PString(info.sysname);
-#endif
 #elif defined(P_VXWORKS)
   return PString::Empty();
 #else
@@ -137,11 +133,7 @@ PString PProcess::GetOSVersion()
 #if defined(HAS_UNAME)
   struct utsname info;
   uname(&info);
-#ifdef P_SOLARIS
-  return PString(info.version);
-#else
   return PString(info.release);
-#endif
 #elif defined(P_VXWORKS)
   return PString(sysBspRev());
 #else
@@ -156,13 +148,7 @@ bool PProcess::IsOSVersion(unsigned major, unsigned minor, unsigned build)
   struct utsname info;
   uname(&info);
   unsigned maj, min, bld;
-  sscanf(
-#ifdef P_SOLARIS
-         info.version
-#else
-         info.release
-#endif
-         , "%u.%u.%u", &maj, &min, &bld);
+  sscanf(info.release, "%u.%u.%u", &maj, &min, &bld);
   if (maj < major)
     return false;
   if (maj > major)

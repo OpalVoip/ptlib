@@ -191,15 +191,7 @@ PBoolean PICMPSocket::ReadPing(PingInfo & info)
 
   // calc round trip time. Be careful, as unaligned "long long" ints
   // can cause problems on some platforms
-#if defined(P_SUN4) || defined(P_SOLARIS)
-  PInt64 then;
-  BYTE * pthen = (BYTE *)&then;
-  BYTE * psendtime = (BYTE *)&icmpPacket->sendtime;
-  memcpy(pthen, psendtime, sizeof(PInt64));
-  info.delay.SetInterval(now - then);
-#else
   info.delay.SetInterval(now - icmpPacket->sendtime);
-#endif
 
   info.sequenceNum = icmpPacket->sequence;
 

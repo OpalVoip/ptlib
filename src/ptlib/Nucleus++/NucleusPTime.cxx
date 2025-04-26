@@ -79,7 +79,7 @@ PAssertAlways("No RTC");
 
 PString PTime::GetTimeSeparator()
 {
-#if defined(P_LINUX) || defined(P_HPUX9) || defined(P_SOLARIS)
+#if defined(P_LINUX) || defined(P_HPUX9)
 #  if defined(P_USE_LANGINFO)
      char * p = nl_langinfo(T_FMT);
 #  elif defined(P_LINUX)
@@ -287,7 +287,7 @@ return false;
 
 int PTime::GetTimeZone(PTime::TimeZoneType type) 
 {
-#if defined(P_LINUX) || defined(P_SOLARIS)
+#if defined(P_LINUX)
   long tz = -::timezone/60;
   if (type == StandardTime)
     return tz;
@@ -303,13 +303,6 @@ int PTime::GetTimeZone(PTime::TimeZoneType type)
   if (type != StandardTime && !tm->tm_isdst)
     return tz + 60;
   return tz;
-#elif defined(P_SUN4) 
-  struct timeb tb;
-  ftime(&tb);
-  if (type == StandardTime || tb.dstflag == 0)
-    return -tb.timezone;
-  else
-    return -tb.timezone + 60;
 #else
 #ifdef __NUCLEUS_PLUS__
 PAssertAlways("No timezone info");
@@ -322,7 +315,7 @@ PAssertAlways("No timezone info");
 
 PString PTime::GetTimeZoneString(PTime::TimeZoneType type) 
 {
-#if defined(P_LINUX) || defined(P_SUN4) || defined(P_SOLARIS)
+#if defined(P_LINUX)
   const char * str = (type == StandardTime) ? ::tzname[0] : ::tzname[1]; 
   if (str != NULL)
     return str;

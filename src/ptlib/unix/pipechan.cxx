@@ -40,12 +40,8 @@
 #include <fcntl.h>
 #include <signal.h>
 
-#if defined(P_LINUX) || defined(P_SOLARIS)
+#if defined(P_LINUX)
 #include <termio.h>
-#endif
-
-#if defined(P_SOLARIS)
-  #include <sys/filio.h>
 #endif
 
 #include "../common/pipechan.cxx"

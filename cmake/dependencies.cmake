@@ -83,12 +83,15 @@ check_include_file_cxx("linux/errqueue.h"   HAVE_LINUX_ERRQUEUE_H)
 check_include_file_cxx("net/if_dl.h"        HAVE_NET_IF_DL_H)
 check_include_file_cxx("net/if_types.h"     HAVE_NET_IF_TYPES_H)
 check_include_file_cxx("netinet/if_ether.h" HAVE_NETINET_IF_ETHER_H)
-check_include_file_cxx("semaphore.h"        HAVE_SEMAPHORE_H)
-check_include_file_cxx("poll.h"             HAVE_POLL_H)
+check_include_file_cxx("semaphore.h"        P_HAS_SEMAPHORES)
+check_include_file_cxx("poll.h"             P_HAS_POLL)
+check_include_file_cxx("pthread.h"          P_PTHREADS)
+check_include_file_cxx("dirent.h"           HAVE_DIRENT_H)
+check_include_file_cxx("aio.h"              P_HAS_AIO)
 
-CHECK_SYMBOL_EXISTS(recvmsg             "sys/types.h;sys/socket.h;netinet/in.h" HAVE_RECVMSG)
-CHECK_SYMBOL_EXISTS(MSG_ERRQUEUE        "sys/types.h;sys/socket.h;netinet/in.h" HAVE_RECVMSG_MSG_ERRQUEUE)
-CHECK_SYMBOL_EXISTS(IP_RECVERR          "sys/types.h;sys/socket.h;netinet/in.h" HAVE_RECVMSG_IP_RECVERR)
+CHECK_SYMBOL_EXISTS(recvmsg             "sys/types.h;sys/socket.h;netinet/in.h" P_HAS_RECVMSG)
+CHECK_SYMBOL_EXISTS(MSG_ERRQUEUE        "sys/types.h;sys/socket.h;netinet/in.h" P_HAS_RECVMSG_MSG_ERRQUEUE)
+CHECK_SYMBOL_EXISTS(IP_RECVERR          "sys/types.h;sys/socket.h;netinet/in.h" P_HAS_RECVMSG_IP_RECVERR)
 CHECK_SYMBOL_EXISTS(dlopen              "dlfcn.h"                               P_DYNALINK)
 
 # check that rt_msghdr is defined for FreeBSD
@@ -100,8 +103,9 @@ check_c_source_compiles("#include <unistd.h>
      pid_t p = setpgrp();
    }" setpgrp_no_arg)
 if (setpgrp_no_arg)
-  set(P_SETPGRP_NO_ARG 1)
+  set(P_SETPGRP_NOPARM 1)
 endif()
+
 
 # check that AF_NETLINK is defined
 CHECK_SYMBOL_EXISTS(AF_NETLINK   "asm/types.h;sys/socket.h;linux/netlink.h;linux/rtnetlink.h;linux/genetlink.h" P_HAS_NETLINK)
@@ -114,7 +118,7 @@ check_c_source_compiles("#include <pthread.h>
      return 0;
    }" has_PTHREAD_MUTEX_RECURSIVE_NP) 
 if (has_PTHREAD_MUTEX_RECURSIVE_NP)
-  set(P_HAS_PTHREAD_MUTEX 1)
+  set(P_HAS_RECURSIVE_MUTEX 1)
 else()
   check_c_source_compiles("#include <pthread.h>
      int main(int, char**) {
@@ -123,9 +127,19 @@ else()
        return 0;
      }" has_PTHREAD_MUTEX_RECURSIVE)
   if (has_PTHREAD_MUTEX_RECURSIVE)
-    set(P_HAS_PTHREAD_MUTEX 2)
+    set(P_HAS_RECURSIVE_MUTEX 2)
   endif()
 endif()
+
+# check for XPG6 compliant pthreads (timed spinlocks)
+check_cxx_source_compiles("#include <pthread.h>
+  int main(int, char**) {
+    pthread_mutex_timedlock(NULL, NULL);
+  }" has_pthread_mutex_timedlock)
+if (has_pthread_mutex_timedlock)
+  set(P_PTHREADS_XPG6 1)
+endif()
+
 
 # check for arguments to getgrgid_r
 check_cxx_source_compiles("#include <sys/types.h>
@@ -184,6 +198,127 @@ else()
   endif()
 endif()
 
+# check for number of parms to readdir
+check_cxx_source_compiles("#define _POSIX_PTHREAD_SEMANTICS
+  #include <dirent.h>
+  int main(int, char**) {
+    DIR *s;
+    struct dirent * e;
+    readdir_r(s, e);
+  }" readdir_r_2_args)
+if (readdir_r_2_args)
+  set(P_HAS_POSIX_READDIR_R 2)
+else()
+  check_cxx_source_compiles("#define _POSIX_PTHREAD_SEMANTICS
+    #include <dirent.h>
+    int main(int, char**) {
+      DIR *s;
+      struct dirent * e;
+      struct dirent * p;
+      readdir_r(s, e, &p);
+    }" readdir_r_3_args)
+  if (readdir_r_3_args)
+    set(P_HAS_POSIX_READDIR_R 3)
+  else()
+    set(P_HAS_POSIX_READDIR_R 0)
+  endif()
+endif()
+
+# check arguments for getpwuid_r
+check_cxx_source_compiles("#include <sys/types.h>
+   #include <pwd.h>
+   int main(int, char**) {
+     uid_t uid;
+     struct passwd * pwd;
+     char * buffer;
+     size_t bufsize; 
+     getpwuid_r(uid, pwd, buffer, bufsize);
+   }" getpwuid_r_4_args)
+if (getpwuid_r_4_args)
+  set(P_GETPWUID_R4 1)
+else()
+  check_cxx_source_compiles("#include <sys/types.h>
+    #include <pwd.h>
+    int main(int, char**) {
+      uid_t uid;
+      struct passwd * pwd;
+      char * buffer;
+      size_t bufsize; 
+      struct passwd *result;
+      getpwuid_r(uid, pwd, buffer, bufsize, &result);
+   }" getpwuid_r_5_args)
+  if (getpwuid_r_5_args)
+    set(P_GETPWUID_R5 1)
+  endif()
+endif()
+
+# check arguments for getpwnam_r
+check_cxx_source_compiles("#include <sys/types.h>
+   #include <pwd.h>
+   int main(int, char**) {
+     const char * name;
+     struct passwd * pwd;
+     char * buffer;
+     size_t bufsize; 
+     getpwnam_r(name, pwd, buffer, bufsize);
+   }" getpwnam_r_4_args)
+if (getpwnam_r_4_args)
+  set(P_GETPWNAM_R4 1)
+else()
+  check_cxx_source_compiles("#include <sys/types.h>
+    #include <pwd.h>
+    int main(int, char**) {
+      const char * name;
+      struct passwd * pwd;
+      char * buffer;
+      size_t bufsize; 
+      struct passwd *result;
+      getpwnam_r(name, pwd, buffer, bufsize, &result);
+   }" getpwnam_r_5_args)
+  if (getpwnam_r_5_args)
+    set(P_GETPWNAM_R5 1)
+  endif()
+endif()
+
+# check for gethostbyaddr_r
+check_cxx_source_compiles("#include <netdb.h>
+   int main(int, char**) {
+      const void *addr;
+      socklen_t len;
+      int type;
+      struct hostent *ret;
+      char *buf;
+      size_t buflen;
+      struct hostent **result;
+      int *h_errnop;
+      gethostbyaddr_r(addr, len, type, ret, buf, buflen, result, h_errnop);
+   }" gethostbyaddr_r_exists)
+if (gethostbyaddr_r_exists)
+  set(P_GETHOSTBYNAME_R 1)
+endif()
+
+# check for inet_ntop
+check_cxx_source_compiles("#include <sys/types.h>
+   #include <netinet/in.h>
+   #include <arpa/inet.h>
+],
+   int af;
+   void * src;
+   char * dst;
+   socklen_t len;
+   inet_ntop(af, src, dst, len);
+   }" inet_ntop_exists)
+if (inet_ntop_exists)
+  set(P_HAS_INET_NTOP 1)
+endif()
+
+# check for IPV6_ADD_MEMBERSHIP
+check_cxx_source_compiles("#include <netinet/in.h>
+   int x = IPV6_ADD_MEMBERSHIP;" ipv6_add_membership_exists)
+if (ipv6_add_membership_exists)
+  set(P_HAS_IPV6_ADD_MEMBERSHIP 1)
+endif()
+
 
 # check that std::ios::set_rdbuf is available
 check_cxx_source_compiles("#include <iostream>
@@ -233,42 +368,85 @@ elseif (PTLIB_ALLOCATOR_TYPE STREQUAL "bitmap")
   set(P_GNU_ALLOCATOR 2)
 endif()
 
-# check for odbc
-if (P_ODBC)  # if enabled by user
-  set(CMAKE_REQUIRED_LIBRARIES "odbc")
-  check_c_source_compiles("#include <sql.h>
-   int main(int, char**) {
-     SQLFreeHandle(0, 0);
-     return 0;
-   }" have_SQLFreeHandle)
-  if (NOT have_SQLFreeHandle)
-    message(FATAL_ERROR "ODBC support is enabled but the odbc library is not found")
-  else()
-    check_c_source_compiles("#include <sqltypes.h>  
-      BYTE b;
-      int main(int, char**) {
-        return 0;
-      }" have_BYTE)
-    if (have_BYTE)
-      set(P_ODBC_DEFINES_WINDOWS_TYPES 1)
-    endif()
+# check for malloc_info
+check_cxx_source_compiles("#include <stdio.h>
+  #include <malloc.h>
+  int main(int, char**) {
+    FILE * out;
+    malloc_info(0, out);
+  }" malloc_info_exists)
+if (malloc_info_exists)
+  set(P_HAS_MALLOC_INFO 1)
+endif()
+
+# check for Unix semaphores
+check_cxx_source_compiles("#include <semaphore.h>
+  int main(int, char**) {
+    sem_t *s;
+    sem_init(s, 0, 0);
+  }" unix_semaphores_exists)
+if (unix_semaphores_exists)
+  set(P_HAS_SEMAPHORES 1) 
+  # if named semaphores are available
+  check_cxx_source_compiles("#include <semaphore.h>
+    int main(int, char**) {
+      sem_t *s = sem_open(\"test\", O_CREAT);
+    }" named_semaphores_exists)
+  if (named_semaphores_exists)
+    set(P_HAS_NAMED_SEMAPHORES 1)
+  endif() 
+  # check for sem_timedwait
+  check_cxx_source_compiles("#include <semaphore.h>
+    int main(int, char**) {
+      sem_t *s;
+      const struct timespec * t;
+      sem_timedwait(s, t);
+    }" sem_timedwait_exists)
+  if (sem_timedwait_exists)
+    set(P_HAS_SEMAPHORES_XPG6 1)
   endif()
 endif()
 
+
+#----------------------------------------------------------------------------------------------------------------------
+# look for packages
+#----------------------------------------------------------------------------------------------------------------------
+
+pkg_check_modules(LIBSSL openssl QUIET)
+if(LIBSSL_FOUND)
+  set(P_OPENSSL 1)
+  target_link_libraries(ptlib ${LIBSSL_LIBRARIES})
+  message("-- openssl found")
+else()
+  message("-- openssl not found")
+endif()
 
 # platform specific configuration options
 
 if(P_WINDOWS)
   #TODO: check for curses. Set P_CURSES to 2 if found
 else()
-  check_include_file_cxx("pthread.h" P_PTHREADS)
-  check_include_file_cxx("dirent.h" HAVE_DIRENT_H)
-
   # check for ncurses
   if (P_CURSES)
-    check_include_file_cxx("ncurses.h" HAVE_NCURSES_H)
-    if (HAVE_NCURSES_H)
+    pkg_check_modules(NCURSES ncurses QUIET)
+    if(NCURSES_FOUND)
       set(P_CURSES 1)
+      target_link_libraries(ptlib ${NCURSES_LIBRARIES})
+      message("-- ncurses found")
+    else()
+      message("-- ncurses not found")
+    endif()
+  endif()
+
+  # check for odbc
+  if (P_ODBC AND P_VARTYPE)
+    pkg_check_modules(ODBC odbc QUIET)
+    if(ODBC_FOUND)
+      set(P_ODBC 1)
+      target_link_libraries(ptlib ${ODBC_LIBRARIES})
+      message("-- odbc found")
+    else()
+      message("-- odbc not found")
     endif()
   endif()
 endif()

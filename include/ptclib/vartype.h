@@ -37,7 +37,6 @@
 
 #include <ptclib/guid.h>
 
-
 //////////////////////////////////////////////////////////////
 
 /**A wrapper around a Variable Type class.

@@ -70,13 +70,8 @@
 #endif
 
 
-#if defined(P_FREEBSD) || defined(P_OPENBSD) || defined(P_NETBSD) || defined(P_SOLARIS) || defined(P_MACOSX) || defined(P_IOS) || defined(P_IRIX) || defined(P_VXWORKS) || defined(P_RTEMS) || defined(P_QNX)
+#if defined(P_FREEBSD) || defined(P_OPENBSD) || defined(P_NETBSD) || || defined(P_MACOSX) || defined(P_IOS) || defined(P_IRIX) || defined(P_VXWORKS) || defined(P_RTEMS) || defined(P_QNX)
   #define ifr_netmask ifr_addr
-#endif
-
-#if defined(P_SOLARIS)
-  #include <sys/filio.h>
-  #include <sys/sockio.h>
 #endif
 
 #ifdef HAVE_NET_IF_DL_H
@@ -1059,208 +1054,6 @@ PBoolean get_ifname(int index, char *name) {
 
 }
 
-
-#elif defined(P_SOLARIS)
-
-/* jpd@louisiana.edu - influenced by Merit.edu's Gated 3.6 routine: krt_rtread_sunos5.c */
-
-#include <sys/stream.h>
-#include <stropts.h>
-#include <sys/tihdr.h>
-#include <sys/tiuser.h>
-#include <inet/common.h>
-#include <inet/mib2.h>
-#include <inet/ip.h>
-
-#ifndef T_CURRENT
-#define T_CURRENT       MI_T_CURRENT
-#endif
-
-PBoolean PIPSocket::GetRouteTable(RouteTable & table)
-{
-#define task_pagesize 512
-    char buf[task_pagesize];  /* = task_block_malloc(task_pagesize);*/
-    int flags;
-    int j = 0;
-    int  sd, i, rc;
-    struct strbuf strbuf;
-    struct T_optmgmt_req *tor = (struct T_optmgmt_req *) buf;
-    struct T_optmgmt_ack *toa = (struct T_optmgmt_ack *) buf;
-    struct T_error_ack  *tea = (struct T_error_ack *) buf;
-    struct opthdr *req;
-
-    sd = open("/dev/ip", O_RDWR);
-    if (sd < 0) {
-#ifdef SOL_COMPLAIN
-      perror("can't open mib stream");
-#endif
-      goto Return;
-    }
-
-    strbuf.buf = buf;
-
-    tor->PRIM_type = T_OPTMGMT_REQ;
-    tor->OPT_offset = sizeof(struct T_optmgmt_req);
-    tor->OPT_length = sizeof(struct opthdr);
-    tor->MGMT_flags = T_CURRENT;
-    req = (struct opthdr *) (tor + 1);
-    req->level = MIB2_IP;    /* any MIB2_xxx value ok here */
-    req->name = 0;
-    req->len = 0;
-
-    strbuf.len = tor->OPT_length + tor->OPT_offset;
-    flags = 0;
-    rc = putmsg(sd, &strbuf, (struct strbuf *) 0, flags);
-    if (rc == -1) {
-#ifdef SOL_COMPLAIN
-      perror("putmsg(ctl)");
-#endif
-      goto Return;
-    }
-    /*
-     * each reply consists of a ctl part for one fixed structure
-     * or table, as defined in mib2.h.  The format is a T_OPTMGMT_ACK,
-     * containing an opthdr structure.  level/name identify the entry,
-     * len is the size of the data part of the message.
-     */
-    req = (struct opthdr *) (toa + 1);
-    strbuf.maxlen = task_pagesize;
-    while (++j) {
-  flags = 0;
-  rc = getmsg(sd, &strbuf, (struct strbuf *) 0, &flags);
-  if (rc == -1) {
-#ifdef SOL_COMPLAIN
-    perror("getmsg(ctl)");
-#endif
-    goto Return;
-  }
-  if (rc == 0
-      && strbuf.len >= (int)sizeof(struct T_optmgmt_ack)
-      && toa->PRIM_type == T_OPTMGMT_ACK
-      && toa->MGMT_flags == T_SUCCESS
-      && req->len == 0) {
-    errno = 0;    /* just to be darned sure it's 0 */
-    goto Return;    /* this is EOD msg */
-  }
-
-  if (strbuf.len >= (int)sizeof(struct T_error_ack)
-      && tea->PRIM_type == T_ERROR_ACK) {
-      errno = (tea->TLI_error == TSYSERR) ? tea->UNIX_error : EPROTO;
-#ifdef SOL_COMPLAIN
-      perror("T_ERROR_ACK in mibget");
-#endif
-      goto Return;
-  }
-      
-  if (rc != MOREDATA
-      || strbuf.len < (int)sizeof(struct T_optmgmt_ack)
-      || toa->PRIM_type != T_OPTMGMT_ACK
-      || toa->MGMT_flags != T_SUCCESS) {
-      errno = ENOMSG;
-      goto Return;
-  }
-
-  if ( (req->level != MIB2_IP
-#if P_SOLARIS > 7
-        || req->name != MIB2_IP_ROUTE)
-      && (req->level != MIB2_IP6 || req->name != MIB2_IP6_ROUTE)
-#endif
-           ) {  /* == 21 */
-      /* If this is not the routing table, skip it */
-      strbuf.maxlen = task_pagesize;
-      do {
-        rc = getmsg(sd, (struct strbuf *) 0, &strbuf, &flags);
-      } while (rc == MOREDATA) ;
-      continue;
-  }
-
-  strbuf.maxlen = (task_pagesize / sizeof (mib2_ipRouteEntry_t)) * sizeof (mib2_ipRouteEntry_t);
-  strbuf.len = 0;
-  flags = 0;
-  do {
-      rc = getmsg(sd, (struct strbuf *) 0, &strbuf, &flags);
-      
-      switch (rc) {
-      case -1:
-#ifdef SOL_COMPLAIN
-        perror("mibget getmsg(data) failed.");
-#endif
-        goto Return;
-
-      default:
-#ifdef SOL_COMPLAIN
-        fprintf(stderr,"mibget getmsg(data) returned %d, strbuf.maxlen = %d, strbuf.len = %d",
-            rc,
-            strbuf.maxlen,
-            strbuf.len);
-#endif
-        goto Return;
-
-      case MOREDATA:
-      case 0:
-        {
-          mib2_ipRouteEntry_t *rp = (mib2_ipRouteEntry_t *) strbuf.buf;
-          mib2_ipRouteEntry_t *lp = (mib2_ipRouteEntry_t *) (strbuf.buf + strbuf.len);
-
-          do {
-            char name[256];
-            name[0] = '\0';
-            if (req->level == 0) {
-              if (rp->ipRouteInfo.re_ire_type & (IRE_BROADCAST|IRE_CACHE|IRE_LOCAL)) {
-                ++rp;
-                continue;
-              }
-              RouteEntry * entry = new RouteEntry(rp->ipRouteDest);
-              entry->net_mask = rp->ipRouteMask;
-              entry->destination = rp->ipRouteNextHop;
-              unsigned len = rp->ipRouteIfIndex.o_length;
-              if (len >= sizeof(name))
-                len = sizeof(name)-1;
-              strncpy(name, rp->ipRouteIfIndex.o_bytes, len);
-              name[len] = '\0';
-              entry->interfaceName = name;
-              entry->metric = rp->ipRouteMetric1;
-              table.Append(entry);
-              ++rp;
-            } else {
-              mib2_ipv6RouteEntry_t *rp6 = (mib2_ipv6RouteEntry_t *) rp;
-              if (rp6->ipv6RouteInfo.re_ire_type & (IRE_BROADCAST|IRE_CACHE|IRE_LOCAL)) {
-                rp = (mib2_ipRouteEntry_t *) ((BYTE*)rp + sizeof(mib2_ipv6RouteEntry_t));
-                continue;
-              }
-              RouteEntry * entry = new RouteEntry(Address(16, (BYTE*)&rp6->ipv6RouteDest));
-              entry->net_mask = NetmaskV6WithPrefix(rp6->ipv6RoutePfxLength);
-              entry->destination = Address(16, (BYTE*)&rp6->ipv6RouteNextHop);
-              unsigned len = rp6->ipv6RouteIfIndex.o_length;
-              if (len >= sizeof(name))
-                len = sizeof(name)-1;
-              strncpy(name, rp6->ipv6RouteIfIndex.o_bytes, len);
-              name[len] = '\0';
-              entry->interfaceName = name;
-              entry->metric = rp6->ipv6RouteMetric;
-              table.Append(entry);
-              rp = (mib2_ipRouteEntry_t *) ((BYTE*)rp + sizeof(mib2_ipv6RouteEntry_t));
-            }
-          } while (rp < lp) ;
-
-          }
-          break;
-        }
-      } while (rc == MOREDATA) ;
-    }
-
- Return:
-    i = errno;
-    (void) close(sd);
-    errno = i;
-    /*task_block_reclaim(task_pagesize, buf);*/
-    if (errno)
-      return (false);
-    else
-      return (true);
-}
-
-
 #elif defined(P_VXWORKS)
 
 PBoolean PIPSocket::GetRouteTable(RouteTable & table)
@@ -1615,7 +1408,7 @@ PIPSocket::RouteTableDetector * PIPSocket::CreateRouteTableDetector()
 
 PBoolean PIPSocket::GetInterfaceTable(InterfaceTable & list, PBoolean includeDown)
 {
-#if defined(P_LINUX) || defined(P_FREEBSD) || defined (P_NETBSD) || defined(P_OPENBSD) || defined(P_MACOSX) || defined(P_IOS) || defined(P_SOLARIS)
+#if defined(P_LINUX) || defined(P_FREEBSD) || defined (P_NETBSD) || defined(P_OPENBSD) || defined(P_MACOSX) || defined(P_IOS)
   // tested on Linux 2.6.x, FreeBSD 8.2, NetBSD 5.1, OpenBSD 5.0, MacOS X 10.5.6 and Solaris 11
   struct ifaddrs *interfaces, *ifa;
 

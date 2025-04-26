@@ -37,7 +37,6 @@
 #endif
 #elif defined(P_HPUX9)
 #define P_USE_LANGINFO
-#elif defined(P_SUN4)
 #endif
 
 #ifdef P_USE_LANGINFO

@@ -53,7 +53,6 @@
 #cmakedefine    P_FREEBSD      @P_FREEBSD@
 #cmakedefine    P_OPENBSD      @P_OPENBSD@
 #cmakedefine    P_NETBSD       @P_NETBSD@
-#cmakedefine    P_SOLARIS      @P_SOLARIS@
 #cmakedefine    P_MACOSX       @P_MACOSX@
 #cmakedefine    P_IOS          @P_IOS@
 #cmakedefine    P_CYGWIN       @P_CYGWIN@
@@ -221,25 +220,25 @@
   #cmakedefine P_HAS_NETLINK              @P_HAS_NETLINK@ 
   #cmakedefine P_SETPGRP_NOPARM           @P_SETPGRP_NOPARM@
 
-  #cmakedefine P_GNU_ALLOCATOR           @P_GNU_ALLOCATOR@  
-  #undef P_HAS_MALLOC_INFO
-  #undef P_HAS_NAMED_SEMAPHORES
-  #undef P_PTHREADS_XPG6      
-  #undef P_HAS_SEMAPHORES_XPG6
-  #undef P_HAS_AIO
-  #undef P_HAS_POSIX_READDIR_R
-  #undef P_HAS_UPAD128_T
-  #undef P_HAS_INET_NTOP
-  #undef P_HAS_IPV6_ADD_MEMBERSHIP
-  #undef P_GETPWUID_R4
-  #undef P_GETPWUID_R5
-  #undef P_GETPWNAM_R4
-  #undef P_GETPWNAM_R5
-  #cmakedefine P_GETGRGID_R4 @P_GETGRGID_R4@
-  #cmakedefine P_GETGRGID_R5 @P_GETGRGID_R5@
-  #cmakedefine P_GETGRNAM_R4 @P_GETGRNAM_R4@
-  #cmakedefine P_GETGRNAM_R5 @P_GETGRNAM_R5@
-  #undef P_GETHOSTBYNAME_R
+  #cmakedefine P_GNU_ALLOCATOR            @P_GNU_ALLOCATOR@  
+  #cmakedefine P_HAS_MALLOC_INFO          @P_HAS_MALLOC_INFO@
+  #cmakedefine P_HAS_NAMED_SEMAPHORES     @P_HAS_NAMED_SEMAPHORES@
+  #cmakedefine P_HAS_SEMAPHORES_XPG6      @P_HAS_SEMAPHORES_XPG6@
+
+  #cmakedefine P_PTHREADS_XPG6            @P_PTHREADS_XPG6@
+  #cmakedefine P_HAS_AIO                  @P_HAS_AIO@
+  #cmakedefine P_HAS_POSIX_READDIR_R      @P_HAS_POSIX_READDIR_R@
+  #cmakedefine P_HAS_INET_NTOP            @P_HAS_INET_NTOP@
+  #cmakedefine P_HAS_IPV6_ADD_MEMBERSHIP  @P_HAS_IPV6_ADD_MEMBERSHIP@
+  #cmakedefine P_GETPWUID_R4              @P_GETPWUID_R4@
+  #cmakedefine P_GETPWUID_R5              @P_GETPWUID_R5@
+  #cmakedefine P_GETPWNAM_R4              @P_GETPWNAM_R4@ 
+  #cmakedefine P_GETPWNAM_R5              @P_GETPWNAM_R5@
+  #cmakedefine P_GETGRGID_R4              @P_GETGRGID_R4@
+  #cmakedefine P_GETGRGID_R5              @P_GETGRGID_R5@
+  #cmakedefine P_GETGRNAM_R4              @P_GETGRNAM_R4@
+  #cmakedefine P_GETGRNAM_R5              @P_GETGRNAM_R5@
+  #cmakedefine P_GETHOSTBYNAME_R          @P_GETHOSTBYNAME_R@
 
   #undef P_HAS_BACKTRACE
   #undef P_HAS_DEMANGLE
@@ -384,11 +383,11 @@
 // OpenSSL library for secure sockets layer
 //
 
-#undef P_OPENSSL
-#undef P_SSL_WIN64
-#undef P_SSL_WIN32
-#undef P_SSL_VCPKG64
-#undef P_SSL_VCPKG32
+#cmakedefine P_OPENSSL     @P_OPENSSL@
+#cmakedefine P_SSL_WIN64   @P_SSL_WIN64@
+#cmakedefine P_SSL_WIN32   @P_SSL_WIN32@
+#cmakedefine P_SSL_VCPKG64 @P_SSL_VCPKG64@
+#cmakedefine P_SSL_VCPKG32 @P_SSL_VCPKG32@
 
 #if (defined(P_SSL_WIN64) &&  defined(P_64BIT)) || \
     (defined(P_SSL_WIN32) && !defined(P_64BIT)) || \

@@ -51,9 +51,6 @@ PINLINE unsigned PTimer::Resolution()
 // Returns number of milliseconds per tick
   return 10;
   }
-#elif defined(P_SUN4)
-  { return 1000; }
-#else
   { return (unsigned)(1000/CLOCKS_PER_SEC); }
 #endif
 

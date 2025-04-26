@@ -59,7 +59,7 @@
     AndroidJavaVM = vm;
     return JNI_VERSION_1_6;
   }
-#endif
+#endif // P_ANDROID
 
 
 static PINDEX const PThreadMinimumStack = 16*PTHREAD_STACK_MIN; // Set a decent stack size that won't eat all virtual memory, or crash
@@ -1019,7 +1019,7 @@ int PThread::PXBlockOnIO(int handle, int type, const PTimeInterval & timeout)
   } while (retval < 0 && errno == EINTR);
 
   BYTE dummy;
-  if (retval > 0 && read_fds.IsPresent(unblockPipe[0]) && ::read(unblockPipe[0], &ch, 1) == 1) {
+  if (retval > 0 && read_fds.IsPresent(unblockPipe[0]) && ::read(unblockPipe[0], &dummy, 1) == 1) {
     errno = ECANCELED;
     retval =  -1;
     PTRACE(6, "PTLib\tUnblocked I/O fd=" << unblockPipe[0]);
@@ -1374,7 +1374,7 @@ PBoolean PTimedMutex::PlatformWait(const PTimeInterval & waitTime)
     case 0 :       // Got the lock
     case EDEADLK : // Just a recursive call
 #if !P_HAS_RECURSIVE_MUTEX
-      PAssert(lockerId == PNullThreadIdentifier && m_lockCount == 0,
+      PAssert(m_lockerId == PNullThreadIdentifier && m_lockCount == 0,
           "PMutex acquired whilst locked by another thread");
 #endif
       return true;

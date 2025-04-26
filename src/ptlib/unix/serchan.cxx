@@ -45,14 +45,9 @@
 #define TCGETA TIOCGETA
 #define TCSETAW TIOCSETAW
 
-#elif defined(P_SUN4)
-#include <sys/termio.h>
-extern "C" int ioctl(int, int, void *);
-
 #elif defined (P_AIX)
 #include <sys/termio.h>
 #endif
-
 
 #ifndef  TCSETATTR
 #define  TCSETATTR(f,t)  ::ioctl(f,TCSETAW,t)

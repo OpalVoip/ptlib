@@ -41,7 +41,7 @@ static const char OldSystemConfigFile[] = "/usr/local/pwlib/pwlib.ini";
 static const char NewSystemConfigFile[] = "/usr/local/share/ptlib/ptlib.ini";
 
 
-#if defined(P_MACOSX) || defined(P_IOS) || defined(P_SOLARIS) || defined(P_FREEBSD)
+#if defined(P_MACOSX) || defined(P_IOS) || defined(P_FREEBSD)
 #define environ (NULL)
 #endif
 
