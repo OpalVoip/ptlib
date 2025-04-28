@@ -41,9 +41,11 @@
 #include <sqlext.h>
 
 #ifdef _MSC_VER
+
  #include <tchar.h>
  #pragma comment(lib,"odbc32.lib")
  #pragma comment(lib,"odbcCP32.lib")
+ 
 #else
 
   #ifdef UNICODE

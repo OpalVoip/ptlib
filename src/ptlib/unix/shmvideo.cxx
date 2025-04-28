@@ -16,6 +16,8 @@
 
 #include <ptlib.h>
 
+#ifdef P_SHM_VIDEO
+
 #define P_FORCE_STATIC_PLUGIN 1
 
 #include <ptlib/videoio.h>

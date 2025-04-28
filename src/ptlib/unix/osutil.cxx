@@ -48,9 +48,9 @@
 #ifndef _REENTRANT
 #define _REENTRANT
 #endif
+#endif
 
 #include <ptlib.h>
-
 
 #include <fcntl.h>
 #ifdef P_VXWORKS

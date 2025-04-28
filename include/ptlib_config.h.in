@@ -82,10 +82,10 @@
 // Integer/char types
 //
 
-#undef P_PINDEX_IS_SIZE_T
+#cmakedefine P_PINDEX_IS_SIZE_T @P_PINDEX_IS_SIZE_T@
 
 #if defined(_WIN64) && !defined(P_64BIT)
-  #define P_64BIT 1
+  #cmakedefine P_64BIT @P_64BIT@
 #endif
 
 #ifdef _MSC_VER
@@ -351,12 +351,12 @@
 // PCAP support
 //
 
-#undef P_PCAP
+#cmakedefine P_PCAP @P_PCAP@
 #undef P_PCAP_PCAP_H
 #undef P_PCAP_WIN64
 #undef P_PCAP_WIN32
 
-#if (defined(P_PCAP_WIN64) &&  defined(P_64BIT)) || \
+#if (defined(PCAP_WIN64) &&  defined(P_64BIT)) || \
     (defined(P_PCAP_WIN32) && !defined(P_64BIT))
   #define P_PCAP 1
 #endif

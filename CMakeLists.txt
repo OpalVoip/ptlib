@@ -110,82 +110,119 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "iOS")
   set(P_IOS 1)
 endif ()
 
+# get endianness
+test_big_endian(bigEndian)
+if (bigEndian)
+  set(PBYTE_ORDER PBIG_ENDIAN)
+else()
+  set(PBYTE_ORDER PLITTLE_ENDIAN)
+endif()
+message("-- endian: ${PBYTE_ORDER}")
+
+# get size of some types
+set(P_PINDEX_IS_SIZE_T 1)
+
+if (CMAKE_SIZE_OF_VOID_P EQUAL 8)
+  set(P_64BIT 1)
+endif()
+
+# set size of types
+check_type_size(int SIZEOF_INT)
+
+check_type_size("unsigned long long" ulongLongSize)
+if (ulongLongSize) 
+  set(HAVE_UNSIGNED_LONG_LONG_INT 1)
+endif()
+
+check_type_size("long long" longLongSize)
+if (longLongSize) 
+  set(HAVE_LONG_LONG_INT 1)
+endif()
+
+check_type_size("long double" longDoubleSize)
+if (longDoubleSize) 
+  set(HAVE_LONG_DOUBLE 1)
+endif()
+
 #----------------------------------------------------------------------------------------------------------------------
 # ptlib configuration options
 #----------------------------------------------------------------------------------------------------------------------
-set(P_PINDEX_IS_SIZE_T 1)
+
 set(PTLIB_ALLOCATOR_TYPE "std")
 set(P_USE_ASSERTS 1)
 set(P_DEFAULT_PLUGIN_DIR "${P_DEFAULT_PLUGIN_DIR}")
 
 include(cmake/options.cmake)
 
+if (NOT P_ANDROID)
 
-#undef PMEMORY_CHECK
+  #undef PMEMORY_CHECK
 
-set(P_REGEX 1)
-set(P_CURSES 1)
-set(P_ODBC 1)
-set(P_CYPHER 1)
-set(P_PORTAUDIO 1)
-set(P_PORTMIXER 1)
+  set(P_REGEX 1)
+  set(P_CURSES 1)
+  set(P_ODBC 1)
+  set(P_CYPHER 1)
 
-set(HAS_SASL 1)
-set(HAS_LDAP 1)
-set(HAS_SSL 1)
-set(HAS_SDL 1)
-set(HAS_GSTREAMER 1)
-set(HAS_ODBC 1)
-set(HAS_VIDEO 1)
-set(HAS_SHM_VIDEO 1)
-set(HAS_EXPAT 1)
-set(HAS_AUDIO 1)
-set(HAS_PORTAUDIO 1)
-set(HAS_WAVFILE 1)
+  set(HAS_SASL 1)
+  set(P_LDAP 1)
+  set(HAS_SSL 1)
+  set(HAS_SDL 1)
+  set(HAS_GSTREAMER 1)
+  set(HAS_ODBC 1)
+  set(HAS_VIDEO 1)
 
-# additional feature dependencies
-if (${P_GUID})
-  set(P_SPOOLDIR 1)
-endif()
-
-if (${P_WINDOWS})
-  set(HAS_VFW_CAPTURE 1)
-  set(HAS_DIRECTSHOW 1)
-  set(P_REMCONN 1)
-elseif (${P_PIPECHAN})
-  set(P_REMCONN 1)
-endif()
-
-if (${P_ASN})
-  set(P_SNMP)
-endif()
-
-if (${P_NAT})
-  set(P_STUN)
-  if (${P_STUN})
-    set(P_STUNSRVR)
-    if (${P_SSL})
-      set(P_TURN)
-    endif()
+  if (NOT P_WINDOWS)
+    set(HAS_SHM_VIDEO 1)
   endif()
-endif()
 
-if (${P_URL})
-  set(P_VCARD)
-  set(P_HTTP)
-  if (${P_HTTP})
-    if (${P_CONFIG_FILE})
-      set(P_HTTPFORMS)
-      if (${P_HTTPFORMS})
-        set(P_HTTPSVC)
+  set(HAS_EXPAT 1)
+  set(HAS_AUDIO 1)
+  set(HAS_WAVFILE 1)
+
+  # additional feature dependencies
+  if (${P_GUID})
+    set(P_SPOOLDIR 1)
+  endif()
+
+  if (${P_WINDOWS})
+    set(HAS_VFW_CAPTURE 1)
+    set(HAS_DIRECTSHOW 1)
+    set(P_REMCONN 1)
+  elseif (${P_PIPECHAN})
+    set(P_REMCONN 1)
+  endif()
+
+  if (${P_ASN})
+    set(P_SNMP)
+  endif()
+
+  if (${P_NAT})
+    set(P_STUN)
+    if (${P_STUN})
+      set(P_STUNSRVR)
+      if (${P_SSL})
+        set(P_TURN)
       endif()
     endif()
-    set(P_SSDP)
   endif()
-endif()
 
+  if (${P_URL})
+    set(P_VCARD)
+    set(P_HTTP)
+    if (${P_HTTP})
+      if (${P_CONFIG_FILE})
+        set(P_HTTPFORMS)
+        if (${P_HTTPFORMS})
+          set(P_HTTPSVC)
+        endif()
+      endif()
+      set(P_SSDP)
+    endif()
+  endif()
 
-#set(P_NO_PTHREAD_KILL 0)
+  #set(P_NO_PTHREAD_KILL 0)
+
+endif() # NOT P_ANDROID
 
 #----------------------------------------------------------------------------------------------------------------------
 # ptlib dependencies
@@ -194,6 +231,45 @@ endif()
 include(cmake/dependencies.cmake)
 # create ptlib_config.h file
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/include/ptlib_config.h.in ${CMAKE_CURRENT_SOURCE_DIR}/include/ptlib_config.h)
+
+
+message("                  Memory checking ${MEMORY_CHECKER}")
+message("")
+message("                     DNS Resolver ${P_DNS_RESOLVER}")
+message("                             IPv6 ${P_IPV6}")
+message("            Packet Capture (PCAP) ${P_PCAP}")
+message("               Expat (XML parser) ${PTLIB_EXPAT}")
+message("                          OpenSSL ${P_OPENSSL}")
+message("                          SASL v1 ${P_SASL}")
+message("                          SASL v2 ${P_SASL2}")
+message("                         OpenLDAP ${P_OPENLDAP}")
+message("                             ODBC ${P_ODBC}")
+message("                              Lua ${P_LUA}")
+message("                  Javascript (V8) ${P_V8}")
+message("                     Festival TTS ${P_FESTIVAL}")
+message("                           Curses ${P_CURSES}")
+message("                        GStreamer ${P_GSTREAMER}")
+message("                          AWS SDK ${P_AWS_SDK}")
+message("")
+message("")
+message("                            Audio ${P_AUDIO}")
+message("                        PortAudio ${P_PORTAUDIO}")
+message("                             ALSA ${P_ALSA}")
+message("                              ESD ${P_ESD}")
+message("                              OSS ${P_OSS}")
+message("                            Pulse ${P_PULSE}")
+message("                              shm ${P_AUDIOSHM}")
+message("")
+message("                            Video ${P_VIDEO}")
+message("                             SDL2 ${P_SDL}")
+message("                      Video4linux ${P_V4L}")
+message("                     Video4linux2 ${P_V4L2}")
+message("                              BSD ${P_BSDVIDEOCAP}")
+message("                    IEEE-1394/AVC ${P_AVC1394}")
+message("                     IEEE-1394/DC ${P_DC1394}")
+message("                           FFMPEG ${P_FFMPEG}")
+message("                      ImageMagick ${P_IMAGEMAGICK}")
+message("                        JPEG File ${P_LIBJPEG}")
 
 #----------------------------------------------------------------------------------------------------------------------
 # create revision.h file
