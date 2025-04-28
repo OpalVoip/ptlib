@@ -327,7 +327,7 @@ else()
   unset(P_SAMPLES)
 endif()
 
-option(P_PCAPopt "PCAP support", ON)
+option(P_PCAPopt "PCAP support" ON)
 if (P_PCAPopt STREQUAL "ON")
   set(P_PCAP 1)
 else()

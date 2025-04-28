@@ -456,10 +456,7 @@ if(NOT P_WINDOWS)
   endif()
 
   # check for pcap
-  if(P_PCAP) option(P_PCAPopt "PCAP support", ON)
-  if(P_PCAPopt STREQUAL "OFF")
-    unset(P_PCAP)
-  else()
+  if(P_PCAP)
     check_include_file_cxx("pcap.h" HAS_PCAP)
     if (HAS_PCAP)
       message("-- pcap found")
