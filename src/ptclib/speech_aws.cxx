@@ -603,6 +603,7 @@ class PSpeechRecognition_AWS : public PSpeechRecognition, PAwsClient<Aws::Transc
               if (results.IsType(idxResult, PJSON::e_Object)) {
                 PJSON::Object const & result = results.GetObject(idxResult);
                 if (result.IsType("Alternatives", PJSON::e_Array)) {
+                  bool atLeastOnePronunciation = false;
                   PJSON::Array const & alternatives = result.GetArray("Alternatives");
                   for (size_t idxAlternative = 0; idxAlternative < alternatives.size(); ++idxAlternative) {
                     if (alternatives.GetObject(idxAlternative).IsType("Items", PJSON::e_Array)) {
@@ -610,28 +611,31 @@ class PSpeechRecognition_AWS : public PSpeechRecognition, PAwsClient<Aws::Transc
                       for (size_t idxItem = 0; idxItem < items.size(); ++idxItem) {
                         if (items.IsType(idxItem, PJSON::e_Object)) {
                           PJSON::Object const & item = items.GetObject(idxItem);
-                          if (item.GetString("Type") == "pronunciation") {
-                            transcript.m_final = false;
-                            transcript.m_when = PTimeInterval::Seconds((double)item.GetNumber("StartTime"));
-                            transcript.m_content = item.GetString("Content");
+                          transcript.m_final = false;
+                          transcript.m_when = PTimeInterval::Seconds((double)item.GetNumber("StartTime"));
+                          transcript.m_content = item.GetString("Content");
+                          if (item.GetString("Type") != "pronunciation")
+                            transcript.m_confidence = 0;
+                          else {
+                            atLeastOnePronunciation = true;
                             transcript.m_confidence = (float)item.GetNumber("Confidence");
-                            if (transcript.m_confidence <= 0 && item.GetString("Type") == "pronunciation")
+                            if (transcript.m_confidence <= 0)
                               transcript.m_confidence = 0.1f; // Need _some_ confidence in it!
-                            if (!transcript.m_content.empty()) {
-                              PTRACE(4, "Sending notification of " << transcript);
-                              m_notifier(*this, transcript);
-                            }
+                          }
+                          if (!transcript.m_content.empty()) {
+                            PTRACE(4, "Sending notification of " << transcript);
+                            m_notifier(*this, transcript);
                           }
                         }
                       }
                     }
                   }
-                  if (!alternatives.empty() && !result.GetBoolean("IsPartial")) {
+                  if (atLeastOnePronunciation && !result.GetBoolean("IsPartial")) {
                     transcript.m_final = true;
                     transcript.m_when = PTimeInterval::Seconds((double)result.GetNumber("StartTime"));
                     transcript.m_content = alternatives.GetObject(0).GetString("Transcript");
                     transcript.m_confidence = 1;
-                    PTRACE(4, "Sending notification of " << transcript);
+                    PTRACE(4, "Sending final notification of " << transcript);
                     m_notifier(*this, transcript);
                   }
                 }

@@ -1952,14 +1952,14 @@ class PString : public PCharArray
     __inline int compare(size_t pos, size_t len, const PString & str, size_t subpos, size_t sublen) const { return InternalCompare(pos, std::min(len, sublen), str.c_str()+std::min(str.length(),subpos)); }
     __inline int compare(size_t pos, size_t len, const string & str, size_t subpos, size_t sublen) const { return InternalCompare(pos, std::min(len, sublen), str.c_str()+std::min(str.length(), subpos)); }
     __inline int compare(size_t pos, size_t len, const char * str, size_t sublen) const { return InternalCompare(pos, std::min(len, sublen), str); }
-    __inline int starts_with(const PString & str) const { return InternalCompare(0, str.length(), str.c_str()) == EqualTo; }
-    __inline int starts_with(const string & str) const { return InternalCompare(0, str.length(), str.c_str()) == EqualTo; }
-    __inline int starts_with(const char * str) const { return InternalCompare(0, strlen(str), str) == EqualTo; }
-    __inline int starts_with(const char c) const { return InternalCompare(0, 1, &c) == EqualTo; }
-    __inline int ends_with(const PString & str) const { return InternalCompare(length()-str.length(), P_MAX_INDEX, str) == EqualTo; }
-    __inline int ends_with(const string & str) const { return InternalCompare(length()-str.length(), P_MAX_INDEX, str.c_str()) == EqualTo; }
-    __inline int ends_with(const char * str) const { return InternalCompare(length()-strlen(str), P_MAX_INDEX, str) == EqualTo; }
-    __inline int ends_with(const char c) const { return InternalCompare(length()-1, 1, &c) == EqualTo; }
+    __inline bool starts_with(const PString & str) const { return InternalCompare(0, str.length(), str.c_str()) == EqualTo; }
+    __inline bool starts_with(const string & str) const { return InternalCompare(0, str.length(), str.c_str()) == EqualTo; }
+    __inline bool starts_with(const char * str) const { return InternalCompare(0, strlen(str), str) == EqualTo; }
+    __inline bool starts_with(const char c) const { return InternalCompare(0, 1, &c) == EqualTo; }
+    __inline bool ends_with(const PString & str) const { return InternalCompare(length()-str.length(), P_MAX_INDEX, str) == EqualTo; }
+    __inline bool ends_with(const string & str) const { return InternalCompare(length()-str.length(), P_MAX_INDEX, str.c_str()) == EqualTo; }
+    __inline bool ends_with(const char * str) const { return InternalCompare(length()-strlen(str), P_MAX_INDEX, str) == EqualTo; }
+    __inline bool ends_with(const char c) const { return InternalCompare(length()-1, 1, &c) == EqualTo; }
     private:
       __inline static std::string::size_type StdStringPos(PINDEX p) { return p != P_MAX_INDEX ? (std::string::size_type)p : std::string::npos; }
     //@}
