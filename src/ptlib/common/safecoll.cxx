@@ -42,7 +42,7 @@
 atomic<unsigned> PSafeObject::m_traceObjectContext(1234567890);
 atomic<unsigned> PSafeObject::m_traceObjectLevel(3);
 atomic<unsigned> PSafeObject::m_traceDetailLevel(7);
-static PTimeInterval const g_deleteTakingTooLong(5000);
+static PTimeInterval const g_deleteTakingTooLong(0, 60);
 #endif // PTRACING
 
 PSafeObject::PSafeObject()
@@ -417,8 +417,8 @@ PBoolean PSafeCollection::DeleteObjectsToBeRemoved()
       else {
 #if PTRACING
         if (it->m_safeRemovalTime.GetElapsed() > g_deleteTakingTooLong) {
-          PTRACE(it->m_safeRemovalLogThrottle, it->GetClassName() << ' ' << (void *)&*it
-                 << " has been pending deletion for " << g_deleteTakingTooLong
+          PTRACE(it->m_safeRemovalLogThrottle, &*it, it->GetClassName() << ' ' << (void *)&*it
+                 << " has been pending deletion for " << setprecision(1) << g_deleteTakingTooLong
                  << " seconds: references = " << it->GetSafeReferenceCount());
         }
         PTRACE(it->GetTraceLogLevel(), it->GetClassName() << ' ' << (void *)&*it
