@@ -2241,12 +2241,6 @@ dnl enable shared memory video devices (static video plugin)
 PTLIB_SIMPLE_OPTION([shmvideo], [SHM_VIDEO], [shared memory video devices])
 
 dnl ########################################################################
-dnl enable shared memory video devices (static video plugin)
-
-PTLIB_SIMPLE_OPTION([shmvideo], [SHM_VIDEO], [shared memory video devices])
-
-
-dnl ########################################################################
 dnl look for Curses
 dnl MS-Windows uses it's own API indicated by P_CURSES=2. Unix uses ncurses.
 

@@ -1,0 +1,132 @@
+
+# check if portaudio is found
+if(P_AUDIO)
+  check_include_file_cxx("portaudio.h" HAS_PORTAUDIO)
+  if (HAS_PORTAUDIO)
+    message("-- portaudio found")
+    set(P_PORTAUDIO 1)
+
+    # check if portmixer is found
+    check_include_file_cxx("portmixer.h" HAS_PORTMIXER)
+    if (HAS_PORTMIXER)
+      set(P_PORTMIXER 1)
+      message("-- portmixer found")
+    endif()
+  else()
+    message("-- portaudio not found")
+  endif()
+endif()
+
+# check for pcap
+if(P_PCAP)
+  check_include_file_cxx("pcap.h" HAS_PCAP)
+  if (HAS_PCAP)
+    message("-- pcap found")
+    set(P_PCAP 1)
+  else()
+    message(FATAL_ERROR "pcap not found")
+  endif()
+endif()
+#----------------------------------------------------------------------------------------------------------------------
+# look for packages
+#----------------------------------------------------------------------------------------------------------------------
+
+
+
+pkg_check_modules(LIBSSL openssl QUIET)
+if(LIBSSL_FOUND)
+set(P_OPENSSL 1)
+target_link_libraries(ptlib ${LIBSSL_LIBRARIES})
+message("-- openssl found")
+else()
+message("-- openssl not found")
+endif()
+
+# platform specific configuration options
+
+if(P_WINDOWS)
+#TODO: check for curses. Set P_CURSES to 2 if found
+else()
+# check for ncurses
+if (P_CURSES)
+  pkg_check_modules(NCURSES ncurses QUIET)
+  if(NCURSES_FOUND)
+    set(P_CURSES 1)
+    target_link_libraries(ptlib ${NCURSES_LIBRARIES})
+    message("-- ncurses found")
+  else()
+    message("-- ncurses not found")
+  endif()
+endif()
+
+# check for odbc
+if (P_ODBC AND P_VARTYPE)
+  pkg_check_modules(ODBC odbc QUIET)
+  if(ODBC_FOUND)
+    set(P_ODBC 1)
+    target_link_libraries(ptlib ${ODBC_LIBRARIES})
+    message("-- odbc found")
+  else()
+    message("-- odbc not found")
+  endif()
+endif()
+endif()
+
+
+
+option(P_TEXT_TO_SPEECH_opt "Text-To-Speech support" DEFAULT_OPT)
+option(P_SPEECH_RECOGNITION_opt "Speech Recognition support" DEFAULT_OPT)
+
+option(P_CONFIG_FILE_opt "config file support" DEFAULT_OPT)
+option(P_URL_opt "URL support" DEFAULT_OPT)
+option(P_HTTP_opt "HTTP support" DEFAULT_OPT)
+option(P_HTTPFORMS_opt "HTTP forms support" DEFAULT_OPT)
+option(P_HTTPSVC_opt "HTTP server support" DEFAULT_OPT)
+option(P_SSDP_opt "SSDP support" DEFAULT_OPT)
+option(P_GUID_opt "GUID support" DEFAULT_OPT)
+option(P_SCRIPTS_opt "Scripts support" DEFAULT_OPT)
+option(P_SPOOLDIR_opt "Spool directory support" DEFAULT_OPT)
+option(P_SYSTEMLOG_opt "System log support" DEFAULT_OPT)
+option(P_CHANNEL_UTILS_opt "Channel utilities support" DEFAULT_OPT)
+option(P_TIMERS_opt "Timers support" DEFAULT_OPT)
+
+option(P_NETWORKING_opt "Network support" DEFAULT_OPT)
+
+option 
+option(P_VCARD_opt "VCard support" DEFAULT_OPT)
+option(P_JABBER_opt "Jabber support" DEFAULT_OPT)
+option(P_VXML_opt "VXML support" DEFAULT_OPT)
+option(P_XMLRPC_opt "XMLRPC support" DEFAULT_OPT)
+
+option(P_ASN_opt "ASN decoding/encoding support" DEFAULT_OPT)
+option(P_NAT_opt "NAT traversal support" DEFAULT_OPT)
+option(P_STUN_opt "STUN support" DEFAULT_OPT)
+option(P_TURN_opt "TURN support" DEFAULT_OPT)
+option(P_NETWORKING_opt "Network support" DEFAULT_OPT)
+option(P_STUNSRVR_opt "STUN server support" DEFAULT_OPT)
+option(P_PIPECHAN_opt "sub-process (PPipeChannel) support" DEFAULT_OPT)
+option(P_DTMF_opt "DTMF protocol support" DEFAULT_OPT)
+option(P_SOCKS_opt "SOCKS protocol support" DEFAULT_OPT)
+option(P_FTP_opt "FTP protocol support" DEFAULT_OPT)
+option(P_SNMP_opt "SNMP protocol support" DEFAULT_OPT)
+option(P_TELNET_opt "TELNET protocol support" DEFAULT_OPT)
+option(P_CLI_opt "command line interpreter support" DEFAULT_OPT)
+option(P_REMCONN_opt "remote connection support" DEFAULT_OPT)
+option(P_SERIAL_opt "serial port support" DEFAULT_OPT)
+option(P_POP3SMTP_opt "POP3/SMTP support" DEFAULT_OPT)
+option(P_AUDIO_opt "audio support" DEFAULT_OPT)
+option(P_WAVFILE_opt "WAVFILE support" DEFAULT_OPT)
+option(P_VIDEO_opt "video device support" DEFAULT_OPT)
+option(P_VIDFILE_opt "video file support" DEFAULT_OPT)
+option(P_MEDIAFILE_opt "Media file support" DEFAULT_OPT)
+option(P_APPSHARE_opt "application sharing support" DEFAULT_OPT)
+option(P_SHM_VIDEO_opt "shared memory video devices" DEFAULT_OPT)
+option(P_VFW_CAPTURE_opt "enable video for windows capture" DEFAULT_OPT)
+option(P_PLUGINMGR_opt "Plugin Manager support" DEFAULT_OPT)
+option(P_PLUGINS_opt "Plugin support" DEFAULT_OPT)
+option(P_SAMPLES_opt "enable samples build" DEFAULT_OPT)
+option(P_PCAP_opt "PCAP support" DEFAULT_OPT)
+
+option(P_SSL_opt "SSL support" DEFAULT_OPT)
+option(P_LDAP_opt "SSL support" DEFAULT_OPT)
+

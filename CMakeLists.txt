@@ -19,6 +19,7 @@ include(CheckCXXSymbolExists)
 include(CheckCXXSourceCompiles)
 include(CheckTypeSize)
 include(FindPkgConfig)
+include(CMakeDependentOption)
 
 string(COMPARE EQUAL "${CMAKE_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}" is_top_level)
 
@@ -47,6 +48,9 @@ add_library(ptlib::ptlib ALIAS ptlib)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+find_package(Git   REQUIRED)
+find_package(Bison REQUIRED)
 
 #----------------------------------------------------------------------------------------------------------------------
 # extract ptlib version
@@ -79,8 +83,6 @@ message("ptlib version: ${PTLIB_MAJOR}.${PTLIB_MINOR}.${PTLIB_PATCH}-${PTLIB_BUI
 # set ptlib version string
 set(PTLIB_VERSION "${PTLIB_MAJOR}.${PTLIB_MINOR}.${PTLIB_PATCH}-${PTLIB_BUILD_TYPE}")
 
-set(P_DEFAULT_PLUGIN_DIR "${CMAKE_INSTALL_FULL_LIBDIR}/ptlib-${PTLIB_VERSION}")
-
 #----------------------------------------------------------------------------------------------------------------------
 # extract OS version
 #----------------------------------------------------------------------------------------------------------------------
@@ -110,57 +112,20 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "iOS")
   set(P_IOS 1)
 endif ()
 
-# get endianness
-test_big_endian(bigEndian)
-if (bigEndian)
-  set(PBYTE_ORDER PBIG_ENDIAN)
-else()
-  set(PBYTE_ORDER PLITTLE_ENDIAN)
-endif()
-message("-- endian: ${PBYTE_ORDER}")
-
-# get size of some types
-set(P_PINDEX_IS_SIZE_T 1)
-
-if (CMAKE_SIZE_OF_VOID_P EQUAL 8)
-  set(P_64BIT 1)
-endif()
-
-# set size of types
-check_type_size(int SIZEOF_INT)
-
-check_type_size("unsigned long long" ulongLongSize)
-if (ulongLongSize) 
-  set(HAVE_UNSIGNED_LONG_LONG_INT 1)
-endif()
-
-check_type_size("long long" longLongSize)
-if (longLongSize) 
-  set(HAVE_LONG_LONG_INT 1)
-endif()
-
-check_type_size("long double" longDoubleSize)
-if (longDoubleSize) 
-  set(HAVE_LONG_DOUBLE 1)
-endif()
-
 #----------------------------------------------------------------------------------------------------------------------
-# ptlib configuration options
+# ptlib configuration 
 #----------------------------------------------------------------------------------------------------------------------
 
-set(PTLIB_ALLOCATOR_TYPE "std")
 set(P_USE_ASSERTS 1)
+set(PTLIB_ALLOCATOR_TYPE "std")
 set(P_DEFAULT_PLUGIN_DIR "${P_DEFAULT_PLUGIN_DIR}")
 
 include(cmake/options.cmake)
+include(cmake/compiler.cmake)
 
 if (NOT P_ANDROID)
 
-  #undef PMEMORY_CHECK
-
   set(P_REGEX 1)
-  set(P_CURSES 1)
-  set(P_ODBC 1)
   set(P_CYPHER 1)
 
   set(HAS_SASL 1)
@@ -224,14 +189,8 @@ if (NOT P_ANDROID)
 
 endif() # NOT P_ANDROID
 
-#----------------------------------------------------------------------------------------------------------------------
-# ptlib dependencies
-#----------------------------------------------------------------------------------------------------------------------
-
-include(cmake/dependencies.cmake)
 # create ptlib_config.h file
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/include/ptlib_config.h.in ${CMAKE_CURRENT_SOURCE_DIR}/include/ptlib_config.h)
-
 
 message("                  Memory checking ${MEMORY_CHECKER}")
 message("")
@@ -275,7 +234,6 @@ message("                        JPEG File ${P_LIBJPEG}")
 # create revision.h file
 #----------------------------------------------------------------------------------------------------------------------
 
-find_package(Git REQUIRED)
 execute_process(COMMAND ${GIT_EXECUTABLE} rev-parse HEAD
                 OUTPUT_VARIABLE GIT_HASH
                 OUTPUT_STRIP_TRAILING_WHITESPACE)

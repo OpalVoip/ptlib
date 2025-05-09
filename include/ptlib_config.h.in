@@ -42,7 +42,6 @@
 #define PTLIB_CHECK_VERSION(major,minor,patch) \
           (PTLIB_VERSION_INT(PTLIB_MAJOR,PTLIB_MINOR,PTLIB_PATCH) >= PTLIB_VERSION_INT(major,minor,patch))
 
-
 /////////////////////////////////////////////////
 //
 // host type
@@ -62,49 +61,24 @@
 
 // Windows API version for compile
 #if !defined(WINVER)
-  #undef    WINVER
+  #cmakedefine    WINVER   @WINVER@
 #endif
 
 #undef P_VERSION_HELPERS
 
-
 /////////////////////////////////////////////////
 //
-// Language stuff
+// language parameters
 //
 
-#cmakedefine P_EXCEPTIONS @P_EXCEPTIONS@
-#cmakedefine P_USE_ASSERTS @P_USE_ASSERTS@
-
-
-/////////////////////////////////////////////////
-//
-// Integer/char types
-//
-
-#cmakedefine P_PINDEX_IS_SIZE_T @P_PINDEX_IS_SIZE_T@
-
-#if defined(_WIN64) && !defined(P_64BIT)
-  #cmakedefine P_64BIT @P_64BIT@
-#endif
-
-#ifdef _MSC_VER
-  #define SIZEOF_INT 4
-  #define HAVE_LONG_LONG_INT 1
-  #define HAVE_UNSIGNED_LONG_LONG_INT 1
-  #define HAVE_LONG_DOUBLE 1
-#else
-  #cmakedefine SIZEOF_INT                  @SIZEOF_INT@
-  #cmakedefine HAVE_LONG_LONG_INT          @HAVE_LONG_LONG_INT@
-  #cmakedefine HAVE_UNSIGNED_LONG_LONG_INT @HAVE_UNSIGNED_LONG_LONG_INT@
-  #cmakedefine HAVE_LONG_DOUBLE            @HAVE_LONG_DOUBLE@
-#endif // _MSC_VER
-
-#cmakedefine P_HAS_WCHAR @P_HAS_WCHAR@
-#if P_HAS_WCHAR
-  #cmakedefine P_HAS_WOSTREAM @P_HAS_WOSTREAM@
-#endif
-#cmakedefine P_HAS_SET_RDBUF @P_HAS_SET_RDBUF@
+#cmakedefine P_PINDEX_IS_SIZE_T          @P_PINDEX_IS_SIZE_T@
+#cmakedefine P_64BIT                     @P_64BIT@
+#cmakedefine HAVE_LONG_LONG_INT          @HAVE_LONG_LONG_INT@
+#cmakedefine HAVE_UNSIGNED_LONG_LONG_INT @HAVE_UNSIGNED_LONG_LONG_INT@
+#cmakedefine HAVE_LONG_DOUBLE            @HAVE_LONG_DOUBLE@
+#cmakedefine P_HAS_WCHAR                 @P_HAS_WCHAR@
+#cmakedefine P_HAS_WOSTREAM              @P_HAS_WOSTREAM@
+#cmakedefine P_HAS_SET_RDBUF             @P_HAS_SET_RDBUF@
 
 #cmakedefine PBYTE_ORDER @PBYTE_ORDER@
 #ifndef PBYTE_ORDER
@@ -114,18 +88,6 @@
     #define PBYTE_ORDER PLITTLE_ENDIAN
   #endif
 #endif
-
-
-/////////////////////////////////////////////////
-//
-// Runtime dynamic link libraries
-//
-
-#cmakedefine P_DYNALINK           @P_DYNALINK@
-#cmakedefine P_PLUGINMGR          @P_PLUGINMGR@
-#cmakedefine P_PLUGINS            @P_PLUGINS@
-#cmakedefine P_DEFAULT_PLUGIN_DIR "@P_DEFAULT_PLUGIN_DIR@"
-
 
 /////////////////////////////////////////////////
 //
@@ -229,6 +191,8 @@
   #cmakedefine P_HAS_AIO                  @P_HAS_AIO@
   #cmakedefine P_HAS_POSIX_READDIR_R      @P_HAS_POSIX_READDIR_R@
   #cmakedefine P_HAS_INET_NTOP            @P_HAS_INET_NTOP@
+  #cmakedefine P_HAS_IPV6                 @P_HAS_IPV6@
+
   #cmakedefine P_HAS_IPV6_ADD_MEMBERSHIP  @P_HAS_IPV6_ADD_MEMBERSHIP@
   #cmakedefine P_GETPWUID_R4              @P_GETPWUID_R4@
   #cmakedefine P_GETPWUID_R5              @P_GETPWUID_R5@
@@ -240,13 +204,43 @@
   #cmakedefine P_GETGRNAM_R5              @P_GETGRNAM_R5@
   #cmakedefine P_GETHOSTBYNAME_R          @P_GETHOSTBYNAME_R@
 
-  #undef P_HAS_BACKTRACE
-  #undef P_HAS_DEMANGLE
-  #undef P_PROFILING
+  #cmakedefine P_HAS_BACKTRACE            @P_HAS_BACKTRACE@
+  #cmakedefine P_HAS_DEMANGLE             @P_HAS_DEMANGLE@
+  #cmakedefine P_PROFILING                @P_PROFILING@
+
+  #cmakedefine USE_SYSTEM_SWAB            @USE_SYSTEM_SWAB@
+  #cmakedefine P_VARTYPE                  @P_VARTYPE@  
 
 #endif //P_ANDROID
 
-#undef P_HAS_IPV6
+
+/////////////////////////////////////////////////
+//
+// compiler and language options
+//
+
+#cmakedefine P_USE_ASSERTS    @P_USE_ASSERTS@
+#cmakedefine P_EXCEPTIONS     @P_EXCEPTIONS@
+#cmakedefine PMEMORY_CHECK    @PMEMORY_CHECK@
+
+/////////////////////////////////////////////////
+//
+// ODBC support
+//
+
+#cmakedefine P_ODBC                       @P_ODBC@
+#cmakedefine P_ODBC_DEFINES_WINDOWS_TYPES @P_ODBC_DEFINES_WINDOWS_TYPES@
+
+/////////////////////////////////////////////////
+//
+// Runtime dynamic link libraries
+//
+
+#cmakedefine P_DYNALINK           @P_DYNALINK@
+#cmakedefine P_PLUGINMGR          @P_PLUGINMGR@
+#cmakedefine P_PLUGINS            @P_PLUGINS@
+#cmakedefine P_DEFAULT_PLUGIN_DIR "@P_DEFAULT_PLUGIN_DIR@"
+
 #undef P_GQOS
 #undef P_QWAVE
 #undef P_QWAVE_DSCP
@@ -257,8 +251,11 @@
 // various platform specific features
 //
 
+
+
+
+
 #undef P_LPIA
-#undef USE_SYSTEM_SWAB
 #undef P_SHM_VIDEO
 #undef P_HAS_RDTSC
 
@@ -267,12 +264,10 @@
 #endif
 
 
-/////////////////////////////////////////////////
-//
-// various non-platform specific features
-//
 
-#cmakedefine PMEMORY_CHECK @PMEMORY_CHECK@
+
+////// TBD
+
 
 #cmakedefine P_AUDIO @P_AUDIO@
 #cmakedefine P_VIDEO @P_VIDEO@
@@ -290,13 +285,10 @@
 #cmakedefine P_TELNET @P_TELNET@
 #cmakedefine P_CLI @P_CLI@
 #cmakedefine P_CURSES @P_CURSES@
-#cmakedefine P_ODBC @P_ODBC@
-#cmakedefine P_ODBC_DEFINES_WINDOWS_TYPES @P_ODBC_DEFINES_WINDOWS_TYPES@
 #cmakedefine P_SERIAL @P_SERIAL@
 #cmakedefine P_POP3SMTP @P_POP3SMTP@
 #cmakedefine P_CONFIG_FILE @P_CONFIG_FILE@
 #cmakedefine P_CYPHER @P_CYPHER@
-#cmakedefine P_VARTYPE @P_VARTYPE@  
 #cmakedefine P_GUID @P_GUID@
 #cmakedefine P_SYSTEMLOG @P_SYSTEMLOG@
 #cmakedefine P_CHANNEL_UTILS @P_CHANNEL_UTILS@
