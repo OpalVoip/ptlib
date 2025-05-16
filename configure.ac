@@ -2,6 +2,7 @@ dnl
 dnl PTLib configuration
 dnl
 
+# CMAKE : CMakeLists.txt
 AC_INIT([PTLib], m4_esyscmd([sed -n \
                              -e "s/ *#define *MAJOR_VERSION *\\([0-9]*\\)/\\1./p" \
                              -e "s/ *#define *MINOR_VERSION *\\([0-9]*\\)/\\1/p" \
@@ -24,6 +25,7 @@ m4_include(make/ax_pthread.m4)
 dnl ########################################################################
 dnl check for minimum sizing
 
+# CMAKE : options.cmake
 AC_ARG_ENABLE(minsize, AS_HELP_STRING([--enable-minsize],[Minimise the size of the lib by disabling least used options]))
 
 dnl these are the default configure settings, minimum or full
@@ -298,6 +300,8 @@ AC_COMPILE_IFELSE([AC_LANG_PROGRAM(
 dnl ########################################################################
 dnl this reduces the size of all executables and libraries
 
+// CMAKE: options.cmake
+
 dnl MSWIN_DISPLAY exceptions,C++ Exceptions
 dnl MSWIN_DEFINE  exceptions,P_EXCEPTIONS=1
 
@@ -312,6 +316,8 @@ fi
 
 dnl ########################################################################
 dnl Memory allocator optimisations
+
+// CMAKE: options.cmake
 
 AC_MSG_CHECKING(C++ memory allocator)
 
@@ -350,6 +356,8 @@ fi
 dnl ########################################################################
 dnl Do we have malloc_info
 
+// CMAKE: compiler.cmake
+
 MY_COMPILE_IFELSE(
    [if has malloc_info],
    [],
@@ -370,6 +378,8 @@ MY_COMPILE_IFELSE(
 dnl ########################################################################
 dnl Do we have __rdtsc
 
+// CMAKE: compiler.cmake
+
 dnl MSWIN_DISPLAY rdtsc,Has read TSC function
 dnl MSWIN_DEFINE  rdtsc,P_HAS_RDTSC=1
 
@@ -387,6 +397,8 @@ MY_COMPILE_IFELSE(
 dnl ########################################################################
 dnl check the endianness
 
+// CMAKE: compiler.cmake
+
 dnl MSWIN_DISPLAY byteorder,Byte Order
 dnl MSWIN_DEFINE  byteorder,PBYTE_ORDER=PLITTLE_ENDIAN
 
@@ -397,6 +409,7 @@ else
    AC_DEFINE_UNQUOTED(PBYTE_ORDER, PLITTLE_ENDIAN, "byte order")
 fi
 
+// CMAKE : removed
 
 dnl Solaris swab should not be used
 if test "$target_os" != "solaris"; then
@@ -405,6 +418,8 @@ fi
 
 
 dnl ########################################################################
+
+// CMAKE: options.cmake
 
 MY_ARG_ENABLE(
    [pindex_is_size_t],
@@ -416,6 +431,9 @@ MY_ARG_ENABLE(
 
 dnl ########################################################################
 dnl check for headers
+
+// CMAKE: comiler.cmake
+
 AC_CHECK_HEADERS(limits.h alloca.h signal.h fcntl.h sys/time.h termios.h sys/termios.h \
                  ioctl.h sys/ioctl.h sys/sockio.h sys/socket.h \
                  arpa/inet.h netdb.h ifaddrs.h netinet/in.h netinet/tcp.h \
@@ -427,6 +445,8 @@ AC_HEADER_DIRENT()
 
 dnl ########################################################################
 dnl check for UCS-2 to UTF-8 converter
+
+// CMAKE: compiler.cmake
 
 MY_LINK_IFELSE(
    [for iconv in standard library],
@@ -462,6 +482,8 @@ MY_LINK_IFELSE(
 dnl ########################################################################
 dnl check for poll function
 
+// CMAKE: compiler.cmake 
+
 MY_COMPILE_IFELSE(
    [for poll],
    [],
@@ -476,6 +498,9 @@ MY_COMPILE_IFELSE(
 
 dnl ########################################################################
 dnl check for number of parms to readdir
+
+// CMAKE: compiler.cmake
+
 MY_COMPILE_IFELSE(
    [if readdir_r has 2 parms],
    [],
@@ -512,6 +537,8 @@ AC_DEFINE_UNQUOTED(P_HAS_POSIX_READDIR_R, ${P_HAS_POSIX_READDIR_R})
 dnl ########################################################################
 dnl check for recvmsg
 
+// CMAKE: compiler.cmake
+
 MY_COMPILE_IFELSE(
    [for recvmsg],
    [],
@@ -531,6 +558,8 @@ MY_COMPILE_IFELSE(
 dnl ########################################################################
 dnl check for rt_msghdr
 
+// CMAKE: compiler.cmake
+
 MY_COMPILE_IFELSE(
    [for rt_msghdr],
    [],
@@ -547,6 +576,8 @@ MY_COMPILE_IFELSE(
 
 dnl ########################################################################
 dnl check for recvmsg option MSG_ERRQUEUE
+
+// CMAKE: compiler.cmake
 
 MY_COMPILE_IFELSE(
    [for recvmsg flag MSG_ERRQUEUE],
@@ -568,6 +599,8 @@ MY_COMPILE_IFELSE(
 dnl ########################################################################
 dnl check for recvmsg option IP_RECVERR
 
+// CMAKE: compiler.cmake
+
 MY_COMPILE_IFELSE(
    [for sockopt option IP_RECVERR],
    [],
@@ -587,6 +620,8 @@ MY_COMPILE_IFELSE(
 
 dnl ########################################################################
 dnl check for arguments to getpwuid_r
+
+// CMAKE: compiler.cmake
 
 MY_COMPILE_IFELSE(
    [for getpwuid_r with 4 arguments],
@@ -626,6 +661,8 @@ MY_COMPILE_IFELSE(
 dnl ########################################################################
 dnl check for arguments to getgrgid_r
 
+// CMAKE: compiler.cmake
+
 MY_COMPILE_IFELSE(
    [for getgrgid_r with 4 arguments],
    [],
@@ -663,6 +700,8 @@ MY_COMPILE_IFELSE(
 
 dnl ########################################################################
 dnl check for arguments to getpwnam_r
+
+// CMAKE: compiler.cmake
 
 MY_COMPILE_IFELSE(
    [for getpwnam_r with 4 arguments],
@@ -702,6 +741,8 @@ MY_COMPILE_IFELSE(
 dnl ########################################################################
 dnl check for arguments to getgrnam_r
 
+// CMAKE: compiler.cmake
+
 MY_COMPILE_IFELSE(
    [for getgrnam_r with 4 arguments],
    [],
@@ -739,6 +780,9 @@ MY_COMPILE_IFELSE(
 
 dnl ########################################################################
 dnl check if setpgrp takes non or two arguments
+
+// CMAKE: compiler.cmake
+
 MY_COMPILE_IFELSE(
    [if setpgrp takes no parameters],
    [],
@@ -751,11 +795,15 @@ MY_COMPILE_IFELSE(
 dnl ########################################################################
 dnl check for pthreads library
 
+
+// CMAKE: compiler.cmake
+
 AX_PTHREAD([], [AC_MSG_ERROR(Must have pthreads!)])
 
 HAS_PTHREADS=yes
 AC_DEFINE(P_PTHREADS, 1, "PThreads found")
 
+// CMAKE: removed
 LIBS="$PTHREAD_LIBS $LIBS"
 CPPFLAGS="$CPPFLAGS -D_REENTRANT"
 CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
@@ -764,6 +812,8 @@ if test "$CC" != "$PTHREAD_CC"; then
     AC_MSG_WARN([Overriding default CC to $PTHREAD_CC])
     CC="$PTHREAD_CC"
 fi
+
+// CMAKE: compiler.cmake
 
 AC_ARG_ENABLE(
    pthread_kill,
@@ -775,6 +825,8 @@ AC_ARG_ENABLE(
 dnl ########################################################################
 dnl check for rt library
 
+// CMAKE: compiler.cmake 
+
 AC_CHECK_LIB(rt, clock_gettime, HAS_RT=yes, HAS_RT=no)
 if test ${HAS_RT} = yes ; then
   LIBS="-lrt $LIBS"
@@ -785,6 +837,8 @@ dnl ########################################################################
 dnl check for semaphores
 dnl MSWIN_DISPLAY semaphore,Semaphore Support
 dnl MSWIN_DEFINE  semaphore,P_HAS_SEMAPHORES
+
+// CMAKE: compiler.cmake 
 
 MY_COMPILE_IFELSE(
    [if has Unix semaphores],
@@ -823,6 +877,8 @@ MY_COMPILE_IFELSE(
 dnl ########################################################################
 dnl check for XPG6 compliant pthreads (timed spinlocks)
 
+// CMAKE: compiler.cmake 
+
 MY_COMPILE_IFELSE(
    [if has pthread_mutex_timedlock],
    [],
@@ -834,6 +890,9 @@ MY_COMPILE_IFELSE(
 
 dnl ########################################################################
 dnl check for recursive mutexes
+
+// CMAKE: compiler.cmake 
+
 MY_COMPILE_IFELSE(
    [if has NP recursive mutexes],
    [],
@@ -859,6 +918,8 @@ MY_COMPILE_IFELSE(
 dnl ########################################################################
 dnl check for gethostbyaddr_r
 
+// CMAKE: compiler.cmake 
+
 MY_COMPILE_IFELSE(
    [for gethostbyaddr_r],
    [],
@@ -880,6 +941,8 @@ MY_COMPILE_IFELSE(
 
 dnl ########################################################################
 dnl check for NetLink support
+
+// CMAKE: compiler.cmake 
 
 MY_COMPILE_IFELSE(
    [for NetLink support],
@@ -911,9 +974,13 @@ dnl MSWIN_CHECK_FILE ipv6,include\um\ws2tcpip.h,P_HAS_IPV6=1
 dnl MSWIN_CHECK_DIR  ipv6,%ProgramFiles%\Windows Kits\8.*
 dnl MSWIN_CHECK_DIR  ipv6,%ProgramW6432%\Windows Kits\8.*
 
+// CMAKE: options.cmake 
+
 AC_ARG_ENABLE(ipv6, AS_HELP_STRING([--disable-ipv6],[disable IPV6 support]))
 
 HAS_IPV6=
+
+// CMAKE: compiler.cmake 
 
 if test "$enable_ipv6" = "no" ; then
    AC_MSG_NOTICE(IPV6 disabled)
@@ -941,6 +1008,7 @@ fi
 
 PTLIB_SUBST(IPV6)
 
+// CMAKE: compiler.cmake 
 
 MY_COMPILE_IFELSE(
    [for inet_ntop],
@@ -960,6 +1028,7 @@ MY_COMPILE_IFELSE(
    [AC_DEFINE(P_HAS_INET_NTOP, 1)]
 )
 
+// CMAKE: compiler.cmake 
 
 MY_COMPILE_IFELSE(
    [for IPV6_ADD_MEMBERSHIP],
@@ -973,6 +1042,8 @@ MY_COMPILE_IFELSE(
 dnl ########################################################################
 dnl check for async I/O
 
+// CMAKE: compiler.cmake 
+
 AC_CHECK_HEADERS(aio.h, [AC_DEFINE(P_HAS_AIO, 1)])
 
 
@@ -984,6 +1055,8 @@ dnl MSWIN_DEFINE  wchar,P_HAS_WCHAR
 
 dnl MSWIN_DISPLAY wstream,wchar stream Support
 dnl MSWIN_DEFINE  wstream,P_HAS_WOSTREAM
+
+// CMAKE: compiler.cmake 
 
 AC_CHECK_HEADERS(
    wchar.h,
@@ -1000,6 +1073,8 @@ dnl look for stack back trace capability
 AC_ARG_ENABLE(backtrace, AS_HELP_STRING([--disable-backtrace],[disable stack back trace support]))
 
 HAS_BACKTRACE=
+
+// CMAKE: options.cmake 
 
 if test "$enable_backtrace" = "no" ; then
    AC_MSG_NOTICE(Stack back trace disabled)
@@ -1040,6 +1115,8 @@ dnl ########################################################################
 dnl check for tracing
 dnl
 
+// CMAKE: options.cmake 
+
 AC_ARG_ENABLE(tracing, AS_HELP_STRING([--disable-tracing],[Remove PTRACE and all trace logging]))
 AC_ARG_ENABLE(trace-instance, AS_HELP_STRING([--disable-trace-instance],[Disable object instance in trace logging]))
 
@@ -1060,6 +1137,8 @@ fi
 dnl ########################################################################
 dnl check for regex library
 dnl mingw does not provide regcomp, so search for it in regex library
+
+# CMAKE : removed 
 
 AC_ARG_ENABLE(
    internalregex,

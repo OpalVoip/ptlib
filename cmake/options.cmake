@@ -73,8 +73,14 @@ MEMORY_CHECKER=None
 # compiler and language options
 #----------------------------------------------------------------------------------------------------------------------
 
-# enable C++ exceptions by default
-option(exceptions "enable C++ exceptions" ON)
+# force PINDEX to be size_t
+option(pindex_is_size_t "enable PINDEX set to size_t" ON)
+if(pindex_is_size_t)
+  set(P_PINDEX_IS_SIZE_T 1)
+endif()
+
+# disable C++ exceptions by default
+option(exceptions "enable C++ exceptions" OFF)
 if (exceptions)
   if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     target_compile_options(ptlib PRIVATE "/EHsc")
@@ -150,11 +156,18 @@ else()
   message(FATAL_ERROR "Unknown allocator type ${PTLIB_ALLOCATOR_TYPE}")
 endif()
 
-
+# force pindex to be size_t
 option(pindex_is_size_t "enable PINDEX set to size_t" ON)
 if(pindex_is_size_t)
   set(P_PINDEX_IS_SIZE_T 1)
 endif()
+
+# disable use of pthread_kill for checking on thread terminated
+option(no_pthread_kill "disable use of pthread_kill for checking on thread terminated" OFF)
+if(no_pthread_kill)
+  set(P_NO_PTHREAD_KILL 1)
+endif()
+
 
 #----------------------------------------------------------------------------------------------------------------------
 # PTLib functionality options applicable to all platforms
@@ -229,3 +242,56 @@ else()
     set(P_HAS_IPV6 1)
   endif()
 fi
+
+#----------------------------------------------------------------------------------------------------------------------
+# enable stack back trace support
+#----------------------------------------------------------------------------------------------------------------------
+
+option(backtrace "enable stack back trace support" ON)
+if (NOT backtrace)
+  message("-- Stack back trace support disabled by option")
+else()
+  check_cxx_source_compiles("#include <execinfo.h>
+    int main(int, char**) {
+      void* addrlist[100];
+      int addrlen = backtrace(addrlist, sizeof(addrlist)/sizeof(void*));
+      char** symbollist = backtrace_symbols(addrlist, addrlen);
+    }" has_backtrace)
+  if (has_backtrace)
+    set(P_HAS_BACKTRACE 1)
+    message("-- Stack back trace support enabled")
+
+      check_cxx_source_compiles("#include <cxxabi.h>
+        int main(int, char**) {
+          char name[100];
+          size_t size;
+          int status;
+          abi::__cxa_demangle("something", name, &size, &status);
+        }" has_cxxabi)
+      if (has_cxxabi)
+        set(P_HAS_DEMANGLE 1)
+        message("-- C++ demangle support enabled")
+      endif()
+    endif()
+  endif()
+endif()
+
+
+#----------------------------------------------------------------------------------------------------------------------
+# check for tracing
+#----------------------------------------------------------------------------------------------------------------------
+
+option(tracing "enable tracing" ON)
+if (NOT tracing)
+  message("-- PTRACE and all trace logging removed")
+else()
+  option(trace-instance "enable object instance in trace logging" ON)
+  if (NOT trace-instance)
+    message("-- PTRACE without object instance trace logging included")
+    target_compile_options(ptlib PRIVATE "-DPTRACING=1")  
+  else()
+    message("-- PTRACE and all trace logging included")
+    target_compile_options(ptlib PRIVATE "-DPTRACING=2")
+  endif()
+endif()
+

@@ -2,9 +2,6 @@
 # compiler and system parameters
 #----------------------------------------------------------------------------------------------------------------------
 
-# get size of some types
-set(P_PINDEX_IS_SIZE_T 1)
-
 if (CMAKE_SIZE_OF_VOID_P EQUAL 8)
   set(P_64BIT 1)
 endif()
@@ -162,6 +159,14 @@ if(NOT P_WINDOWS)
   # check that AF_NETLINK is defined
   CHECK_SYMBOL_EXISTS(AF_NETLINK   "asm/types.h;sys/socket.h;linux/netlink.h;linux/rtnetlink.h;linux/genetlink.h" P_HAS_NETLINK)
 
+  # must have pthread
+  check_library_exists(pthread pthread_create "" has_pthread)
+  if (has_pthread)
+    set(P_PTHREADS 1)
+  else()
+    message(FATAL_ERROR "pthreads not found")
+  endif()
+
   # check pthread mutex
   check_c_source_compiles("#include <pthread.h>
     int main(int, char**) {
@@ -190,8 +195,7 @@ if(NOT P_WINDOWS)
     }" has_pthread_mutex_timedlock)
   if (has_pthread_mutex_timedlock)
     set(P_PTHREADS_XPG6 1)
-  endif()
-
+  endif()  
 
   # check for arguments to getgrgid_r
   check_cxx_source_compiles("#include <sys/types.h>
@@ -400,18 +404,24 @@ if(NOT P_WINDOWS)
     endif()
   endif()
 
+  # check for rt library
+  check_library_exists(rt clock_gettime "" has_rt)
+  if (has_rt)
+    target_link_libraries(ptlib PRIVATE rt)
+  endif()
+
+  # check for poll (TODO)
+  CHECK_SYMBOL_EXISTS(poll "poll.h" has_poll)
+  if (has_poll)
+    set(P_HAS_POLL 1)
+  endif()
+
 endif() # NOT P_WINDOWS
 
 # check for swab
 check_function_exists(swab has_swab)
 if (has_swab)
   set(USE_SYSTEM_SWAB 1)
-endif()
-
-# check for rt library
-check_library_exists(rt clock_gettime "" has_rt)
-if (has_rt)
-  target_link_libraries(ptlib PRIVATE rt)
 endif()
 
 
