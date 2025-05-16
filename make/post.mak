@@ -377,17 +377,22 @@ ifneq (,$(REVISION_FILE))
   endif
 
 
-  $(REVISION_FILE) : $(REVISION_FILE).in FORCE
-	$(Q)\
-    sed -e 's/GIT_COMMIT.*/GIT_COMMIT "$(GIT_COMMIT)"/' \
+  ifneq (,$(GIT_COMMIT))
+    $(REVISION_FILE) : $(REVISION_FILE).in FORCE
+	  $(Q)\
+      sed -e 's/GIT_COMMIT.*/GIT_COMMIT "$(GIT_COMMIT)"/' \
         $(REVISION_FILE).in > $(REVISION_FILE).tmp  ; \
-    if diff -q $(REVISION_FILE) $(REVISION_FILE).tmp >/dev/null 2>&1; then \
-      rm $(REVISION_FILE).tmp ; \
-    else \
-      mv -f $(REVISION_FILE).tmp $(REVISION_FILE) ; \
-      echo "Revision file updated:" ; \
-      sed -n -e 's/.*GIT_COMMIT *"\(..*\)"/  GIT commit  : \1/p' $(REVISION_FILE) ; \
-    fi
+      if diff -q $(REVISION_FILE) $(REVISION_FILE).tmp >/dev/null 2>&1; then \
+        rm $(REVISION_FILE).tmp ; \
+      else \
+        mv -f $(REVISION_FILE).tmp $(REVISION_FILE) ; \
+        echo "Revision file updated:" ; \
+        sed -n -e 's/.*GIT_COMMIT *"\(..*\)"/  GIT commit  : \1/p' $(REVISION_FILE) ; \
+      fi
+  else
+    $(REVISION_FILE) : $(REVISION_FILE).in
+	  cp $< $@
+  endif
 
   .PHONY:FORCE
 
