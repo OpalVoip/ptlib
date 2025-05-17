@@ -32,36 +32,56 @@
 
 #define P2 ((int)(POLRAD*POLRAD*FSC))
 
-PDTMFDecoder::PDTMFDecoder()
-  : sampleCount(0)
-  , tonesDetected(0)
-  , inputAmplitude(0)
+static std::vector<char> BuildKeys()
 {
-  // Initialise the class
-  int i;
-  for (i = 0; i < NumTones; i++)
-    y[i] = h[i] = k[i] = 0;
-
-  for (i = 0; i < 256; i++)
-    key[i] = '?';
-
   /* We encode the tones in 8 bits, translate those to symbol */
+  std::vector<char> key(1 << PDTMFDecoder::NumTones, '?');
   key[0x11] = '1'; key[0x12] = '4'; key[0x14] = '7'; key[0x18] = '*';
   key[0x21] = '2'; key[0x22] = '5'; key[0x24] = '8'; key[0x28] = '0';
   key[0x41] = '3'; key[0x42] = '6'; key[0x44] = '9'; key[0x48] = '#';
   key[0x81] = 'A'; key[0x82] = 'B'; key[0x84] = 'C'; key[0x88] = 'D';
-
-  /* The frequencies we're trying to detect */
-  /* These are precalculated to save processing power */
-  /* static int dtmf[9] = {697, 770, 852, 941, 1209, 1336, 1477, 1633, 1100, 2100}; */
-  /* p1[tone] = (-cos(2 * 3.141592 * dtmf[tone] / 8000.0) * FSC) */
-  p1[0] = -3497; p1[1] = -3369; p1[2] = -3212; p1[3] = -3027;
-  p1[4] = -2384; p1[5] = -2040; p1[6] = -1635; p1[7] = -1164;
-  p1[8] = -2660; p1[9] = 321;
+  key[0x100] = 'X';
+  key[0x200] = 'Y';
+  return key;
 }
 
-PString PDTMFDecoder::Decode(const short * sampleData, PINDEX numSamples, unsigned mult, unsigned div)
+PDTMFDecoder::PDTMFDecoder(unsigned frequencey, unsigned mult, unsigned div)
+  : m_frequency(frequencey)
 {
+  Reset(frequencey, mult, div);
+}
+
+void PDTMFDecoder::Reset(unsigned frequencey, unsigned mult, unsigned div)
+{
+  PTRACE(4, "DTMF", "Reset detector");
+
+  if (frequencey > 0)
+    m_frequency = frequencey;
+  if (mult > 0)
+    m_scaleMultiplier = mult;
+  if (div > 0)
+    m_scaleDivisor = div;
+  m_sampleCount = 0;
+  m_tonesDetected = 0;
+  m_inputAmplitude = 0;
+  for (int i = 0; i < NumTones; i++)
+    y[i] = h[i] = k[i] = 0;
+}
+
+PString PDTMFDecoder::Decode(const short * sampleData, PINDEX numSamples)
+{
+    // key lookup table
+  static std::vector<char> const key = BuildKeys();
+
+  // frequency table
+  /* The frequencies we're trying to detect */
+  /* These are pre-calculated to save processing power */
+  /* static int dtmf[9] = {697, 770, 852, 941, 1209, 1336, 1477, 1633, 1100, 2100}; */
+  /* p1[tone] = (-cos(2 * 3.141592 * dtmf[tone] / 8000.0) * FSC) */
+  static int const p1[NumTones] = {
+    -3497, -3369, -3212, -3027, -2384, -2040, -1635, -1164, -2660, 321
+  };
+
 #if 0
   {
     static int fd = -1;
@@ -80,23 +100,23 @@ PString PDTMFDecoder::Decode(const short * sampleData, PINDEX numSamples, unsign
   for (pos = 0; pos < numSamples; pos++) {
 
     /* Read (and scale) the next 16 bit sample */
-    int x = (int)(mult * (*sampleData++)) / div;
+    int x = (int)(m_scaleMultiplier * (*sampleData++)) / m_scaleDivisor;
     x = x / (32768/FSC);
 
     /* Input amplitude */
     if (x > 0)
-      inputAmplitude += (x - inputAmplitude) / 128;
+      m_inputAmplitude += (x - m_inputAmplitude) / 128;
     else
-      inputAmplitude += (-x - inputAmplitude) / 128;
+      m_inputAmplitude += (-x - m_inputAmplitude) / 128;
 
     /* For each tone */
-    int newTones = 0;
+    unsigned newDetectedTones = 0;
     for (int tone = 0; tone < NumTones; tone++) {
 
       /* Turn the crank */
       int c = (P2 * (x - k[tone])) / FSC;
       int d = x + c;
-      int f = (p1[tone] * (d - h[tone])) / FSC;
+      int f = (p1[tone]*m_frequency/8000 * (d - h[tone])) / FSC;
       int n = x - k[tone] - c;
       k[tone] = h[tone] + f;
       h[tone] = f + d;
@@ -108,34 +128,18 @@ PString PDTMFDecoder::Decode(const short * sampleData, PINDEX numSamples, unsign
         y[tone] += (-n - y[tone]) / 64;
 
       /* Threshold */
-      if (y[tone] > FSC/10 && y[tone] > inputAmplitude) 
-        newTones |= 1 << tone;
+      if (y[tone] > FSC/10 && y[tone] > m_inputAmplitude)
+        newDetectedTones |= 1 << tone;
     }
 
-    /* Hysteresis and noise supressor */
-    if (newTones != tonesDetected) {
-      sampleCount = 0;
-      tonesDetected = newTones;
+    /* Hysteresis and noise suppressor */
+    if (newDetectedTones != m_tonesDetected) {
+      m_sampleCount = 0;
+      m_tonesDetected = newDetectedTones;
     }
-    else if (sampleCount++ == DetectSamples) {
-      if (tonesDetected < 256) {
-        if (key[tonesDetected] != '?') {
-          PTRACE(3,"DTMF", "Detected '" << key[tonesDetected] << "' in PCM-16 stream");
-          keyString += key[tonesDetected];
-        }
-      }
-      else {
-        char ch = 0;
-        if ((tonesDetected & 0x100) != 0)
-          ch = 'X';
-        else if ((tonesDetected & 0x200) != 0)
-          ch = 'Y';
-
-        if (ch != 0) {
-          PTRACE(3,"DTMF", "Detected tone '" << ch << "' in PCM-16 stream");
-          keyString += ch;
-        }
-      }
+    else if (m_sampleCount++ >= DetectTime*m_frequency/1000 && key[m_tonesDetected] != '?') {
+      PTRACE(3,"DTMF", "Detected '" << key[m_tonesDetected] << "' in PCM-16 stream");
+      keyString += key[m_tonesDetected];
     }
   }
   return keyString;
