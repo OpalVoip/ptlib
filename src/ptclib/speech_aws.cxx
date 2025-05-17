@@ -286,7 +286,7 @@ public:
                << gender << " != " << found->Get(VoiceGender));
         return false;
       }
-      if (!engine.empty() && engine != found->Get(VoiceEngine)) {
+      if (!engine.empty() && Aws::Polly::Model::EngineMapper::GetEngineForName(engine) == Aws::Polly::Model::Engine::NOT_SET) {
         PTRACE(2, "Voice \"" << voiceName << "\" has incorrect engine: "
                << engine << " != " << found->Get(VoiceEngine));
         return false;
