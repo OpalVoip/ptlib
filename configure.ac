@@ -1811,6 +1811,18 @@ CXXFLAGS="$oldCXXFLAGS"
 dnl ########################################################################
 dnl check for AWS SDK library
 
+dnl For local build:
+dnl git clone --recurse-submodules https://github.com/aws/aws-sdk-cpp
+dnl cd aws-sdk-cpp
+dnl mkdir build
+dnl cd build
+dnl cmake .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=./install/x64-Debug
+dnl cmake --build . --config=Debug
+dnl cmake --install . --config=Debug
+dnl cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=./install/x64-Release
+dnl cmake --build . --config=Release
+dnl cmake --install . --config=Release
+
 dnl MSWIN_DISPLAY    aws,AWS SDK (local build)
 dnl MSWIN_CHECK_FILE aws,install/x86-Debug/include/aws/core/Aws.h,P_AWS_SDK_DEBUG32=1
 dnl MSWIN_CHECK_FILE aws,install/x86-Release/include/aws/core/Aws.h,P_AWS_SDK_RELEASE32=1
