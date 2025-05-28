@@ -37,6 +37,7 @@
 #include <ptclib/pjson.h>
 #include <ptclib/aws_sdk.h>
 #include <ptclib/pxml.h>
+#include <ptclib/qchannel.h>
 
 P_PUSH_MSVC_WARNINGS(26495)
 #define USE_IMPORT_EXPORT
@@ -73,60 +74,10 @@ class PTextToSpeech_AWS : public PTextToSpeech, PAwsClient<Aws::Polly::PollyClie
   PString      m_defaultEngine;
   bool         m_sampleRate8k{ true };
   PWAVFile     m_file;
-  typedef std::shared_ptr<Aws::Polly::Model::SynthesizeSpeechResult> ResultPtr;
-  ResultPtr m_speechResult;
+  bool         m_channelOpen{ false };
 
-  struct PollyChannel : public PChannel
+  void SetRequestInfo(Aws::Polly::Model::SynthesizeSpeechRequest & request, const PString & text, TextType hint)
   {
-    PCLASSINFO(PollyChannel, PChannel)
-    ResultPtr m_speechResult;
-
-    PollyChannel(const ResultPtr & outcome)
-      : m_speechResult(outcome)
-    {
-    }
-
-    ~PollyChannel()
-    {
-      Close();
-    }
-
-    virtual PString GetName() const override
-    {
-      return "PollyChannel";
-    }
-
-    virtual bool IsOpen() const override
-    {
-      return !!m_speechResult;
-    }
-
-    virtual bool Close() override
-    {
-      m_speechResult.reset();
-      return true;
-    }
-
-    virtual bool Read(void * buffer, PINDEX size) override
-    {
-      if (!m_speechResult)
-        return false;
-
-      auto & strm = m_speechResult->GetAudioStream();
-      strm.read((char *)buffer, size);
-      auto count = strm.gcount();
-      SetLastReadCount(count);
-      return count > 0;
-    }
-  };
-
-  bool InternalSpeak(Aws::Polly::Model::SynthesizeSpeechOutcome & outcome, const PString & text, TextType hint)
-  {
-    if (!SetVoice(PString::Empty()))
-      return false;
-
-    Aws::Polly::Model::SynthesizeSpeechRequest request;
-
     request.SetOutputFormat(Aws::Polly::Model::OutputFormat::pcm);
     request.SetSampleRate(m_sampleRate8k ? "8000" : "16000");
     request.SetVoiceId(Aws::Polly::Model::VoiceIdMapper::GetVoiceIdForName(m_voice.Get(VoiceName).c_str()));
@@ -148,28 +99,21 @@ class PTextToSpeech_AWS : public PTextToSpeech, PAwsClient<Aws::Polly::PollyClie
       "characters", // Spell,
       NULL, // Boolean
     };
+    PStringStream strm;
+    strm << "<speak>";
     if (HintToAWS[hint] == NULL)
-      request.SetText(text.c_str());
+      strm << PXML::EscapeSpecialChars(text);
     else {
-      PStringStream strm;
       strm << "<say-as interpret-as=\"" << HintToAWS[hint] << '"';
       if (hint == Date) {
         static const char * DateOrder[] = { "mdy", "dmy", "ymd" };
         strm << " format=\"" << DateOrder[PTime::GetDateOrder()] << '"';
       }
-      strm << '>'
-        << PXML::EscapeSpecialChars(text)
-        << "</say-as>";
-      request.SetText(strm.c_str());
-      request.SetTextType(Aws::Polly::Model::TextType::ssml);
+      strm << '>' << PXML::EscapeSpecialChars(text) << "</say-as>";
     }
-
-    outcome = GetClient()->SynthesizeSpeech(request);
-    if (outcome.IsSuccess())
-      return true;
-
-    PTRACE(2, "Could not synthesize speech: " << outcome.GetError().GetMessage());
-    return false;
+    strm << "</speak>";
+    request.SetText(strm.c_str());
+    request.SetTextType(Aws::Polly::Model::TextType::ssml);
   }
 
 public:
@@ -365,13 +309,13 @@ public:
 
   bool IsOpen() const override
   {
-    return !!m_speechResult || m_file.IsOpen();
+    return m_channelOpen || m_file.IsOpen();
   }
 
 
   bool Close() override
   {
-    m_speechResult.reset();
+    m_channelOpen= false;
     m_file.Close();
     return true;
   }
@@ -379,12 +323,17 @@ public:
 
   bool Speak(const PString & text, TextType hint) override
   {
-    if (!IsOpen())
+    if (!IsOpen() || !SetVoice(PString::Empty()))
       return false;
 
-    Aws::Polly::Model::SynthesizeSpeechOutcome outcome;
-    if (!InternalSpeak(outcome, text, hint))
+    Aws::Polly::Model::SynthesizeSpeechRequest request;
+    SetRequestInfo(request, text, hint);
+
+    Aws::Polly::Model::SynthesizeSpeechOutcome outcome = GetClient()->SynthesizeSpeech(request);
+    if (!outcome.IsSuccess()) {
+      PTRACE(2, "Could not synthesize speech: " << outcome.GetError().GetMessage());
       return false;
+    }
 
     auto & strm = outcome.GetResult().GetAudioStream();
     for (;;) {
@@ -406,12 +355,45 @@ public:
 
   PChannel * SpeakToChannel(const PString & text, TextType hint) override
   {
-    Aws::Polly::Model::SynthesizeSpeechOutcome outcome;
-    if (!InternalSpeak(outcome, text, hint))
-      return NULL;
+    if (!SetVoice(PString::Empty()))
+      return false;
 
-    m_speechResult = std::make_shared<Aws::Polly::Model::SynthesizeSpeechResult>(outcome.GetResultWithOwnership());
-    return new PollyChannel(m_speechResult);
+    auto channel = new PQueueChannel(m_sampleRate8k ? 16000 : 32000); // One second of PCM
+
+    Aws::Polly::Model::SynthesizeSpeechRequest request;
+    SetRequestInfo(request, text, hint);
+
+    request.SetDataReceivedEventHandler(
+      [this, channel](const Aws::Http::HttpRequest *,
+                      Aws::Http::HttpResponse * response,
+                      long long bytesTransferred)
+      {
+        std::vector<char> buffer(bytesTransferred);
+        auto & body = response->GetResponseBody();
+        body.read(buffer.data(), bytesTransferred);
+        bool writeResult = channel->Write(buffer.data(), body.gcount());
+        PTRACE(4, "SynthesizeSpeechAsync: " << response->GetResponseCode() << ","
+               " received=" << bytesTransferred << ","
+               " gcount=" << body.gcount() << ","
+               " write=" << boolalpha << writeResult);
+      });
+
+    m_channelOpen = true;
+    GetClient()->SynthesizeSpeechAsync(
+      request,
+      [this](const Aws::Polly::PollyClient *,
+         const Aws::Polly::Model::SynthesizeSpeechRequest &,
+         Aws::Polly::Model::SynthesizeSpeechOutcome outcome,
+         const std::shared_ptr<const Aws::Client::AsyncCallerContext> &)
+      {
+        if (outcome.IsSuccess())
+          PTRACE(4, "SynthesizeSpeechAsync completed.");
+        else
+          PTRACE(2, "SynthesizeSpeechAsync error: " << outcome.GetError());
+        m_channelOpen = false;
+      });
+
+    return channel;
   }
 };
 
