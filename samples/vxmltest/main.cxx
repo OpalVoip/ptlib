@@ -57,6 +57,7 @@ void VxmlTest::Main()
                   "-private-key: Set client certificate private key\n"
 #endif
                   "T-tts: Text to speech method\n"
+                  "-tts-option: Text to speech options (key=value)\n"
                   "S-sr: Speech recognition method\n"
                   "c-cache: Text to speech cache directory\n"
                   "-clear-cache. Clear the cache on execution\n"
@@ -405,7 +406,7 @@ bool TestInstance::Initialise(unsigned instance, const PArgList & args)
                     args.GetOptionString("private-key"));
 #endif
 
-  if (SetTextToSpeech(args.GetOptionString("tts")) == NULL) {
+  if (SetTextToSpeech(args.GetOptionString("tts"), PStringToString(args.GetOptionString("tts-option"))) == NULL) {
     PFactory<PTextToSpeech>::KeyList_T engines = PFactory<PTextToSpeech>::GetKeyList();
     if (!engines.empty()) {
       cerr << "Instance " << m_instance << " error: cannot select text to speech engine, use one of:\n";
