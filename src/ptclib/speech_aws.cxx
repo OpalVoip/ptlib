@@ -372,7 +372,7 @@ public:
         auto & body = response->GetResponseBody();
         body.read(buffer.data(), bytesTransferred);
         bool writeResult = channel->Write(buffer.data(), body.gcount());
-        PTRACE(4, "SynthesizeSpeechAsync: " << response->GetResponseCode() << ","
+        PTRACE(4, "SynthesizeSpeechAsync: " << (unsigned)response->GetResponseCode() << ","
                " received=" << bytesTransferred << ","
                " gcount=" << body.gcount() << ","
                " write=" << boolalpha << writeResult);
@@ -393,6 +393,7 @@ public:
         m_channelOpen = false;
       });
 
+    PTRACE(4, "SynthesizeSpeechAsync started.");
     return channel;
   }
 };
