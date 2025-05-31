@@ -70,11 +70,11 @@ class PTextToSpeech_AWS : public PTextToSpeech, PAwsClient<Aws::Polly::PollyClie
   PCLASSINFO(PTextToSpeech_AWS, PTextToSpeech);
 
   typedef PDictionary<PCaselessString, PStringOptions> VoiceDict;
-  VoiceDict    m_voices;
-  PString      m_defaultEngine;
-  bool         m_sampleRate8k{ true };
-  PWAVFile     m_file;
-  bool         m_channelOpen{ false };
+  VoiceDict       m_voices;
+  PString         m_defaultEngine;
+  bool            m_sampleRate8k{ true };
+  PWAVFile        m_file;
+  PQueueChannel * m_channel{ nullptr };
 
   void SetRequestInfo(Aws::Polly::Model::SynthesizeSpeechRequest & request, const PString & text, TextType hint)
   {
@@ -309,13 +309,13 @@ public:
 
   bool IsOpen() const override
   {
-    return m_channelOpen || m_file.IsOpen();
+    return m_channel || m_file.IsOpen();
   }
 
 
   bool Close() override
   {
-    m_channelOpen= false;
+    m_channel= nullptr;
     m_file.Close();
     return true;
   }
@@ -358,27 +358,38 @@ public:
     if (!SetVoice(PString::Empty()))
       return false;
 
-    auto channel = new PQueueChannel(m_sampleRate8k ? 16000 : 32000); // One second of PCM
+    m_channel = new PQueueChannel(m_sampleRate8k ? 16000 : 32000); // One second of PCM
 
     Aws::Polly::Model::SynthesizeSpeechRequest request;
     SetRequestInfo(request, text, hint);
 
     request.SetDataReceivedEventHandler(
-      [this, channel](const Aws::Http::HttpRequest *,
-                      Aws::Http::HttpResponse * response,
-                      long long bytesTransferred)
+      [this](const Aws::Http::HttpRequest *,
+             Aws::Http::HttpResponse * response,
+             long long PTRACE_PARAM(bytesTransferred))
       {
-        std::vector<char> buffer(bytesTransferred);
+        char buffer[1024];
         auto & body = response->GetResponseBody();
-        body.read(buffer.data(), bytesTransferred);
-        bool writeResult = channel->Write(buffer.data(), body.gcount());
-        PTRACE(4, "SynthesizeSpeechAsync: " << (unsigned)response->GetResponseCode() << ","
-               " received=" << bytesTransferred << ","
-               " gcount=" << body.gcount() << ","
-               " write=" << boolalpha << writeResult);
+
+        for (;;) {
+          body.read(buffer, sizeof(buffer));
+
+          auto bytesRead = body.gcount();
+          if (bytesRead <= 0) {
+            body.clear();
+            PTRACE(4, "SynthesizeSpeechAsync: callback done " << bytesTransferred << " bytes");
+            return;
+          }
+
+          if (!m_channel->Write(buffer, bytesRead)) {
+            PTRACE(2, "SynthesizeSpeechAsync: write error - " << m_channel->GetErrorText());
+            return;
+          }
+
+          PTRACE(5, "SynthesizeSpeechAsync: transferred " << bytesRead << " bytes");
+        }
       });
 
-    m_channelOpen = true;
     GetClient()->SynthesizeSpeechAsync(
       request,
       [this](const Aws::Polly::PollyClient *,
@@ -390,11 +401,16 @@ public:
           PTRACE(4, "SynthesizeSpeechAsync completed.");
         else
           PTRACE(2, "SynthesizeSpeechAsync error: " << outcome.GetError());
-        m_channelOpen = false;
+
+        PSimpleTimer failsafe(0, 1);
+        while (m_channel->GetLength() > 0 && failsafe.IsRunning())
+          PThread::Sleep(100);
+        m_channel->Close();
+        m_channel = nullptr;
       });
 
     PTRACE(4, "SynthesizeSpeechAsync started.");
-    return channel;
+    return m_channel;
   }
 };
 
