@@ -74,7 +74,7 @@ class PTextToSpeech_AWS : public PTextToSpeech, PAwsClient<Aws::Polly::PollyClie
   PString         m_defaultEngine;
   bool            m_sampleRate8k{ true };
   PWAVFile        m_file;
-  PQueueChannel * m_channel{ nullptr };
+  PChannel      * m_channel{ nullptr };
 
   void SetRequestInfo(Aws::Polly::Model::SynthesizeSpeechRequest & request, const PString & text, TextType hint)
   {
@@ -307,6 +307,14 @@ public:
   }
 
 
+  bool OpenChannel(PChannel * channel) override
+  {
+    Close();
+    m_channel = channel;
+    return true;
+  }
+
+
   bool IsOpen() const override
   {
     return m_channel || m_file.IsOpen();
@@ -335,6 +343,7 @@ public:
       return false;
     }
 
+    PChannel & channel = m_channel ? *m_channel : m_file;
     auto & strm = outcome.GetResult().GetAudioStream();
     for (;;) {
       char buf[1000];
@@ -343,10 +352,10 @@ public:
       if (count == 0)
         break;
 
-      if (m_file.Write(buf, count))
+      if (channel.Write(buf, count))
         continue;
 
-      PTRACE(2, "Write failure to \"" << m_file.GetFilePath() << "\" - " << m_file.GetErrorText());
+      PTRACE(2, "Write failure to \"" << channel.GetName() << "\" - " << channel.GetErrorText());
       return false;
     }
 
@@ -403,7 +412,8 @@ public:
           PTRACE(2, "SynthesizeSpeechAsync error: " << outcome.GetError());
 
         PSimpleTimer failsafe(0, 1);
-        while (m_channel->GetLength() > 0 && failsafe.IsRunning())
+        PQueueChannel * channel = dynamic_cast<PQueueChannel *>(m_channel);
+        while (channel->GetLength() > 0 && failsafe.IsRunning())
           PThread::Sleep(100);
         m_channel->Close();
         m_channel = nullptr;

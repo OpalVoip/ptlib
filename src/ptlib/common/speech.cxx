@@ -147,6 +147,13 @@ PString PTextToSpeech::GetVoice() const
 }
 
 
+bool PTextToSpeech::OpenChannel(PChannel * /*channel*/)
+{
+  Close();
+  return false;
+}
+
+
 PChannel * PTextToSpeech::SpeakToChannel(const PString &, TextType)
 {
   return NULL;
