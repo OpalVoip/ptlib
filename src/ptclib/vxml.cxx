@@ -1338,7 +1338,11 @@ bool PVXMLCache::StartCache(Params & params)
         PTRACE(2, "Cache stale reached for \"" << params.m_key << '"');
       }
       else {
-        PTRACE(4, "Cache data found for \"" << params.m_key << '"');
+        PXMLElement * contentType = root->GetElement("content-type");
+        if (contentType != NULL)
+          params.m_contentType = contentType->GetData();
+
+        PTRACE(4, "Cache data found for \"" << params.m_key << "\", content-type=\"" << params.m_contentType << '"');
         // Leave locked, if return true, Finish must be called.
         return true;
       }
@@ -1386,6 +1390,7 @@ bool PVXMLCache::FinishCache(Params & params, bool success)
       if (params.m_expires.IsValid())
         root->AddElement("expires")->SetData(params.m_expires.AsString(PTime::LongISO8601));
       root->AddElement("date")->SetData(params.m_date.AsString(PTime::LongISO8601));
+      root->AddElement("content-type")->SetData(params.m_contentType);
 
       if (!xml.SaveFile(keyFilePath)) {
         PTRACE(2, "Cannot write cache key file \"" << keyFilePath << '"');
@@ -1608,6 +1613,7 @@ bool PVXMLSession::LoadActualResource(const PURL & url,
 
   cacheParams.m_date = replyMIME.GetVar(PHTTP::DateTag, PTime());
   cacheParams.m_expires = replyMIME.GetVar(PHTTP::ExpiresTag, PTime(0));
+  cacheParams.m_contentType = replyMIME.GetString(PHTTP::ContentTypeTag);
   PStringOptions cacheControl(replyMIME.GetString("Cache-Control"));
   if (!cacheControl.empty()) {
     static PConstCaselessString const nocache("no-cache");
@@ -1641,7 +1647,8 @@ bool PVXMLSession::LoadCachedResource(const PURL & url,
                                       PXMLElement * overrideElement,
                                       const PString & maxagePropName,
                                       const PString & maxstalePropName,
-                                      PBYTEArray & data)
+                                      PBYTEArray & data,
+                                      PString & contentType)
 {
   PTRACE(4, "LoadCachedResource " << url);
 
@@ -1664,15 +1671,17 @@ bool PVXMLSession::LoadCachedResource(const PURL & url,
 
   CachePtr cache = m_resourceCache;
 
+  bool ok;
   if (cache == NULL || !cache->StartCache(cacheParams))
-    return LoadActualResource(url, timeout, data, cacheParams);
-
-  if (cacheParams.m_size > 0)
-    return cache->FinishCache(cacheParams, cacheParams.m_file.Read(data.GetPointer(cacheParams.m_size), cacheParams.m_size));
-
-  return cache->FinishCache(cacheParams,
+    ok = LoadActualResource(url, timeout, data, cacheParams);
+  else if (cacheParams.m_size > 0)
+    ok = cache->FinishCache(cacheParams, cacheParams.m_file.Read(data.GetPointer(cacheParams.m_size), cacheParams.m_size));
+  else
+    ok = cache->FinishCache(cacheParams,
                             LoadActualResource(url, timeout, data, cacheParams) &&
                             cacheParams.m_file.Write(data, data.GetSize()));
+  contentType = cacheParams.m_contentType;
+  return ok;
 }
 
 
@@ -1714,9 +1723,10 @@ PBoolean PVXMLSession::LoadURL(const PURL & url)
 
   PTRACE(4, "Loading URL " << url);
 
-  // retreive the document (may be a HTTP get)
+  // retrieve the document (may be a HTTP get)
   PBYTEArray xmlData;
-  if (LoadCachedResource(url, NULL, DocumentMaxAgeProperty, DocumentMaxStaleProperty, xmlData))
+  PString contentType;
+  if (LoadCachedResource(url, NULL, DocumentMaxAgeProperty, DocumentMaxStaleProperty, xmlData, contentType))
     return InternalLoadVXML(url, PString(xmlData), url.GetFragment());
 
   PTRACE(1, "Cannot load document " << url);
@@ -2576,11 +2586,13 @@ PBoolean PVXMLSession::TraverseScript(PXMLElement & element)
   }
 
   PBYTEArray data;
+  PString contentType;
   if (LoadCachedResource(NormaliseResourceName(src),
                          &element,
                          ScriptMaxAgeProperty,
                          ScriptMaxStaleProperty,
-                         data)) {
+                         data,
+                         contentType)) {
     PTRACE(4, "Executing script of " << data.size() << " bytes");
     return RunScript(element, PString(data));
   }
@@ -2806,10 +2818,38 @@ PBoolean PVXMLSession::PlayResource(const PString & src, PINDEX repeat, PINDEX d
     return PlayFile(url.AsFilePath(), repeat, delay);
 
   PBYTEArray data;
-  if (LoadCachedResource(url, element, AudioMaxAgeProperty, AudioMaxStaleProperty, data))
+  PString contentType;
+  if (!LoadCachedResource(url, element, AudioMaxAgeProperty, AudioMaxStaleProperty, data, contentType))
+    return false;
+
+  if (contentType == "audio/pcm")
     return PlayData(data, repeat, delay);
 
-  return false;
+  PString suffix;
+  if (contentType == "audio/wav" || contentType == "audio/x-wav")
+    suffix = ".wav";
+  else if (contentType == "audio/mp3")
+    suffix = ".mp3";
+  else if (contentType == "audio/x-aac")
+    suffix = ".aac";
+  else if (contentType == "audio/mpeg" || contentType == "audio/mp4")
+    suffix = ".mp4a";
+  else if (contentType == "audio/ogg")
+    suffix = ".oga";
+  else if (contentType == "audio/opus")
+    suffix = ".opus";
+  else if (contentType == "audio/webm")
+    suffix = ".weba";
+  else if (contentType == "audio/x-ms-wma")
+    suffix = ".wma";
+  else
+    return false;
+
+  PFile tmpFile;
+  return tmpFile.Open(PFilePath("VXML", NULL, suffix), PFile::WriteOnly) &&
+         tmpFile.Write(data, data.size()) &&
+         tmpFile.Close() &&
+         PlayFile(tmpFile.GetFilePath(), repeat, delay, true);
 }
 
 
@@ -3532,7 +3572,8 @@ PBoolean PVXMLSession::TraverseSubmit(PXMLElement & element)
       url.SetQueryVar(*it, GetVar(*it));
 
     PBYTEArray body;
-    if (LoadCachedResource(url, &element, DocumentMaxAgeProperty, DocumentMaxStaleProperty, body) &&
+    PString contentType;
+    if (LoadCachedResource(url, &element, DocumentMaxAgeProperty, DocumentMaxStaleProperty, body, contentType) &&
         InternalLoadVXML(url, PString(body), PString::Empty()))
       return true;
     return ThrowBadFetchError(element, "Could not GET " << url);
@@ -4717,11 +4758,13 @@ PVXMLGrammarSRGS::PVXMLGrammarSRGS(const PVXMLGrammarInit & init)
   else {
     loadedXML.reset(new PXML);
     PBYTEArray xmlText;
+    PString contentType;
     if (!m_session.LoadCachedResource(src,
                                       init.m_grammarElement,
                                       GrammarMaxAgeProperty,
                                       GrammarMaxStaleProperty,
-                                      xmlText) ||
+                                      xmlText,
+                                      contentType) ||
         !loadedXML->Load(xmlText)) {
       PTRACE(2, "Could not load external <grammar> from " << src);
       m_state = BadFetch;
@@ -5215,12 +5258,9 @@ PBoolean PVXMLChannel::QueuePlayable(const PString & type,
     repeat = 1;
 
   PVXMLPlayable * item = PFactory<PVXMLPlayable>::CreateInstance(type);
-  if (item == NULL) {
-    PBYTEArray data;
-    if (!m_vxmlSession->LoadCachedResource(arg, NULL,AudioMaxAgeProperty, AudioMaxStaleProperty, data)) {
-      PTRACE(2, "Cannot find playable of type " << type << " - \"" << arg << '"');
-      return false;
-    }
+  if (item == NULL && !m_vxmlSession->PlayResource(arg, repeat, delay)) {
+    PTRACE(2, "Cannot find playable of type " << type << " - \"" << arg << '"');
+    return false;
   }
 
   if (item->Open(*this, arg, delay, repeat, autoDelete)) {
