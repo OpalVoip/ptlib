@@ -85,7 +85,7 @@ class PTextToSpeech : public PObject
     );
 
     virtual bool Speak(const PString & text, TextType hint = Default) = 0;
-    virtual PChannel * SpeakToChannel(const PString & text, TextType hint = Default);
+    virtual PSharedPtr<PChannel> SpeakToChannel(const PString & text, TextType hint = Default);
 
     static const PCaselessString & VoiceName();
     static const PCaselessString & VoiceLanguage();

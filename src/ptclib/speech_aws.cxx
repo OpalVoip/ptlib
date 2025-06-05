@@ -74,7 +74,8 @@ class PTextToSpeech_AWS : public PTextToSpeech, PAwsClient<Aws::Polly::PollyClie
   PString         m_defaultEngine;
   bool            m_sampleRate8k{ true };
   PWAVFile        m_file;
-  PChannel      * m_channel{ nullptr };
+  PChannel      * m_openedChannel{ nullptr };
+  PSharedPtr<PChannel> m_toChannel;
 
   void SetRequestInfo(Aws::Polly::Model::SynthesizeSpeechRequest & request, const PString & text, TextType hint)
   {
@@ -310,21 +311,23 @@ public:
   bool OpenChannel(PChannel * channel) override
   {
     Close();
-    m_channel = channel;
+    m_openedChannel = channel;
     return true;
   }
 
 
   bool IsOpen() const override
   {
-    return m_channel || m_file.IsOpen();
+    return m_toChannel || m_openedChannel || m_file.IsOpen();
   }
 
 
   bool Close() override
   {
-    m_channel= nullptr;
+    m_openedChannel= nullptr;
     m_file.Close();
+    while (m_toChannel)
+      PThread::Sleep(100);
     return true;
   }
 
@@ -343,7 +346,7 @@ public:
       return false;
     }
 
-    PChannel & channel = m_channel ? *m_channel : m_file;
+    PChannel & channel = m_openedChannel ? *m_openedChannel : m_file;
     auto & strm = outcome.GetResult().GetAudioStream();
     for (;;) {
       char buf[1000];
@@ -362,12 +365,15 @@ public:
     return true;
   }
 
-  PChannel * SpeakToChannel(const PString & text, TextType hint) override
+  PSharedPtr<PChannel> SpeakToChannel(const PString & text, TextType hint) override
   {
+    if (IsOpen())
+      return false;
+
     if (!SetVoice(PString::Empty()))
       return false;
 
-    m_channel = new PQueueChannel(m_sampleRate8k ? 16000 : 32000); // One second of PCM
+    m_toChannel.reset(new PQueueChannel(m_sampleRate8k ? 16000 : 32000)); // One second of PCM
 
     Aws::Polly::Model::SynthesizeSpeechRequest request;
     SetRequestInfo(request, text, hint);
@@ -390,8 +396,8 @@ public:
             return;
           }
 
-          if (!m_channel->Write(buffer, bytesRead)) {
-            PTRACE(2, "SynthesizeSpeechAsync: write error - " << m_channel->GetErrorText());
+          if (!m_toChannel->Write(buffer, bytesRead)) {
+            PTRACE(2, "SynthesizeSpeechAsync: write error - " << m_toChannel->GetErrorText());
             return;
           }
 
@@ -411,16 +417,24 @@ public:
         else
           PTRACE(2, "SynthesizeSpeechAsync error: " << outcome.GetError());
 
-        PSimpleTimer failsafe(0, 1);
-        PQueueChannel * channel = dynamic_cast<PQueueChannel *>(m_channel);
-        while (channel->GetLength() > 0 && failsafe.IsRunning())
+        PQueueChannel * channel = dynamic_cast<PQueueChannel *>(m_toChannel.get());
+        auto length = channel->GetLength();
+        PSimpleTimer failsafe(0, 10);
+        while (failsafe.IsRunning()) {
           PThread::Sleep(100);
-        m_channel->Close();
-        m_channel = nullptr;
+          auto nextLength = channel->GetLength();
+          if (nextLength == 0)
+            break;
+          if (length == nextLength)
+            break; // Nothing is draining the queue
+          length = nextLength;
+        }
+        m_toChannel->Close();
+        m_toChannel.reset();
       });
 
     PTRACE(4, "SynthesizeSpeechAsync started.");
-    return m_channel;
+    return m_toChannel;
   }
 };
 
