@@ -28,27 +28,22 @@ class PDTMFDecoder : public PObject
 
   public:
     enum {
-      DetectSamples = 520,
-      DetectTime = DetectSamples/8  // Milliseconds
+      NumTones = 10,
+      DetectTime = 65 // In milliseconds
     };
 
-    PDTMFDecoder();
-    PString Decode(const short * sampleData, PINDEX numSamples, unsigned mult = 1, unsigned div = 1);
+    PDTMFDecoder(unsigned frequencey = 8000, unsigned mult = 1, unsigned div = 1);
+    void Reset(unsigned frequencey = 0, unsigned mult = 0, unsigned div = 0);
+    PString Decode(const short * sampleData, PINDEX numSamples);
 
   protected:
-    enum {
-      NumTones = 10
-    };
-
-    // key lookup table (initialised once)
-    char key[256];
-
-    // frequency table (initialised once)
-    int p1[NumTones];
+    // Parameters
+    unsigned m_frequency, m_scaleMultiplier, m_scaleDivisor;
 
     // variables to be retained on each cycle of the decode function
     int h[NumTones], k[NumTones], y[NumTones];
-    int sampleCount, tonesDetected, inputAmplitude;
+    unsigned m_sampleCount, m_tonesDetected;
+    int m_inputAmplitude;
 };
 
 

@@ -352,6 +352,7 @@ class PVXMLCache : public PSafeObject
       size_t        m_size;    // If zero then there is a cache miss, m_file must be written
       PTime         m_expires; // Expiry time of loaded resource for max stale
       PTime         m_date;    // Date of the loaded resource for max age
+      PString       m_contentType; // HTTP Content-Type for the cached data
     };
     // Start cache operation, if return true, Finish must be called.
     virtual bool StartCache(Params & params);
@@ -679,7 +680,8 @@ class PVXMLSession : public PIndirectChannel, public PSSLCertificateInfo
       PXMLElement * element,
       const PString & maxagePropName,
       const PString & maxstalePropName,
-      PBYTEArray & data
+      PBYTEArray & data,
+      PString & contentType
     );
     bool LoadActualResource(
       const PURL & url,
