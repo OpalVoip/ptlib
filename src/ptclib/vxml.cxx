@@ -861,7 +861,15 @@ bool PVXMLPlayableStop::OnStart()
 
 PBoolean PVXMLPlayableFile::Open(PVXMLChannel & chan, const PString & fn, PINDEX delay, PINDEX repeat, PBoolean autoDelete)
 {
-  return chan.AdjustMediaFilename(fn, m_filePath) && PVXMLPlayable::Open(chan, fn, delay, repeat, autoDelete);
+  if (!chan.AdjustMediaFilename(fn, m_filePath))
+    return false;
+
+#if P_MEDIAFILE
+  if (m_filePath.GetType() != ".wav" && PMediaFile::Create(m_filePath))
+    return false;
+#endif
+
+  return PVXMLPlayable::Open(chan, fn, delay, repeat, autoDelete);
 }
 
 
@@ -2826,7 +2834,9 @@ PBoolean PVXMLSession::PlayResource(const PString & src, PINDEX repeat, PINDEX d
     return PlayData(data, repeat, delay);
 
   PString suffix;
-  if (contentType == "audio/wav" || contentType == "audio/x-wav")
+  if (contentType.empty())
+    suffix = src.Mid(src.FindLast('.'));
+  else if (contentType == "audio/wav" || contentType == "audio/x-wav")
     suffix = ".wav";
   else if (contentType == "audio/mp3")
     suffix = ".mp3";
