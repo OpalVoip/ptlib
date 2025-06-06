@@ -61,8 +61,7 @@ class PSTUN {
 
     /** Determine the NAT type using RFC3489 discovery method
       */
-    void DoRFC3489Discovery(
-      PNatMethod::NatTypes & natType,
+    PNatMethod::NatTypes DoRFC3489Discovery(
       PSTUNUDPSocket * socket, 
       const PIPSocketAddressAndPort & serverAddress, 
       PIPSocketAddressAndPort & baseAddressAndPort, 
@@ -70,8 +69,7 @@ class PSTUN {
       bool externalAddressOnly
     );
 
-    void FinishRFC3489Discovery(
-      PNatMethod::NatTypes & natType,
+    PNatMethod::NatTypes FinishRFC3489Discovery(
       PSTUNMessage & responseI,
       PSTUNUDPSocket * socket, 
       PIPSocket::Address & externalAddress,
@@ -669,9 +667,11 @@ class PSTUNClient : public PNatMethod, public PSTUN
     virtual bool InternalGetServerAddress(PIPSocketAddressAndPort & externalAddressAndPort) const override;
     virtual PNATUDPSocket * InternalCreateSocket(Component component, PObject * context) override;
     virtual void InternalUpdate(bool externalAddressOnly) override;
+    NatTypes DoDiscovery(bool externalAddressOnly);
     bool InternalSetServer(const PString & server, const PIPSocketAddressAndPort & addr PTRACE_PARAM(, const char * source));
 
     PSTUNUDPSocket * m_socket;
+    bool m_forceNatType;
 
   private:
     PString m_serverName;
