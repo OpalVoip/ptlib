@@ -244,7 +244,7 @@ PTHREAD_MUTEX_RECURSIVE_NP
       , m_lineNum(lineNum)
       , m_objectAddress(instance)
       , m_threadAddress(PThread::Current())
-      , m_threadName(m_threadAddress ? m_threadAddress->GetThreadName() : "")
+      , m_threadName(m_threadAddress ? m_threadAddress->GetThreadName() : PString::Empty())
       , m_contextIdentifier(instance ? instance->GetTraceContextIdentifier() : 0)
       , m_module(module)
       , m_tick(PTimer::Tick())
@@ -2990,8 +2990,7 @@ static int SignalsToHandle[] = {
 void HandleTerminate()
 {
   PTRACE(2, "PTLib", "Received std::terminate()");
-  AbortProcess(133);
-  abort(); // Dump core
+  std::abort(); // Dump core
 }
 #endif
 

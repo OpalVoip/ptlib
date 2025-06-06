@@ -36,10 +36,11 @@
     <LIB64PATH>$(VCPKG64DIR)\bin;$(LUA64DIR);$(OPENSSL64DIR)\bin;$(FFMPEG64DIR)\bin;$(AWS64DBGDIR);$(wxLibOrDllDir);$(ProjectDir)..\..\Lib</LIB64PATH>
     <LocalDebuggerEnvironment>PATH=$(LIB64PATH);$(PATH)</LocalDebuggerEnvironment>
   </PropertyGroup>
-  <PropertyGroup />
   <ItemDefinitionGroup>
     <ClCompile>
       <DisableSpecificWarnings>26812</DisableSpecificWarnings>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalOptions>/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -96,24 +97,24 @@
       <EnvironmentVariable>true</EnvironmentVariable>
     </BuildMacro>
     <BuildMacro Include="AWSDIR">
-        <Value>$(AWSDIR)</Value>
-        <EnvironmentVariable>true</EnvironmentVariable>
+      <Value>$(AWSDIR)</Value>
+      <EnvironmentVariable>true</EnvironmentVariable>
     </BuildMacro>
     <BuildMacro Include="AWS32DBGDIR">
-        <Value>$(AWS32DBGDIR)</Value>
-        <EnvironmentVariable>true</EnvironmentVariable>
+      <Value>$(AWS32DBGDIR)</Value>
+      <EnvironmentVariable>true</EnvironmentVariable>
     </BuildMacro>
     <BuildMacro Include="AWS64DBGDIR">
-        <Value>$(AWS64DBGDIR)</Value>
-        <EnvironmentVariable>true</EnvironmentVariable>
+      <Value>$(AWS64DBGDIR)</Value>
+      <EnvironmentVariable>true</EnvironmentVariable>
     </BuildMacro>
     <BuildMacro Include="AWS32RELDIR">
-        <Value>$(AWS32RELDIR)</Value>
-        <EnvironmentVariable>true</EnvironmentVariable>
+      <Value>$(AWS32RELDIR)</Value>
+      <EnvironmentVariable>true</EnvironmentVariable>
     </BuildMacro>
     <BuildMacro Include="AWS64RELDIR">
-        <Value>$(AWS64RELDIR)</Value>
-        <EnvironmentVariable>true</EnvironmentVariable>
+      <Value>$(AWS64RELDIR)</Value>
+      <EnvironmentVariable>true</EnvironmentVariable>
     </BuildMacro>
     <BuildMacro Include="WXDIR">
       <Value>$(WXDIR)</Value>

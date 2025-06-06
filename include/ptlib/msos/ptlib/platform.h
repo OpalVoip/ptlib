@@ -104,6 +104,7 @@
   #include <windows.h>
 
   // Remove some stupid defines from Windows headers.
+static unsigned const P_WINDOWS_DELETE = DELETE;
   #undef DELETE
   #undef min
   #undef max

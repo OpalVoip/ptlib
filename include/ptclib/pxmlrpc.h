@@ -150,7 +150,7 @@ class PXMLRPCBlock : public PXML
     PXMLElement * CreateMember(const PString & name, PXMLElement * value);
 
     PXMLElement * CreateScalar(const PString & str);
-    PXMLElement * CreateScalar(int value);
+    PXMLElement * CreateScalar(long value);
     PXMLElement * CreateScalar(double value);
     PXMLElement * CreateDateAndTime(const PTime & time);
     PXMLElement * CreateBinary(const PBYTEArray & data);
@@ -170,7 +170,7 @@ class PXMLRPCBlock : public PXML
     // helper functions for adding parameters
     void AddParam(PXMLElement * parm);
     void AddParam(const PString & str);
-    void AddParam(int value);
+    void AddParam(long value);
     void AddParam(double value);
     void AddParam(const PTime & time);
     void AddParam(const PXMLRPCStructBase & structData);

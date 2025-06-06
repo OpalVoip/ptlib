@@ -250,7 +250,7 @@ PBoolean XMPP::C2S::StreamHandler::DiscoverInfo(const PString& jid, const PNotif
 
 
 
-void XMPP::C2S::StreamHandler::OnOpen(XMPP::Stream& stream, INT extra)
+void XMPP::C2S::StreamHandler::OnOpen(XMPP::Stream& stream, P_INT_PTR extra)
 {
   PString streamOn(PString::Printf, "<?xml version='1.0' encoding='UTF-8' ?>"
     "<stream:stream to='%s' xmlns='jabber:client' "
@@ -324,7 +324,7 @@ void XMPP::C2S::StreamHandler::OnOpen(XMPP::Stream& stream, INT extra)
 }
 
 
-void XMPP::C2S::StreamHandler::OnClose(XMPP::Stream& stream, INT extra)
+void XMPP::C2S::StreamHandler::OnClose(XMPP::Stream& stream, P_INT_PTR extra)
 {
   SetState(XMPP::C2S::StreamHandler::Null);
   m_HasBind = false;

@@ -57,6 +57,7 @@
 #include <vector>
 #include <list>
 #include <map>
+#include <set>
 #include <algorithm>
 #include <functional>
 #include <limits>
@@ -65,7 +66,14 @@
 
 #include "atomic.h"
 
-using namespace std; // Not a good practice (name space polution), but will take too long to fix.
+// Not a good practice (name space pollution), but will take too long to fix.
+using std::cin, std::cout, std::cerr,
+      std::ostringstream, std::ostream, std::istream, std::wostream, std::wstringstream,
+      std::streambuf, std::streamoff, std::streamsize, std::ios, std::ios_base,
+      std::ends, std::endl, std::flush, std::ws, std::hex, std::oct, std::dec, std::right, std::left,
+      std::setiosflags, std::resetiosflags, std::setfill, std::setw, std::setprecision,
+      std::showpos, std::scientific, std::fixed, std::showbase, std::noshowbase, std::boolalpha,
+      std::numeric_limits, std::string, std::list, std::vector, std::map, std::set, std::pair, std::make_pair;
 
 // Somewhere in C headers you get this, which blows up STL version
 #ifdef min

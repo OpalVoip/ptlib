@@ -221,7 +221,7 @@ PSoundChannel * PSoundChannel::CreateOpenedChannel(const Params & params)
 
   PTRACE(2, sndChan, "Sound",
          params.m_direction << " could not be opened, " << adjustedParams << ": " <<
-         (sndChan != NULL ? sndChan->GetErrorText() : "Unknown driver or device type"));
+         (sndChan != NULL ? sndChan->GetErrorText() : PConstString("Unknown driver or device type")));
 
   delete sndChan;
   return NULL;

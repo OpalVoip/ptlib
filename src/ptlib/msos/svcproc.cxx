@@ -516,7 +516,7 @@ PBoolean PServiceProcess::CreateControlWindow(PBoolean createDebugWindow)
   AppendMenu(menu, MF_SEPARATOR, 0, NULL);
   AppendMenu(menu, MF_STRING, ControlMenuID, "&Control");
   AppendMenu(menu, MF_STRING, HideMenuID, "&Hide");
-  AppendMenu(menu, MF_STRING, SvcCmdBaseMenuID+SvcCmdVersion, "&Version");
+  AppendMenu(menu, MF_STRING, (int)SvcCmdBaseMenuID+(int)SvcCmdVersion, "&Version");
   AppendMenu(menu, MF_SEPARATOR, 0, NULL);
 #if PMEMORY_HEAP
   AppendMenu(menu, MF_STRING, MarkMenuID, "&Mark Memory");
@@ -537,23 +537,23 @@ PBoolean PServiceProcess::CreateControlWindow(PBoolean createDebugWindow)
   AppendMenu(menubar, MF_POPUP, (UINT_PTR)menu, "&Edit");
 
   menu = CreatePopupMenu();
-  AppendMenu(menu, MF_STRING, SvcCmdBaseMenuID+SvcCmdRegister, "&Register");
-  AppendMenu(menu, MF_STRING, SvcCmdBaseMenuID+SvcCmdRemove, "&Remove");
-  AppendMenu(menu, MF_STRING, SvcCmdBaseMenuID+SvcCmdDeinstall, "&Deinstall");
-  AppendMenu(menu, MF_STRING, SvcCmdBaseMenuID+SvcCmdStart, "&Start");
-  AppendMenu(menu, MF_STRING, SvcCmdBaseMenuID+SvcCmdStop, "S&top");
-  AppendMenu(menu, MF_STRING, SvcCmdBaseMenuID+SvcCmdPause, "&Pause");
-  AppendMenu(menu, MF_STRING, SvcCmdBaseMenuID+SvcCmdResume, "R&esume");
+  AppendMenu(menu, MF_STRING, (int)SvcCmdBaseMenuID+(int)SvcCmdRegister, "&Register");
+  AppendMenu(menu, MF_STRING, (int)SvcCmdBaseMenuID+(int)SvcCmdRemove, "&Remove");
+  AppendMenu(menu, MF_STRING, (int)SvcCmdBaseMenuID+(int)SvcCmdDeinstall, "&Deinstall");
+  AppendMenu(menu, MF_STRING, (int)SvcCmdBaseMenuID+(int)SvcCmdStart, "&Start");
+  AppendMenu(menu, MF_STRING, (int)SvcCmdBaseMenuID+(int)SvcCmdStop, "S&top");
+  AppendMenu(menu, MF_STRING, (int)SvcCmdBaseMenuID+(int)SvcCmdPause, "&Pause");
+  AppendMenu(menu, MF_STRING, (int)SvcCmdBaseMenuID+(int)SvcCmdResume, "R&esume");
   AppendMenu(menubar, MF_POPUP, (UINT_PTR)menu, "&Control");
 
   menu = CreatePopupMenu();
-  AppendMenu(menu, MF_STRING, LogLevelBaseMenuID+PSystemLog::Fatal,   "&Fatal Error");
-  AppendMenu(menu, MF_STRING, LogLevelBaseMenuID+PSystemLog::Error,   "&Error");
-  AppendMenu(menu, MF_STRING, LogLevelBaseMenuID+PSystemLog::Warning, "&Warning");
-  AppendMenu(menu, MF_STRING, LogLevelBaseMenuID+PSystemLog::Info,    "&Information");
-  AppendMenu(menu, MF_STRING, LogLevelBaseMenuID+PSystemLog::Debug,   "&Debug");
-  AppendMenu(menu, MF_STRING, LogLevelBaseMenuID+PSystemLog::Debug2,  "Debug &2");
-  AppendMenu(menu, MF_STRING, LogLevelBaseMenuID+PSystemLog::Debug3,  "Debug &3");
+  AppendMenu(menu, MF_STRING, (int)LogLevelBaseMenuID+(int)PSystemLog::Fatal,   "&Fatal Error");
+  AppendMenu(menu, MF_STRING, (int)LogLevelBaseMenuID+(int)PSystemLog::Error,   "&Error");
+  AppendMenu(menu, MF_STRING, (int)LogLevelBaseMenuID+(int)PSystemLog::Warning, "&Warning");
+  AppendMenu(menu, MF_STRING, (int)LogLevelBaseMenuID+(int)PSystemLog::Info,    "&Information");
+  AppendMenu(menu, MF_STRING, (int)LogLevelBaseMenuID+(int)PSystemLog::Debug,   "&Debug");
+  AppendMenu(menu, MF_STRING, (int)LogLevelBaseMenuID+(int)PSystemLog::Debug2,  "Debug &2");
+  AppendMenu(menu, MF_STRING, (int)LogLevelBaseMenuID+(int)PSystemLog::Debug3,  "Debug &3");
   AppendMenu(menubar, MF_POPUP, (UINT_PTR)menu, "&Log Level");
 
   if (CreateWindow(GetName(),
@@ -690,13 +690,13 @@ LPARAM PServiceProcess::WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPara
         CheckMenuItem((HMENU)wParam, LogLevelBaseMenuID+i, MF_BYCOMMAND|MF_UNCHECKED);
         EnableMenuItem((HMENU)wParam, LogLevelBaseMenuID+i, enableItems);
       }
-      CheckMenuItem((HMENU)wParam, LogLevelBaseMenuID+GetLogLevel(), MF_BYCOMMAND|MF_CHECKED);
+      CheckMenuItem((HMENU)wParam, (int)LogLevelBaseMenuID+(int)GetLogLevel(), MF_BYCOMMAND|MF_CHECKED);
 
       enableItems = MF_BYCOMMAND|(m_debugMode ? MF_GRAYED : MF_ENABLED);
-      EnableMenuItem((HMENU)wParam, SvcCmdBaseMenuID+SvcCmdStart, enableItems);
-      EnableMenuItem((HMENU)wParam, SvcCmdBaseMenuID+SvcCmdStop, enableItems);
-      EnableMenuItem((HMENU)wParam, SvcCmdBaseMenuID+SvcCmdPause, enableItems);
-      EnableMenuItem((HMENU)wParam, SvcCmdBaseMenuID+SvcCmdResume, enableItems);
+      EnableMenuItem((HMENU)wParam, (int)SvcCmdBaseMenuID+(int)SvcCmdStart, enableItems);
+      EnableMenuItem((HMENU)wParam, (int)SvcCmdBaseMenuID+(int)SvcCmdStop, enableItems);
+      EnableMenuItem((HMENU)wParam, (int)SvcCmdBaseMenuID+(int)SvcCmdPause, enableItems);
+      EnableMenuItem((HMENU)wParam, (int)SvcCmdBaseMenuID+(int)SvcCmdResume, enableItems);
 
       DWORD start, finish;
       if (m_debugWindow != NULL && m_debugWindow != (HWND)-1)
@@ -822,11 +822,11 @@ LPARAM PServiceProcess::WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPara
           break;
 
         default :
-          if (wParam >= LogLevelBaseMenuID+PSystemLog::Fatal && wParam < LogLevelBaseMenuID+PSystemLog::NumLogLevels)
+          if (wParam >= (int)LogLevelBaseMenuID+(int)PSystemLog::Fatal && wParam < (int)LogLevelBaseMenuID+(int)PSystemLog::NumLogLevels)
             SetLogLevel((PSystemLog::Level)(wParam-LogLevelBaseMenuID));
-          else if (wParam >= SvcCmdBaseMenuID && wParam < SvcCmdBaseMenuID+NumSvcCmds) {
+          else if (wParam >= SvcCmdBaseMenuID && wParam < (int)SvcCmdBaseMenuID+(int)NumSvcCmds) {
             const char * cmdname = ServiceCommandNames[wParam-SvcCmdBaseMenuID];
-            if (wParam == SvcCmdBaseMenuID+SvcCmdVersion ||
+            if (wParam == (int)SvcCmdBaseMenuID+(int)SvcCmdVersion ||
                 MessageBox(hWnd, cmdname & GetName() & "?", GetName(),
                            MB_ICONQUESTION|MB_YESNO) == IDYES)
               ProcessCommand(cmdname);
@@ -864,21 +864,21 @@ LPARAM PServiceProcess::WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPara
           HMENU menu = CreatePopupMenu();
           AppendMenu(menu, MF_STRING, ControlMenuID, "&Open Properties");
           AppendMenu(menu, MF_SEPARATOR, 0, NULL);
-          AppendMenu(menu, MF_STRING, SvcCmdBaseMenuID+SvcCmdVersion, "&Version");
+          AppendMenu(menu, MF_STRING, (int)SvcCmdBaseMenuID+(int)SvcCmdVersion, "&Version");
           if (IsServiceRunning(this)) {
             MENUITEMINFO inf;
             inf.cbSize = sizeof(inf);
             inf.fMask = MIIM_STATE;
             inf.fState = MFS_DEFAULT;
             SetMenuItemInfo(menu, ControlMenuID, false, &inf);
-            AppendMenu(menu, MF_STRING, SvcCmdBaseMenuID+SvcCmdStop, "&Stop Service");
+            AppendMenu(menu, MF_STRING, (int)SvcCmdBaseMenuID+(int)SvcCmdStop, "&Stop Service");
           }
           else {
             EnableMenuItem(menu, ControlMenuID, MF_GRAYED);
-            AppendMenu(menu, MF_STRING, SvcCmdBaseMenuID+SvcCmdStart, "&Start Service");
+            AppendMenu(menu, MF_STRING, (int)SvcCmdBaseMenuID+(int)SvcCmdStart, "&Start Service");
           }
-          AppendMenu(menu, MF_STRING, SvcCmdBaseMenuID+SvcCmdNoTray, "&Tray Icon");
-          CheckMenuItem(menu, SvcCmdBaseMenuID+SvcCmdNoTray,
+          AppendMenu(menu, MF_STRING, (int)SvcCmdBaseMenuID+(int)SvcCmdNoTray, "&Tray Icon");
+          CheckMenuItem(menu, (int)SvcCmdBaseMenuID+(int)SvcCmdNoTray,
                         TrayIconRegistry(this, CheckTrayIcon) ? MF_CHECKED : MF_UNCHECKED);
           AppendMenu(menu, MF_SEPARATOR, 0, NULL);
           AppendMenu(menu, MF_STRING, ExitMenuID, "&Close");

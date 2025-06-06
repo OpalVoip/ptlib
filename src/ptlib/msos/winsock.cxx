@@ -338,8 +338,8 @@ PBoolean PSocket::os_connect(struct sockaddr * addr, socklen_t size)
   DWORD err = ERROR_SUCCESS;
 
   if (::connect(os_handle, addr, size) == SOCKET_ERROR && (err = GetLastError()) == WSAEWOULDBLOCK) {
-    P_fd_set writefds = os_handle;
-    P_fd_set exceptfds = os_handle;
+    P_fd_set writefds(os_handle);
+    P_fd_set exceptfds(os_handle);
     P_timeval tv;
 
     /* To avoid some strange behaviour on various windows platforms, do a zero
@@ -435,7 +435,7 @@ bool PSocket::os_vread(Slice * slices, size_t sliceCount,
     return false;
 
   if (available == 0) {
-    P_fd_set readfds = os_handle;
+    P_fd_set readfds(os_handle);
     P_timeval tv = readTimeout;
     int selval = ::select(0, readfds, NULL, NULL, tv);
     if (!ConvertOSError(selval, LastReadError))
@@ -464,7 +464,7 @@ bool PSocket::os_vwrite(const Slice * slices,
   if (CheckNotOpen())
     return false;
 
-  P_fd_set writefds = os_handle;
+  P_fd_set writefds(os_handle);
   P_timeval tv = writeTimeout;
   int selval = ::select(0, NULL, writefds, NULL, tv);
   if (!ConvertOSError(selval, LastWriteError))

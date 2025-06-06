@@ -549,7 +549,12 @@ bool PFile::SetPermissions(const PFilePath & name, PFileInfo::Permissions permis
   FileSecurityPermissions(name, permissions);
 #endif
 
-  return _wchmod(name.AsWide(), permissions&(_S_IWRITE|_S_IREAD)) == 0;
+  unsigned mode = 0;
+  if (permissions&(PFileInfo::WorldRead|PFileInfo::GroupRead|PFileInfo::UserRead))
+    mode |= _S_IREAD;
+  if (permissions&(PFileInfo::WorldWrite|PFileInfo::GroupWrite|PFileInfo::UserWrite))
+    mode |= _S_IWRITE;
+  return _wchmod(name.AsWide(), mode) == 0;
 }
 
 

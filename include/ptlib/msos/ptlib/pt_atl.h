@@ -37,7 +37,9 @@
 #ifdef P_ATL
   #pragma warning(disable:4127)
   #include <cguid.h>
+  #define DELETE P_WINDOWS_DELETE
   #include <atlbase.h>
+  #undef DELETE
   #include <atlcomcli.h>
   #include <oleacc.h>
   #pragma warning(default:4127)

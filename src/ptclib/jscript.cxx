@@ -238,7 +238,7 @@ struct PJavaScript::Private : PObject
   struct Intialisation
   {
 #if V8_MAJOR_VERSION > 3
-    unique_ptr<v8::Platform> m_platform;
+    std::unique_ptr<v8::Platform> m_platform;
 #endif
     bool m_initialised;
 

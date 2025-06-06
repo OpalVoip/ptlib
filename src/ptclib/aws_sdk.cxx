@@ -81,7 +81,7 @@ private:
         va_end(args);
       }
     }
-
+#if AWS_SDK_VERSION_MAJOR > 1 || AWS_SDK_VERSION_MINOR > 11 || AWS_SDK_VERSION_PATCH > 300
     virtual void vaLog(Aws::Utils::Logging::LogLevel logLevel, const char* /*tag*/, const char * formatStr, va_list args) override
     {
       auto level = static_cast<unsigned>(logLevel)-1;
@@ -89,6 +89,7 @@ private:
         PTRACE_BEGIN(level, NULL, "AWS-Log") << pvsprintf(formatStr, args) << PTrace::End;
       }
     }
+#endif // AWS_SDK_VERSION_*
 
     virtual void LogStream(Aws::Utils::Logging::LogLevel logLevel, const char */*tag*/, const Aws::OStringStream &messageStream) override
     {

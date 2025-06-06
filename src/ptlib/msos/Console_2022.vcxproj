@@ -1053,6 +1053,7 @@ if errorlevel 1 copy "%(FullPath)"+nul "%(RootDir)%(Directory)%(FileName)"</Comm
     </CustomBuild>
     <None Include="..\..\..\include\ptlib\unix\ptlib\ptlib.inl" />
     <None Include="..\..\..\tools\get_revision.sh" />
+    <None Include="PTLib.props" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\include\ptclib\aws_sdk.h" />

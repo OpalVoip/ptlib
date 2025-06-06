@@ -131,7 +131,7 @@ PXMLElement * PXMLRPCBlock::CreateScalar(const PString & value)
 }
 
 
-PXMLElement * PXMLRPCBlock::CreateScalar(int value) 
+PXMLElement * PXMLRPCBlock::CreateScalar(long value) 
 {
   return CreateScalar(IntType, PString(PString::Unsigned, value)); 
 }
@@ -307,7 +307,7 @@ void PXMLRPCBlock::AddParam(const PString & str)
   AddParam(CreateScalar(str));
 }
 
-void PXMLRPCBlock::AddParam(int value) 
+void PXMLRPCBlock::AddParam(long value) 
 {
   AddParam(CreateScalar(value)); 
 }
