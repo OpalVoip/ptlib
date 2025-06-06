@@ -326,8 +326,11 @@ public:
   {
     m_openedChannel= nullptr;
     m_file.Close();
-    while (m_toChannel)
-      PThread::Sleep(100);
+    if (m_toChannel) {
+      m_toChannel->Close();
+      while (m_toChannel)
+        PThread::Sleep(100);
+    }
     return true;
   }
 
@@ -396,12 +399,15 @@ public:
             return;
           }
 
-          if (!m_toChannel->Write(buffer, bytesRead)) {
-            PTRACE(2, "SynthesizeSpeechAsync: write error - " << m_toChannel->GetErrorText());
-            return;
+          if (m_toChannel->Write(buffer, bytesRead))
+            PTRACE(5, "SynthesizeSpeechAsync: transferred " << bytesRead << " bytes");
+          else {
+            if (m_toChannel->GetErrorCode() != PChannel::NotOpen)
+              PTRACE(2, "SynthesizeSpeechAsync: write error - " << m_toChannel->GetErrorText());
+            else
+              PTRACE(5, "SynthesizeSpeechAsync: aborted");
+            body.flags(ios::failbit);
           }
-
-          PTRACE(5, "SynthesizeSpeechAsync: transferred " << bytesRead << " bytes");
         }
       });
 
