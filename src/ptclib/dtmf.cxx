@@ -116,7 +116,7 @@ PString PDTMFDecoder::Decode(const short * sampleData, PINDEX numSamples)
       /* Turn the crank */
       int c = (P2 * (x - k[tone])) / FSC;
       int d = x + c;
-      int f = (p1[tone]*m_frequency/8000 * (d - h[tone])) / FSC;
+      int f = (int)(((p1[tone] * (int64_t)m_frequency / 8000) * (d - h[tone])) / FSC);
       int n = x - k[tone] - c;
       k[tone] = h[tone] + f;
       h[tone] = f + d;
@@ -137,7 +137,7 @@ PString PDTMFDecoder::Decode(const short * sampleData, PINDEX numSamples)
       m_sampleCount = 0;
       m_tonesDetected = newDetectedTones;
     }
-    else if (m_sampleCount++ >= DetectTime*m_frequency/1000 && key[m_tonesDetected] != '?') {
+    else if (m_sampleCount++ == DetectTime*m_frequency/1000 && key[m_tonesDetected] != '?') {
       PTRACE(3,"DTMF", "Detected '" << key[m_tonesDetected] << "' in PCM-16 stream");
       keyString += key[m_tonesDetected];
     }
