@@ -76,6 +76,7 @@ class PTextToSpeech_AWS : public PTextToSpeech, PAwsClient<Aws::Polly::PollyClie
   PWAVFile        m_file;
   PChannel      * m_openedChannel{ nullptr };
   PSharedPtr<PChannel> m_toChannel;
+  PTRACE_THROTTLE(m_asyncAbort, 3, 500);
 
   void SetRequestInfo(Aws::Polly::Model::SynthesizeSpeechRequest & request, const PString & text, TextType hint)
   {
@@ -326,11 +327,21 @@ public:
   {
     m_openedChannel= nullptr;
     m_file.Close();
-    if (m_toChannel) {
-      m_toChannel->Close();
-      while (m_toChannel)
-        PThread::Sleep(100);
+
+    auto channel = m_toChannel;
+    if (!channel)
+      return true;
+
+    channel->Close();
+
+    PSimpleTimer failsafe(0, 10);
+    while (failsafe.IsRunning()) {
+      if (!m_toChannel)
+        return true;
+      PThread::Sleep(100);
     }
+
+    PTRACE(2, "Timeout waiting for SynthesizeSpeechAsync to stop.");
     return true;
   }
 
@@ -395,19 +406,21 @@ public:
           auto bytesRead = body.gcount();
           if (bytesRead <= 0) {
             body.clear();
-            PTRACE(4, "SynthesizeSpeechAsync: callback done " << bytesTransferred << " bytes");
+            PTRACE(5, "SynthesizeSpeechAsync: could not transfer " << bytesTransferred << " bytes");
             return;
           }
 
-          if (m_toChannel->Write(buffer, bytesRead))
-            PTRACE(5, "SynthesizeSpeechAsync: transferred " << bytesRead << " bytes");
-          else {
+          if (!m_toChannel->Write(buffer, bytesRead)) {
             if (m_toChannel->GetErrorCode() != PChannel::NotOpen)
               PTRACE(2, "SynthesizeSpeechAsync: write error - " << m_toChannel->GetErrorText());
             else
-              PTRACE(5, "SynthesizeSpeechAsync: aborted");
+              PTRACE(m_asyncAbort, "SynthesizeSpeechAsync: aborted");
+            body.flush();
             body.flags(ios::failbit);
+            return;
           }
+
+          PTRACE(5, "SynthesizeSpeechAsync: transferred " << bytesRead << " bytes");
         }
       });
 
@@ -419,21 +432,24 @@ public:
          const std::shared_ptr<const Aws::Client::AsyncCallerContext> &)
       {
         if (outcome.IsSuccess())
-          PTRACE(4, "SynthesizeSpeechAsync completed.");
+          PTRACE(4, "SynthesizeSpeechAsync successful.");
         else
           PTRACE(2, "SynthesizeSpeechAsync error: " << outcome.GetError());
 
         PQueueChannel * channel = dynamic_cast<PQueueChannel *>(m_toChannel.get());
-        auto length = channel->GetLength();
-        PSimpleTimer failsafe(0, 10);
-        while (failsafe.IsRunning()) {
+        unsigned noDrainCount = 0;
+        for (auto prevLength = channel->GetLength(); prevLength > 0;) {
           PThread::Sleep(100);
+
           auto nextLength = channel->GetLength();
-          if (nextLength == 0)
+          if (nextLength != prevLength)
+            noDrainCount = 0;
+          else if (noDrainCount++ > 4) {
+            PTRACE(5, "SynthesizeSpeechAsync: nothing draining queue.");
             break;
-          if (length == nextLength)
-            break; // Nothing is draining the queue
-          length = nextLength;
+          }
+
+          prevLength = nextLength;
         }
         m_toChannel->Close();
         m_toChannel.reset();
