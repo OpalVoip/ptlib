@@ -2370,7 +2370,7 @@ namespace PProfiling
     }
 
 
-    HighWaterMarkData & Get(const type_info & ti)
+    HighWaterMarkData & Get(const std::type_info & ti)
     {
       std::string name = ti.name();
       if (name.compare(0, 6, "class ") == 0)
@@ -2424,7 +2424,7 @@ namespace PProfiling
   }
 
 
-  HighWaterMarkData & HighWaterMarkData::Get(const type_info & ti)
+  HighWaterMarkData & HighWaterMarkData::Get(const std::type_info & ti)
   {
     return GetHighWaterMarks().Get(ti);
   }

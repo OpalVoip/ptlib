@@ -68,7 +68,7 @@
 
 // Not a good practice (name space pollution), but will take too long to fix.
 using std::cin, std::cout, std::cerr,
-      std::ostringstream, std::ostream, std::istream, std::wostream, std::wstringstream,
+      std::ostream, std::istream, std::wostream, std::ostringstream, std::wstringstream, std::ifstream, std::ofstream,
       std::streambuf, std::streamoff, std::streamsize, std::ios, std::ios_base,
       std::ends, std::endl, std::flush, std::ws, std::hex, std::oct, std::dec, std::right, std::left,
       std::setiosflags, std::resetiosflags, std::setfill, std::setw, std::setprecision,
@@ -1592,7 +1592,7 @@ namespace PProfiling
 
     HighWaterMarkData(const std::string & name);
     void NewInstance();
-    static HighWaterMarkData & Get(const type_info & ti);
+    static HighWaterMarkData & Get(const std::type_info & ti);
     static std::map<std::string, unsigned> Get();
   };
 

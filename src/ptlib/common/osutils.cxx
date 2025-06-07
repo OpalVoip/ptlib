@@ -402,7 +402,7 @@ PTHREAD_MUTEX_RECURSIVE_NP
 #ifdef _WIN32
       SetStream(new PDebugStream);
 #else
-      SetStream(&clog);
+      SetStream(&std::clog);
 #endif
 #if P_SYSTEMLOG
 #ifdef P_SYSTEMLOG_TO_SYSLOG
