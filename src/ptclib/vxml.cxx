@@ -774,7 +774,6 @@ protected:
 
 PVXMLPlayable::PVXMLPlayable()
   : m_vxmlChannel(NULL)
-  , m_subChannel(NULL)
   , m_repeat(1)
   , m_delay(0)
   , m_autoDelete(false)
@@ -833,15 +832,31 @@ bool PVXMLPlayable::OnDelay()
 
 void PVXMLPlayable::OnStop()
 {
-  if (m_vxmlChannel == NULL || m_subChannel == NULL)
+  if (!m_vxmlChannel || !m_subChannel)
     return;
 
   PTRACE(4, "Playable stop: " << *m_subChannel);
-  if (m_vxmlChannel->GetReadChannel() == m_subChannel)
+  if (m_vxmlChannel->GetReadChannel() == m_subChannel.get())
     m_vxmlChannel->SetReadChannel(NULL, false, true);
 
-  delete m_subChannel;
-  m_subChannel = NULL;
+  m_subChannel.reset();
+}
+
+
+bool PVXMLPlayable::SetSubChannel(PSharedPtr<PChannel> channel)
+{
+  if (!channel)
+    return false;
+
+  if (!m_vxmlChannel->SetReadChannel(channel.get(), false))
+    return false;
+
+#if __cplusplus < 201103L
+  m_subChannel = channel;
+#else
+  m_subChannel = std::move(channel);
+#endif
+  return true;
 }
 
 
@@ -878,11 +893,7 @@ bool PVXMLPlayableFile::OnStart()
   if (PAssertNULL(m_vxmlChannel) == NULL)
     return false;
 
-  m_subChannel = m_vxmlChannel->OpenMediaFile(m_filePath, false);
-  if (m_subChannel == NULL)
-    return false;
-
-  if (m_vxmlChannel->SetReadChannel(m_subChannel, false)) {
+  if (SetSubChannel(m_vxmlChannel->OpenMediaFile(m_filePath, false))) {
     PTRACE(3, "Playing file \"" << m_filePath << '"');
     return true;
   }
@@ -897,7 +908,7 @@ bool PVXMLPlayableFile::OnRepeat()
   if (!PVXMLPlayable::OnRepeat())
     return false;
 
-  PFile * file = dynamic_cast<PFile *>(m_subChannel);
+  PFile * file = GetSubChannel<PFile>();
   return PAssert(file != NULL, PLogicError) && PAssertOS(file->SetPosition(0));
 }
 
@@ -1018,14 +1029,13 @@ bool PVXMLPlayableTTS::OnStart()
       !m_textToSpeech->SetChannels(m_vxmlChannel->GetChannels()))
     return false;
 
-  m_subChannel = m_textToSpeech->SpeakToChannel(m_textToPlay, m_type);
-  if (m_subChannel == NULL) {
-    PTRACE(2, "TTS engine cannot do streams.");
-    return false;
-  }
+  if (SetSubChannel(m_textToSpeech->SpeakToChannel(m_textToPlay, m_type)))
+    return true;
 
-  return m_vxmlChannel->SetReadChannel(m_subChannel, false);
+  PTRACE(2, "TTS engine cannot do streams.");
+  return false;
 }
+
 
 bool PVXMLPlayableTTS::OnRepeat()
 {
@@ -1073,10 +1083,9 @@ bool PVXMLPlayableCommand::OnStart()
   cmd.Replace("%f", m_format);
 
   // execute a command and send the output through the stream
-  PPipeChannel * pipe = new PPipeChannel;
+  PAutoPtr<PPipeChannel> pipe(new PPipeChannel);
   if (!pipe->Open(cmd, PPipeChannel::ReadOnly)) {
     PTRACE(2, "Cannot open command \"" << cmd << '"');
-    delete pipe;
     return false;
   }
 
@@ -1086,14 +1095,13 @@ bool PVXMLPlayableCommand::OnStart()
   }
 
   PTRACE(3, "Playing command \"" << cmd << '"');
-  m_subChannel = pipe;
-  return m_vxmlChannel->SetReadChannel(pipe, false);
+  return SetSubChannel(pipe.release());
 }
 
 
 void PVXMLPlayableCommand::OnStop()
 {
-  PPipeChannel * pipe = dynamic_cast<PPipeChannel *>(m_subChannel);
+  PPipeChannel * pipe = GetSubChannel<PPipeChannel>();
   if (PAssert(pipe != NULL, PLogicError))
     pipe->WaitForTermination();
 
@@ -1124,9 +1132,8 @@ bool PVXMLPlayableData::OnStart()
   if (PAssertNULL(m_vxmlChannel) == NULL)
     return false;
 
-  m_subChannel = new PMemoryFile(m_data);
   PTRACE(3, "Playing " << m_data.GetSize() << " bytes of memory");
-  return m_vxmlChannel->SetReadChannel(m_subChannel, false);
+  return SetSubChannel(new PMemoryFile(m_data));
 }
 
 
@@ -1135,7 +1142,7 @@ bool PVXMLPlayableData::OnRepeat()
   if (!PVXMLPlayable::OnRepeat())
     return false;
 
-  PMemoryFile * memfile = dynamic_cast<PMemoryFile *>(m_subChannel);
+  PMemoryFile * memfile = GetSubChannel<PMemoryFile>();
   return PAssert(memfile != NULL, PLogicError) && PAssertOS(memfile->SetPosition(0));
 }
 
@@ -1197,8 +1204,7 @@ bool PVXMLPlayableHTTP::OnStart()
     return false;
   }
 
-  m_subChannel = client;
-  return m_vxmlChannel->SetReadChannel(client, false);
+  return SetSubChannel(client);
 }
 
 PFACTORY_CREATE(PFactory<PVXMLPlayable>, PVXMLPlayableHTTP, "http");
