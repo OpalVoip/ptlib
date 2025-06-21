@@ -958,7 +958,7 @@ public:
       return false;
 
     PTRACE(3, "Closing " << *this);
-    m_webSocket.Close();
+    m_webSocket.CloseBaseReadChannel();
     PThread::WaitAndDelete(m_eventThread);
 
     return true;
