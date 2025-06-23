@@ -92,6 +92,8 @@ class PSharedPtr : public PContainer
     element_type * operator->() const
     { return ptr; }
 
+    operator bool() const
+    { return ptr != NULL; }
 
   protected: 
     PSharedPtr(int dummy, const PSharedPtr * c)

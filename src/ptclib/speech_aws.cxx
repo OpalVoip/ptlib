@@ -37,6 +37,7 @@
 #include <ptclib/pjson.h>
 #include <ptclib/aws_sdk.h>
 #include <ptclib/pxml.h>
+#include <ptclib/qchannel.h>
 
 P_PUSH_MSVC_WARNINGS(26495)
 #define USE_IMPORT_EXPORT
@@ -62,71 +63,28 @@ P_POP_MSVC_WARNINGS()
 
 static PConstCaselessString VoiceEngine("engine");
 static PConstCaselessString VoiceEngines("engines");
+static PConstCaselessString DefaultVoiceLanguage("TTS-Language");
+static PConstCaselessString DefaultVoiceGender("TTS-Gender");
 static PConstCaselessString DefaultVoiceEngine("TTS-Engine");
 
 class PTextToSpeech_AWS : public PTextToSpeech, PAwsClient<Aws::Polly::PollyClient>
 {
   PCLASSINFO(PTextToSpeech_AWS, PTextToSpeech);
 
+  Aws::Polly::Model::LanguageCode m_defaultLanguage = Aws::Polly::Model::LanguageCode::NOT_SET;
+  Aws::Polly::Model::Gender       m_defaultGender   = Aws::Polly::Model::Gender::NOT_SET;
+  Aws::Polly::Model::Engine       m_defaultEngine   = Aws::Polly::Model::Engine::NOT_SET;
+
   typedef PDictionary<PCaselessString, PStringOptions> VoiceDict;
-  VoiceDict    m_voices;
-  PString      m_defaultEngine;
-  bool         m_sampleRate8k{ true };
-  PWAVFile     m_file;
-  typedef std::shared_ptr<Aws::Polly::Model::SynthesizeSpeechResult> ResultPtr;
-  ResultPtr m_speechResult;
+  VoiceDict       m_voices;
+  bool            m_sampleRate8k{ true };
+  PWAVFile        m_file;
+  PChannel      * m_openedChannel{ nullptr };
+  PSharedPtr<PChannel> m_toChannel;
+  PTRACE_THROTTLE(m_asyncAbort, 3, 500);
 
-  struct PollyChannel : public PChannel
+  void SetRequestInfo(Aws::Polly::Model::SynthesizeSpeechRequest & request, const PString & text, TextType hint)
   {
-    PCLASSINFO(PollyChannel, PChannel)
-    ResultPtr m_speechResult;
-
-    PollyChannel(const ResultPtr & outcome)
-      : m_speechResult(outcome)
-    {
-    }
-
-    ~PollyChannel()
-    {
-      Close();
-    }
-
-    virtual PString GetName() const override
-    {
-      return "PollyChannel";
-    }
-
-    virtual bool IsOpen() const override
-    {
-      return !!m_speechResult;
-    }
-
-    virtual bool Close() override
-    {
-      m_speechResult.reset();
-      return true;
-    }
-
-    virtual bool Read(void * buffer, PINDEX size) override
-    {
-      if (!m_speechResult)
-        return false;
-
-      auto & strm = m_speechResult->GetAudioStream();
-      strm.read((char *)buffer, size);
-      auto count = strm.gcount();
-      SetLastReadCount(count);
-      return count > 0;
-    }
-  };
-
-  bool InternalSpeak(Aws::Polly::Model::SynthesizeSpeechOutcome & outcome, const PString & text, TextType hint)
-  {
-    if (!SetVoice(PString::Empty()))
-      return false;
-
-    Aws::Polly::Model::SynthesizeSpeechRequest request;
-
     request.SetOutputFormat(Aws::Polly::Model::OutputFormat::pcm);
     request.SetSampleRate(m_sampleRate8k ? "8000" : "16000");
     request.SetVoiceId(Aws::Polly::Model::VoiceIdMapper::GetVoiceIdForName(m_voice.Get(VoiceName).c_str()));
@@ -148,28 +106,21 @@ class PTextToSpeech_AWS : public PTextToSpeech, PAwsClient<Aws::Polly::PollyClie
       "characters", // Spell,
       NULL, // Boolean
     };
+    PStringStream strm;
+    strm << "<speak>";
     if (HintToAWS[hint] == NULL)
-      request.SetText(text.c_str());
+      strm << PXML::EscapeSpecialChars(text);
     else {
-      PStringStream strm;
       strm << "<say-as interpret-as=\"" << HintToAWS[hint] << '"';
       if (hint == Date) {
         static const char * DateOrder[] = { "mdy", "dmy", "ymd" };
         strm << " format=\"" << DateOrder[PTime::GetDateOrder()] << '"';
       }
-      strm << '>'
-        << PXML::EscapeSpecialChars(text)
-        << "</say-as>";
-      request.SetText(strm.c_str());
-      request.SetTextType(Aws::Polly::Model::TextType::ssml);
+      strm << '>' << PXML::EscapeSpecialChars(text) << "</say-as>";
     }
-
-    outcome = GetClient()->SynthesizeSpeech(request);
-    if (outcome.IsSuccess())
-      return true;
-
-    PTRACE(2, "Could not synthesize speech: " << outcome.GetError().GetMessage());
-    return false;
+    strm << "</speak>";
+    request.SetText(strm.c_str());
+    request.SetTextType(Aws::Polly::Model::TextType::ssml);
   }
 
 public:
@@ -181,12 +132,30 @@ public:
 
   virtual bool SetOptions(const PStringOptions & options) override
   {
-    PString engineStr = options.Get(DefaultVoiceEngine);
-    if (!engineStr.empty()) {
-      auto engine = Aws::Polly::Model::EngineMapper::GetEngineForName(engineStr.c_str());
+    PString dflt = options.Get(DefaultVoiceLanguage);
+    if (!dflt.empty()) {
+      auto language = Aws::Polly::Model::LanguageCodeMapper::GetLanguageCodeForName(dflt);
+      if (language != Aws::Polly::Model::LanguageCode::NOT_SET) {
+        m_defaultLanguage = language;
+        PTRACE(3, "Using default language: " << dflt);
+      }
+    }
+
+    dflt = options.Get(DefaultVoiceGender);
+    if (!dflt.empty()) {
+      auto gender = Aws::Polly::Model::GenderMapper::GetGenderForName(dflt);
+      if (gender != Aws::Polly::Model::Gender::NOT_SET) {
+        m_defaultGender = gender;
+        PTRACE(3, "Using default gender: " << dflt);
+      }
+    }
+
+    dflt = options.Get(DefaultVoiceEngine);
+    if (!dflt.empty()) {
+      auto engine = Aws::Polly::Model::EngineMapper::GetEngineForName(dflt);
       if (engine != Aws::Polly::Model::Engine::NOT_SET) {
-        m_defaultEngine = Aws::Polly::Model::EngineMapper::GetNameForEngine(engine);
-        PTRACE(3, "Using default engine: " << m_defaultEngine);
+        m_defaultEngine = engine;
+        PTRACE(3, "Using default engine: " << dflt);
       }
     }
 
@@ -239,23 +208,38 @@ public:
 
   bool ValidateEngine(PStringOptions & voice) const
   {
-    if (voice.Contains(VoiceEngine))
-      return true;
-
-    PStringArray engines = voice.Get(VoiceEngines, m_defaultEngine).ToLower().Tokenise("+", false);
-    if (m_defaultEngine.empty())
-      voice.Set(VoiceEngine, engines[0]);
-    else if (engines.GetValuesIndex(m_defaultEngine) != P_MAX_INDEX)
-      voice.Set(VoiceEngine, m_defaultEngine);
-    else {
-      PTRACE(2, "Cannot use engine \"" << m_defaultEngine << "\" with voice \"" << voice.Get(VoiceName) << '"');
-      return false;
+    PCaselessString engine = voice.Get(VoiceEngine);
+    if (!engine.empty()) {
+      auto code = Aws::Polly::Model::EngineMapper::GetEngineForName(engine);
+      if (code <= Aws::Polly::Model::Engine::NOT_SET || static_cast<int>(code) > 10) {
+        PTRACE(2, "Voice has invalid engine: \"" << engine << '"');
+        return false;
+      }
     }
 
-    PTRACE(4, "Using voice \"" << voice.Get(VoiceName) << '"');
-    return true;
-  }
+    if (engine.empty())
+      engine = Aws::Polly::Model::EngineMapper::GetNameForEngine(m_defaultEngine != Aws::Polly::Model::Engine::NOT_SET
+                                                                 ? m_defaultEngine : Aws::Polly::Model::Engine::standard);
 
+    auto engines = voice.Get(VoiceEngines).ToLower().Tokenise('+');
+    if (!engine.empty() && engines.GetStringsIndex(engine) != P_MAX_INDEX)
+      return true;
+
+    static Aws::Polly::Model::Engine const FallbackEngines[] = {
+      Aws::Polly::Model::Engine::generative,
+      Aws::Polly::Model::Engine::neural,
+      Aws::Polly::Model::Engine::long_form,
+      Aws::Polly::Model::Engine::standard
+    };
+    for (size_t fallback = 0; fallback < PARRAYSIZE(FallbackEngines); ++fallback) {
+      auto backupEngine = Aws::Polly::Model::EngineMapper::GetNameForEngine(FallbackEngines[fallback]);
+      if (engines.GetStringsIndex(backupEngine) != P_MAX_INDEX)
+        return true;
+    }
+
+    PTRACE(2, "No supported engine found \"" << voice.Get(VoiceEngines) << '"');
+    return false;
+  }
 
   virtual bool InternalSetVoice(PStringOptions & voice) override
   {
@@ -266,11 +250,28 @@ public:
       GetVoiceList();
 
     PCaselessString language = voice.Get(VoiceLanguage);
-    PCaselessString gender = voice.Get(VoiceGender);
-    PCaselessString engine = voice.Get(VoiceEngine);
+    if (!language.empty()) {
+      auto code = Aws::Polly::Model::LanguageCodeMapper::GetLanguageCodeForName(language);
+      if (code <= Aws::Polly::Model::LanguageCode::NOT_SET || static_cast<int>(code) > 100) {
+        PTRACE(2, "Voice has invalid language: \"" << language << '"');
+        return false;
+      }
+    }
 
-    if (voice.Contains(VoiceName)) {
-      PCaselessString voiceName = voice.Get(VoiceName);
+    PCaselessString gender = voice.Get(VoiceGender);
+    if (!gender.empty()) {
+      switch (Aws::Polly::Model::GenderMapper::GetGenderForName(gender)) {
+        case Aws::Polly::Model::Gender::Male:
+        case Aws::Polly::Model::Gender::Female:
+          break;
+        default:
+          PTRACE(2, "Voice has invalid gender: \"" << gender << '"');
+          return false;
+      }
+    }
+
+    PCaselessString voiceName = voice.Get(VoiceName);
+    if (!voiceName.empty()) {
       PStringOptions * found = m_voices.GetAt(voiceName);
       if (!found) {
         PTRACE(2, "Unsupported voice \"" << voiceName << '"');
@@ -286,22 +287,24 @@ public:
                << gender << " != " << found->Get(VoiceGender));
         return false;
       }
-      if (!engine.empty() && Aws::Polly::Model::EngineMapper::GetEngineForName(engine) == Aws::Polly::Model::Engine::NOT_SET) {
-        PTRACE(2, "Voice \"" << voiceName << "\" has incorrect engine: "
-               << engine << " != " << found->Get(VoiceEngine));
-        return false;
-      }
-      voice = *found;
-      voice.MakeUnique();
+
+      voice.Merge(*found, PStringToString::e_MergeIgnore);
       return ValidateEngine(voice);
     }
+
+    if (language.empty() && m_defaultLanguage != Aws::Polly::Model::LanguageCode::NOT_SET)
+      language = Aws::Polly::Model::LanguageCodeMapper::GetNameForLanguageCode(m_defaultLanguage);
+
+    if (gender.empty() && m_defaultGender != Aws::Polly::Model::Gender::NOT_SET)
+      gender = Aws::Polly::Model::GenderMapper::GetNameForGender(m_defaultGender);
+
+    PCaselessString engine = voice.Get(VoiceEngine);
 
     for (const auto & it : m_voices) {
       if ((language.empty() || language == it.second.Get(VoiceLanguage)) &&
           (gender.empty() || gender == it.second.Get(VoiceGender)) &&
           (engine.empty() || engine == it.second.Get(VoiceEngine) || it.second.Get(VoiceEngines).Find(engine) != P_MAX_INDEX)) {
-        voice = it.second;
-        voice.MakeUnique();
+        voice.Merge(it.second, PStringToString::e_MergeOverwrite);
         return ValidateEngine(voice);
       }
     }
@@ -363,16 +366,39 @@ public:
   }
 
 
+  bool OpenChannel(PChannel * channel) override
+  {
+    Close();
+    m_openedChannel = channel;
+    return true;
+  }
+
+
   bool IsOpen() const override
   {
-    return !!m_speechResult || m_file.IsOpen();
+    return m_toChannel || m_openedChannel || m_file.IsOpen();
   }
 
 
   bool Close() override
   {
-    m_speechResult.reset();
+    m_openedChannel= nullptr;
     m_file.Close();
+
+    auto channel = m_toChannel;
+    if (!channel)
+      return true;
+
+    channel->Close();
+
+    PSimpleTimer failsafe(0, 10);
+    while (failsafe.IsRunning()) {
+      if (!m_toChannel)
+        return true;
+      PThread::Sleep(100);
+    }
+
+    PTRACE(2, "Timeout waiting for SynthesizeSpeechAsync to stop.");
     return true;
   }
 
@@ -382,10 +408,16 @@ public:
     if (!IsOpen())
       return false;
 
-    Aws::Polly::Model::SynthesizeSpeechOutcome outcome;
-    if (!InternalSpeak(outcome, text, hint))
-      return false;
+    Aws::Polly::Model::SynthesizeSpeechRequest request;
+    SetRequestInfo(request, text, hint);
 
+    Aws::Polly::Model::SynthesizeSpeechOutcome outcome = GetClient()->SynthesizeSpeech(request);
+    if (!outcome.IsSuccess()) {
+      PTRACE(2, "Could not synthesize speech: " << outcome.GetError().GetMessage());
+      return false;
+    }
+
+    PChannel & channel = m_openedChannel ? *m_openedChannel : m_file;
     auto & strm = outcome.GetResult().GetAudioStream();
     for (;;) {
       char buf[1000];
@@ -394,24 +426,91 @@ public:
       if (count == 0)
         break;
 
-      if (m_file.Write(buf, count))
+      if (channel.Write(buf, count))
         continue;
 
-      PTRACE(2, "Write failure to \"" << m_file.GetFilePath() << "\" - " << m_file.GetErrorText());
+      PTRACE(2, "Write failure to \"" << channel.GetName() << "\" - " << channel.GetErrorText());
       return false;
     }
 
     return true;
   }
 
-  PChannel * SpeakToChannel(const PString & text, TextType hint) override
+  PSharedPtr<PChannel> SpeakToChannel(const PString & text, TextType hint) override
   {
-    Aws::Polly::Model::SynthesizeSpeechOutcome outcome;
-    if (!InternalSpeak(outcome, text, hint))
-      return NULL;
+    if (IsOpen())
+      return false;
 
-    m_speechResult = std::make_shared<Aws::Polly::Model::SynthesizeSpeechResult>(outcome.GetResultWithOwnership());
-    return new PollyChannel(m_speechResult);
+    m_toChannel.reset(new PQueueChannel(m_sampleRate8k ? 16000 : 32000)); // One second of PCM
+
+    Aws::Polly::Model::SynthesizeSpeechRequest request;
+    SetRequestInfo(request, text, hint);
+
+    request.SetDataReceivedEventHandler(
+      [this](const Aws::Http::HttpRequest *,
+             Aws::Http::HttpResponse * response,
+             long long PTRACE_PARAM(bytesTransferred))
+      {
+        char buffer[1024];
+        auto & body = response->GetResponseBody();
+
+        for (;;) {
+          body.read(buffer, sizeof(buffer));
+
+          auto bytesRead = body.gcount();
+          if (bytesRead <= 0) {
+            body.clear();
+            PTRACE(5, "SynthesizeSpeechAsync: could not transfer " << bytesTransferred << " bytes");
+            return;
+          }
+
+          if (!m_toChannel->Write(buffer, bytesRead)) {
+            if (m_toChannel->GetErrorCode() != PChannel::NotOpen)
+              PTRACE(2, "SynthesizeSpeechAsync: write error - " << m_toChannel->GetErrorText());
+            else
+              PTRACE(m_asyncAbort, "SynthesizeSpeechAsync: aborted");
+            body.flush();
+            body.flags(ios::failbit);
+            return;
+          }
+
+          PTRACE(5, "SynthesizeSpeechAsync: transferred " << bytesRead << " bytes");
+        }
+      });
+
+    GetClient()->SynthesizeSpeechAsync(
+      request,
+      [this](const Aws::Polly::PollyClient *,
+         const Aws::Polly::Model::SynthesizeSpeechRequest &,
+         Aws::Polly::Model::SynthesizeSpeechOutcome outcome,
+         const std::shared_ptr<const Aws::Client::AsyncCallerContext> &)
+      {
+        if (outcome.IsSuccess())
+          PTRACE(4, "SynthesizeSpeechAsync successful.");
+        else
+          PTRACE(2, "SynthesizeSpeechAsync error: " << outcome.GetError());
+
+        PQueueChannel * channel = dynamic_cast<PQueueChannel *>(m_toChannel.get());
+        unsigned noDrainCount = 0;
+        for (auto prevLength = channel->GetLength(); prevLength > 0;) {
+          PThread::Sleep(100);
+
+          auto nextLength = channel->GetLength();
+          if (nextLength != prevLength)
+            noDrainCount = 0;
+          else if (noDrainCount++ > 4) {
+            PTRACE(5, "SynthesizeSpeechAsync: nothing draining queue.");
+            break;
+          }
+
+          prevLength = nextLength;
+        }
+        m_toChannel->Close();
+        m_toChannel.reset();
+      });
+
+    PTRACE(4, "SynthesizeSpeechAsync started.");
+    return m_toChannel;
   }
 };
 
@@ -859,7 +958,7 @@ public:
       return false;
 
     PTRACE(3, "Closing " << *this);
-    m_webSocket.Close();
+    m_webSocket.CloseBaseReadChannel();
     PThread::WaitAndDelete(m_eventThread);
 
     return true;
