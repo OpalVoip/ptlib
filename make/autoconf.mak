@@ -146,6 +146,9 @@ endif
 # The following goals do not generate a call to configure
 NO_CONFIG_GOALS += clean distclean config
 
+# This file can't do things in parallel, but the sub-builds can
+.NOTPARALLEL:
+
 
 # Everything other than the NO_CONFIG_GOALS depends on the configuration
 ifneq (,$(MAKECMDGOALS))
