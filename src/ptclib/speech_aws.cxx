@@ -439,7 +439,7 @@ public:
   PSharedPtr<PChannel> SpeakToChannel(const PString & text, TextType hint) override
   {
     if (IsOpen())
-      return false;
+      return nullptr;
 
     m_toChannel.reset(new PQueueChannel(m_sampleRate8k ? 16000 : 32000)); // One second of PCM
 
