@@ -33,7 +33,7 @@
 #include <ptclib/speech.h>
 
 
-#define PTraceModule() "SPEECH"
+#define PTraceModule() "Speech"
 
 
 #if P_TEXT_TO_SPEECH
@@ -135,6 +135,7 @@ bool PTextToSpeech::SetVoice(const PString & voiceStr)
     return false;
 
   m_voice = voice;
+  PTRACE(4, "SetVoice succeeded:\n" << m_voice);
   return true;
 }
 
