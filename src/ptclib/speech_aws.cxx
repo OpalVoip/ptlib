@@ -73,7 +73,7 @@ class PTextToSpeech_AWS : public PTextToSpeech, PAwsClient<Aws::Polly::PollyClie
 
   Aws::Polly::Model::LanguageCode m_defaultLanguage = Aws::Polly::Model::LanguageCode::NOT_SET;
   Aws::Polly::Model::Gender       m_defaultGender   = Aws::Polly::Model::Gender::NOT_SET;
-  Aws::Polly::Model::Engine       m_defaultEngine   = Aws::Polly::Model::Engine::NOT_SET;
+  Aws::Polly::Model::Engine       m_defaultEngine   = Aws::Polly::Model::Engine::standard;
 
   typedef PDictionary<PCaselessString, PStringOptions> VoiceDict;
   VoiceDict       m_voices;
@@ -88,8 +88,8 @@ class PTextToSpeech_AWS : public PTextToSpeech, PAwsClient<Aws::Polly::PollyClie
     request.SetOutputFormat(Aws::Polly::Model::OutputFormat::pcm);
     request.SetSampleRate(m_sampleRate8k ? "8000" : "16000");
     request.SetVoiceId(Aws::Polly::Model::VoiceIdMapper::GetVoiceIdForName(m_voice.Get(VoiceName).c_str()));
-    request.SetLanguageCode(Aws::Polly::Model::LanguageCodeMapper::GetLanguageCodeForName(m_voice.Get(VoiceLanguage).c_str()));
-    request.SetEngine(Aws::Polly::Model::EngineMapper::GetEngineForName(m_voice.Get(VoiceEngine).c_str()));
+    request.SetLanguageCode(GetLanguageCodeForName(m_voice.Get(VoiceLanguage)));
+    request.SetEngine(GetEngineForName(m_voice.Get(VoiceEngine)));
 
     static const char * HintToAWS[TextType::NumTextType] = {
       NULL, // Default,
@@ -129,12 +129,40 @@ public:
     Close();
   }
 
+  // We have all our own lookup functions as the default AWS code (IMHO stupidly)
+  // adds whatever new string you provide and returns an illegal enum.
+  Aws::Polly::Model::LanguageCode GetLanguageCodeForName(const PString & name) const
+  {
+    auto code = Aws::Polly::Model::LanguageCodeMapper::GetLanguageCodeForName(name);
+    if (code > Aws::Polly::Model::LanguageCode::NOT_SET && static_cast<int>(code) < 100)
+      return code;
+    PTRACE(3, "Invalid language: \"" << name << '"');
+    return Aws::Polly::Model::LanguageCode::NOT_SET;
+  }
+
+  Aws::Polly::Model::Gender GetGenderForName(const PString & name) const
+  {
+    auto code = Aws::Polly::Model::GenderMapper::GetGenderForName(name);
+    if (code > Aws::Polly::Model::Gender::NOT_SET && static_cast<int>(code) < 3)
+      return code;
+    PTRACE(3, "Invalid gender: \"" << name << '"');
+    return Aws::Polly::Model::Gender::NOT_SET;
+  }
+
+  Aws::Polly::Model::Engine GetEngineForName(const PString & name) const
+  {
+    auto code = Aws::Polly::Model::EngineMapper::GetEngineForName(name);
+    if (code > Aws::Polly::Model::Engine::NOT_SET && static_cast<int>(code) < 10)
+      return code;
+    PTRACE(3, "Invalid engine: \"" << name << '"');
+    return Aws::Polly::Model::Engine::NOT_SET;
+  }
 
   virtual bool SetOptions(const PStringOptions & options) override
   {
     PString dflt = options.Get(DefaultVoiceLanguage);
     if (!dflt.empty()) {
-      auto language = Aws::Polly::Model::LanguageCodeMapper::GetLanguageCodeForName(dflt);
+      auto language = GetLanguageCodeForName(dflt);
       if (language != Aws::Polly::Model::LanguageCode::NOT_SET) {
         m_defaultLanguage = language;
         PTRACE(3, "Using default language: " << dflt);
@@ -143,7 +171,7 @@ public:
 
     dflt = options.Get(DefaultVoiceGender);
     if (!dflt.empty()) {
-      auto gender = Aws::Polly::Model::GenderMapper::GetGenderForName(dflt);
+      auto gender = GetGenderForName(dflt);
       if (gender != Aws::Polly::Model::Gender::NOT_SET) {
         m_defaultGender = gender;
         PTRACE(3, "Using default gender: " << dflt);
@@ -152,7 +180,7 @@ public:
 
     dflt = options.Get(DefaultVoiceEngine);
     if (!dflt.empty()) {
-      auto engine = Aws::Polly::Model::EngineMapper::GetEngineForName(dflt);
+      auto engine = GetEngineForName(dflt);
       if (engine != Aws::Polly::Model::Engine::NOT_SET) {
         m_defaultEngine = engine;
         PTRACE(3, "Using default engine: " << dflt);
@@ -209,20 +237,20 @@ public:
   bool ValidateEngine(PStringOptions & voice) const
   {
     PCaselessString engine = voice.Get(VoiceEngine);
-    if (!engine.empty()) {
-      auto code = Aws::Polly::Model::EngineMapper::GetEngineForName(engine);
-      if (code <= Aws::Polly::Model::Engine::NOT_SET || static_cast<int>(code) > 10) {
-        PTRACE(2, "Voice has invalid engine: \"" << engine << '"');
+    if (engine.empty()) {
+      engine = Aws::Polly::Model::EngineMapper::GetNameForEngine(
+        m_defaultEngine != Aws::Polly::Model::Engine::NOT_SET ? m_defaultEngine : Aws::Polly::Model::Engine::standard
+      );
+      voice.Set(VoiceEngine, engine);
+    }
+    else {
+      auto code = GetEngineForName(engine);
+      if (code <= Aws::Polly::Model::Engine::NOT_SET)
         return false;
-      }
     }
 
-    if (engine.empty())
-      engine = Aws::Polly::Model::EngineMapper::GetNameForEngine(m_defaultEngine != Aws::Polly::Model::Engine::NOT_SET
-                                                                 ? m_defaultEngine : Aws::Polly::Model::Engine::standard);
-
     auto engines = voice.Get(VoiceEngines).ToLower().Tokenise('+');
-    if (!engine.empty() && engines.GetStringsIndex(engine) != P_MAX_INDEX)
+    if (engines.GetStringsIndex(engine) != P_MAX_INDEX)
       return true;
 
     static Aws::Polly::Model::Engine const FallbackEngines[] = {
@@ -232,12 +260,15 @@ public:
       Aws::Polly::Model::Engine::standard
     };
     for (size_t fallback = 0; fallback < PARRAYSIZE(FallbackEngines); ++fallback) {
-      auto backupEngine = Aws::Polly::Model::EngineMapper::GetNameForEngine(FallbackEngines[fallback]);
-      if (engines.GetStringsIndex(backupEngine) != P_MAX_INDEX)
+      auto fallbackEngine = Aws::Polly::Model::EngineMapper::GetNameForEngine(FallbackEngines[fallback]);
+      if (engines.GetStringsIndex(fallbackEngine) != P_MAX_INDEX) {
+        PTRACE(4, "Falling back to engine \"" << fallbackEngine << "\" from \"" << engine << '"');
+        voice.Set(VoiceEngine, fallbackEngine);
         return true;
+      }
     }
 
-    PTRACE(2, "No supported engine found \"" << voice.Get(VoiceEngines) << '"');
+    PTRACE(2, "No supported engine found in \"" << voice.Get(VoiceEngines) << '"');
     return false;
   }
 
@@ -250,25 +281,12 @@ public:
       GetVoiceList();
 
     PCaselessString language = voice.Get(VoiceLanguage);
-    if (!language.empty()) {
-      auto code = Aws::Polly::Model::LanguageCodeMapper::GetLanguageCodeForName(language);
-      if (code <= Aws::Polly::Model::LanguageCode::NOT_SET || static_cast<int>(code) > 100) {
-        PTRACE(2, "Voice has invalid language: \"" << language << '"');
-        return false;
-      }
-    }
+    if (!language.empty() && GetLanguageCodeForName(language) == Aws::Polly::Model::LanguageCode::NOT_SET)
+      return false;
 
     PCaselessString gender = voice.Get(VoiceGender);
-    if (!gender.empty()) {
-      switch (Aws::Polly::Model::GenderMapper::GetGenderForName(gender)) {
-        case Aws::Polly::Model::Gender::Male:
-        case Aws::Polly::Model::Gender::Female:
-          break;
-        default:
-          PTRACE(2, "Voice has invalid gender: \"" << gender << '"');
-          return false;
-      }
-    }
+    if (!gender.empty() && GetGenderForName(gender) == Aws::Polly::Model::Gender::NOT_SET)
+      return false;
 
     PCaselessString voiceName = voice.Get(VoiceName);
     if (!voiceName.empty()) {
