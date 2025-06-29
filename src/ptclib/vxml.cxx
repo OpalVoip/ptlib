@@ -4246,7 +4246,6 @@ bool PVXMLSession::VideoSenderDevice::InternalGetFrameData(BYTE * buffer, PINDEX
 
 PVXMLGrammar::PVXMLGrammar(const PVXMLGrammarInit & init)
   : PVXMLGrammarInit(init)
-  , m_preventStartOnInput(true)
   , m_recogniser(NULL)
   , m_allowDTMF(true)
   , m_fieldName(m_field.GetAttribute(NameAttribute))
@@ -4311,13 +4310,6 @@ PVXMLGrammar::PVXMLGrammar(const PVXMLGrammarInit & init)
 
       m_recogniser->ActivateVocabulary(m_session.GetProperty("vocabularynames").Tokenise(","),
                                        m_session.GetProperty("vocabularylanguages").Tokenise(","));
-
-      if (!m_recogniser->Open(PCREATE_NOTIFIER(OnRecognition))) {
-        PTRACE(2, "Grammar " << *this << " could not open speech recognition.");
-        delete m_recogniser;
-        m_recogniser = NULL;
-        m_allowDTMF = true; // Turn on despite element indication, as no other way for input!
-      }
     }
   }
 
@@ -4328,6 +4320,20 @@ PVXMLGrammar::PVXMLGrammar(const PVXMLGrammarInit & init)
          " noInputTimeout=" << m_noInputTimeout);
 }
 
+
+void PVXMLGrammar::StartRecognition()
+{
+  if (!m_recogniser)
+    return;
+
+  if (m_recogniser->IsOpen() || m_recogniser->Open(PCREATE_NOTIFIER(OnRecognition)))
+    return;
+
+  PTRACE(2, "Grammar " << *this << " could not open speech recognition.");
+  delete m_recogniser;
+  m_recogniser = NULL;
+  m_allowDTMF = true; // Turn on despite element indication, as no other way for input!
+}
 
 void PVXMLGrammar::OnRecognition(PSpeechRecognition &, PSpeechRecognition::Transcript transcript)
 {
@@ -4359,7 +4365,8 @@ void PVXMLGrammar::OnAudioInput(const short * samples, size_t count)
 
 void PVXMLGrammar::Setup(const PTimeInterval & timeout, bool canBargeIn)
 {
-  m_preventStartOnInput = !canBargeIn;
+  if (canBargeIn)
+    StartRecognition();
 
   if (timeout > 0) {
     m_noInputTimeout = timeout;
@@ -4373,9 +4380,7 @@ void PVXMLGrammar::Setup(const PTimeInterval & timeout, bool canBargeIn)
 bool PVXMLGrammar::Start(StartMode mode)
 {
   if (mode == FromVXML)
-    m_preventStartOnInput = false;
-  else if (m_preventStartOnInput)
-      return false;
+    StartRecognition();
 
   GrammarState prev = Idle;
   if (!m_state.compare_exchange_strong(prev, Started)) {
