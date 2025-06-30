@@ -62,7 +62,6 @@ class PSecureHTTPServiceProcess : public PHTTPServiceProcess
       PHTTPServiceProcess::Params & params
     ) override;
 
-    virtual PChannel * CreateChannelForHTTP(PChannel * channel) override;
     virtual void OnHTTPStarted(PHTTPServer & server) override;
 
     /** Set/Create the server certificate to use.
@@ -82,16 +81,6 @@ class PSecureHTTPServiceProcess : public PHTTPServiceProcess
       const PString & key,    ///< Private key file or text string
       const PString & ca      ///< Certificate authority file, directory or text string
     );
-
-    virtual PBoolean OnDetectedNonSSLConnection(PChannel * chan, const PString & line);
-
-    virtual PString CreateNonSSLMessage(const PString & url);
-    virtual PString CreateRedirectMessage(const PString & url);
-
-    void DisableSSL();
-
-  protected:
-    PSSLContext * m_sslContext;
 };
 
 

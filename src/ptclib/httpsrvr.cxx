@@ -52,6 +52,8 @@ static const char * accessFilename = "_access";
 
 static const PConstString WebSocketGUID("258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
 
+static PTimeInterval ReadHeaderTimeout(0, 3);
+
 
 //////////////////////////////////////////////////////////////////////////////
 // PHTTPSpace
@@ -846,6 +848,11 @@ bool PHTTPListener::ListenForHTTP(const PString & interfaces, WORD port, PSocket
     }
   }
 
+  if (HasSSLCertificates()) {
+    m_sslContext.reset(new PSSLContext());
+    ApplySSLCredentials(*m_sslContext);
+  }
+
   if (atLeastOne)
     m_listenerThread = new PThreadObj<PHTTPListener>(*this, &PHTTPListener::ListenMain, false, "HTTP-Listen");
 
@@ -909,10 +916,172 @@ void PHTTPListener::ListenMain()
 }
 
 
+#if P_SSL
+
+void PHTTPListener::DisableSSL()
+{
+  PTRACE(3, "SSL disabled");
+  m_sslContext.reset();
+}
+
+
+class PHTTPListener::SSLChannel : public PSSLChannel
+{
+public:
+  SSLChannel(PHTTPListener & listener, PSSLContext & context)
+    : PSSLChannel(context)
+    , m_listener(listener)
+    , m_preReadState(e_Starting)
+  { }
+
+  virtual int BioRead(char * buf, int len) override
+  {
+    if (m_preReadState == e_Finished)
+      return PSSLChannel::BioRead(buf, len);
+
+    if (m_preReadState == e_Starting) {
+      PChannel * chan = GetReadChannel();
+
+      PTimeInterval oldTimeout = GetReadTimeout();
+      SetReadTimeout(ReadHeaderTimeout);
+
+      // read first line from the channel
+      for (;;) {
+        int c = chan->ReadChar();
+        if (c < 0)
+          return -1;
+
+        m_preReadData += (char)c;
+
+        if (c == '\n' && m_preReadData.Find("HTTP/1") != P_MAX_INDEX) {
+          if (m_listener.OnDetectedNonSSLConnection(chan, m_preReadData))
+            chan->CloseBaseReadChannel();
+          return -1;
+        }
+
+        if (c == '\r' || !iscntrl(c))
+          continue;
+
+        if (!m_preReadData.IsEmpty()) {
+          m_preReadState = e_IsSSL;
+          break;
+        }
+
+        m_preReadState = e_Finished;
+        *buf = (char)c;
+        len = 1;
+        return len;
+      }
+      SetReadTimeout(oldTimeout);
+    }
+
+    // copy pre-read bytes to the supplied buffer, but no more than the buffer will allow
+    if (len < (int)m_preReadData.GetLength()) {
+      memcpy(buf, m_preReadData.GetPointer(), len);
+      m_preReadData.Delete(0, len);
+    }
+    else {
+      len = m_preReadData.GetLength();
+      memcpy(buf, m_preReadData.GetPointer(), len);
+      m_preReadState = e_Finished;
+    }
+    return len;
+  }
+
+protected:
+  PHTTPListener & m_listener;
+  PCaselessString m_preReadData;
+  enum
+  {
+    e_Starting,
+    e_IsSSL,
+    e_Finished
+  }
+  m_preReadState;
+};
+
+
+PBoolean PHTTPListener::OnDetectedNonSSLConnection(PChannel * chan, const PString & line)
+{
+  // get the MIME info
+  PMIMEInfo mime(*chan);
+
+  PURL url;
+  url.SetScheme("https");
+
+  // get the host field
+  PString host = mime("host");
+  if (host.IsEmpty()) {
+    PIPSocket::Address addr;
+    PIPSocket::GetHostAddress(addr);
+    url.SetScheme("https");
+    url.SetHostName(addr.AsString());
+  }
+  else {
+    PINDEX colon = host.Find(':');
+    url.SetHostName(host.Left(colon));
+    if (colon != P_MAX_INDEX)
+      url.SetPort((uint16_t)host.Mid(colon+1).AsUnsigned());
+  }
+
+  PStringArray fields = line.Tokenise(" ", false);
+  switch (fields.GetSize()) {
+    default:
+      url.SetPathStr(fields[1]);
+      break;
+    case 1:
+      url.SetPathStr(fields[0]);
+      break;
+    case 0:
+      break;
+  }
+
+  PTRACE(3, "Detected non-SSL connection, cmd=" << line.ToLiteral() << ", host=" << host.ToLiteral() << ", redirecting to " << url);
+
+  chan->WriteString(CreateNonSSLMessage(url));
+  return true; // Closes "chan"
+}
+
+
+PString PHTTPListener::CreateNonSSLMessage(const PString & url)
+{
+  PString newUrl = url;
+  if (url.Left(5) == "http:")
+    newUrl = PString("https:") + newUrl.Mid(5);
+  return CreateRedirectMessage(newUrl);
+}
+
+
+PString PHTTPListener::CreateRedirectMessage(const PString & url)
+{
+  static const char * CRLF = "\r\n";
+  return PSTRSTRM("HTTP/1.1 301 Moved Permanently" << CRLF <<
+                  PHTTP::LocationTag() << ": " << url << CRLF <<
+                  PHTTP::ContentLengthTag() << ": 0" << CRLF <<
+                  CRLF);
+}
+
+
+PChannel * PHTTPListener::CreateChannelForHTTP(PChannel * channel)
+{
+  if (m_sslContext == NULL)
+    return channel;
+
+  PSSLChannel * ssl = new SSLChannel(*this, *m_sslContext);
+  if (ssl->Accept(channel))
+    return ssl;
+
+  PTRACE(2, "SSL Accept failed: " << ssl->GetErrorText());
+  ssl->Detach();
+  delete ssl;
+  return NULL;
+}
+#else
 PChannel * PHTTPListener::CreateChannelForHTTP(PChannel * channel)
 {
   return channel;
 }
+#endif
 
 
 PHTTPServer * PHTTPListener::CreateServerForHTTP()
@@ -1478,7 +1647,7 @@ bool PWebSocket::ReadHeader(OpCodes  & opCode,
   opCode = (OpCodes)(header1 & 0xf);
 
   PTimeInterval oldTimeout = GetReadTimeout();
-  SetReadTimeout(1000);
+  SetReadTimeout(ReadHeaderTimeout);
   bool ok = false;
 
   BYTE header2;

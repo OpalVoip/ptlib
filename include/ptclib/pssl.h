@@ -775,32 +775,44 @@ public:
 
   /**Set flag to auto-create a self signed root certificate and private key.
    */
-  void SetSSLAutoCreateCertificate(bool yes);
+  void SetSSLAutoCreateCertificate(bool yes, const char *dn = NULL);
 
   /**Get flag to auto-create a self signed root certificate and private key.
    */
   bool GetSSLAutoCreateCertificate() const;
+
+  /**Get DN for auto-create self signed root certificate and private key.
+   */
+  PString GetSSLAutoCreateDN() const;
 
   /**Set all the certificate info. */
   void SetSSLCredentials(
     const PString & authority,    ///< Certificate Authority directory, file or data
     const PString & certificate,  ///< Local certificate filename or data
     const PString & privateKey,   ///< Private key filename or data for above local certificate
-    bool autoCreate = false       ///< If certificate/privateKey are file paths, and do not exist, then create.
+    bool autoCreate = false,      ///< If certificate/privateKey are file paths, and do not exist, then create.
+    const char * dn = NULL        ///< Distinguished Name to use if creating certificate
   );
   void SetSSLCredentials(
     const PSSLCertificateInfo & info  ///< Other certificate info to copy from
   );
 
   /**Get all the certificate info. */
-  void GetSSLCredentials(
+  P_DEPRECATED void GetSSLCredentials(
     PString & authority,    ///< Certificate Authority directory, file or data
     PString & certificate,  ///< Local certificate filename or data
     PString & privateKey,   ///< Private key filename or data for above local certificate
     bool & autoCreate       ///< If certificate/privateKey are file paths, and do not exist, then create.
   ) const;
+  void GetSSLCredentials(
+    PString & authority,    ///< Certificate Authority directory, file or data
+    PString & certificate,  ///< Local certificate filename or data
+    PString & privateKey,   ///< Private key filename or data for above local certificate
+    bool & autoCreate,      ///< If certificate/privateKey are file paths, and do not exist, then create.
+    PString & dn            ///< Distinguished Name to use if creating certificate
+  ) const;
 
-  ///  Indicate if there is certficate info available.
+  ///  Indicate if there is certificate info available.
   bool HasSSLCertificates() const;
 
   P_DEPRECATED PString GetSSLCertificateAuthorityFiles() const { return GetSSLCertificateAuthority(); }
@@ -815,6 +827,7 @@ protected:
   PString m_sslCertificate;
   PString m_sslPrivateKey;
   bool    m_sslAutoCreateCertificate;
+  PString m_sslAutoCreateDN;
 
 private:
   mutable PCriticalSection m_sslInfoMutex;
@@ -959,7 +972,8 @@ class PSSLContext : public PObject, PNonCopyable
       const PString & authority,    ///< Certificate Authority directory, file or data
       const PString & certificate,  ///< Local certificate file or data
       const PString & privateKey,   ///< Private key file or data for local certificate
-      bool create = false           ///< If certificate/provateKey are file paths and do not exist, then create.
+      bool create = false,          ///< If certificate/provateKey are file paths and do not exist, then create.
+      const PString & dn = PString::Empty() ///< Distinguished Name to use if creating certificate
     );
 
     /// Set the notifier for when SSL needs to get a password to unlock a private key.

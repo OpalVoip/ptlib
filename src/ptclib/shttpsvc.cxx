@@ -36,46 +36,17 @@
 
 #ifdef P_SSL
 
-class HTTP_PSSLChannel : public PSSLChannel
-{
-  PCLASSINFO(HTTP_PSSLChannel, PSSLChannel);
-
-  public:
-    HTTP_PSSLChannel(PSecureHTTPServiceProcess * svc, PSSLContext * context = NULL);
-
-    virtual int BioRead(char * out, int outl) override;
-
-  protected:
-    PSecureHTTPServiceProcess * m_serviceProcess;
-    PCaselessString             m_preReadData;
-    enum {
-      e_Starting,
-      e_IsSSL,
-      e_Finished }
-    m_preReadState;
-};
-
 #define new PNEW
 
 
 PSecureHTTPServiceProcess::PSecureHTTPServiceProcess(const Info & inf)
   : PHTTPServiceProcess(inf)
-  , m_sslContext(NULL)
 {
 }
 
 
 PSecureHTTPServiceProcess::~PSecureHTTPServiceProcess()
 {
-  delete m_sslContext;
-}
-
-
-void PSecureHTTPServiceProcess::DisableSSL()
-{
-  PSYSTEMLOG(Info, "SSL disabled");
-  delete m_sslContext;
-  m_sslContext = NULL;
 }
 
 
@@ -119,22 +90,6 @@ bool PSecureHTTPServiceProcess::InitialiseBase(PHTTPServiceProcess::Params & par
 }
 
 
-PChannel * PSecureHTTPServiceProcess::CreateChannelForHTTP(PChannel * channel)
-{
-  if (m_sslContext == NULL)
-    return PHTTPServiceProcess::CreateChannelForHTTP(channel);
-
-  PSSLChannel * ssl = new HTTP_PSSLChannel(this, m_sslContext);
-  if (ssl->Accept(channel))
-    return ssl;
-
-  PSYSTEMLOG(Error, "Accept failed: " << ssl->GetErrorText());
-  ssl->Detach();
-  delete ssl;
-  return NULL;
-}
-
-
 void PSecureHTTPServiceProcess::OnHTTPStarted(PHTTPServer & server)
 {
   if (m_sslContext != NULL)
@@ -146,155 +101,17 @@ bool PSecureHTTPServiceProcess::SetServerCertificate(const PFilePath & certifica
                                                      bool create,
                                                      const char * dn)
 {
-  if (create && !PFile::Exists(certificateFile)) {
-    PSSLPrivateKey key(1024);
-    PSSLCertificate certificate;
-    PStringStream name;
-    if (dn != NULL)
-      name << dn;
-    else {
-      name << "/O=" << GetManufacturer()
-           << "/CN=" << GetName() << '@' << PIPSocket::GetHostName();
-    }
-    if (!certificate.CreateRoot(name, key)) {
-      PSYSTEMLOG(Fatal, "Could not create certificate for name \"" << name << '"');
-      return false;
-    }
-    certificate.Save(certificateFile);
-    key.Save(certificateFile, true);
-  }
-
-  return SetServerCredentials(certificateFile, certificateFile, PString::Empty());
+  SetSSLCredentials(GetSSLCertificateAuthority(), certificateFile, certificateFile, create, dn);
+  return HasSSLCertificates();
 }
 
 
 bool PSecureHTTPServiceProcess::SetServerCredentials(const PString & cert, const PString & key, const PString & ca)
 {
-  if (m_sslContext == NULL)
-    m_sslContext = new PSSLContext(PSSLContext::TLSv1_2);
-
-  if (m_sslContext->SetCredentials(ca, cert, key))
-      return true;
-
-  DisableSSL();
-  return false;
+  SetSSLCredentials(ca, cert, key, false);
+  return HasSSLCertificates();
 }
 
-PBoolean PSecureHTTPServiceProcess::OnDetectedNonSSLConnection(PChannel * chan, const PString & line)
-{
-  // get the MIME info
-  PMIMEInfo mime(*chan);
-
-  PURL url;
-  url.SetScheme("https");
-
-  // get the host field
-  PString host = mime("host");
-  if (host.IsEmpty()) {
-    PIPSocket::Address addr;
-    PIPSocket::GetHostAddress(addr);
-    url.SetScheme("https");
-    url.SetHostName(addr.AsString());
-  }
-  else {
-    PINDEX colon = host.Find(':');
-    url.SetHostName(host.Left(colon));
-    if (colon != P_MAX_INDEX)
-      url.SetPort((uint16_t)host.Mid(colon+1).AsUnsigned());
-  }
-
-  PStringArray fields = line.Tokenise(" ", false);
-  switch (fields.GetSize()) {
-    default:
-      url.SetPathStr(fields[1]);
-      break;
-    case 1 :
-      url.SetPathStr(fields[0]);
-      break;
-    case 0 :
-      break;
-  }
-
-  PTRACE(3, "Detected non-SSL connection, cmd=" << line.ToLiteral() << ", host=" << host.ToLiteral() << ", redirecting to " << url);
-
-  chan->WriteString(CreateNonSSLMessage(url));
-  return true; // Closes "chan"
-}
-
-PString PSecureHTTPServiceProcess::CreateNonSSLMessage(const PString & url)
-{
-  PString newUrl = url;
-  if (url.Left(5) == "http:")
-    newUrl = PString("https:") + newUrl.Mid(5);
-  return CreateRedirectMessage(newUrl);
-}
-
-PString PSecureHTTPServiceProcess::CreateRedirectMessage(const PString & url)
-{
-  static const char * CRLF = "\r\n";
-  return PSTRSTRM("HTTP/1.1 301 Moved Permanently" << CRLF <<
-                  PHTTP::LocationTag() << ": " << url << CRLF <<
-                  PHTTP::ContentLengthTag() << ": 0" << CRLF <<
-                  CRLF);
-}
-
-HTTP_PSSLChannel::HTTP_PSSLChannel(PSecureHTTPServiceProcess * svc, PSSLContext * context)
-  : PSSLChannel(context)
-  , m_serviceProcess(svc)
-  , m_preReadState(e_Starting)
-{
-}
-
-
-int HTTP_PSSLChannel::BioRead(char * buf, int len)
-{
-  if (m_preReadState == e_Finished)
-    return PSSLChannel::BioRead(buf, len);
-
-  if (m_preReadState == e_Starting) {
-    PChannel * chan = GetReadChannel();
-
-    // read first line from the channel
-    for (;;) {
-      int c = chan->ReadChar();
-      if (c < 0)
-        return -1;
-
-      m_preReadData += (char)c;
-
-      if (c == '\n' && m_preReadData.Find("HTTP/1") != P_MAX_INDEX) {
-        if (m_serviceProcess->OnDetectedNonSSLConnection(chan, m_preReadData))
-          chan->CloseBaseReadChannel();
-        return -1;
-      }
-
-      if (c == '\r' || !iscntrl(c))
-        continue;
-
-      if (!m_preReadData.IsEmpty()) {
-        m_preReadState = e_IsSSL;
-        break;
-      }
-
-      m_preReadState = e_Finished;
-      *buf = (char)c;
-      len = 1;
-      return len;
-    }
-  }
-
-  // copy pre-read bytes to the supplied buffer, but no more than the buffer will allow
-  if (len < (int)m_preReadData.GetLength()) {
-    memcpy(buf, m_preReadData.GetPointer(), len);
-    m_preReadData.Delete(0, len);
-  }
-  else {
-    len = m_preReadData.GetLength();
-    memcpy(buf, m_preReadData.GetPointer(), len);
-    m_preReadState = e_Finished;
-  }
-  return len;
-}
 
 #endif //P_SSL
 

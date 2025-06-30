@@ -2071,9 +2071,12 @@ void PSSLCertificateInfo::SetSSLPrivateKey(const PString & key)
 }
 
 
-void PSSLCertificateInfo::SetSSLAutoCreateCertificate(bool yes)
+void PSSLCertificateInfo::SetSSLAutoCreateCertificate(bool yes, const char * dn)
 {
+  PWaitAndSignal lock(m_sslInfoMutex);
   m_sslAutoCreateCertificate = yes;
+  if (dn)
+    m_sslAutoCreateDN = dn;
 }
 
 
@@ -2084,16 +2087,26 @@ bool PSSLCertificateInfo::GetSSLAutoCreateCertificate() const
 }
 
 
+PString PSSLCertificateInfo::GetSSLAutoCreateDN() const
+{
+  PWaitAndSignal lock(m_sslInfoMutex);
+  return m_sslAutoCreateDN.c_str();
+}
+
+
 void PSSLCertificateInfo::SetSSLCredentials(const PString & authority,
                                             const PString & certificate,
                                             const PString & privateKey,
-                                            bool autoCreate)
+                                            bool autoCreate,
+                                            const char * dn)
 {
   PWaitAndSignal lock(m_sslInfoMutex);
   m_sslCertificateAuthority = authority;
   m_sslCertificate = certificate;
   m_sslPrivateKey = privateKey;
   m_sslAutoCreateCertificate = autoCreate;
+  if (dn != NULL)
+    m_sslAutoCreateDN = dn;
 }
 
 
@@ -2110,13 +2123,32 @@ void PSSLCertificateInfo::GetSSLCredentials(PString & authority,
 }
 
 
+void PSSLCertificateInfo::GetSSLCredentials(PString & authority,
+                                            PString & certificate,
+                                            PString & privateKey,
+                                            bool & autoCreate,
+                                            PString & dn) const
+{
+  PWaitAndSignal lock(m_sslInfoMutex);
+  authority = m_sslCertificateAuthority.c_str();
+  certificate = m_sslCertificate.c_str();
+  privateKey = m_sslPrivateKey.c_str();
+  autoCreate = m_sslAutoCreateCertificate;
+  dn = m_sslAutoCreateDN.c_str();
+}
+
+
 void PSSLCertificateInfo::SetSSLCredentials(const PSSLCertificateInfo & info)
 {
   if (this == &info)
     return;
 
   PWaitAndSignal lock(m_sslInfoMutex);
-  info.GetSSLCredentials(m_sslCertificateAuthority, m_sslCertificate, m_sslPrivateKey, m_sslAutoCreateCertificate);
+  info.GetSSLCredentials(m_sslCertificateAuthority,
+                         m_sslCertificate,
+                         m_sslPrivateKey,
+                         m_sslAutoCreateCertificate,
+                         m_sslAutoCreateDN);
 }
 
 
@@ -2426,17 +2458,18 @@ bool PSSLContext::SetCipherList(const PString & ciphers)
 
 bool PSSLContext::SetCredentials(const PSSLCertificateInfo & info, bool create)
 {
-  PString authority, certificate, privateKey;
+  PString authority, certificate, privateKey, dn;
   bool autoCreate;
-  info.GetSSLCredentials(authority, certificate, privateKey, autoCreate);
-  return SetCredentials(authority, certificate, privateKey, create && autoCreate);
+  info.GetSSLCredentials(authority, certificate, privateKey, autoCreate, dn);
+  return SetCredentials(authority, certificate, privateKey, create && autoCreate, dn);
 }
 
 
 bool PSSLContext::SetCredentials(const PString & authority,
                                  const PString & certificate,
                                  const PString & privateKey,
-                                 bool create)
+                                 bool create,
+                                 const PString & dn)
 {
   if (PAssertNULL(m_context) == NULL)
     return false;
@@ -2497,16 +2530,15 @@ bool PSSLContext::SetCredentials(const PString & authority,
       return false;
     }
 
-    PStringStream dn;
-    dn << "/O=" << PProcess::Current().GetManufacturer()
-       << "/CN=" << PIPSocket::GetHostName();
-
     if (!key.Create(2048)) {
       PTRACE(1, "Could not create private key");
       return false;
     }
 
-    if (!cert.CreateRoot(dn, key)) {
+    if (!cert.CreateRoot(dn.empty()
+                         ? PSTRSTRM("/O=" << PProcess::Current().GetManufacturer() <<
+                                    "/CN=" << PProcess::Current().GetName() << '@' <<PIPSocket::GetHostName())
+                         : dn, key)) {
       PTRACE(1, "Could not create certificate");
       return false;
     }

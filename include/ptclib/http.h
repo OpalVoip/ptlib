@@ -1565,11 +1565,14 @@ class PTCPSocket;
 
 /** Listener for incoming HTTP request with thread pool to handle those
     requests.
+
+    Note: if SSL is supported, the certificates must be set up before
+    ListenForHTTP() or https will not be supported.
  */
-class PHTTPListener
+class PHTTPListener : public PSSLCertificateInfo
 {
 public:
-  /** Construct new HTTP listsner with specified maximum number of threads in pool.
+  /** Construct new HTTP listener with specified maximum number of threads in pool.
     */
   PHTTPListener(
     unsigned maxWorkers = 10
@@ -1598,7 +1601,7 @@ public:
   /// Indicate is currently listening and processing requests.
   bool IsListening() const { return !m_httpListeningSockets.IsEmpty() && m_httpListeningSockets.front().IsOpen(); }
 
-  /// Get the port we are lkstening on.
+  /// Get the port we are listening on.
   WORD GetPort() const { return m_httpListeningSockets.IsEmpty() ? 0 : m_httpListeningSockets.front().GetPort(); }
 
   /** Call back to create transport socket, or TLS, channel.
@@ -1635,10 +1638,23 @@ public:
   const PHTTPSpace & GetSpace() const { return m_httpNameSpace; }
         PHTTPSpace & GetSpace()       { return m_httpNameSpace; }
 
+#if P_SSL
+  virtual PBoolean OnDetectedNonSSLConnection(PChannel * chan, const PString & line);
+
+  virtual PString CreateNonSSLMessage(const PString & url);
+  virtual PString CreateRedirectMessage(const PString & url);
+
+  void DisableSSL();
+#endif // P_SSL
+
 protected:
   void ListenMain();
 
   PHTTPSpace         m_httpNameSpace;
+#if P_SSL
+  class SSLChannel;
+  PAutoPtr<PSSLContext> m_sslContext;
+#endif
   PString            m_listenerInterfaces;
   WORD               m_listenerPort;
   PThread          * m_listenerThread;
