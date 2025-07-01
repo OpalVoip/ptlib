@@ -101,7 +101,7 @@ class PHTTPSpace : public PContainer
     /** Locate the resource specified by the URL in the URL name space.
 
        @return
-       The resource found or NULL if no resource at that position in hiearchy.
+       The resource found or NULL if no resource at that position in hierarchy.
      */
     PHTTPResource * FindResource(
       const PURL & url   ///< URL to search for in the name space.
@@ -182,7 +182,7 @@ class PHTTP : public PInternetProtocol
       TransportConnectError,       ///< Could not connect transport
       TransportWriteError,         ///< Could not write transport
       TransportReadError,          ///< Could not read transport
-      ProxyAuthOnCONNECT,          ///< Proxy authenication on CONNECT command
+      ProxyAuthOnCONNECT,          ///< Proxy authentication on CONNECT command
       Continue = 100,              ///< 100 - Continue
       SwitchingProtocols,          ///< 101 - upgrade allowed
       RequestOK = 200,             ///< 200 - request has succeeded
@@ -192,7 +192,7 @@ class PHTTP : public PInternetProtocol
       NoContent,                   ///< 204 - no new information
       ResetContent,                ///< 205 - contents have been reset
       PartialContent,              ///< 206 - partial GET succeeded
-      MultipleChoices = 300,       ///< 300 - requested resource available elsewehere 
+      MultipleChoices = 300,       ///< 300 - requested resource available elsewhere 
       MovedPermanently,            ///< 301 - resource moved permanently: location field has new URL
       MovedTemporarily,            ///< 302 - resource moved temporarily: location field has new URL
       SeeOther,                    ///< 303 - see other URL
@@ -201,7 +201,7 @@ class PHTTP : public PInternetProtocol
       BadRequest = 400,            ///< 400 - request malformed or not understood
       UnAuthorised,                ///< 401 - request requires authentication
       PaymentRequired,             ///< 402 - reserved 
-      Forbidden,                   ///< 403 - request is refused due to unsufficient authorisation
+      Forbidden,                   ///< 403 - request is refused due to insufficient authorisation
       NotFound,                    ///< 404 - resource cannot be found
       MethodNotAllowed,            ///< 405 - not allowed on this resource
       NoneAcceptable,              ///< 406 - encoding not acceptable
@@ -317,7 +317,7 @@ protected:
        on the line. Results are placed into the member variables
        <CODE>lastResponseCode</CODE> and <CODE>lastResponseInfo</CODE>.
 
-       The default bahaviour looks for a space or a '-' and splits the code
+       The default behaviour looks for a space or a '-' and splits the code
        and info either side of that character, then returns false.
 
        @return
@@ -330,7 +330,7 @@ protected:
 };
 
 
-/** Represent cookies recieved via HTTP as per RFC6265
+/** Represent cookies received via HTTP as per RFC6265
  */
 class PHTTPCookies
 {
@@ -552,7 +552,7 @@ class PHTTPClientDigestAuthentication : public PHTTPClientAuthentication
            PError << "Could not get page." << endl;
       }
       else
-         PError << "HTTP conection failed." << endl;
+         PError << "HTTP connection failed." << endl;
       </CODE></PRE>
  */
 class PHTTPClient : public PHTTP, public PSSLCertificateInfo
@@ -854,7 +854,7 @@ class PHTTPClient : public PHTTP, public PSSLCertificateInfo
       */
     const PHTTPCookies & GetCookies() const { return m_cookies; }
 
-/** Set authentication paramaters to be use for retreiving documents
+/** Set authentication parameters to be use for retrieving documents
     */
     void SetAuthenticationInfo(
       const PString & username,   ///< Authentication user (non-proxy)
@@ -1153,7 +1153,7 @@ class PWebSocket : public PIndirectChannel, public PSSLCertificateInfo
 
 class PHTTPServer;
 
-/** This object describes the connectiono associated with a HyperText Transport
+/** This object describes the connection associated with a HyperText Transport
    Protocol request. This information is required by handler functions on
    <code>PHTTPResource</code> descendant classes to manage the connection correctly.
 */
@@ -1194,12 +1194,12 @@ class PHTTPConnectionInfo : public PObject, PNonCopyable
       */
     void SetPersistenceTimeout(const PTimeInterval & t) { m_persistenceTimeout = t; }
 
-    /**Get the maximum number of transations (GET/POST etc) for persistent connection.
+    /**Get the maximum number of translations (GET/POST etc) for persistent connection.
        If this is zero then there is no maximum.
       */
     unsigned GetPersistenceMaximumTransations() const { return m_persistenceMaximum; }
 
-    /**Set the maximum number of transations (GET/POST etc) for persistent connection.
+    /**Set the maximum number of translations (GET/POST etc) for persistent connection.
        If this is zero then there is no maximum.
       */
     void SetPersistenceMaximumTransations(unsigned m) { m_persistenceMaximum = m; }
@@ -1336,7 +1336,7 @@ class PHTTPServer : public PHTTP
 
     /** Handle a HEAD command from a client.
 
-       The default implemetation looks up the URL in the name space declared by
+       The default implementation looks up the URL in the name space declared by
        the <code>PHTTPSpace</code> class tree and despatches to the
        <code>PHTTPResource</code> object contained therein.
 
@@ -1488,7 +1488,7 @@ class PHTTPServer : public PHTTP
       PHTTPConnectionInfo & connectInfo
     );
 
-    /**Called when a request indicates a swtch to WebSocket protocol.
+    /**Called when a request indicates a switch to WebSocket protocol.
        This will complete the WebSocket handshake if m_webSocketNotifiers
        contains and entry for an offered protocol. If none, a 404 is
        returned and the socket remains in HTTP mode.
@@ -1510,7 +1510,7 @@ class PHTTPServer : public PHTTP
       PHTTPConnectionInfo & connectInfo
     );
 
-    typedef PNotifierTemplate<PHTTPConnectionInfo> WebSocketNotifier;
+    typedef PNotifierTemplate<PHTTPConnectionInfo&> WebSocketNotifier;
 
     /** Set the handler for WebSocket sub-protocol.
         A NULL notifier may be set which indiates that the protocol is
@@ -1769,7 +1769,7 @@ class PHTTPAuthority : public PObject
     ) const = 0;
 
     /** Determine if the authorisation is to be applied. This could be used to
-       distinguish between net requiring authorisation and requiring autorisation
+       distinguish between net requiring authorisation and requiring authorisation
        but having no password.
 
        The default behaviour is to return true.
@@ -1841,7 +1841,7 @@ class PHTTPSimpleAuth : public PHTTPAuthority
     ) const override;
 
     /** Determine if the authorisation is to be applied. This could be used to
-       distinguish between net requiring authorisation and requiring autorisation
+       distinguish between net requiring authorisation and requiring authorisation
        but having no password.
 
        The default behaviour is to return true.
@@ -1935,8 +1935,8 @@ class PHTTPMultiSimpAuth : public PHTTPAuthority
       const PString & authInfo       ///< Authority information string.
     ) const override;
 
-    /** Determine if the authirisation is to be applied. This could be used to
-       distinguish between net requiring authorisation and requiring autorisation
+    /** Determine if the authorisation is to be applied. This could be used to
+       distinguish between net requiring authorisation and requiring authorisation
        but having no password.
 
        The default behaviour is to return true.
@@ -1952,7 +1952,7 @@ class PHTTPMultiSimpAuth : public PHTTPAuthority
        String for the authorisation user name.
      */
     void AddUser(
-      const PString & username,   ///< Username that this object wiull authorise.
+      const PString & username,   ///< Username that this object will authorise.
       const PString & password    ///< Password for the above username.
     );
 
@@ -2011,7 +2011,7 @@ class PHTTPResource : public PObject
      */
     const PURL & GetURL() const { return m_baseURL; }
 
-    /**Get relative hot link for this resouce.
+    /**Get relative hot link for this resource.
       */
     PString GetHotLink() const { return m_baseURL.AsString(PURL::PathOnly); }
 
@@ -2057,7 +2057,7 @@ class PHTTPResource : public PObject
       const PString & protocol    ///< Protocol for web socket
     ) const;
 
-    /**Called when a request indicates a swtch to WebSocket protocol.
+    /**Called when a request indicates a switch to WebSocket protocol.
        This will handle a WebScoket protocol change.
 
        After the start up handshake has completed, if there is a notifier and
@@ -2081,8 +2081,8 @@ class PHTTPResource : public PObject
     /** Handle the GET command passed from the HTTP socket.
 
        The default action is to check the authorisation for the resource and
-       call the virtuals <code>LoadHeaders()</code> and <code>OnGETData()</code> to get
-       a resource to be sent to the socket.
+       call the virtual functions <code>LoadHeaders()</code> and
+       <code>OnGETData()</code> to get a resource to be sent to the socket.
 
        @return
        true if the connection may persist, false if the connection must close.
@@ -2429,7 +2429,7 @@ class PHTTPFile : public PHTTPResource
   PCLASSINFO(PHTTPFile, PHTTPResource)
 
   public:
-    /** Contruct a new simple file resource for the HTTP space. If no MIME
+    /** Construct a new simple file resource for the HTTP space. If no MIME
        content type is specified then a default type is used depending on the
        file type. For example, "text/html" is used of the file type is
        ".html" or ".htm". The default for an unknown type is
@@ -2544,14 +2544,14 @@ class PHTTPFileRequest : public PHTTPRequest
    <code>PHTTPSpace</code> class.
 
    The difference between this and PHTTPFile is that it continually outputs
-   the contents of the file, as per the unix "tail -f" command.
+   the contents of the file, as per the Unix "tail -f" command.
  */
 class PHTTPTailFile : public PHTTPFile
 {
   PCLASSINFO(PHTTPTailFile, PHTTPFile)
 
   public:
-    /** Contruct a new simple file resource for the HTTP space. If no MIME
+    /** Construct a new simple file resource for the HTTP space. If no MIME
        content type is specified then a default type is used depending on the
        file type. For example, "text/html" is used of the file type is
        ".html" or ".htm". The default for an unknown type is
@@ -2678,17 +2678,17 @@ class PHTTPDirectory : public PHTTPFile
 
     /** Enable or disable access control using .access files. A directory tree containing
        a _access file will require authorisation to allow access. This file has 
-       contains one or more lines, each containing a username and password seperated 
+       contains one or more lines, each containing a username and password separated 
        by a ":" character.
 
        The parameter sets the realm used for authorisation requests. An empty realm disables
-       auhtorisation.
+       authorisation.
      */
     void EnableAuthorisation(const PString & realm);
 
     /** Enable or disable directory listings when a default directory file does not exist
      */
-    void AllowDirectories(PBoolean enable = true);
+    void AllowDirectories(bool enable = true) { m_allowDirectoryListing = enable; }
 
   protected:
     PBoolean CheckAuthority(
