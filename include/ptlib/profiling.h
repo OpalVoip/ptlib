@@ -34,14 +34,8 @@
 #pragma interface
 #endif
 
-#if defined(_WIN32)
-#include "msos/ptlib/platform.h"
-#else
-#include "unix/ptlib/platform.h"
-#endif
 
-
-///////////////////////////////////////////////////////////////////////////////
+ ///////////////////////////////////////////////////////////////////////////////
 
 /**Template class for integral types (including PTimeInterval) for calculating
    minimum, maximum and average. */

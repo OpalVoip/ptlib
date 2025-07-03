@@ -98,6 +98,9 @@ using std::cin, std::cout, std::cerr,
   #define PASSERTINDEX(idx)
 #endif
 
+#ifndef PTRACING
+#define PTRACING 2
+#endif
 
 
 ///////////////////////////////////////////////////////////////////////////////

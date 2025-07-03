@@ -66,10 +66,6 @@ An application could change this pointer to a <i>std::ofstream</i> variable of
 ///////////////////////////////////////////////////////////////////////////////
 // Debug and tracing
 
-#ifndef PTRACING
-#define PTRACING 2
-#endif
-
 #if PTRACING
 
 class PObject;
