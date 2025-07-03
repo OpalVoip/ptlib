@@ -997,7 +997,6 @@ enable_deprecated
 with_profiling
 enable_minsize
 enable_exceptions
-with_allocator
 enable_pindex_is_size_t
 enable_pthread_kill
 enable_ipv6
@@ -1962,8 +1961,6 @@ Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
   --with-profiling        Enable profiling: gprof, eccam, raw or manual
-  --with-allocator=std,mt,bitmap
-                          Set the allocator type
   --with-libjpeg-dir=<dir>
                           location for libJPEG support
   --with-openldap-dir=<dir>
@@ -8865,89 +8862,6 @@ if test "x${HAS_EXCEPTIONS}" = "x1" ; then
    CXXFLAGS="-fexceptions $CXXFLAGS"
 else
    CXXFLAGS="-fno-exceptions $CXXFLAGS"
-fi
-
-
-
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking C++ memory allocator" >&5
-printf %s "checking C++ memory allocator... " >&6; }
-
-
-# Check whether --with-allocator was given.
-if test ${with_allocator+y}
-then :
-  withval=$with_allocator;
-else case e in #(
-  e) withval="std"
- ;;
-esac
-fi
-
-
-if test "$withval" = "std"; then
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: std" >&5
-printf "%s\n" "std" >&6; }
-elif test "$withval" = "mt"; then
-   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-#include <ext/mt_allocator.h>
-int
-main (void)
-{
-typedef __gnu_cxx::__mt_alloc<char> TestAllocator;
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_cxx_try_compile "$LINENO"
-then :
-
-         printf "%s\n" "#define P_GNU_ALLOCATOR 1" >>confdefs.h
-
-         { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: mt" >&5
-printf "%s\n" "mt" >&6; }
-
-else case e in #(
-  e) { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: std (mt unavailable)" >&5
-printf "%s\n" "std (mt unavailable)" >&6; }
-   ;;
-esac
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
-elif test "$withval" = "bitmap"; then
-   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-         #include <ext/mt_allocator.h>
-         #include <ext/bitmap_allocator.h>
-
-int
-main (void)
-{
-
-         typedef __gnu_cxx::__mt_alloc<char> VariableAllocator;
-         typedef __gnu_cxx::bitmap_allocator<char> FixedAllocator;
-
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_cxx_try_compile "$LINENO"
-then :
-
-         printf "%s\n" "#define P_GNU_ALLOCATOR 2" >>confdefs.h
-
-         { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: bitmap" >&5
-printf "%s\n" "bitmap" >&6; }
-
-else case e in #(
-  e) as_fn_error $? "bitmap_allocator not available" "$LINENO" 5
-   ;;
-esac
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
-else
-  as_fn_error $? "Unknown allocator type $withval" "$LINENO" 5
 fi
 
 
