@@ -1060,10 +1060,20 @@ class PWebSocket : public PIndirectChannel, public PSSLCertificateInfo
       PBYTEArray & msg
     );
 
+    /// Write a complete WebSocket message
+    virtual bool WriteMessage(
+      const PBYTEArray & msg
+    ) { return Write(msg.GetPointer(), msg.GetSize()); }
+
     // Read complete WebSocket text message
     virtual bool ReadText(
       PString & msg
     );
+
+    // Write complete WebSocket text message
+    virtual bool WriteText(
+      const PString & msg
+    ) { return Write(msg.c_str(), msg.length()); }
 
     /// Indicate the last Read() completed the WebSocket message.
     bool IsMessageComplete() const;
