@@ -93,9 +93,9 @@ class PKey : public PObject
     virtual PINDEX HashFunction() const override
     {
 #if PINDEX_SIGNED
-      return std::abs((PINDEX)this->m_key)%23;
+      return std::abs((PINDEX)this->m_key);
 #else
-      return ((PINDEX)this->m_key)%23;
+      return (PINDEX)this->m_key;
 #endif
     }
 

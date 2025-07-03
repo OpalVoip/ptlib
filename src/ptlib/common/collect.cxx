@@ -1132,7 +1132,7 @@ void PHashTableInfo::DestroyContents()
 
 void PHashTableInfo::AppendElement(PObject * key, PObject * data PTRACE_PARAM(, PHashTable * owner))
 {
-  PINDEX bucket = PAssertNULL(key)->HashFunction();
+  PINDEX bucket = PAssertNULL(key)->HashFunction() % 255; // Mersenne prime
   if (bucket >= GetSize())
     SetSize(bucket+1);
 

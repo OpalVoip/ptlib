@@ -171,7 +171,7 @@ PObject::Comparison PChannel::Compare(const PObject & obj) const
 
 PINDEX PChannel::HashFunction() const
 {
-  return GetHandle()%97;
+  return GetHandle();
 }
 
 

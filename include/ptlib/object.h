@@ -1034,6 +1034,15 @@ public:
   PAutoPtr(PAutoPtr & other) : std::unique_ptr<T>(other.release()) { }
   void transfer(PAutoPtr & other) { std::unique_ptr<T>::operator=(std::move(other)); }
 };
+
+template <>
+struct std::hash<PObject>
+{
+  size_t operator()(const PObject & obj) const
+  {
+    return obj.HashFunction();
+  }
+};
 #endif // __cplusplus
 
 

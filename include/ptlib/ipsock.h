@@ -112,6 +112,8 @@ class PIPSocket : public PSocket
         Address & operator=(DWORD dw);
         //@}
 
+        PINDEX HashFunction() const override;
+
         /// Compare two adresses for absolute (in)equality.
         Comparison Compare(const PObject & obj) const override;
         bool operator==(const Address & addr) const { return Compare(addr) == EqualTo; }

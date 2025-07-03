@@ -1156,19 +1156,19 @@ PINDEX PString::HashFunction() const
     case 0:
       return 0;
     case 1:
-      return tolower(at(0) & 0xff) % 127;
+      return tolower(at(0) & 0xff);
   }
 
   static const PINDEX MaxCount = 18; // Make sure big enough to cover whole PGloballyUniqueID::AsString()
   PINDEX count = std::min(m_length / 2, MaxCount);
-  unsigned hash = 0;
+  PINDEX hash = 0;
   PINDEX i;
   const char* theArray = c_str();
   for (i = 0; i < count; i++)
     hash = (hash << 5) ^ tolower(theArray[i] & 0xff) ^ hash;
   for (i = m_length - count - 1; i < m_length; i++)
     hash = (hash << 5) ^ tolower(theArray[i] & 0xff) ^ hash;
-  return hash % 127;
+  return hash;
 }
 
 

@@ -27,7 +27,7 @@ class Fred : public PObject
 
     PINDEX HashFunction() const override
     {
-      return std::abs(128-m_character)%23;
+      return std::abs(128-m_character);
     }
 };
 
@@ -51,7 +51,7 @@ public:
 
   PINDEX HashFunction() const override
   {
-    return std::abs(128-m_character)%23;
+    return std::abs(128-m_character);
   }
 };
 

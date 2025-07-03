@@ -330,7 +330,7 @@ void PObject::ReadFrom(istream &)
 
 PINDEX PObject::HashFunction() const
 {
-  return 0;
+  return (PINDEX)this;
 }
 
 

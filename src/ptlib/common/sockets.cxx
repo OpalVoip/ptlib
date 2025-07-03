@@ -303,7 +303,7 @@ class PIPCacheKey : public PObject
       { return new PIPCacheKey(*this); }
 
     PINDEX HashFunction() const override
-      { return (addr[1] + addr[2] + addr[3])%41; }
+      { return addr.HashFunction(); }
 
   private:
     PIPSocket::Address addr;
@@ -1745,6 +1745,17 @@ PIPSocket::Address & PIPSocket::Address::operator=(const in_addr & addr)
   return *this;
 }
 
+
+PINDEX PIPSocket::Address::HashFunction() const
+{
+  switch (GetVersion()) {
+    case 4 :
+      return ntohl(*this);
+    case 6 :
+      return *(PINDEX *)&m_v.m_six ^ (((PINDEX *)&m_v.m_six)[1] << 1);
+  }
+  return 0;
+}
 
 PObject::Comparison PIPSocket::Address::Compare(const PObject & obj) const
 {
