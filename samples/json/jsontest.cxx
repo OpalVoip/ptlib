@@ -129,10 +129,27 @@ void JSONTest::Main()
   test6.m_an_object_array[0].m_an_integer = 12;
   test6.m_an_object_array[1].m_a_string = "second";
   test6.m_an_object_array[1].m_an_integer = 34;
-  cout << "test6a " << test6.AsString() << "\n\n";
+  cout << "test6a: " << test6.AsString() << "\n\n";
   bool ok = test6.FromString("{\"a_string\":\"them\",\"an_unsigned\":56,\"a_bool_array\":[false, true],\"an_object_array\":[{\"a_string\":\"replaced\"}]}");
-  cout << "test6b " << ok << ' ' << test6.AsString() << "\n\n";
-  cout << "test6c " << test6.FromString("[]") << endl;
+  cout << "test6b: " << ok << ' ' << test6.AsString() << "\n\n";
+  cout << "test6c: " << test6.FromString("[]") << endl;
+  cout << "test6d: " //<< test6.m_a_string.c_str()
+       << ' ' << test6.m_a_string
+       << ' ' << test6.m_a_time
+       << ' ' << test6.m_a_boolean
+       << ' ' << test6.m_an_integer
+       << ' ' << test6.m_an_unsigned
+       << ' ' << test6.m_a_long
+       << ' ' << test6.m_an_int16
+       << ' ' << test6.m_a_uint16
+       << ' ' << test6.m_a_uint32
+       << ' ' << test6.m_an_int64
+       << ' ' << test6.m_a_uint64
+       << ' ' << test6.m_a_float
+       << ' ' << test6.m_a_double
+       << ' ' << test6.m_a_big_double << endl;
+  cout << "test6e: " << test6.m_a_string_array << endl;
+  cout << "test6f: " << test6.m_an_object << endl;
 
 #if P_SSL
   PJWT jwt;

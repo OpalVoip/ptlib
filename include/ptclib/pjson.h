@@ -339,6 +339,7 @@ public:
   PJSONMember & operator=(const std::string & value) { m_value = value; return *this; }
   PJSONMember & operator=(const char * value) { m_value = value; return *this; }
   operator PString() const { return m_value; }
+  const char * c_str() const { return m_value.c_str(); }
   virtual PJSON::Types GetType() const { return PJSON::e_String; }
   virtual bool FromJSON(const PJSON::Base & field) { m_value = dynamic_cast<const PJSON::String &>(field); return true; }
   virtual void AsJSON(PJSON::Base & field) const { dynamic_cast<PJSON::String &>(field) = m_value; }
@@ -356,6 +357,7 @@ public:
   virtual PJSON::Types GetType() const { return PJSON::e_String; }
   virtual bool FromJSON(const PJSON::Base & field) { return m_value.Parse(dynamic_cast<const PJSON::String &>(field)); }
   virtual void AsJSON(PJSON::Base & field) const { dynamic_cast<PJSON::String &>(field) = m_value.AsString(PTime::LongISO8601); }
+  friend ostream & operator<<(ostream & strm, const PJSONMember & member) { return strm << member.m_value; }
 protected:
   PTime m_value;
 };
@@ -451,6 +453,7 @@ public:
       wrap.AsJSON(*arr.back());
     }
   }
+  friend ostream & operator<<(ostream & strm, const PJSONMemberArray & member) { return strm << PStreamIter(member); }
 };
 
 template <typename TYPE> class PJSONMemberArrayRecord : public PJSONMemberArray<TYPE, PJSONMemberRecord<TYPE> >
