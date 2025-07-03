@@ -185,6 +185,7 @@ class PHashTableInfo : public PBaseArray<PHashTableList>
     typedef PBaseArray<PHashTableList> ParentClass;
     PCLASSINFO(PCharArray, ParentClass);
   public:
+    enum { MaxBuckets = 255 }; // Needs to be primes, so let's use Mersene prime.
     PHashTableInfo(PINDEX initialSize = 0)
       : ParentClass(initialSize), deleteKeys(true) { }
     PHashTableInfo(PHashTableList const * buffer, PINDEX length, PBoolean dynamic = true)

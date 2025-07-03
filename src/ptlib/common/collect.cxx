@@ -1132,7 +1132,7 @@ void PHashTableInfo::DestroyContents()
 
 void PHashTableInfo::AppendElement(PObject * key, PObject * data PTRACE_PARAM(, PHashTable * owner))
 {
-  PINDEX bucket = PAssertNULL(key)->HashFunction() % 255; // Mersenne prime
+  PINDEX bucket = PAssertNULL(key)->HashFunction() % MaxBuckets;
   if (bucket >= GetSize())
     SetSize(bucket+1);
 
@@ -1229,7 +1229,7 @@ PHashTableElement * PHashTableInfo::GetElementAt(PINDEX index)
 
 PHashTableElement * PHashTableInfo::GetElementAt(const PObject & key)
 {
-  PHashTableElement * element = GetAt(key.HashFunction()).m_head;
+  PHashTableElement * element = GetAt(key.HashFunction() % MaxBuckets).m_head;
   while (element != NULL) {
     if (*element->m_key == key) 
       return element;
