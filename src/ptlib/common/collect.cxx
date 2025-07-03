@@ -30,13 +30,6 @@
 #include <ptlib.h>
 
 
-PDEFINE_POOL_ALLOCATOR(PListElement)
-PDEFINE_POOL_ALLOCATOR(PListInfo)
-PDEFINE_POOL_ALLOCATOR(PSortedListElement)
-PDEFINE_POOL_ALLOCATOR(PSortedListInfo)
-PDEFINE_POOL_ALLOCATOR(PHashTableElement)
-
-
 #define new PNEW
 #undef  __CLASS__
 #define __CLASS__ GetClass()

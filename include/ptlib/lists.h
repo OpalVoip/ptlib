@@ -44,8 +44,6 @@ struct PListElement
     PListElement * prev;
     PListElement * next;
     PObject * data;
-
-    PDECLARE_POOL_ALLOCATOR(PListElement);
 };
 
 struct PListInfo
@@ -53,8 +51,6 @@ struct PListInfo
     PListInfo() { head = tail = NULL; }
     PListElement * head;
     PListElement * tail;
-
-    PDECLARE_POOL_ALLOCATOR(PListInfo);
 };
 
 /**This class is a collection of objects which are descendents of the
@@ -733,8 +729,6 @@ struct PSortedListElement
   PObject            * m_data;
   PINDEX               m_subTreeSize;
   enum { Red, Black }  m_colour;
-
-  PDECLARE_POOL_ALLOCATOR(PSortedListElement);
 };
 
 struct PSortedListInfo
@@ -750,8 +744,6 @@ struct PSortedListInfo
   PSortedListElement * OrderSelect(PINDEX index) const { return OrderSelect(m_root, index); }
   PINDEX ValueSelect(PSortedListElement * node, const PObject & obj, PSortedListElement * & element) const;
   PINDEX ValueSelect(const PObject & obj, PSortedListElement * & element) const { return ValueSelect(m_root, obj, element); }
-
-  PDECLARE_POOL_ALLOCATOR(PSortedListInfo);
 };
 
 /**This class is a collection of objects which are descendents of the

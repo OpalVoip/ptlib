@@ -55,9 +55,6 @@ extern "C" int vsprintf(char *, const char *, va_list);
 #endif
 
 
-PDEFINE_POOL_ALLOCATOR(PContainerReference);
-
-
 #define new PNEW
 #undef  __CLASS__
 #define __CLASS__ GetClass()

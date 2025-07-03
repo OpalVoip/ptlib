@@ -66,8 +66,6 @@ class PContainerReference : PNonCopyable
     atomic<uint32_t> count;         // reference count to the container content - guaranteed to be atomic
     bool           deleteObjects; // Used by PCollection but put here for efficiency
     bool           constObject;   // Indicates object is constant/static, copy on write.
-
-    PDECLARE_POOL_ALLOCATOR(PContainerReference);
 };
 
 

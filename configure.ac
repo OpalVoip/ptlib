@@ -311,43 +311,6 @@ fi
 
 
 dnl ########################################################################
-dnl Memory allocator optimisations
-
-AC_MSG_CHECKING(C++ memory allocator)
-
-AC_ARG_WITH(
-   [allocator],
-   AS_HELP_STRING([--with-allocator=std,mt,bitmap],[Set the allocator type]),
-   [],
-   [withval="std"]
-)
-
-if test "$withval" = "std"; then
-   AC_MSG_RESULT(std)
-elif test "$withval" = "mt"; then
-   AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <ext/mt_allocator.h>]], [[typedef __gnu_cxx::__mt_alloc<char> TestAllocator;]])],[
-         AC_DEFINE(P_GNU_ALLOCATOR, 1)
-         AC_MSG_RESULT([mt])
-      ],[AC_MSG_RESULT([std (mt unavailable)])
-  ])
-elif test "$withval" = "bitmap"; then
-   AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
-         #include <ext/mt_allocator.h>
-         #include <ext/bitmap_allocator.h>
-      ]], [[
-         typedef __gnu_cxx::__mt_alloc<char> VariableAllocator;
-         typedef __gnu_cxx::bitmap_allocator<char> FixedAllocator;
-      ]])],[
-         AC_DEFINE(P_GNU_ALLOCATOR, 2)
-         AC_MSG_RESULT(bitmap)
-      ],[AC_MSG_ERROR([bitmap_allocator not available])]
-  )
-else
-  AC_MSG_ERROR(Unknown allocator type $withval)
-fi
-
-
-dnl ########################################################################
 dnl Do we have malloc_info
 
 MY_COMPILE_IFELSE(
