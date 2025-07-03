@@ -340,6 +340,7 @@ public:
   PJSONMember & operator=(const char * value) { m_value = value; return *this; }
   operator PString() const { return m_value; }
   const char * c_str() const { return m_value.c_str(); }
+  bool empty() const { return m_value.empty(); }
   virtual PJSON::Types GetType() const { return PJSON::e_String; }
   virtual bool FromJSON(const PJSON::Base & field) { m_value = dynamic_cast<const PJSON::String &>(field); return true; }
   virtual void AsJSON(PJSON::Base & field) const { dynamic_cast<PJSON::String &>(field) = m_value; }
