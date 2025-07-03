@@ -1069,9 +1069,12 @@ if errorlevel 1 copy "%(FullPath)"+nul "%(RootDir)%(Directory)%(FileName)"</Comm
     <ClInclude Include="..\..\..\include\ptclib\ssdp.h" />
     <ClInclude Include="..\..\..\include\ptclib\vcard.h" />
     <ClInclude Include="..\..\..\include\ptlib\bitwise_enum.h" />
+    <ClInclude Include="..\..\..\include\ptlib\memchk.h" />
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\platform.h" />
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\pt_atl.h" />
+    <ClInclude Include="..\..\..\include\ptlib\profiling.h" />
     <ClInclude Include="..\..\..\include\ptlib\psharedptr.h" />
+    <ClInclude Include="..\..\..\include\ptlib\tracing.h" />
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\channel.h" />
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\config.h" />
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\dynalink.h" />
