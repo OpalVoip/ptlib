@@ -887,6 +887,8 @@ void PHTTPListener::ShutdownListeners()
 
 void PHTTPListener::ListenMain()
 {
+  PTRACE(4, "Started HTTP listener thread.");
+
   while (IsListening()) {
     PSocket::SelectList listeners;
     for (PSocketList::iterator it = m_httpListeningSockets.begin(); it != m_httpListeningSockets.end(); ++it)
@@ -913,6 +915,8 @@ void PHTTPListener::ListenMain()
       PTRACE(2, "Select failed for HTTP: " << PSocket::GetErrorText(error));
     }
   }
+
+  PTRACE(4, "Ended HTTP listener thread.");
 }
 
 
