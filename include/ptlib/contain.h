@@ -620,6 +620,91 @@ class PCollection : public PContainer
 
 
 ///////////////////////////////////////////////////////////////////////////////
+// Useful templates for printing containers
+
+template <typename PTR> class PStreamPtrImpl
+{
+  const PTR & m_ptr;
+public:
+  PStreamPtrImpl(const PTR & ptr) : m_ptr(ptr) { }
+  friend std::ostream& operator<<(ostream& strm, const PStreamPtrImpl& impl)
+  {
+    return !impl.m_ptr ? (strm << "(null)") : strm << *impl.m_ptr;
+  }
+};
+
+/** Safely print a pointer type, including if is null
+  */
+template <typename PTR> inline PStreamPtrImpl<PTR> PStreamPtr(const PTR & ptr) { return PStreamPtrImpl<PTR>(ptr); }
+
+
+template <typename ITERABLE> class PStreamIterImpl
+{
+  const ITERABLE & m_iterable;
+  const char * m_separator;
+public:
+  PStreamIterImpl(const ITERABLE & iterable, const char * separator)
+    : m_iterable(iterable)
+    , m_separator(separator)
+  { }
+  friend std::ostream & operator<<(ostream & strm, const PStreamIterImpl & impl)
+  {
+    bool outputSeperator = false;
+    for (const auto & it : impl.m_iterable) {
+      if (outputSeperator)
+        strm << impl.m_separator;
+      else
+        outputSeperator = true;
+      strm << it;
+    }
+    return strm;
+  }
+};
+
+/** Print all elements of a object that supports iterators, e.g. vector, list etc.
+  */
+template <typename ITERABLE> inline
+PStreamIterImpl<ITERABLE> PStreamIter(const ITERABLE & iterable, const char * separator = ", ")
+{
+  return PStreamIterImpl<ITERABLE>(iterable, separator);
+}
+
+
+template <typename MAP> class PStreamMapImpl
+{
+  const MAP & m_map;
+  const char * m_outerSeparator;
+  const char * m_innerSeparator;
+public:
+  PStreamMapImpl(const MAP & map, const char * outerSeparator, const char * innerSeparator)
+    : m_map(map)
+    , m_outerSeparator(outerSeparator)
+    , m_innerSeparator(innerSeparator)
+  { }
+  friend std::ostream & operator<<(ostream & strm, const PStreamMapImpl & impl)
+  {
+    bool outputSeperator = false;
+    for (const auto & it : impl.m_map) {
+      if (outputSeperator)
+        strm << impl.m_outerSeparator;
+      else
+        outputSeperator = true;
+      strm << it.first << impl.m_innerSeparator << it.second;
+    }
+    return strm;
+  }
+};
+
+/** Print all elements of an object that supports iterators of std::pairs, e.g. std::map
+  */
+template <typename MAP> inline
+PStreamMapImpl<MAP> PStreamMap(const MAP & map, const char * outerSeparator = "\n", const char * innerSeparator = "=")
+{
+  return PStreamMapImpl<MAP>(map, outerSeparator, innerSeparator);
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
 // Fill in all the inline functions
 
 #if P_USE_INLINES
