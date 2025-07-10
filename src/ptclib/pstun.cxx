@@ -1028,8 +1028,14 @@ bool PSTUNUDPSocket::OpenSTUN(PSTUNClient & client)
   m_natType = client.GetNatType(false);
 
   switch (m_natType) {
-    case PNatMethod::OpenNat :
+    case PNatMethod::OpenNat:
+    {
+      PIPAddress externalIP;
+      if (!client.GetExternalAddress(externalIP))
+        return false;
+      m_serverReflexiveAddress.SetAddress(externalIP, GetPort());
       return true;
+    }
 
     case PNatMethod::ConeNat :
     case PNatMethod::RestrictedNat :
@@ -1405,8 +1411,7 @@ bool PSTUNClient::CreateSocket(PUDPSocket * & udpSocket, const PIPSocket::Addres
   if (!PNatMethod::CreateSocket(udpSocket, binding, port, context, component))
     return false;
 
-  PSTUNUDPSocket * stunSocket = dynamic_cast<PSTUNUDPSocket *>(udpSocket);
-  if (stunSocket->OpenSTUN(*this))
+  if (InternalOpenSocket(*udpSocket))
     return true;
 
   delete udpSocket;
@@ -1451,7 +1456,16 @@ bool PSTUNClient::CreateSocketPair(PUDPSocket * & socket1,
 
   switch (GetNatType(false)) {
     case OpenNat:
-      return PNatMethod::CreateSocketPair(socket1, socket2, binding, context);
+      if (!PNatMethod::CreateSocketPair(socket1, socket2, binding, context))
+        return false;
+
+      if (InternalOpenSocket(*socket1) && InternalOpenSocket(*socket2))
+        return true;
+
+      delete socket1;
+      delete socket2;
+      socket1 = socket2 = NULL;
+      return false;
 
     case ConeNat :
     case RestrictedNat :

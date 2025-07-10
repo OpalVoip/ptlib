@@ -669,6 +669,7 @@ class PSTUNClient : public PNatMethod, public PSTUN
     virtual void InternalUpdate(bool externalAddressOnly) override;
     NatTypes DoDiscovery(bool externalAddressOnly);
     bool InternalSetServer(const PString & server, const PIPSocketAddressAndPort & addr PTRACE_PARAM(, const char * source));
+    bool InternalOpenSocket(PUDPSocket & socket) { return dynamic_cast<PSTUNUDPSocket &>(socket).OpenSTUN(*this); }
 
     PSTUNUDPSocket * m_socket;
     bool m_forceNatType;
