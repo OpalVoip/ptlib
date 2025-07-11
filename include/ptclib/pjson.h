@@ -105,6 +105,16 @@ class PJSON : public PObject
         Object & SetObject(const PString & name);
         Array & SetArray(const PString & name);
         bool SetString(const PString & name, const PString & value);
+        bool SetNumber(const PString & name, int8_t value) { return SetNumber(name, (NumberType)value); }
+        bool SetNumber(const PString & name, uint8_t value) { return SetNumber(name, (NumberType)value); }
+        bool SetNumber(const PString & name, int16_t value) { return SetNumber(name, (NumberType)value); }
+        bool SetNumber(const PString & name, uint16_t value) { return SetNumber(name, (NumberType)value); }
+        bool SetNumber(const PString & name, int32_t value) { return SetNumber(name, (NumberType)value); }
+        bool SetNumber(const PString & name, uint32_t value) { return SetNumber(name, (NumberType)value); }
+        bool SetNumber(const PString & name, int64_t value) { return SetNumber(name, (NumberType)value); }
+        bool SetNumber(const PString & name, uint64_t value) { return SetNumber(name, (NumberType)value); }
+        bool SetNumber(const PString & name, float value) { return SetNumber(name, (NumberType)value); }
+        bool SetNumber(const PString & name, double value) { return SetNumber(name, (NumberType)value); }
         bool SetNumber(const PString & name, NumberType value);
         bool SetBoolean(const PString & name, bool value);
         bool SetTime(const PString & name, const PTime & value);

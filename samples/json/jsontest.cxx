@@ -71,6 +71,16 @@ void JSONTest::Main()
   PJSON::Object & obj1 = json1.GetObject();
   obj1.SetString("one", "first");
   obj1.SetNumber("two", 2);
+  obj1.SetNumber("int8_t", (int8_t)-8);
+  obj1.SetNumber("uint8_t", (uint8_t)8);
+  obj1.SetNumber("int16_t", (int16_t)-16);
+  obj1.SetNumber("uint16_t", (uint16_t)16);
+  obj1.SetNumber("int32_t", (int32_t)-32);
+  obj1.SetNumber("uint32_t", (uint32_t)32);
+  obj1.SetNumber("int64_t", (int64_t)-64);
+  obj1.SetNumber("uint64_t", (uint64_t)64);
+  obj1.SetNumber("float", 2.1f);
+  obj1.SetNumber("double", 2.2);
   obj1.SetBoolean("three", true);
   obj1.Set("four", PJSON::e_Array);
   PJSON::Array & arr1 = *obj1.Get<PJSON::Array>("four");
