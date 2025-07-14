@@ -621,7 +621,8 @@ PString::PString(const PBYTEArray & buf)
   if (bufSize > 0) {
     if (buf[bufSize-1] == '\0')
       --bufSize;
-    memcpy(GetPointerAndSetLength(bufSize), buf, bufSize);
+    if (bufSize > 0)
+      memcpy(GetPointerAndSetLength(bufSize), buf, bufSize);
   }
 }
 
