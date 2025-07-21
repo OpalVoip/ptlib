@@ -130,10 +130,9 @@ endif
 CONFIG_FILE_PATHS := $(addprefix $(TARGETDIR)/, $(CONFIG_FILES))
 
 CONFIGURE_CMD := \
-  if test ! -d "$(TARGETDIR)" ; then \
-    mkdir $(TARGETDIR); \
-  fi; \
-  cd $(TARGETDIR); \
+  rm -rf $(addprefix $(TARGETDIR)/,$(basename $(notdir $(wildcard $(CURDIR)/*.in)))) && \
+  mkdir -p $(TARGETDIR) && \
+  cd $(TARGETDIR) && \
   $(CONFIGURE) $(HOST_CONFIG_PARAM) $(CONFIG_PARMS)
 
 
