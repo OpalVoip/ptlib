@@ -296,7 +296,7 @@ PBoolean PHTTPServer::ProcessCommand()
             " url=" << m_connectInfo.GetURL() << ","
             " persist=" << std::boolalpha << m_connectInfo.IsPersistent() << ","
             " proxy=" << m_connectInfo.IsProxyConnection() << ","
-            " websocket=" << m_connectInfo.IsWebSocket());
+            " websocket=" << m_connectInfo.IsWebSocket() << '\n' << m_connectInfo.m_mimeInfo);
 
   if (m_connectInfo.IsWebSocket()) {
     if (!OnWebSocket(m_connectInfo))
@@ -689,6 +689,7 @@ bool PHTTPServer::StartResponse(StatusCode code,
     m_nextTimeout.SetInterval(STRANGE_NETSCAPE_BUG*1000);
 #endif
 
+  PTRACE(5, "HTTP response: " << statusInfo->code << ' ' << statusInfo->text << '\n' << headers);
   return chunked;
 }
 
