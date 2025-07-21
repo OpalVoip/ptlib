@@ -123,8 +123,8 @@ bool PNatMethods::SetMethodPriority(const PString & name, unsigned priority)
 
 bool PNatMethods::IsLocalAddress(const PIPSocket::Address & ip) const
 {
-  /* Check if the remote address is a private IP, broadcast, or us */
-  return ip.IsAny() || ip.IsBroadcast() || ip.IsPrivate() || PIPSocket::IsLocalHost(ip);
+  /* Check if the remote address is a localhost, any, broadcast, or same subnet as an interface */
+  return PIPSocket::IsLocalNetwork(ip);
 }
 
 

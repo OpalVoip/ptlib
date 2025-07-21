@@ -1059,34 +1059,6 @@ PString PIPSocket::GetHostName()
 }
 
 
-PBoolean PIPSocket::IsLocalHost(const PString & hostname)
-{
-  if (hostname.IsEmpty())
-    return true;
-
-  if (hostname *= "localhost")
-    return true;
-
-  Address addr(0);
-  if (!GetHostAddress(hostname, addr))
-    return false;
-
-  if (addr.IsLoopback())  // Is 127.0.0.1 or ::1
-    return true;
-
-  InterfaceTable table;
-  if (!GetInterfaceTable(table, true))
-    return false;
-
-  for (PINDEX i = 0; i < table.GetSize(); ++i) {
-    if (table[i].GetAddress() == addr)
-      return true;
-  }
-
-  return false;
-}
-
-
 PString PIPSocket::GetHostName(const PString & hostname)
 {
   // lookup the host address using inet_addr, assuming it is a "." address
@@ -1157,6 +1129,52 @@ PStringArray PIPSocket::GetHostAliases(const Address & addr)
   s_HostByAddr.GetHostAliases(addr, aliases);
 
   return aliases;
+}
+
+
+bool PIPSocket::IsLocalHost(const PString & hostname)
+{
+  if (hostname.IsEmpty())
+    return true;
+
+  if (hostname *= "localhost")
+    return true;
+
+  Address addr(0);
+  if (!GetHostAddress(hostname, addr))
+    return false;
+
+  if (addr.IsLoopback())  // Is 127.0.0.1 or ::1
+    return true;
+
+  InterfaceTable table;
+  if (!GetInterfaceTable(table, true))
+    return false;
+
+  for (PINDEX i = 0; i < table.GetSize(); ++i) {
+    if (table[i].GetAddress() == addr)
+      return true;
+  }
+
+  return false;
+}
+
+
+bool PIPSocket::IsLocalNetwork(const Address & addr)
+{
+  if (addr.IsAny() || addr.IsBroadcast() || addr.IsLoopback())  // Is 127.0.0.1 or ::1
+    return true;
+
+  InterfaceTable table;
+  if (!GetInterfaceTable(table, true))
+    return false;
+
+  for (PINDEX i = 0; i < table.GetSize(); ++i) {
+    if (addr.IsSubNet(table[i].GetAddress(), table[i].GetNetMask()))
+      return true;
+  }
+
+  return false;
 }
 
 

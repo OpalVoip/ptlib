@@ -40,7 +40,7 @@
 /**This class describes a type of socket that will communicate using the
    Internet Protocol.
    If P_HAS_IPV6 is not set, IPv4 only is supported.
-   If P_HAS_IPV6 is set, both IPv4 and IPv6 adresses are supported, with
+   If P_HAS_IPV6 is set, both IPv4 and IPv6 addresses are supported, with
    IPv4 as default. This allows to transparently use IPv4, IPv6 or Dual
    stack operating systems.
  */
@@ -114,7 +114,7 @@ class PIPSocket : public PSocket
 
         PINDEX HashFunction() const override;
 
-        /// Compare two adresses for absolute (in)equality.
+        /// Compare two addresses for absolute (in)equality.
         Comparison Compare(const PObject & obj) const override;
         bool operator==(const Address & addr) const { return Compare(addr) == EqualTo; }
         bool operator!=(const Address & addr) const { return Compare(addr) != EqualTo; }
@@ -253,7 +253,7 @@ class PIPSocket : public PSocket
         static const Address GetBroadcast(unsigned version = 4);
 
       protected:
-        /// Runtime test of IP addresse type.
+        /// Runtime test of IP address type.
         union {
           in_addr m_four;
 #if P_HAS_IPV6
@@ -368,11 +368,11 @@ class PIPSocket : public PSocket
      */
     virtual PString GetName() const override;
 
-    /**Set the default IP address familly.
-       Needed as lot of IPv6 stack are not able to receive IPv4 packets in IPv6 sockets
-       They are not RFC 2553, chapter 7.3, compliant.
-       As a consequence, when opening a socket to listen to port 1720 (for example) from any remot host
-       one must decide whether this is an IPv4 or an IPv6 socket...
+    /**Set the default IP address family.
+       Needed as lot of IPv6 stack are not able to receive IPv4 packets in IPv6
+       sockets. They are not RFC 2553, chapter 7.3, compliant, as a consequence,
+       when opening a socket to listen to port 1720 (for example) from any
+       remote host one must decide whether this is an IPv4 or an IPv6 socket.
     */
     static int GetDefaultIpAddressFamily();
     static void SetDefaultIpAddressFamily(int ipAdressFamily); // PF_INET, PF_INET6
@@ -420,7 +420,7 @@ class PIPSocket : public PSocket
           unsigned newBase,       ///< New base port
           unsigned newMax,        ///< New maximum port, if < newBase, then set to newBase
           unsigned dfltRange = 0, ///< If newMax == 0 then it is set to newBase plus this.
-          unsigned dfltBase = 0   ///< If newbase == 0, then it is set to this value.
+          unsigned dfltBase = 0   ///< If newBase == 0, then it is set to this value.
         );
 
         bool IsValid() const { return m_base != 0 && m_base <= m_max; }
@@ -576,16 +576,28 @@ class PIPSocket : public PSocket
 
     /**Determine if the specified host is actually the local machine. This
        can be any of the host aliases or multi-homed IP numbers or even
-       the special number 127.0.0.1 for the loopback device.
+       the special number 127.0.0.1 for the loop back device.
 
        @return
        true if the host is the local machine.
      */
-    static PBoolean IsLocalHost(
+    static bool IsLocalHost(
       /**Name of host to get address for. This may be either a domain name or
          an IP number in "dot" format.
        */
       const PString & hostname
+    );
+
+    /**Determine if the specified IP is on this machines local network.
+       This determines if we can communicate with the specified IP
+       address without the use of a router, in particular a NAT router.
+
+       @return
+       true if the IP address is a localhost, any, broadcast, or same
+            subnet as an interface on the machine.
+     */
+    static bool IsLocalNetwork(
+      const Address & addr     ///< IP address to check.
     );
 
     /**Get the Internet Protocol address and port for the local host.
@@ -732,7 +744,7 @@ class PIPSocket : public PSocket
         ) const override;
 
         /** Get the name of the interface.
-            Note the name will havebeen sanitised of certain possible
+            Note the name will have been sanitised of certain possible
             characters that can cause issues elsewhere in the system.
             Therefore, make sure that if you get a device name from some
             other source than the InterfaceEntry, the name is sanitised via
@@ -841,7 +853,7 @@ class PIPSocket : public PSocket
        Note that the driver does not need to be open for this function to work.
 
        @return
-       The Local Interface IP Address for Gatway Access.
+       The Local Interface IP Address for Gateway Access.
      */
     static Address GetGatewayInterfaceAddress(
       unsigned version = 4  ///< IP version number
