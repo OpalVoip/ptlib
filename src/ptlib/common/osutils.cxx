@@ -2983,6 +2983,12 @@ static int SignalsToHandle[] = {
 #ifdef SIGTRAP
   SIGTRAP,
 #endif
+  SIGILL,
+  SIGFPE,
+  SIGSEGV,
+#ifdef SIGBUS
+  SIGBUS,
+#endif
   0
 };
 
@@ -3026,6 +3032,8 @@ void PProcess::RemoveRunTimeSignalHandlers()
 }
 
 
+static atomic<bool> InSignalHandler(false);
+
 void PProcess::AsynchronousRunTimeSignal(int signal, PProcessIdentifier source)
 {
 #if P_HAS_BACKTRACE && PTRACING
@@ -3035,7 +3043,66 @@ void PProcess::AsynchronousRunTimeSignal(int signal, PProcessIdentifier source)
   }
 #endif
 
-  InternalPostRunTimeSignal(signal, source);
+  const char * sigmsg;
+
+  switch (signal) {
+    case SIGILL:
+      sigmsg = "illegal instruction";
+      break;
+
+    case SIGSEGV:
+      sigmsg = "segmentation fault";
+      break;
+
+    case SIGFPE:
+      sigmsg = "floating point exception";
+      break;
+
+#ifdef SIGBUS
+    case SIGBUS:
+      sigmsg = "bus error";
+      break;
+#endif
+
+    default:
+      InternalPostRunTimeSignal(signal, source);
+      return;
+  }
+
+  RemoveRunTimeSignalHandlers();
+
+  if (!InSignalHandler.exchange(true)) {
+    PThreadIdentifier tid = GetCurrentThreadId();
+    PUniqueThreadIdentifier uid = PThread::GetCurrentUniqueIdentifier();
+
+    const char * couldNotWrite = ", stderr write failed";
+    {
+      /* We get basic crash information using purely static memory (we hope) as,
+         if the heap is trashed, all the PTRACE/PSystemLog stuff is very likely
+         to also crash, and we never see this info. */
+      char buffer[1000];
+      int length = snprintf(buffer, sizeof(buffer),
+                            "\nCaught %s (%s), in thread " P_THREAD_ID_FMT " (" P_UNIQUE_THREAD_ID_FMT ")\n",
+                            sigmsg, GetRunTimeSignalName(signal), tid, uid);
+      if (length > 0 && fwrite(buffer, 1, length, stderr) >= length)
+        couldNotWrite = "";
+    }
+
+    PSystemLog log(PSystemLog::Fatal);
+    log << "Caught " << sigmsg << " (" << GetRunTimeSignalName(signal) << "),"
+      " thread-id=" << PThread::GetIdentifiersAsString(tid, uid) << ","
+      " name=\"" << PThread::GetThreadName(tid) << '"' << couldNotWrite;
+
+#if PTRACING
+    log << ", stack:";
+    PTrace::WalkStack(log);
+#endif
+  }
+
+  abort(); // Dump core
+#ifndef WIN32
+  _exit(signal+100); // Fail safe if abort() didn't dump core and exit
+#endif
 }
 
 

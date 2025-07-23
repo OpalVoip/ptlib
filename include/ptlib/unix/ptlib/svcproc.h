@@ -29,8 +29,6 @@
 
   public:
     ~PServiceProcess();
-    virtual void AddRunTimeSignalHandlers(const int * signals = NULL) override;
-    virtual void AsynchronousRunTimeSignal(int signal, PProcessIdentifier source) override;
     virtual void HandleRunTimeSignal(int signal) override;
   protected:
     int  InitialiseService();

@@ -1,7 +1,7 @@
 /*
- * contain.h
+ * platform.h
  *
- * General container classes.
+ * Platform definitions.
  *
  * Portable Windows Library
  *
@@ -282,6 +282,7 @@ extern "C" PDEFINE_WINMAIN(hInstance, hPrevInstance, lpCmdLine, nCmdShow);
 typedef UINT  PThreadIdentifier;
 #define P_THREAD_ID_FMT "%u"
 typedef UINT  PUniqueThreadIdentifier;
+#define P_UNIQUE_THREAD_ID_FMT "%u"
 typedef DWORD PProcessIdentifier;
 
 #ifdef _DEBUG
