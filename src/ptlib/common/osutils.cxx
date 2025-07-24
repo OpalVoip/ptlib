@@ -3333,27 +3333,27 @@ PString PProcess::GetLibVersion()
 PString PProcess::VersionInfo::AsString(bool full) const
 {
   PStringStream str;
-  str << m_major << '.' << m_minor;
+  str << m_major << '.' << m_minor << '.' << m_patch;
+  switch (m_status) {
+    case PProcess::AlphaCode:
+      str << "-alpha";
+      if (m_oem > 0)
+        str << '.' << m_oem;
+      break;
+
+    case PProcess::BetaCode:
+      str << "-beta";
+      if (m_oem > 0)
+        str << '.' << m_oem;
+      break;
+
+    default:
+      if (m_oem > 0)
+        str << '-' << m_oem;
+      break;
+  }
 
   if (full) {
-    switch (m_status) {
-      case PProcess::AlphaCode :
-        str << "alpha";
-        break;
-
-      case PProcess::BetaCode :
-        str << "beta";
-        break;
-
-      default:
-        str << '.';
-    }
-
-    str << m_patch;
-
-    if (m_oem > 0)
-      str << '-' << m_oem;
-
     if (m_git != NULL && *m_git != '\0')
       str << " (git:" << m_git << ')';
     else if (m_svn > 0)
