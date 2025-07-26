@@ -213,6 +213,8 @@ PString PSimpleScript::InternalEvaluateExpr(const PString & expr)
 
 bool PSimpleScript::CreateComposite(const PString & name, unsigned sequenceSize)
 {
+  PWaitAndSignal mutex(m_mutex);
+
   if (sequenceSize == 0)
     m_variables.SetAt(name+".$", "");
   else {
@@ -285,6 +287,8 @@ bool PSimpleScript::SetVar(const PString & varName, const PVarType & var)
 
 bool PSimpleScript::ReleaseVariable(const PString & name)
 {
+  PWaitAndSignal mutex(m_mutex);
+
   bool hasVar = true;
   if (m_variables.Contains(name))
     m_variables.RemoveAt(name);
@@ -323,4 +327,12 @@ bool PSimpleScript::SetFunction(const PString & name, const FunctionNotifier & f
   if (!InternalSetFunction(name, func))
     m_functions[name] = func;
   return true;
+}
+
+PStringToString PSimpleScript::GetAllVariables() const
+{
+  PWaitAndSignal mutex(m_mutex);
+  PStringToString copy = m_variables;
+  copy.MakeUnique();
+  return copy;
 }
