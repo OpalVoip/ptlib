@@ -2256,9 +2256,7 @@ bool PHTTPResource::StartResponse(PHTTPRequest & request)
 
 void PHTTPResource::SetAllowedOrigins(const PString & allowedOrigins)
 {
-  CORS cors;
-  cors.m_allowedOrigins.AppendString(allowedOrigins);
-  SetCORS(cors);
+  SetCORS(CORS(allowedOrigins));
 }
 
 

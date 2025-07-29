@@ -2316,6 +2316,7 @@ class PHTTPResource : public PObject
       PTimeInterval m_maxAge;
       bool          m_allowCredentials;
       CORS() : m_allowCredentials(false) { }
+      CORS(const PString & allowedOrigins) : m_allowedOrigins(allowedOrigins), m_allowCredentials(false) { }
     };
     /** Set the Cross-Origin Resource Sharing (CORS) parameters.
         If m_allowedOrigins is an empty string then all CORS headers are removed.
