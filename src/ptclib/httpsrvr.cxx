@@ -2256,16 +2256,37 @@ bool PHTTPResource::StartResponse(PHTTPRequest & request)
 
 void PHTTPResource::SetAllowedOrigins(const PString & allowedOrigins)
 {
-  if (allowedOrigins.IsEmpty())
+  CORS cors;
+  cors.m_allowedOrigins.AppendString(allowedOrigins);
+  SetCORS(cors);
+}
+
+
+void PHTTPResource::SetCORS(const CORS & cors)
+{
+  if (cors.m_allowedOrigins.IsEmpty())
     m_corsHeaders.RemoveAll();
   else {
-    if (!m_corsHeaders.Has(PHTTP::AllowHeaderTag))
-      m_corsHeaders.Set(PHTTP::AllowHeaderTag, "Content-Type");
-    if (!m_corsHeaders.Has(PHTTP::AllowMethodTag))
-      m_corsHeaders.Set(PHTTP::AllowMethodTag, "POST, GET, OPTIONS");
-    if (!m_corsHeaders.Has(PHTTP::MaxAgeTAG))
+    m_corsHeaders.Set(PHTTP::AllowOriginTag, PSTRSTRM(setfill(',') << cors.m_allowedOrigins));
+
+    if (!cors.m_allowedHeaders.empty())
+      m_corsHeaders.Set(PHTTP::AllowHeadersTag, PSTRSTRM(setfill(',') << cors.m_allowedHeaders));
+
+    if (!cors.m_exposeHeaders.empty())
+      m_corsHeaders.Set(PHTTP::ExposeHeadersTag, PSTRSTRM(setfill(',') << cors.m_exposeHeaders));
+
+    if (!cors.m_allowedMethods.empty())
+      m_corsHeaders.Set(PHTTP::AllowHeadersTag, PSTRSTRM(setfill(',') << cors.m_allowedMethods));
+    else if (!m_corsHeaders.Has(PHTTP::AllowMethodsTag))
+      m_corsHeaders.Set(PHTTP::AllowMethodsTag, "POST, GET, OPTIONS");
+
+    if (cors.m_maxAge > 0)
+      m_corsHeaders.SetInteger(PHTTP::MaxAgeTAG, cors.m_maxAge.GetSeconds());
+    else if (!m_corsHeaders.Has(PHTTP::MaxAgeTAG))
       m_corsHeaders.SetInteger(PHTTP::MaxAgeTAG, 24*60*60);
-    m_corsHeaders.Set(PHTTP::AllowOriginTag, allowedOrigins);
+
+    if (cors.m_allowCredentials)
+      m_corsHeaders.SetBoolean(PHTTP::AllowCredentialsTag, cors.m_allowCredentials);
   }
 }
 

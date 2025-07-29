@@ -254,9 +254,13 @@ class PHTTP : public PInternetProtocol
     static const PCaselessString & ForwardedTag();
     static const PCaselessString & SetCookieTag();
     static const PCaselessString & CookieTag();
-    static const PCaselessString & AllowHeaderTag();
+    static const PCaselessString & RequestHeadersTag();
+    static const PCaselessString & RequestMethodsTag();
     static const PCaselessString & AllowOriginTag();
-    static const PCaselessString & AllowMethodTag();
+    static const PCaselessString & AllowHeadersTag();
+    static const PCaselessString & ExposeHeadersTag();
+    static const PCaselessString & AllowMethodsTag();
+    static const PCaselessString & AllowCredentialsTag();
     static const PCaselessString & MaxAgeTAG();
 
     static const PCaselessString & FormUrlEncoded();
@@ -2302,6 +2306,22 @@ class PHTTPResource : public PObject
     void SetAllowedOrigins(
       const PString & allowedOrigins  ///< Allowed origins for CORS
     );
+
+    struct CORS
+    {
+      PStringArray  m_allowedOrigins;
+      PStringArray  m_allowedHeaders;
+      PStringArray  m_exposeHeaders;
+      PStringArray  m_allowedMethods;
+      PTimeInterval m_maxAge;
+      bool          m_allowCredentials;
+      CORS() : m_allowCredentials(false) { }
+    };
+    /** Set the Cross-Origin Resource Sharing (CORS) parameters.
+        If m_allowedOrigins is an empty string then all CORS headers are removed.
+        If m_allowedHeaders, m_allowedMethods are empty, a default is used.
+     */
+    void SetCORS(const CORS & cors);
 
     /** Get Cross-Origin Resource Sharing (CORS) headers.
         This allows the user to adjust the default values for various CORS headers.
