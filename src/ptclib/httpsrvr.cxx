@@ -257,6 +257,7 @@ PBoolean PHTTPServer::ProcessCommand()
     OnError(BadRequest, args.ToLiteral(), m_connectInfo);
     return false;
   }
+  m_connectInfo.m_commandName = GetNameFromCommand(m_connectInfo.m_commandCode);
 
   // if no tokens, error
   if (args.IsEmpty()) {
@@ -1853,7 +1854,7 @@ PBoolean PHTTPConnectionInfo::Initialise(PHTTPServer & server, PString & args)
   }
 
   // If the protocol is version 1.0 or greater, there is MIME info, and the
-  // prescence of a an entity body is signalled by the inclusion of
+  // presence of a an entity body is signalled by the inclusion of
   // Content-Length header. If the protocol is less than version 1.0, then 
   // there is no entity body!
 
