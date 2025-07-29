@@ -501,7 +501,8 @@ PString PHTTPServer::ReadEntityBody()
 
 PString PHTTPServer::GetServerName() const
 {
-  return "PWLib-HTTP-Server/1.0 PWLib/1.0";
+  const PProcess & process = PProcess::Current();
+  return PSTRSTRM(process.GetName() << '/' << process.GetVersion());
 }
 
 
