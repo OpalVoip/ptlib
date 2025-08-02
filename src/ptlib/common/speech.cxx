@@ -554,6 +554,12 @@ bool PSpeechRecognition::ActivateVocabulary(const PStringSet &, const PStringSet
 }
 
 
+PSpeechRecognition::Transcript::Transcript()
+  : m_final(false)
+  , m_confidence(0)
+{ }
+
+
 PSpeechRecognition::Transcript::Transcript(bool final, const PTimeInterval & when, const PString & content, float confidence)
   : m_final(final)
   , m_when(when)

@@ -156,6 +156,7 @@ class PSpeechRecognition : public PObject
       PString       m_content;
       float         m_confidence;  // 0.0 to 1.0
 
+      Transcript();
       Transcript(bool final, const PTimeInterval & when, const PString & content, float confidence);
       virtual Comparison Compare(const PObject & other) const override;
       virtual void PrintOn(ostream & strm) const override;
@@ -183,6 +184,10 @@ class PSpeechRecognition : public PObject
 #if P_AWS_SDK
   #define P_SPEECH_RECOGNITION_AWS "AWS"
   PFACTORY_LOAD(PSpeechRecognition_AWS);
+#endif
+#if P_SSL
+  #define P_SPEECH_RECOGNITION_DEEPGRAM "Deepgram"
+  PFACTORY_LOAD(PSpeechRecognition_Deepgram);
 #endif
 
 

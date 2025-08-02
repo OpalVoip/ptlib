@@ -696,7 +696,7 @@ class PSpeechRecognition_AWS : public PSpeechRecognition, PAwsClient<Aws::Transc
   void ReadEvents()
   {
     PTRACE(4, "Reading events thread started");
-    Transcript transcript(false, 0, PString::Empty(), 0);
+    Transcript transcript;
     while (m_webSocket.IsOpen()) {
       PBYTEArray data;
       PStringOptions headers;
@@ -715,7 +715,7 @@ class PSpeechRecognition_AWS : public PSpeechRecognition, PAwsClient<Aws::Transc
               json.GetObject().IsType("Transcript", PJSON::e_Object) &&
               json.GetObject().GetObject("Transcript").IsType("Results", PJSON::e_Array)) {
             PJSON::Array const & results = json.GetObject().GetObject("Transcript").GetArray("Results");
-            PTRACE_IF(4, !results.empty(), "Received " << type << ":\n" << json.AsString(0, 2));
+            PTRACE_IF(4, !results.empty(), "Received " << type << ":\n" << json.AsString(4, 2));
             for (size_t idxResult = 0; idxResult < results.size(); ++idxResult) {
               if (results.IsType(idxResult, PJSON::e_Object)) {
                 PJSON::Object const & result = results.GetObject(idxResult);
@@ -760,7 +760,7 @@ class PSpeechRecognition_AWS : public PSpeechRecognition, PAwsClient<Aws::Transc
             }
           }
           else {
-            PTRACE(4, "Received " << type << ":\n" << json.AsString(0, 2));
+            PTRACE(4, "Received " << type << ":\n" << json.AsString(4, 2));
           }
         }
 #if PTRACING
