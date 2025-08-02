@@ -4246,7 +4246,6 @@ bool PVXMLSession::VideoSenderDevice::InternalGetFrameData(BYTE * buffer, PINDEX
 
 PVXMLGrammar::PVXMLGrammar(const PVXMLGrammarInit & init)
   : PVXMLGrammarInit(init)
-  , m_recogniser(NULL)
   , m_allowDTMF(true)
   , m_fieldName(m_field.GetAttribute(NameAttribute))
   , m_terminators(m_session.GetProperty(TermCharProperty))
@@ -4274,13 +4273,13 @@ PVXMLGrammar::PVXMLGrammar(const PVXMLGrammarInit & init)
   }
 
   if (allowVoice) {
-    m_recogniser = m_session.CreateSpeechRecognition();
+    m_recogniser.reset(m_session.CreateSpeechRecognition());
     if (m_recogniser == NULL) {
       PTRACE(2, "Grammar " << *this << " could not create speech recognition on \"" << m_session.GetSpeechRecognition() << '"');
       m_allowDTMF = true; // Turn on despite element indication, as no other way for input!
     }
     else {
-      PTRACE_CONTEXT_ID_TO(m_recogniser);
+      PTRACE_CONTEXT_ID_TO(*m_recogniser);
       PStringToString options = m_session.m_speechRecognitionOptions;
       options.MakeUnique();
       options.Merge(PStringToString(m_session.GetProperty("speechrecognitionoptions").Replace("\\n", "\n", true)), PStringToString::e_MergeOverwrite);
@@ -4316,7 +4315,7 @@ PVXMLGrammar::PVXMLGrammar(const PVXMLGrammarInit & init)
   PTRACE(3, "Grammar " << *this << " created:"
          " inputModes=" << inputModes << ","
          " dtmf=" << boolalpha << m_allowDTMF << ","
-         " voice=" << (m_recogniser != NULL) << ","
+         " voice=" << !!m_recogniser << ","
          " noInputTimeout=" << m_noInputTimeout);
 }
 
@@ -4330,8 +4329,7 @@ void PVXMLGrammar::StartRecognition()
     return;
 
   PTRACE(2, "Grammar " << *this << " could not open speech recognition.");
-  delete m_recogniser;
-  m_recogniser = NULL;
+  m_recogniser.reset();
   m_allowDTMF = true; // Turn on despite element indication, as no other way for input!
 }
 
@@ -4358,8 +4356,10 @@ void PVXMLGrammar::OnUserInput(const PString & input)
 
 void PVXMLGrammar::OnAudioInput(const short * samples, size_t count)
 {
-  if (m_recogniser)
-    m_recogniser->Listen(samples, count);
+  if (m_recogniser && !m_recogniser->Listen(samples, count)) {
+    m_recogniser.reset();
+    m_usingDTMF = true;
+  }
 }
 
 
@@ -4455,11 +4455,7 @@ void PVXMLGrammar::SetFilled(const PString & input, bool overwrite)
 
 void PVXMLGrammar::Stop()
 {
-  if (m_recogniser != NULL) {
-    m_recogniser->Close();
-    delete m_recogniser;
-    m_recogniser = NULL;
-  }
+  m_recogniser.reset();
 }
 
 

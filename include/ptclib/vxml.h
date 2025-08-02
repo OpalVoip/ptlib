@@ -214,7 +214,7 @@ class PVXMLGrammar : public PObject, protected PVXMLGrammarInit
     virtual void Finished();
     void StartRecognition();
 
-    PSpeechRecognition * m_recogniser;
+    PAutoPtr<PSpeechRecognition> m_recogniser;
     bool                 m_allowDTMF;
     PString              m_fieldName;
     PString              m_terminators;
