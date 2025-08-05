@@ -324,6 +324,7 @@
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='No Trace|Win32'">$(AWS32RELDIR)\..\include;$(EXTERNALDIR)\aws-sdk-cpp\out\install\x86-Release\include;$(SolutionDir)..\aws-sdk-cpp\out\install\x86-Release\include;$(SolutionDir)..\external\aws-sdk-cpp\out\install\x86-Release\include;$(SolutionDir)..\..\external\aws-sdk-cpp\out\install\x86-Release\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(AWS32RELDIR)\..\include;$(EXTERNALDIR)\aws-sdk-cpp\out\install\x86-Release\include;$(SolutionDir)..\aws-sdk-cpp\out\install\x86-Release\include;$(SolutionDir)..\external\aws-sdk-cpp\out\install\x86-Release\include;$(SolutionDir)..\..\external\aws-sdk-cpp\out\install\x86-Release\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
+    <ClCompile Include="..\..\ptclib\speech_deep.cxx" />
     <ClCompile Include="..\..\ptclib\textdata.cxx" />
     <ClCompile Include="..\..\ptclib\tonedev.cxx" />
     <ClCompile Include="..\common\speech.cxx" />
