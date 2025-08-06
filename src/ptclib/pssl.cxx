@@ -2144,28 +2144,18 @@ PSSLContext::PSSLContext(const void * sessionId, PINDEX idSize)
 
 void PSSLContext::Construct(const void * sessionId, PINDEX idSize)
 {
-  m_context = SSL_CTX_new(TLS_method());
-  if (m_context == NULL) {
-    PSSLAssert("Error creating context: ");
-    return;
-  }
-  if (m_method == DTLSv1_2_v1_0) {
-    SSL_CTX_set_min_proto_version(m_context, DTLS1_VERSION);
-    SSL_CTX_set_max_proto_version(m_context, DTLS1_2_VERSION);
-  }
-  else {
-    static int ssl_versions[] = { SSL3_VERSION, TLS1_VERSION, TLS1_1_VERSION, TLS1_2_VERSION, TLS1_3_VERSION, DTLS1_VERSION, DTLS1_2_VERSION };
-    SSL_CTX_set_min_proto_version(m_context, 0);
-    SSL_CTX_set_max_proto_version(m_context, ssl_versions[m_method]);
-  }
-
-#if (OPENSSL_VERSION_NUMBER >= 0x10100000L)
   if (m_method >= DTLSv1) {
+    m_context = SSL_CTX_new(DTLS_method());
+    if (m_context == NULL) {
+      PSSLAssert("Error creating context: ");
+      return;
+    }
+
     PTRACE(5, "Changing security level to zero, was " << SSL_CTX_get_security_level(m_context));
     SSL_CTX_set_security_level(m_context, 0);
-    
+
     switch (m_method) {
-      case DTLSv1_2 :
+      case DTLSv1_2:
         SSL_CTX_set_min_proto_version(m_context, DTLS1_2_VERSION);
         SSL_CTX_set_max_proto_version(m_context, DTLS1_2_VERSION);
         break;
@@ -2178,7 +2168,17 @@ void PSSLContext::Construct(const void * sessionId, PINDEX idSize)
         SSL_CTX_set_max_proto_version(m_context, DTLS1_2_VERSION);
     }
   }
-#endif
+  else {
+    m_context = SSL_CTX_new(TLS_method());
+    if (m_context == NULL) {
+      PSSLAssert("Error creating context: ");
+      return;
+    }
+
+    static int ssl_versions[] = { SSL3_VERSION, TLS1_VERSION, TLS1_1_VERSION, TLS1_2_VERSION, TLS1_3_VERSION };
+    SSL_CTX_set_min_proto_version(m_context, 0);
+    SSL_CTX_set_max_proto_version(m_context, ssl_versions[m_method]);
+  }
 
   if (sessionId != NULL) {
     if (idSize == 0)
