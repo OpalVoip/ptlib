@@ -1107,14 +1107,6 @@ class PWebSocket : public PIndirectChannel, public PSSLCertificateInfo
       uint64_t maxFrameSize  ///< New maximum size.
     ) { maxFrameSize = m_maxFrameSize; }
 
-    /**Set authorization for connection.
-       The Authorization header is set to this value.
-       Must be set before Connect() is called.
-      */
-    void SetAuthorization(
-        const PString& authorization ///< Authorization header value
-    ) { m_authorization = authorization; }
-
     /**Set proxy for connections.
        Must be set before Connect() is called.
       */
@@ -1122,7 +1114,15 @@ class PWebSocket : public PIndirectChannel, public PSSLCertificateInfo
       const PHTTP::Proxies & proxies ///< Proxy in host:port form
     ) { m_proxies = proxies; }
 
-  protected:
+    /**Set Authorization header for connections.
+       The Authorization header is set to this value.
+       Must be set before Connect() is called.
+      */
+    void SetAuthorization(
+      const PString & authorization ///< String for Authorization header
+    ) { m_authorization = authorization; }
+
+protected:
     enum OpCodes
     {
       Continuation = 0x0,
@@ -1153,8 +1153,8 @@ class PWebSocket : public PIndirectChannel, public PSSLCertificateInfo
     bool InternalWrite(OpCodes  opCode, bool fragmenting, const void * data, PINDEX len);
     bool WriteMasked(const uint32_t * data, PINDEX len, uint32_t mask);
 
-    PString m_authorization;
     PHTTP::Proxies m_proxies;
+    PString        m_authorization;
 
     bool     m_client;
     bool     m_fragmentingWrite;

@@ -172,7 +172,7 @@ class PSimpleScript : public PScriptLanguage
     ) override;
   //@}
 
-    const PStringToString & GetAllVariables() const { return m_variables; }
+    PStringToString GetAllVariables() const;
 
   protected:
     PString * InternalFindVar(const PString & varName) const;

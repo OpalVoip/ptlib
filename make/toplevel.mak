@@ -175,7 +175,8 @@ ifeq ($(HAS_LDAP),1)
 endif
 
 ifeq ($(HAS_SSL),1)
-  SOURCES += $(COMPONENT_SRC_DIR)/pssl.cxx 
+  SOURCES += $(COMPONENT_SRC_DIR)/pssl.cxx \
+             $(COMPONENT_SRC_DIR)/speech_deep.cxx
 endif
 
 ifeq ($(HAS_SDL),1)

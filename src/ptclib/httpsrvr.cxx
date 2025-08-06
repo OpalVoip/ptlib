@@ -1607,8 +1607,9 @@ bool PWebSocket::Connect(const PURL & url, const PStringArray & protocols, PStri
   if (!protocols.empty())
     outMIME.SetAt(PHTTP::WebSocketProtocolTag(), PSTRSTRM(std::setfill(',') << protocols));
   outMIME.SetAt(PHTTP::WebSocketKeyTag(), key);
+
   if (!m_authorization.empty())
-    outMIME.SetAt(PHTTP::AuthorizationTag(), m_authorization);
+    outMIME.SetAt(PHTTP::AuthorizationTag, m_authorization);
 
   int result = http->ExecuteCommand(PHTTP::GET, url, outMIME, PString::Empty(), replyMIME);
   if (result < 100 || result >= 300) {
