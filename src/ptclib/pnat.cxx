@@ -293,7 +293,11 @@ bool PNatMethod::Open(const PIPSocket::Address &)
 }
 
 
-bool PNatMethod::CreateSocket(PUDPSocket * & socket, const PIPSocket::Address & binding, WORD localPort, PObject * context, Component component)
+bool PNatMethod::CreateSocket(PUDPSocket * & socket,
+                              const PIPSocket::Address & binding,
+                              WORD localPort,
+                              PObject * context,
+                              Component component)
 {
   PWaitAndSignal m(m_mutex);
 
@@ -303,6 +307,10 @@ bool PNatMethod::CreateSocket(PUDPSocket * & socket, const PIPSocket::Address & 
 
   if (localPort != 0) {
     if (socket->Listen(binding, 5, localPort))
+      return true;
+  }
+  else if (component != eComponent_Unknown) {
+    if (m_pairedPortRange.Listen(*socket, binding))
       return true;
   }
   else {
