@@ -244,8 +244,9 @@ PString PRandom::String(PINDEX size)
   PString str;
   str.SetSize(size + 1);
 
+  static char characters[] = "abcdefghijklmnopqrstuvwxyz0123456789";
   for (PINDEX i = 0; i < size; ++i)
-    str[i] = "0123456789abcdefghijklmnopqrstuvwxyz"[rand.Generate(0, 35)];
+    str += characters[rand.Generate(0, sizeof(characters)-2)];
 
   return str;
 }
