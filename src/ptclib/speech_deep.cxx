@@ -160,9 +160,6 @@ public:
     if (IsOpen())
       return false;
 
-    if (!PSpeechRecognition::SetOptions(options)) // Set sample rate (maybe)
-      return false;
-
     m_endpoint = options.GetString(EndpointTag, m_endpoint);
     m_apiKey = options.GetString(ApiKeyTag, m_apiKey);
 
@@ -171,7 +168,8 @@ public:
       if (opt->first.starts_with(DeepgramPrefix) && !SkipParams.Contains(opt->first))
         m_options.SetAt(opt->first.Mid(9), opt->second);
     }
-    return true;
+
+    return PSpeechRecognition::SetOptions(options);
   }
 
 

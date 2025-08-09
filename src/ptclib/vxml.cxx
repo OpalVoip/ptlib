@@ -4356,7 +4356,7 @@ void PVXMLGrammar::OnUserInput(const PString & input)
 
 void PVXMLGrammar::OnAudioInput(const short * samples, size_t count)
 {
-  if (m_recogniser && !m_recogniser->Listen(samples, count)) {
+  if (m_recogniser && m_recogniser->IsOpen() && !m_recogniser->Listen(samples, count)) {
     m_recogniser.reset();
     m_usingDTMF = true;
   }
