@@ -40,6 +40,7 @@
 static const PConstCaselessString DeepgramPrefix("Deepgram-");
 static const PConstCaselessString EndpointTag("Deepgram-Endpoint");
 static const PConstCaselessString ApiKeyTag("Deepgram-API-Key");
+static const PConstCaselessString BufferDurationTag("Deepgram-Buffer-Duration");
 
 static const PConstCaselessString SampleRateHeader("sample_rate");
 static const PConstCaselessString ChannelsHeader("channels");
@@ -51,6 +52,7 @@ static PStringSet MakeSkipParameters()
   PStringSet set;
   set += EndpointTag;
   set += ApiKeyTag;
+  set += BufferDurationTag;
   set += DeepgramPrefix + SampleRateHeader;
   set += DeepgramPrefix + ChannelsHeader;
   set += DeepgramPrefix + LanguageHeader;
@@ -71,6 +73,7 @@ class PSpeechRecognition_Deepgram : public PSpeechRecognition
   PString m_endpoint;
   PString m_apiKey;
   PStringToString m_options;
+  unsigned m_bufferSize = 800; // Default 100ms
 
   PWebSocket m_webSocket;
   PThread  * m_eventThread = nullptr;
@@ -101,7 +104,9 @@ class PSpeechRecognition_Deepgram : public PSpeechRecognition
 
       if (json.IsType(PJSON::e_Object)) {
         const PJSON::Object & result = json.GetObject();
-        if (result.GetString("type") == "Results" && result.IsType("channel", PJSON::e_Object)) {
+        if (result.GetString("type") == "Results" &&
+            result.GetBoolean("is_final") &&
+            result.IsType("channel", PJSON::e_Object)) {
           transcript.m_final = result.GetBoolean("speech_final");
           transcript.m_when = PTimeInterval::Seconds((double)result.GetNumber("start"));
           const PJSON::Object & channel = result.GetObject("channel");
@@ -169,7 +174,12 @@ public:
         m_options.SetAt(opt->first.Mid(9), opt->second);
     }
 
-    return PSpeechRecognition::SetOptions(options);
+    unsigned bufferMilliseconds = options.GetVar(BufferDurationTag, m_bufferSize * 1000 / m_sampleRate);
+    if (!PSpeechRecognition::SetOptions(options)) // Set sample rate (maybe)
+      return false;
+
+    m_bufferSize = bufferMilliseconds * m_sampleRate / 1000;
+    return true;
   }
 
 
@@ -295,11 +305,17 @@ public:
       PTRACE(3, "Opened speech recognition.");
     }
 
-    if (m_webSocket.Write(samples, sampleCount*sizeof(uint16_t)))
+    m_buffer.insert(m_buffer.end(), samples, samples+sampleCount);
+    if (m_buffer.size() < m_bufferSize)
       return true;
 
-    PTRACE(2, "Error writing to WebSocket: " << m_webSocket.GetErrorText());
-    return false;
+    if (!m_webSocket.Write(m_buffer.data(), m_bufferSize)) {
+      PTRACE(2, "Error writing to WebSocket: " << m_webSocket.GetErrorText());
+      return false;
+    }
+
+    m_buffer.erase(m_buffer.begin(), m_buffer.begin() + m_bufferSize);
+    return true;
   }
 };
 
