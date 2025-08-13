@@ -309,7 +309,7 @@ public:
     if (m_buffer.size() < m_bufferSize)
       return true;
 
-    if (!m_webSocket.Write(m_buffer.data(), m_bufferSize)) {
+    if (!m_webSocket.Write(m_buffer.data(), m_bufferSize*sizeof(int16_t))) {
       PTRACE(2, "Error writing to WebSocket: " << m_webSocket.GetErrorText());
       return false;
     }
