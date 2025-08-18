@@ -99,36 +99,48 @@ class PSpeechRecognition_Deepgram : public PSpeechRecognition
       PTRACE(5, "Read " << data.size() << " bytes");
 
       PJSON json(PJSON::e_Null);
-      json.FromString(data);
+      if (!json.FromString(data)) {
+        PTRACE(3, "Invalid JSON:\n" << ::PHexDump(data));
+        continue;
+      }
       PTRACE(4, "Received:\n" << json.AsString(4, 2));
 
-      if (json.IsType(PJSON::e_Object)) {
-        const PJSON::Object & result = json.GetObject();
-        if (result.GetString("type") == "Results" &&
-            result.GetBoolean("is_final") &&
-            result.IsType("channel", PJSON::e_Object)) {
-          transcript.m_final = result.GetBoolean("speech_final");
-          transcript.m_when = PTimeInterval::Seconds((double)result.GetNumber("start"));
-          const PJSON::Object & channel = result.GetObject("channel");
-          if (channel.IsType("alternatives", PJSON::e_Array)) {
-            const PJSON::Array & alternatives = channel.GetArray("alternatives");
-            for (size_t idxAlternative = 0; idxAlternative < alternatives.size(); ++idxAlternative) {
-              if (alternatives.IsType(idxAlternative, PJSON::e_Object)) {
-                const PJSON::Object & alternative = alternatives.GetObject(idxAlternative);
-                transcript.m_content = alternative.GetString("transcript");
-                transcript.m_confidence = (float)alternative.GetNumber("confidence");
-                if (transcript.m_confidence <= 0)
-                  transcript.m_confidence = 0.1f; // Need _some_ confidence in it!
-                if (!transcript.m_content.empty()) {
-                  PTRACE(4, "Sending notification of " << transcript);
-                  m_notifier(*this, transcript);
-                }
-              }
-            }
+      if (!json.IsType(PJSON::e_Object))
+        continue;
+
+      const PJSON::Object & result = json.GetObject();
+      PCaselessString resultType = result.GetString("type");
+      if (resultType == "Results") {
+        if (!result.GetBoolean("is_final") || !result.IsType("channel", PJSON::e_Object))
+          continue;
+        const PJSON::Object & channel = result.GetObject("channel");
+        if (!channel.IsType("alternatives", PJSON::e_Array))
+          continue;
+        const PJSON::Array & alternatives = channel.GetArray("alternatives");
+        for (size_t idxAlternative = 0; idxAlternative < alternatives.size(); ++idxAlternative) {
+          if (!alternatives.IsType(idxAlternative, PJSON::e_Object))
+            continue;
+          const PJSON::Object & alternative = alternatives.GetObject(idxAlternative);
+          auto partial = alternatives.GetObject(idxAlternative).GetString("transcript");
+          if (!partial.empty()) {
+            transcript.m_content &= partial;
+            auto confidence = (float)alternative.GetNumber("confidence");
+            if (confidence > 0 && transcript.m_confidence > confidence)
+              transcript.m_confidence = confidence; // Use the lowest confidence level of all the pieces
+            PTRACE(4, "Sending notification of " << transcript);
+            m_notifier(*this, transcript);
           }
         }
       }
-
+      else if (resultType == "UtteranceEnd") {
+        transcript.m_final = true;
+        transcript.m_when = PTimeInterval::Seconds((double)result.GetNumber("last_word_end"));
+        PTRACE(4, "Sending notification of " << transcript);
+        m_notifier(*this, transcript);
+        transcript.m_final = false;
+        transcript.m_confidence = 1.0f;
+        transcript.m_content.MakeEmpty();
+      }
     }
 
     if (!transcript.m_final && !transcript.m_content.empty()) {

@@ -556,7 +556,7 @@ bool PSpeechRecognition::ActivateVocabulary(const PStringSet &, const PStringSet
 
 PSpeechRecognition::Transcript::Transcript()
   : m_final(false)
-  , m_confidence(0)
+  , m_confidence(1.0f)
 { }
 
 
@@ -583,10 +583,9 @@ PObject::Comparison PSpeechRecognition::Transcript::Compare(const PObject & obj)
 
 void PSpeechRecognition::Transcript::PrintOn(ostream & strm) const
 {
-  strm << setprecision(2) << m_when << ' ';
+  strm << setprecision(2) << m_when << "s [" << setprecision(1) << m_confidence << "] " << m_content.ToLiteral();
   if (m_final)
     strm << "(final) ";
-  strm << m_content.ToLiteral();
 }
 
 #endif // P_SPEECH_RECOGNITION
