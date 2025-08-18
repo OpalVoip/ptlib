@@ -583,9 +583,9 @@ PObject::Comparison PSpeechRecognition::Transcript::Compare(const PObject & obj)
 
 void PSpeechRecognition::Transcript::PrintOn(ostream & strm) const
 {
-  strm << setprecision(2) << m_when << "s [" << setprecision(1) << m_confidence << "] " << m_content.ToLiteral();
-  if (m_final)
-    strm << "(final) ";
+  strm
+    << m_content.ToLiteral() << (m_final ? " final/" : " partial/")
+    << setprecision(2) << m_confidence << ' ' << m_when << 's';
 }
 
 #endif // P_SPEECH_RECOGNITION

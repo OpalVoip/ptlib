@@ -162,6 +162,8 @@ public:
     PConfig env(PConfig::Environment);
     m_apiKey = env.GetString("DEEPGRAM_API_KEY");
     m_endpoint = env.GetString("DEEPGRAM_ENDPOINT", "wss://api.deepgram.com/v1");
+    m_options.SetAt("utterance_end_ms", "2000");
+    m_options.SetAt("interim_results", "true");
   }
 
 
