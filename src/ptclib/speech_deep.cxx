@@ -124,11 +124,21 @@ class PSpeechRecognition_Deepgram : public PSpeechRecognition
           auto partial = alternatives.GetObject(idxAlternative).GetString("transcript");
           if (!partial.empty()) {
             transcript.m_content &= partial;
+            transcript.m_when = PTimeInterval::Seconds((double)result.GetNumber("start"));
+            transcript.m_final = result.GetBoolean("speech_final");
+
             auto confidence = (float)alternative.GetNumber("confidence");
             if (confidence > 0 && transcript.m_confidence > confidence)
               transcript.m_confidence = confidence; // Use the lowest confidence level of all the pieces
+
             PTRACE(4, "Sending notification of " << transcript);
             m_notifier(*this, transcript);
+
+            if (transcript.m_final) {
+              transcript.m_final = false;
+              transcript.m_confidence = 1.0f;
+              transcript.m_content.MakeEmpty();
+            }
           }
         }
       }
