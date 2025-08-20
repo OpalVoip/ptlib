@@ -103,23 +103,32 @@ class PSpeechRecognition_Deepgram : public PSpeechRecognition
         PTRACE(3, "Invalid JSON:\n" << ::PHexDump(data));
         continue;
       }
-      PTRACE(4, "Received:\n" << json.AsString(4, 2));
 
-      if (!json.IsType(PJSON::e_Object))
+      if (!json.IsType(PJSON::e_Object)) {
+        PTRACE(2, "Unexpected JSON:\n" << json.AsString(4, 2));
         continue;
+      }
+
+      PTRACE(4, "Received:\n" << json.AsString(4, 2));
 
       const PJSON::Object & result = json.GetObject();
       PCaselessString resultType = result.GetString("type");
       if (resultType == "Results") {
-        if (!result.GetBoolean("is_final") || !result.IsType("channel", PJSON::e_Object))
+        if (!result.IsType("channel", PJSON::e_Object)) {
+          PTRACE(2, "Unexpected JSON:\n" << json.AsString(4, 2));
           continue;
+        }
         const PJSON::Object & channel = result.GetObject("channel");
-        if (!channel.IsType("alternatives", PJSON::e_Array))
+        if (!channel.IsType("alternatives", PJSON::e_Array)) {
+          PTRACE(2, "Unexpected JSON:\n" << json.AsString(4, 2));
           continue;
+        }
         const PJSON::Array & alternatives = channel.GetArray("alternatives");
         for (size_t idxAlternative = 0; idxAlternative < alternatives.size(); ++idxAlternative) {
-          if (!alternatives.IsType(idxAlternative, PJSON::e_Object))
+          if (!alternatives.IsType(idxAlternative, PJSON::e_Object)) {
+            PTRACE(2, "Unexpected JSON:\n" << json.AsString(4, 2));
             continue;
+          }
           const PJSON::Object & alternative = alternatives.GetObject(idxAlternative);
           auto partial = alternatives.GetObject(idxAlternative).GetString("transcript");
           if (!partial.empty()) {
