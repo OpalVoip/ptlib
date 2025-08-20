@@ -132,7 +132,8 @@ class PSpeechRecognition_Deepgram : public PSpeechRecognition
           const PJSON::Object & alternative = alternatives.GetObject(idxAlternative);
           auto partial = alternatives.GetObject(idxAlternative).GetString("transcript");
           if (!partial.empty()) {
-            transcript.m_content &= partial;
+            if (result.GetBoolean("is_final"))
+              transcript.m_content &= partial;
             transcript.m_when = PTimeInterval::Seconds((double)result.GetNumber("start"));
             transcript.m_final = result.GetBoolean("speech_final");
 
