@@ -180,7 +180,7 @@ XMPP::Roster::~Roster()
 XMPP::Roster::Item * XMPP::Roster::FindItem(const PString& jid)
 {
   for (ItemList::iterator i = m_Items.begin(); i != m_Items.end(); i++) {
-    if (i->GetJID() == jid)
+    if (i->GetJID() == JID(jid))
       return &*i;
   }
 
