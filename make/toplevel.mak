@@ -288,7 +288,7 @@ ifneq ($(HAS_TEXT_TO_SPEECH)$(HAS_SPEECH_RECOGNITION),)
   ifneq ($(HAS_AWS_SDK),)
     SOURCES += $(COMPONENT_SRC_DIR)/speech_aws.cxx 
   endif
-  ifneq ($(HAS_SSL),)
+  ifeq ($(HAS_SSL),1)
     SOURCES += $(COMPONENT_SRC_DIR)/speech_deep.cxx 
   endif
 endif
