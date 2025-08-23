@@ -16457,9 +16457,9 @@ ac_compiler_gnu=$ac_cv_cxx_compiler_gnu
 
 
 
-# Needs at least C++17
+# Needs at least C++20
 oldCXXFLAGS="$CXXFLAGS"
-CXXFLAGS="$CXXFLAGS -std=c++17"
+CXXFLAGS="$CXXFLAGS -std=c++20"
 
 
 
@@ -16999,7 +16999,7 @@ fi
 
    if test "x$usable" = "xyes"
 then :
-  CPLUSPLUS_STD="-std=c++17"
+  CPLUSPLUS_STD="-std=c++20"
 
 else case e in #(
   e)
@@ -17350,6 +17350,7 @@ fi
 
 
 CXXFLAGS="$oldCXXFLAGS"
+
 
 
 

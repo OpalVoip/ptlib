@@ -1767,9 +1767,9 @@ dnl MSWIN_FIND_FILE  v8,P_V8_LIB_RELEASE32,v8_monolith.lib,out.gn/ia32.release/.
 dnl MSWIN_FIND_FILE  v8,P_V8_LIB_DEBUG64,v8_monolith.lib,out.gn/x64.debug/...
 dnl MSWIN_FIND_FILE  v8,P_V8_LIB_RELEASE64,v8_monolith.lib,out.gn/x64.release/...
 
-# Needs at least C++17
+# Needs at least C++20
 oldCXXFLAGS="$CXXFLAGS"
-CXXFLAGS="$CXXFLAGS -std=c++17"
+CXXFLAGS="$CXXFLAGS -std=c++20"
 
 PTLIB_MODULE_OPTION(
    [V8],
@@ -1790,7 +1790,7 @@ PTLIB_MODULE_OPTION(
       [-lv8 -lv8_libplatform -lv8_libbase],
       [#include <v8.h>],
       [v8::V8::Initialize()],
-      [AC_SUBST(CPLUSPLUS_STD,"-std=c++17")],
+      [AC_SUBST(CPLUSPLUS_STD,"-std=c++20")],
       [MY_MODULE_OPTION(
          [V8],
          [v8],
