@@ -40,6 +40,7 @@
 static const PConstCaselessString DeepgramPrefix("Deepgram-");
 static const PConstCaselessString EndpointTag("Deepgram-Endpoint");
 static const PConstCaselessString ApiKeyTag("Deepgram-API-Key");
+static const PConstCaselessString BufferDurationTag("Deepgram-Buffer-Duration");
 
 static const PConstCaselessString SampleRateHeader("sample_rate");
 static const PConstCaselessString ChannelsHeader("channels");
@@ -51,6 +52,7 @@ static PStringSet MakeSkipParameters()
   PStringSet set;
   set += EndpointTag;
   set += ApiKeyTag;
+  set += BufferDurationTag;
   set += DeepgramPrefix + SampleRateHeader;
   set += DeepgramPrefix + ChannelsHeader;
   set += DeepgramPrefix + LanguageHeader;
@@ -71,6 +73,7 @@ class PSpeechRecognition_Deepgram : public PSpeechRecognition
   PString m_endpoint;
   PString m_apiKey;
   PStringToString m_options;
+  unsigned m_bufferSize = 800; // Default 100ms
 
   PWebSocket m_webSocket;
   PThread  * m_eventThread = nullptr;
@@ -96,34 +99,68 @@ class PSpeechRecognition_Deepgram : public PSpeechRecognition
       PTRACE(5, "Read " << data.size() << " bytes");
 
       PJSON json(PJSON::e_Null);
-      json.FromString(data);
+      if (!json.FromString(data)) {
+        PTRACE(3, "Invalid JSON:\n" << ::PHexDump(data));
+        continue;
+      }
+
+      if (!json.IsType(PJSON::e_Object)) {
+        PTRACE(2, "Unexpected JSON:\n" << json.AsString(4, 2));
+        continue;
+      }
+
       PTRACE(4, "Received:\n" << json.AsString(4, 2));
 
-      if (json.IsType(PJSON::e_Object)) {
-        const PJSON::Object & result = json.GetObject();
-        if (result.GetString("type") == "Results" && result.IsType("channel", PJSON::e_Object)) {
-          transcript.m_final = result.GetBoolean("speech_final");
-          transcript.m_when = PTimeInterval::Seconds((double)result.GetNumber("start"));
-          const PJSON::Object & channel = result.GetObject("channel");
-          if (channel.IsType("alternatives", PJSON::e_Array)) {
-            const PJSON::Array & alternatives = channel.GetArray("alternatives");
-            for (size_t idxAlternative = 0; idxAlternative < alternatives.size(); ++idxAlternative) {
-              if (alternatives.IsType(idxAlternative, PJSON::e_Object)) {
-                const PJSON::Object & alternative = alternatives.GetObject(idxAlternative);
-                transcript.m_content = alternative.GetString("transcript");
-                transcript.m_confidence = (float)alternative.GetNumber("confidence");
-                if (transcript.m_confidence <= 0)
-                  transcript.m_confidence = 0.1f; // Need _some_ confidence in it!
-                if (!transcript.m_content.empty()) {
-                  PTRACE(4, "Sending notification of " << transcript);
-                  m_notifier(*this, transcript);
-                }
-              }
+      const PJSON::Object & result = json.GetObject();
+      PCaselessString resultType = result.GetString("type");
+      if (resultType == "Results") {
+        if (!result.IsType("channel", PJSON::e_Object)) {
+          PTRACE(2, "Unexpected JSON:\n" << json.AsString(4, 2));
+          continue;
+        }
+        const PJSON::Object & channel = result.GetObject("channel");
+        if (!channel.IsType("alternatives", PJSON::e_Array)) {
+          PTRACE(2, "Unexpected JSON:\n" << json.AsString(4, 2));
+          continue;
+        }
+        const PJSON::Array & alternatives = channel.GetArray("alternatives");
+        for (size_t idxAlternative = 0; idxAlternative < alternatives.size(); ++idxAlternative) {
+          if (!alternatives.IsType(idxAlternative, PJSON::e_Object)) {
+            PTRACE(2, "Unexpected JSON:\n" << json.AsString(4, 2));
+            continue;
+          }
+          const PJSON::Object & alternative = alternatives.GetObject(idxAlternative);
+          auto partial = alternatives.GetObject(idxAlternative).GetString("transcript");
+          if (!partial.empty()) {
+            if (result.GetBoolean("is_final"))
+              transcript.m_content &= partial;
+            transcript.m_when = PTimeInterval::Seconds((double)result.GetNumber("start"));
+            transcript.m_final = result.GetBoolean("speech_final");
+
+            auto confidence = (float)alternative.GetNumber("confidence");
+            if (confidence > 0 && transcript.m_confidence > confidence)
+              transcript.m_confidence = confidence; // Use the lowest confidence level of all the pieces
+
+            PTRACE(4, "Sending notification of " << transcript);
+            m_notifier(*this, transcript);
+
+            if (transcript.m_final) {
+              transcript.m_final = false;
+              transcript.m_confidence = 1.0f;
+              transcript.m_content.MakeEmpty();
             }
           }
         }
       }
-
+      else if (resultType == "UtteranceEnd") {
+        transcript.m_final = true;
+        transcript.m_when = PTimeInterval::Seconds((double)result.GetNumber("last_word_end"));
+        PTRACE(4, "Sending notification of " << transcript);
+        m_notifier(*this, transcript);
+        transcript.m_final = false;
+        transcript.m_confidence = 1.0f;
+        transcript.m_content.MakeEmpty();
+      }
     }
 
     if (!transcript.m_final && !transcript.m_content.empty()) {
@@ -145,6 +182,8 @@ public:
     PConfig env(PConfig::Environment);
     m_apiKey = env.GetString("DEEPGRAM_API_KEY");
     m_endpoint = env.GetString("DEEPGRAM_ENDPOINT", "wss://api.deepgram.com/v1");
+    m_options.SetAt("utterance_end_ms", "2000");
+    m_options.SetAt("interim_results", "true");
   }
 
 
@@ -160,9 +199,6 @@ public:
     if (IsOpen())
       return false;
 
-    if (!PSpeechRecognition::SetOptions(options)) // Set sample rate (maybe)
-      return false;
-
     m_endpoint = options.GetString(EndpointTag, m_endpoint);
     m_apiKey = options.GetString(ApiKeyTag, m_apiKey);
 
@@ -171,6 +207,12 @@ public:
       if (opt->first.starts_with(DeepgramPrefix) && !SkipParams.Contains(opt->first))
         m_options.SetAt(opt->first.Mid(9), opt->second);
     }
+
+    unsigned bufferMilliseconds = options.GetVar(BufferDurationTag, m_bufferSize * 1000 / m_sampleRate);
+    if (!PSpeechRecognition::SetOptions(options)) // Set sample rate (maybe)
+      return false;
+
+    m_bufferSize = bufferMilliseconds * m_sampleRate / 1000;
     return true;
   }
 
@@ -297,11 +339,17 @@ public:
       PTRACE(3, "Opened speech recognition.");
     }
 
-    if (m_webSocket.Write(samples, sampleCount*sizeof(uint16_t)))
+    m_buffer.insert(m_buffer.end(), samples, samples+sampleCount);
+    if (m_buffer.size() < m_bufferSize)
       return true;
 
-    PTRACE(2, "Error writing to WebSocket: " << m_webSocket.GetErrorText());
-    return false;
+    if (!m_webSocket.Write(m_buffer.data(), m_bufferSize*sizeof(int16_t))) {
+      PTRACE(2, "Error writing to WebSocket: " << m_webSocket.GetErrorText());
+      return false;
+    }
+
+    m_buffer.erase(m_buffer.begin(), m_buffer.begin() + m_bufferSize);
+    return true;
   }
 };
 
