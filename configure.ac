@@ -1730,7 +1730,7 @@ dnl MSWIN_FIND_FILE  v8,P_V8_LIB_RELEASE32,v8_monolith.lib,out.gn/ia32.release/.
 dnl MSWIN_FIND_FILE  v8,P_V8_LIB_DEBUG64,v8_monolith.lib,out.gn/x64.debug/...
 dnl MSWIN_FIND_FILE  v8,P_V8_LIB_RELEASE64,v8_monolith.lib,out.gn/x64.release/...
 
-# Needs at least C++17
+# Needs at least C++20
 oldCXXFLAGS="$CXXFLAGS"
 V8_CPLUSPLUS_STD="-std=c++20"
 CXXFLAGS="$CXXFLAGS $V8_CPLUSPLUS_STD"

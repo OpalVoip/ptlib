@@ -16393,7 +16393,7 @@ ac_compiler_gnu=$ac_cv_cxx_compiler_gnu
 
 
 
-# Needs at least C++17
+# Needs at least C++20
 oldCXXFLAGS="$CXXFLAGS"
 V8_CPLUSPLUS_STD="-std=c++20"
 CXXFLAGS="$CXXFLAGS $V8_CPLUSPLUS_STD"
