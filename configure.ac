@@ -101,62 +101,12 @@ case "$target_os" in
       OS_TAG="P_LINUX"
    ;;
 
-   gnu )
-      OS_TAG="P_GNU_HURD"
-   ;;
-
-   FreeBSD )
-      OS_TAG="P_FREEBSD"
-   ;;
-
-   OpenBSD )
-      OS_TAG="P_OPENBSD"
-   ;;
-
-   NetBSD )
-      OS_TAG="P_NETBSD"
-   ;;
-
-   solaris )
-      OS_TAG="P_SOLARIS"
-
-      dnl According to Andre Schulze <as8@rncmm2.urz.tu-dresden.de>
-      MY_COMPILE_IFELSE(
-         [for upad128_t],
-         [],
-         [#include <sys/types.h>],
-         [upad128_t upad; upad._q = 0.0;],
-         [AC_DEFINE(P_HAS_UPAD128_T)]
-      )
-
-      dnl check for select_large_fdset
-      ptlib_fdsize_file=/etc/system
-      ptlib_fdsize=`cat ${ptlib_fdsize_file} | grep rlim_fd_max | cut -c1`
-
-      if test "x${ptlib_fdsize}" = "x#"; then
-         ptlib_fdsize=4098
-      else
-         ptlib_fdsize=`cat ${ptlib_fdsize_file} | grep rlim_fd_max | cut -f2 -d'='`
-         if test "x${ptlib_fdsize}" = "x"; then
-            ptlib_fdsize=4098
-         fi
-      fi
-
-      if test "x${ptlib_fdsize}" != "x4098"; then
-         CPPFLAGS="$CPPFLAGS -DFD_SETSIZE=${ptlib_fdsize}"
-      fi
-   ;;
-
    Darwin )
       OS_TAG="P_MACOSX" 
    ;;
 
    iPhone* )
       OS_TAG="P_IOS" 
-   ;;
-
-   beos )
-      OS_TAG="P_BEOS"
    ;;
 
    cygwin )
@@ -358,12 +308,6 @@ if test "x${ac_cv_c_bigendian}" = "xyes" ; then
    AC_DEFINE_UNQUOTED(PBYTE_ORDER, PBIG_ENDIAN, "byte order")
 else
    AC_DEFINE_UNQUOTED(PBYTE_ORDER, PLITTLE_ENDIAN, "byte order")
-fi
-
-
-dnl Solaris swab should not be used
-if test "$target_os" != "solaris"; then
-   AC_CHECK_FUNC([swab], [AC_DEFINE([USE_SYSTEM_SWAB], [], [Use system swab()] )] )
 fi
 
 
@@ -2779,36 +2723,6 @@ if test "x$enable_plugins" != "xno" ; then
       fi
 
       dnl #########################################################################
-      dnl check for BSD video capture support
-
-      AC_ARG_ENABLE(bsdvideo, AS_HELP_STRING([--disable-bsdvideo],[disable BSD video support]))
-      if test "x$enable_bsdvideo" = "xno" ; then
-         AC_MSG_NOTICE(BSD video disabled by user)
-      else
-         AC_CHECK_HEADER(
-            [machine/ioctl_meteor.h],
-            [AC_SUBST(HAS_BSDVIDEOCAP, 1)],
-            [
-               AC_CHECK_HEADER(
-                  [i386/ioctl_meteor.h],
-                  [AC_SUBST(HAS_BSDVIDEOCAP, 1)],
-                  [
-                     AC_CHECK_HEADER(
-                        [dev/ic/bt8xx.h],
-                        [AC_SUBST(HAS_BSDVIDEOCAP, 1)]
-                     )
-                  ]
-               )
-            ]
-         )
-      fi
-      if test "x$HAS_BSDVIDEOCAP" = "x1"; then
-         PTLIB_BSDVIDEOCAP=yes
-      else
-         PTLIB_BSDVIDEOCAP=no
-      fi
-
-      dnl #########################################################################
       dnl check for AVC video support
 
       AC_ARG_ENABLE(avc, AS_HELP_STRING([--disable-avc],[disable IEEE1394/AVC video support]))
@@ -3019,7 +2933,6 @@ MY_OUTPUT_SUMMARY(
    [                             SDL2], PTLIB_SDL,
    [                     Video4linux ], PTLIB_V4L,
    [                     Video4linux2], PTLIB_V4L2,
-   [                              BSD], PTLIB_BSDVIDEOCAP,
    [                    IEEE-1394/AVC], PTLIB_AVC1394,
    [                    IEEE-1394/DC ], PTLIB_DC1394,
    [                           FFMPEG], [PTLIB_FFMPEG],

@@ -49,24 +49,6 @@
     friend class PThread;
   #endif
 
-#elif defined(__BEOS__)
-
-  public:
-    PSemaphore(PBoolean fNested); 
-
-  protected:
-    PBoolean mfNested; // Does it support recursive locks?
-    thread_id mOwner; // delete can be called by owner thread
-    sem_id semId;
-    volatile int32 mCount;
-
-#elif defined(VX_TASKS)
-
-  public:
-    PSemaphore( SEM_ID anId );
-  protected:
-    mutable SEM_ID semId;
-
 #else
 
   protected:

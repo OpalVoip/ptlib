@@ -51,7 +51,7 @@ PStringToString PConfig::GetAllKeyValues(const PString & section) const
 }
 
 
-#if !defined(_WIN32) || defined (__NUCLEUS_MNT__)
+#if !defined(_WIN32)
 
 PBoolean PConfig::GetBoolean(const PString & section, const PString & key, PBoolean dflt) const
 {

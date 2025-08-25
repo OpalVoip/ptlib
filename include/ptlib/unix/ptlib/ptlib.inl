@@ -29,15 +29,12 @@
  * $Id: ptlib.inl 19008 2007-11-29 09:17:41Z rjongbloed $
  */
 
-#if defined(P_LINUX) || defined(P_GNU_HURD)
+#if defined(P_LINUX)
 #if (__GNUC_MINOR__ < 7 && __GNUC__ <= 2)
 #include <localeinfo.h>
 #else
 #define P_USE_LANGINFO
 #endif
-#elif defined(P_HPUX9)
-#define P_USE_LANGINFO
-#elif defined(P_SUN4)
 #endif
 
 #ifdef P_USE_LANGINFO
@@ -46,11 +43,7 @@
 
 PINLINE PProcessIdentifier PProcess::GetCurrentProcessID()
 {
-#ifdef P_VXWORKS
-  return PThread::Current().PX_threadId;
-#else
   return getpid();
-#endif // P_VXWORKS
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -94,8 +87,6 @@ PINLINE bool PFile::Remove(const PString & name, bool)
 
 #if defined(P_PTHREADS)
 PINLINE PThreadIdentifier PThread::GetCurrentThreadId() { return ::pthread_self(); }
-#elif defined(VX_TASKS)
-PINLINE PThreadIdentifier PThread::GetCurrentThreadId() { return ::taskIdSelf(); }
 #else
 PINLINE PThreadIdentifier PThread::GetCurrentThreadId() { return 0; }
 #endif
@@ -104,7 +95,7 @@ PINLINE PThreadIdentifier PThread::GetCurrentThreadId() { return 0; }
 ///////////////////////////////////////////////////////////////////////////////
 // PCriticalSection
 
-#if defined(P_PTHREADS) || defined(VX_TASKS)
+#if defined(P_PTHREADS)
 
 PINLINE PCriticalSection::PCriticalSection()
 {

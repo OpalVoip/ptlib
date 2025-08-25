@@ -748,7 +748,7 @@ PString PSoundChannel::TestRecorder(const Params & recorderParams,
 
 ///////////////////////////////////////////////////////////////////////////
 
-#if !defined(_WIN32) && !defined(__BEOS__) && !defined(__APPLE__)
+#if !defined(_WIN32) && !defined(__APPLE__)
 
 PSound::PSound(unsigned channels,
                unsigned samplesPerSecond,

@@ -31,10 +31,8 @@
     PBoolean Close() override;
 
   private:
-#ifndef P_VXWORKS
     struct termios oldTermio;
     struct termios Termio;
-#endif // !P_VXWORKS
 
     DWORD  baudRate;
     BYTE   dataBits;

@@ -30,8 +30,6 @@
 #ifndef PTLIB_DYNALINK_H
 #define PTLIB_DYNALINK_H
 
-#if !defined(P_RTEMS)
-
 #ifdef P_USE_PRAGMA
 #pragma interface
 #endif
@@ -181,9 +179,6 @@ class PDynaLink : public PObject
 #include "unix/ptlib/dynalink.h"
 #endif
 };
-
-#endif // !defined(P_RTEMS)
-
 
 #endif //PTLIB_DYNALINK_H
 

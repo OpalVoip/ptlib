@@ -30,7 +30,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 // PMutex
 
-#if defined(P_PTHREADS) || defined(VX_TASKS)
+#if defined(P_PTHREADS)
   public:
     static void InitialiseRecursiveMutex(pthread_mutex_t *mutex);
   protected:

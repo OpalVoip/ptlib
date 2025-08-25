@@ -432,33 +432,6 @@
     return false;
   }
 
-#elif defined(P_BEOS)
-
-  static const char ActionMessage[] = "Entering debugger";
-
-  static bool AssertAction(int c, const char * msg)
-  {
-    // Pop up the debugger dialog that gives the user the necessary choices
-    // "Ignore" is not supported on BeOS but you can instruct the
-    // debugger to continue executing.
-    // Note: if you choose "debug" you get a debug prompt. Type bdb to
-    // start the Be Debugger.
-    debugger(msg);
-
-    return false;
-  }
-
-#elif defined(P_VXWORKS)
-
-  static const char ActionMessage[] = "Aborting";
-
-  static bool AssertAction(int c, const char *)
-  {
-    exit(1);
-    kill(taskIdSelf(), SIGABRT);
-    return false;
-  }
-
 #else
 
   static const char ActionMessage[] = "<A>bort, <C>ore dump, "

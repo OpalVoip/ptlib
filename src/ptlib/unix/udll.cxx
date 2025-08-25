@@ -84,12 +84,7 @@ PBoolean PDynaLink::Open(const PString & names)
 
     LOCK_DLFCN();
 
-#if defined(P_OPENBSD)
-      m_dll = dlopen((char *)(const char *)m_name, RTLD_NOW);
-#else
       m_dll = dlopen((const char *)m_name, RTLD_NOW);
-#endif
-
     if (m_dll != NULL) {
       UNLOCK_DLFCN();
       return true;
@@ -158,11 +153,7 @@ PBoolean PDynaLink::GetFunction(const PString & fn, Function & func, bool compul
     return false;
 
   LOCK_DLFCN();
-#if defined(P_OPENBSD)
-  func = (Function)dlsym(m_dll, (char *)(const char *)fn);
-#else
   func = (Function)dlsym(m_dll, (const char *)fn);
-#endif
   m_lastError = dlerror();
   UNLOCK_DLFCN();
 

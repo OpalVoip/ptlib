@@ -837,8 +837,6 @@ PPLUGIN_STATIC_LOAD(NullAudio, PSoundChannel)
   PPLUGIN_STATIC_LOAD(OpenSL_ES, PSoundChannel);
 #elif defined(P_MACOSX) || defined(P_IOS)
   PPLUGIN_STATIC_LOAD(Apple, PSoundChannel);
-#elif defined(__BEOS__)
-  PPLUGIN_STATIC_LOAD(BeOS, PSoundChannel);
 #endif
 
 #if defined(P_DIRECTSOUND)

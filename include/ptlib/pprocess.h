@@ -46,20 +46,6 @@
    main() function must be defined in the same module as the
    instance of the application.
  */
-#ifdef P_VXWORKS
-#define PCREATE_PROCESS(cls) \
-  cls instance; \
-  instance.InternalMain();
-#elif defined(P_RTEMS)
-#define PCREATE_PROCESS(cls) \
-extern "C" {\
-   void* POSIX_Init( void* argument) \
-     { \
-       static cls instance; \
-       exit( instance.InternalMain() ); \
-     } \
-}
-#else
 #define PCREATE_PROCESS(cls) \
   int main(int argc, char * argv[]) \
     { \
@@ -69,7 +55,6 @@ extern "C" {\
       delete pInstance; \
       return terminationValue; \
     }
-#endif // P_VXWORKS
 
 /*$MACRO PDECLARE_PROCESS(cls,ancestor,manuf,name,major,minor,status,build)
    This macro is used to declare the components necessary for a user PWLib

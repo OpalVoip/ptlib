@@ -300,8 +300,6 @@ class PMemoryHeap {
     CRITICAL_SECTION m_mutex;
 #elif defined(P_PTHREADS)
     pthread_mutex_t m_mutex;
-#elif defined(P_VXWORKS)
-    void * m_mutex;
 #endif
 
 #else

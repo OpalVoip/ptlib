@@ -44,32 +44,26 @@
 #pragma implementation "object.h"
 #pragma implementation "contain.h"
 
-#if defined(P_LINUX) || defined(P_GNU_HURD)
+#if defined(P_LINUX)
 #ifndef _REENTRANT
 #define _REENTRANT
 #endif
-#elif defined(P_SOLARIS)
-#define _POSIX_PTHREAD_SEMANTICS
 #endif
 
 #include <ptlib.h>
 
 
 #include <fcntl.h>
-#ifdef P_VXWORKS
-#include <sys/times.h>
-#else
 #include <time.h>
 #include <sys/time.h>
 #include <termios.h>
-#endif
 #include <ctype.h>
 
 #if P_CURSES==1
   #include <ncurses.h>
 #endif
 
-#if defined(P_LINUX) || defined(P_GNU_HURD)
+#if defined(P_LINUX)
 
 #include <mntent.h>
 #include <sys/vfs.h>
@@ -86,60 +80,13 @@
 #include <sys/vfs.h>
 #define P_USE_STRFTIME
 
-#elif defined(P_FREEBSD) || defined(P_OPENBSD) || defined(P_NETBSD) || defined(P_MACOSX) || defined(P_IOS)
+#elif defined(P_MACOSX) || defined(P_IOS)
 #define P_USE_STRFTIME
 
 #include <sys/param.h>
 #include <sys/mount.h>
 #include <sys/timeb.h>
 
-#if defined(P_NETBSD)
-#include <sys/statvfs.h>
-#define statfs statvfs
-#endif
-
-#elif defined(P_HPUX9) 
-#define P_USE_LANGINFO
-
-#elif defined(P_AIX)
-#define P_USE_STRFTIME
-
-#include <fstab.h>
-#include <sys/stat.h>
-
-#elif defined(P_SOLARIS) 
-#define P_USE_LANGINFO
-#include <sys/timeb.h>
-#include <sys/statvfs.h>
-#include <sys/mnttab.h>
-
-#elif defined(P_SUN4)
-#include <sys/timeb.h>
-
-#elif defined(__BEOS__)
-#define P_USE_STRFTIME
-
-#elif defined(P_IRIX)
-#define P_USE_LANGINFO
-#include <sys/stat.h>
-#include <sys/statfs.h>
-#include <stdio.h>
-#include <mntent.h>
-
-#elif defined(P_VXWORKS)
-#define P_USE_STRFTIME
-
-#elif defined(P_RTEMS)
-#define P_USE_STRFTIME
-#include <time.h>
-#include <stdio.h>
-#define random() rand()
-#define srandom(a) srand(a)
-
-#elif defined(P_QNX)
-#include <sys/dcmd_blk.h>
-#include <sys/statvfs.h>
-#define P_USE_STRFTIME
 #endif
 
 #ifdef P_USE_LANGINFO
@@ -170,17 +117,6 @@
 #else
 #include "ptlib/unix/ptlib/ptlib.inl"
 #endif
-#endif
-
-#ifdef P_SUN4
-extern "C" {
-int on_exit(void (*f)(void), caddr_t);
-int atexit(void (*f)(void))
-{
-  return on_exit(f, 0);
-}
-static char *tzname[2] = { "STD", "DST" };
-};
 #endif
 
 #define new PNEW
@@ -379,7 +315,7 @@ PTimeInterval PTimer::Tick()
   struct timeval tv;
   gettimeofday(&tv, NULL);
   return PTimeInterval::MicroSeconds(tv.tv_usec, tv.tv_sec);
-#endif // P_VXWORKS
+#endif // _POSIX_TIMERS
 }
 
 
@@ -526,23 +462,11 @@ PString PDirectory::GetVolume() const
 {
   PString volume;
 
-#if defined(P_QNX)
-  int fd;
-  char mounton[257];
-
-  if ((fd = open(operator+("."), O_RDONLY)) != -1) {
-  mounton[256] = 0;
-  devctl(fd, DCMD_FSYS_MOUNTED_ON, mounton, 256, 0);
-  close(fd);
-  volume = strdup(mounton);
-  } 
-
-#else
   struct stat status;
   if (stat(operator+("."), &status) != -1) {
     dev_t my_dev = status.st_dev;
 
-#if defined(P_LINUX) || defined(P_IRIX) || defined(P_GNU_HURD) || defined(P_ANDROID)
+#if defined(P_LINUX) || defined(P_ANDROID)
 
   #if defined(P_ANDROID)
     FILE * fp = fopen("/etc/mtab", "r");
@@ -564,21 +488,7 @@ PString PDirectory::GetVolume() const
     endmntent(fp);
   #endif
 
-#elif defined(P_SOLARIS)
-
-    FILE * fp = fopen("/etc/mnttab", "r");
-    if (fp != NULL) {
-      struct mnttab mnt;
-      while (getmntent(fp, &mnt) == 0) {
-        if (stat(mnt.mnt_mountp, &status) != -1 && status.st_dev == my_dev) {
-          volume = mnt.mnt_special;
-          break;
-        }
-      }
-    }
-    fclose(fp);
-
-#elif defined(P_FREEBSD) || defined(P_OPENBSD) || defined(P_NETBSD) || defined(P_MACOSX) || defined(P_IOS)
+#elif defined(P_MACOSX) || defined(P_IOS)
 
     struct statfs * mnt;
     int count = getmntinfo(&mnt, MNT_NOWAIT);
@@ -589,87 +499,22 @@ PString PDirectory::GetVolume() const
       }
     }
 
-#elif defined (P_AIX)
-
-    struct fstab * fs;
-    setfsent();
-    while ((fs = getfsent()) != NULL) {
-      if (stat(fs->fs_file, &status) != -1 && status.st_dev == my_dev) {
-        volume = fs->fs_spec;
-        break;
-      }
-    }
-    endfsent();
-
-#elif defined (P_VXWORKS)
-
-  PAssertAlways("Get Volume - not implemented for VxWorks");
-  return PString::Empty();
-
 #else
 #warning Platform requires implemetation of GetVolume()
 
 #endif
   }
-#endif
 
   return volume;
 }
 
 bool PDirectory::GetVolumeSpace(PInt64 & total, PInt64 & free, DWORD & clusterSize) const
 {
-#if defined(P_LINUX) || defined(P_FREEBSD) || defined(P_OPENBSD) || defined(P_NETBSD) || defined(P_MACOSX) || defined(P_IOS) || defined(P_GNU_HURD) || defined(P_ANDROID)
+#if defined(P_LINUX) || defined(P_MACOSX) || defined(P_IOS) || defined(P_ANDROID)
 
   struct statfs fs;
 
   if (statfs(operator+("."), &fs) == -1)
-    return false;
-
-  clusterSize = fs.f_bsize;
-  total = fs.f_blocks*(PInt64)fs.f_bsize;
-  free = fs.f_bavail*(PInt64)fs.f_bsize;
-  return true;
-
-#elif defined(P_AIX) || defined(P_VXWORKS)
-
-  struct statfs fs;
-  if (statfs((char *) ((const char *)operator+(".") ), &fs) == -1)
-    return false;
-
-  clusterSize = fs.f_bsize;
-  total = fs.f_blocks*(PInt64)fs.f_bsize;
-  free = fs.f_bavail*(PInt64)fs.f_bsize;
-  return true;
-
-#elif defined(P_SOLARIS)
-
-  struct statvfs buf;
-  if (statvfs(operator+("."), &buf) != 0)
-    return false;
-
-  clusterSize = buf.f_frsize;
-  total = buf.f_blocks * buf.f_frsize;
-  free  = buf.f_bfree  * buf.f_frsize;
-
-  return true;
-  
-#elif defined(P_IRIX)
-
-  struct statfs fs;
-
-  if (statfs(operator+("."), &fs, sizeof(struct statfs), 0) == -1)
-    return false;
-
-  clusterSize = fs.f_bsize;
-  total = fs.f_blocks*(PInt64)fs.f_bsize;
-  free = fs.f_bfree*(PInt64)fs.f_bsize;
-  return true;
-
-#elif defined(P_QNX)
-
-  struct statvfs fs;
-
-  if (statvfs(operator+("."), &fs) == -1)
     return false;
 
   clusterSize = fs.f_bsize;
@@ -731,24 +576,10 @@ bool PFile::InternalOpen(OpenMode mode, OpenOptions opt, PFileInfo::Permissions 
 
   if (m_path.IsEmpty()) {
     m_path = PDirectory::GetTemporary() + "PTLXXXXXX";
-#ifndef P_VXWORKS
-#ifdef P_RTEMS
-    _reent _reent_data;
-    memset(&_reent_data, 0, sizeof(_reent_data));
-    os_handle = _mkstemp_r(&_reent_data, m_path.GetPointerAndSetLength(m_path.GetLength())); // Shouldn't change length
-#else
     os_handle = mkstemp(m_path.GetPointerAndSetLength(m_path.GetLength())); // Shouldn't change length
-#endif // P_RTEMS
     if (!ConvertOSError(os_handle))
       return false;
   } else {
-#else
-    static int number = 0;
-    sprintf(templateStr+3, "%06d", number++);
-    path = templateStr;
-  }
-  {
-#endif // !P_VXWORKS
     int oflags = 0;
     switch (mode) {
       case ReadOnly :
@@ -785,11 +616,7 @@ bool PFile::InternalOpen(OpenMode mode, OpenOptions opt, PFileInfo::Permissions 
       return false;
   }
 
-#ifndef P_VXWORKS
   return ConvertOSError(::fcntl(os_handle, F_SETFD, 1));
-#else
-  return true;
-#endif
 }
 
 
@@ -801,33 +628,12 @@ PBoolean PFile::SetLength(off_t len)
 
 bool PFile::Exists(const PFilePath & name)
 { 
-#ifdef P_VXWORKS
-  // access function not defined for VxWorks
-  // as workaround, open the file in read-only mode
-  // if it succeeds, the file exists
-  PFile file(name, ReadOnly, MustExist);
-  PBoolean exists = file.IsOpen();
-  if(exists == true)
-    file.Close();
-  return exists;
-#else
   return access(name, 0) == 0; 
-#endif // P_VXWORKS
 }
 
 
 bool PFile::Access(const PFilePath & name, OpenMode mode)
 {
-#ifdef P_VXWORKS
-  // access function not defined for VxWorks
-  // as workaround, open the file in specified mode
-  // if it succeeds, the access is allowed
-  PFile file(name, mode, ModeDefault);
-  PBoolean access = file.IsOpen();
-  if(access == true)
-    file.Close();
-  return access;
-#else  
   int accmode;
 
   switch (mode) {
@@ -844,7 +650,6 @@ bool PFile::Access(const PFilePath & name, OpenMode mode)
   }
 
   return access(name, accmode) == 0;
-#endif // P_VXWORKS
 }
 
 
@@ -863,14 +668,9 @@ bool PFile::GetInfo(const PFilePath & name, PFileInfo & status)
   status.type = PFileInfo::UnknownFileType;
 
   struct stat s;
-#ifdef P_VXWORKS
-  if (stat(name, &s) != OK)
-#else  
   if (lstat(name, &s) != 0)
-#endif // P_VXWORKS
     return false;
 
-#ifndef P_VXWORKS
   if (S_ISLNK(s.st_mode)) {
     status.type = PFileInfo::SymbolicLink;
     if (stat(name, &s) != 0) {
@@ -882,9 +682,7 @@ bool PFile::GetInfo(const PFilePath & name, PFileInfo & status)
       return true;
     }
   } 
-  else 
-#endif // !P_VXWORKS
-  if (S_ISREG(s.st_mode))
+  else if (S_ISREG(s.st_mode))
     status.type = PFileInfo::RegularFile;
   else if (S_ISDIR(s.st_mode))
     status.type = PFileInfo::SubDirectory;
@@ -894,10 +692,8 @@ bool PFile::GetInfo(const PFilePath & name, PFileInfo & status)
     status.type = PFileInfo::CharDevice;
   else if (S_ISBLK(s.st_mode))
     status.type = PFileInfo::BlockDevice;
-#if !defined(__BEOS__) && !defined(P_VXWORKS)
   else if (S_ISSOCK(s.st_mode))
     status.type = PFileInfo::SocketDevice;
-#endif // !__BEOS__ || !P_VXWORKS
 
   status.created     = s.st_ctime;
   status.modified    = s.st_mtime;
@@ -938,15 +734,7 @@ bool PFile::SetPermissions(const PFilePath & name, PFileInfo::Permissions permis
   if (permissions & PFileInfo::UserRead)
     mode |= S_IRUSR;
 
-#ifdef P_VXWORKS
-  PFile file(name, ReadOnly, MustExist);
-  if (file.IsOpen())
-    return (::ioctl(file.GetHandle(), FIOATTRIBSET, mode) >= 0);
-
-  return false;
-#else  
   return chmod ((const char *)name, mode) == 0;
-#endif // P_VXWORKS
 }
 
 
@@ -1156,15 +944,9 @@ bool PConsoleChannel::GetTerminalSize(unsigned & rows, unsigned & columns)
 
 void PTime::SetCurrentTime()
 {
-#ifdef P_VXWORKS
-  struct timespec ts;
-  clock_gettime(0,&ts);
-  m_microSecondsSinceEpoch.store(ts.tv_sec*Micro + ts.tv_nsec/1000);
-#else
   struct timeval tv;
   gettimeofday(&tv, NULL);
   m_microSecondsSinceEpoch.store(tv.tv_sec*Micro + tv.tv_usec);
-#endif // P_VXWORKS
 }
 
 
@@ -1230,10 +1012,10 @@ PString PTime::GetTimePM()
 
 PString PTime::GetTimeSeparator()
 {
-#if defined(P_LINUX) || defined(P_HPUX9) || defined(P_SOLARIS) || defined(P_IRIX) || defined(P_GNU_HURD)
+#if defined(P_LINUX)
 #  if defined(P_USE_LANGINFO)
      char * p = nl_langinfo(T_FMT);
-#  elif defined(P_LINUX) || defined(P_GNU_HURD)
+#  else
      char * p = _time_info->time;
 #  endif
   char buffer[2];
@@ -1263,7 +1045,7 @@ PString PTime::GetTimeSeparator()
 
 PTime::DateOrder PTime::GetDateOrder()
 {
-#if defined(P_USE_LANGINFO) || defined(P_LINUX) || defined(P_GNU_HURD)
+#if defined(P_USE_LANGINFO) || defined(P_LINUX)
 #  if defined(P_USE_LANGINFO)
      char * p = nl_langinfo(D_FMT);
 #  else
@@ -1307,7 +1089,7 @@ PTime::DateOrder PTime::GetDateOrder()
 
 PString PTime::GetDateSeparator()
 {
-#if defined(P_USE_LANGINFO) || defined(P_LINUX) || defined(P_GNU_HURD)
+#if defined(P_USE_LANGINFO) || defined(P_LINUX)
 #  if defined(P_USE_LANGINFO)
      char * p = nl_langinfo(D_FMT);
 #  else
@@ -1346,7 +1128,7 @@ PString PTime::GetDayName(PTime::Weekdays day, NameType type)
                    nl_langinfo((nl_item)(DAY_1+(int)day))
                 );
 
-#elif defined(P_LINUX) || defined(P_GNU_HURD)
+#elif defined(P_LINUX)
   return (type == Abbreviated) ? PString(_time_info->abbrev_wkday[(int)day]) :
                        PString(_time_info->full_wkday[(int)day]);
 
@@ -1379,7 +1161,7 @@ PString PTime::GetMonthName(PTime::Months month, NameType type)
      (type == Abbreviated) ? nl_langinfo((nl_item)(ABMON_1+(int)month-1)) :
                    nl_langinfo((nl_item)(MON_1+(int)month-1))
                 );
-#elif defined(P_LINUX) || defined(P_GNU_HURD)
+#elif defined(P_LINUX)
   return (type == Abbreviated) ? PString(_time_info->abbrev_month[(int)month-1]) :
                        PString(_time_info->full_month[(int)month-1]);
 #elif defined(P_USE_STRFTIME)
@@ -1414,13 +1196,13 @@ PBoolean PTime::IsDaylightSavings()
 
 int PTime::GetTimeZone(PTime::TimeZoneType type) 
 {
-#if defined(P_LINUX) || defined(P_SOLARIS) || defined (P_AIX) || defined(P_IRIX) || defined(P_GNU_HURD)
+#if defined(P_LINUX)
   long tz = -::timezone/60;
   if (type == StandardTime)
     return tz;
   else
     return tz + ::daylight*60;
-#elif defined(P_FREEBSD) || defined(P_OPENBSD) || defined(P_NETBSD) || defined(P_MACOSX) || defined(P_IOS) || defined(__BEOS__) || defined(P_QNX) || defined(P_GNU_HURD) || defined(P_ANDROID)
+#elif defined(P_MACOSX) || defined(P_IOS) || defined(P_ANDROID)
   time_t t;
   time(&t);
   struct tm ts;
@@ -1431,13 +1213,6 @@ int PTime::GetTimeZone(PTime::TimeZoneType type)
   if (type != StandardTime && !tm->tm_isdst)
     return tz + 60;
   return tz;
-#elif defined(P_SUN4) 
-  struct timeb tb;
-  ftime(&tb);
-  if (type == StandardTime || tb.dstflag == 0)
-    return -tb.timezone;
-  else
-    return -tb.timezone + 60;
 #else
 #warning No timezone information
   return 0;
@@ -1446,7 +1221,7 @@ int PTime::GetTimeZone(PTime::TimeZoneType type)
 
 PString PTime::GetTimeZoneString(PTime::TimeZoneType type) 
 {
-#if defined(P_LINUX) || defined(P_SUN4) || defined(P_SOLARIS) || defined (P_AIX) || defined(P_IRIX) || defined(P_QNX) || defined(P_GNU)
+#if defined(P_LINUX) || defined(P_GNU)
   const char * str = (type == StandardTime) ? ::tzname[0] : ::tzname[1]; 
   if (str != NULL)
     return str;

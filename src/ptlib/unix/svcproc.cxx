@@ -34,21 +34,9 @@
 #include <ptlib/pluginmgr.h>
 
 
-#ifdef P_VXWORKS
-#include <logLib.h>
-#define LOG_EMERG    0
-#define LOG_ALERT    1
-#define LOG_CRIT     2
-#define LOG_ERR      3
-#define LOG_WARNING  4
-#define  LOG_NOTICE  5
-#define LOG_INFO     6
-#define LOG_DEBUG    7
-#else
 #include <syslog.h>
 #include <pwd.h>
 #include <grp.h>
-#endif
 
 #include <stdarg.h>
 #if (__GNUC__ >= 3)
@@ -123,7 +111,6 @@ void PServiceProcess::SetLogLevel(PSystemLog::Level level)
 }
 
 
-#ifndef P_VXWORKS
 static int KillProcess(int pid, unsigned timeout, int sig)
 {
   if (kill(pid, sig) != 0) {
@@ -150,7 +137,6 @@ static int KillProcess(int pid, unsigned timeout, int sig)
   cout << "\nDaemon has not stopped." << endl;
   return 1;
 }
-#endif // !P_VXWORKS
 
 
 static unsigned CountOptionSet(const PArgList & args, const char * options)
@@ -183,7 +169,6 @@ static PString ExpandOptionSet(const char * options)
 
 int PServiceProcess::InitialiseService()
 {
-#ifndef P_VXWORKS
   {
     PMEMORY_IGNORE_ALLOCATIONS_FOR_SCOPE;
 
@@ -208,9 +193,7 @@ int PServiceProcess::InitialiseService()
   PString progName = GetFile().GetTitle();
 
   args.Parse("[Execution:]"
-#if !defined(BE_THREADS) && !defined(P_RTEMS)
              "d-daemon.           run as a daemon\n"
-#endif
              "x-execute.          execute as a normal program\n"
              "v-version.          display version information and exit\n"
              "h-help.             output this help message and exit\n"
@@ -460,8 +443,6 @@ int PServiceProcess::InitialiseService()
 
   PSetErrorStream(new PSystemLog(PSystemLog::StdError));
 
-#if !defined(BE_THREADS) && !defined(P_RTEMS)
-
   // Run as a daemon, ie fork
   if (!pidfilename.IsEmpty()) {
     ifstream pidfile((const char *)pidfilename);
@@ -513,8 +494,6 @@ int PServiceProcess::InitialiseService()
 
   pidFileToRemove = pidfilename;
 
-#endif // !BE_THREADS && !P_RTEMS
-#endif // !P_VXWORKS
   return -1;
 }
 

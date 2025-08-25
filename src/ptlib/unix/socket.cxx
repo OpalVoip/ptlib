@@ -60,23 +60,14 @@
   #include <sys/sysctl.h>
 #endif
 
-#ifdef P_RTEMS
-  #include <bsp.h>
-#endif
-
 #ifdef HAVE_LINUX_ERRQUEUE_H
   #include <asm/types.h>
   #include <linux/errqueue.h>
 #endif
 
 
-#if defined(P_FREEBSD) || defined(P_OPENBSD) || defined(P_NETBSD) || defined(P_SOLARIS) || defined(P_MACOSX) || defined(P_IOS) || defined(P_IRIX) || defined(P_VXWORKS) || defined(P_RTEMS) || defined(P_QNX)
+#if defined(P_MACOSX) || defined(P_IOS)
   #define ifr_netmask ifr_addr
-#endif
-
-#if defined(P_SOLARIS)
-  #include <sys/filio.h>
-  #include <sys/sockio.h>
 #endif
 
 #ifdef HAVE_NET_IF_DL_H
@@ -107,7 +98,7 @@
 #define  ifr_macaddr         ifr_hwaddr.sa_data
 #endif
 
-// Define _SIZEOF_IFREQ for platforms (eg OpenBSD) which do not have it.
+// Define _SIZEOF_IFREQ for platforms which do not have it.
 #ifndef _SIZEOF_ADDR_IFREQ
 #define _SIZEOF_ADDR_IFREQ(ifr) \
   ((ifr).ifr_addr.sa_len > sizeof(struct sockaddr) ? \
@@ -117,14 +108,6 @@
 
 
 int PX_NewHandle(const char *, int);
-
-#ifdef P_VXWORKS
-// VxWorks variant of inet_ntoa() allocates INET_ADDR_LEN bytes via malloc
-// BUT DOES NOT FREE IT !!!  Use inet_ntoa_b() instead.
-#define INET_ADDR_LEN      18
-extern "C" void inet_ntoa_b(struct in_addr inetAddress, char *pString);
-#endif // P_VXWORKS
-
 
 #define ROUNDUP(a) ((a) > 0 ? (1 + (((a) - 1) | (sizeof(long) - 1))) : sizeof(long))
 
@@ -157,11 +140,7 @@ static int SetNonBlocking(int fd)
 
   // Set non-blocking so we can use select calls to break I/O block on close
   int cmd = 1;
-#if defined(P_VXWORKS)
-  if (::ioctl(fd, FIONBIO, &cmd) == 0)
-#else
   if (::ioctl(fd, FIONBIO, &cmd) == 0 && ::fcntl(fd, F_SETFD, 1) == 0)
-#endif
     return fd;
 
   ::close(fd);
@@ -765,7 +744,7 @@ PIPSocket::Address NetmaskV6WithPrefix(unsigned prefixbits, unsigned masklen = 0
   return PIPSocket::Address(16, (BYTE*)&fullmask);
 }
 
-#if defined(P_LINUX) || defined(P_ANDROID) || defined (P_AIX)
+#if defined(P_LINUX) || defined(P_ANDROID)
 
 PBoolean PIPSocket::GetRouteTable(RouteTable & table)
 {
@@ -918,15 +897,7 @@ PBoolean process_rtentry(struct rt_msghdr *rtm, char *ptr, PIPSocket::Address & 
     return false;
   }
 
-  if ((~rtm->rtm_flags & RTF_LLINFO)
-#if defined(P_NETBSD) || defined(P_QNX)
-        && (~rtm->rtm_flags&RTF_CLONED)     // Net BSD has flag one way
-#elif !defined(P_OPENBSD) && !defined(P_FREEBSD)
-        && (~rtm->rtm_flags&RTF_WASCLONED)  // MAC has it another
-#else
-                                            // Open/Free BSD does not have it at all!
-#endif
-     ) {
+  if (~rtm->rtm_flags & RTF_LLINFO) {
 
 	metric=0;
 
@@ -1057,227 +1028,6 @@ PBoolean get_ifname(int index, char *name) {
     return false;
   }
 
-}
-
-
-#elif defined(P_SOLARIS)
-
-/* jpd@louisiana.edu - influenced by Merit.edu's Gated 3.6 routine: krt_rtread_sunos5.c */
-
-#include <sys/stream.h>
-#include <stropts.h>
-#include <sys/tihdr.h>
-#include <sys/tiuser.h>
-#include <inet/common.h>
-#include <inet/mib2.h>
-#include <inet/ip.h>
-
-#ifndef T_CURRENT
-#define T_CURRENT       MI_T_CURRENT
-#endif
-
-PBoolean PIPSocket::GetRouteTable(RouteTable & table)
-{
-#define task_pagesize 512
-    char buf[task_pagesize];  /* = task_block_malloc(task_pagesize);*/
-    int flags;
-    int j = 0;
-    int  sd, i, rc;
-    struct strbuf strbuf;
-    struct T_optmgmt_req *tor = (struct T_optmgmt_req *) buf;
-    struct T_optmgmt_ack *toa = (struct T_optmgmt_ack *) buf;
-    struct T_error_ack  *tea = (struct T_error_ack *) buf;
-    struct opthdr *req;
-
-    sd = open("/dev/ip", O_RDWR);
-    if (sd < 0) {
-#ifdef SOL_COMPLAIN
-      perror("can't open mib stream");
-#endif
-      goto Return;
-    }
-
-    strbuf.buf = buf;
-
-    tor->PRIM_type = T_OPTMGMT_REQ;
-    tor->OPT_offset = sizeof(struct T_optmgmt_req);
-    tor->OPT_length = sizeof(struct opthdr);
-    tor->MGMT_flags = T_CURRENT;
-    req = (struct opthdr *) (tor + 1);
-    req->level = MIB2_IP;    /* any MIB2_xxx value ok here */
-    req->name = 0;
-    req->len = 0;
-
-    strbuf.len = tor->OPT_length + tor->OPT_offset;
-    flags = 0;
-    rc = putmsg(sd, &strbuf, (struct strbuf *) 0, flags);
-    if (rc == -1) {
-#ifdef SOL_COMPLAIN
-      perror("putmsg(ctl)");
-#endif
-      goto Return;
-    }
-    /*
-     * each reply consists of a ctl part for one fixed structure
-     * or table, as defined in mib2.h.  The format is a T_OPTMGMT_ACK,
-     * containing an opthdr structure.  level/name identify the entry,
-     * len is the size of the data part of the message.
-     */
-    req = (struct opthdr *) (toa + 1);
-    strbuf.maxlen = task_pagesize;
-    while (++j) {
-  flags = 0;
-  rc = getmsg(sd, &strbuf, (struct strbuf *) 0, &flags);
-  if (rc == -1) {
-#ifdef SOL_COMPLAIN
-    perror("getmsg(ctl)");
-#endif
-    goto Return;
-  }
-  if (rc == 0
-      && strbuf.len >= (int)sizeof(struct T_optmgmt_ack)
-      && toa->PRIM_type == T_OPTMGMT_ACK
-      && toa->MGMT_flags == T_SUCCESS
-      && req->len == 0) {
-    errno = 0;    /* just to be darned sure it's 0 */
-    goto Return;    /* this is EOD msg */
-  }
-
-  if (strbuf.len >= (int)sizeof(struct T_error_ack)
-      && tea->PRIM_type == T_ERROR_ACK) {
-      errno = (tea->TLI_error == TSYSERR) ? tea->UNIX_error : EPROTO;
-#ifdef SOL_COMPLAIN
-      perror("T_ERROR_ACK in mibget");
-#endif
-      goto Return;
-  }
-      
-  if (rc != MOREDATA
-      || strbuf.len < (int)sizeof(struct T_optmgmt_ack)
-      || toa->PRIM_type != T_OPTMGMT_ACK
-      || toa->MGMT_flags != T_SUCCESS) {
-      errno = ENOMSG;
-      goto Return;
-  }
-
-  if ( (req->level != MIB2_IP
-#if P_SOLARIS > 7
-        || req->name != MIB2_IP_ROUTE)
-      && (req->level != MIB2_IP6 || req->name != MIB2_IP6_ROUTE)
-#endif
-           ) {  /* == 21 */
-      /* If this is not the routing table, skip it */
-      strbuf.maxlen = task_pagesize;
-      do {
-        rc = getmsg(sd, (struct strbuf *) 0, &strbuf, &flags);
-      } while (rc == MOREDATA) ;
-      continue;
-  }
-
-  strbuf.maxlen = (task_pagesize / sizeof (mib2_ipRouteEntry_t)) * sizeof (mib2_ipRouteEntry_t);
-  strbuf.len = 0;
-  flags = 0;
-  do {
-      rc = getmsg(sd, (struct strbuf *) 0, &strbuf, &flags);
-      
-      switch (rc) {
-      case -1:
-#ifdef SOL_COMPLAIN
-        perror("mibget getmsg(data) failed.");
-#endif
-        goto Return;
-
-      default:
-#ifdef SOL_COMPLAIN
-        fprintf(stderr,"mibget getmsg(data) returned %d, strbuf.maxlen = %d, strbuf.len = %d",
-            rc,
-            strbuf.maxlen,
-            strbuf.len);
-#endif
-        goto Return;
-
-      case MOREDATA:
-      case 0:
-        {
-          mib2_ipRouteEntry_t *rp = (mib2_ipRouteEntry_t *) strbuf.buf;
-          mib2_ipRouteEntry_t *lp = (mib2_ipRouteEntry_t *) (strbuf.buf + strbuf.len);
-
-          do {
-            char name[256];
-            name[0] = '\0';
-            if (req->level == 0) {
-              if (rp->ipRouteInfo.re_ire_type & (IRE_BROADCAST|IRE_CACHE|IRE_LOCAL)) {
-                ++rp;
-                continue;
-              }
-              RouteEntry * entry = new RouteEntry(rp->ipRouteDest);
-              entry->net_mask = rp->ipRouteMask;
-              entry->destination = rp->ipRouteNextHop;
-              unsigned len = rp->ipRouteIfIndex.o_length;
-              if (len >= sizeof(name))
-                len = sizeof(name)-1;
-              strncpy(name, rp->ipRouteIfIndex.o_bytes, len);
-              name[len] = '\0';
-              entry->interfaceName = name;
-              entry->metric = rp->ipRouteMetric1;
-              table.Append(entry);
-              ++rp;
-            } else {
-              mib2_ipv6RouteEntry_t *rp6 = (mib2_ipv6RouteEntry_t *) rp;
-              if (rp6->ipv6RouteInfo.re_ire_type & (IRE_BROADCAST|IRE_CACHE|IRE_LOCAL)) {
-                rp = (mib2_ipRouteEntry_t *) ((BYTE*)rp + sizeof(mib2_ipv6RouteEntry_t));
-                continue;
-              }
-              RouteEntry * entry = new RouteEntry(Address(16, (BYTE*)&rp6->ipv6RouteDest));
-              entry->net_mask = NetmaskV6WithPrefix(rp6->ipv6RoutePfxLength);
-              entry->destination = Address(16, (BYTE*)&rp6->ipv6RouteNextHop);
-              unsigned len = rp6->ipv6RouteIfIndex.o_length;
-              if (len >= sizeof(name))
-                len = sizeof(name)-1;
-              strncpy(name, rp6->ipv6RouteIfIndex.o_bytes, len);
-              name[len] = '\0';
-              entry->interfaceName = name;
-              entry->metric = rp6->ipv6RouteMetric;
-              table.Append(entry);
-              rp = (mib2_ipRouteEntry_t *) ((BYTE*)rp + sizeof(mib2_ipv6RouteEntry_t));
-            }
-          } while (rp < lp) ;
-
-          }
-          break;
-        }
-      } while (rc == MOREDATA) ;
-    }
-
- Return:
-    i = errno;
-    (void) close(sd);
-    errno = i;
-    /*task_block_reclaim(task_pagesize, buf);*/
-    if (errno)
-      return (false);
-    else
-      return (true);
-}
-
-
-#elif defined(P_VXWORKS)
-
-PBoolean PIPSocket::GetRouteTable(RouteTable & table)
-{
-  PAssertAlways("PIPSocket::GetRouteTable()");
-  for(;;){
-    char iface[20];
-    unsigned long net_addr, dest_addr, net_mask;
-    int  metric;
-    RouteEntry * entry = new RouteEntry(net_addr);
-    entry->net_mask = net_mask;
-    entry->destination = dest_addr;
-    entry->interfaceName = iface;
-    entry->metric = metric;
-    table.Append(entry);
-    return true;
-  }
 }
 
 #else // unsupported platform
@@ -1615,8 +1365,7 @@ PIPSocket::RouteTableDetector * PIPSocket::CreateRouteTableDetector()
 
 PBoolean PIPSocket::GetInterfaceTable(InterfaceTable & list, PBoolean includeDown)
 {
-#if defined(P_LINUX) || defined(P_FREEBSD) || defined (P_NETBSD) || defined(P_OPENBSD) || defined(P_MACOSX) || defined(P_IOS) || defined(P_SOLARIS)
-  // tested on Linux 2.6.x, FreeBSD 8.2, NetBSD 5.1, OpenBSD 5.0, MacOS X 10.5.6 and Solaris 11
+#if defined(P_LINUX) || defined(P_MACOSX) || defined(P_IOS)
   struct ifaddrs *interfaces, *ifa;
 
   if (getifaddrs(&interfaces) == 0) {
@@ -1662,13 +1411,6 @@ PBoolean PIPSocket::GetInterfaceTable(InterfaceTable & list, PBoolean includeDow
   PBYTEArray buffer;
   struct ifconf ifConf;
   
-#if defined(P_NETBSD)
-  struct ifaddrs *ifap, *ifa;
-
-  PAssert(getifaddrs(&ifap) == 0, "getifaddrs failed");
-
-  for (ifa = ifap; ifa; ifa = ifa->ifa_next) {
-#else
   // HERE
 #if defined(SIOCGIFNUM)
   int ifNum;
@@ -1684,14 +1426,8 @@ PBoolean PIPSocket::GetInterfaceTable(InterfaceTable & list, PBoolean includeDow
     void * ifEndList = (char *)ifConf.ifc_req + ifConf.ifc_len;
     ifreq * ifName = ifConf.ifc_req;
     while (ifName < ifEndList) {
-#endif
       struct ifreq ifReq;
-#if !defined(P_NETBSD)
           memcpy(&ifReq, ifName, sizeof(ifreq));
-#else
-          memset(&ifReq, 0, sizeof(ifReq));
-          strncpy(ifReq.ifr_name, ifa->ifa_name, sizeof(ifReq.ifr_name) - 1);
-#endif
 
       if (ioctl(sock.GetHandle(), SIOCGIFFLAGS, &ifReq) >= 0) {
         int flags = ifReq.ifr_flags;
@@ -1705,43 +1441,22 @@ PBoolean PIPSocket::GetInterfaceTable(InterfaceTable & list, PBoolean includeDow
             macAddr = PEthSocket::Address((BYTE *)ifReq.ifr_macaddr);
 #endif
 
-#if !defined(P_NETBSD)
           memcpy(&ifReq, ifName, sizeof(ifreq));
-#else
-          memset(&ifReq, 0, sizeof(ifReq));
-          strncpy(ifReq.ifr_name, ifa->ifa_name, sizeof(ifReq.ifr_name) - 1);
-#endif
 
           if (ioctl(sock.GetHandle(), SIOCGIFADDR, &ifReq) >= 0) {
 
             sockaddr_in * sin = (sockaddr_in *)&ifReq.ifr_addr;
             PIPSocket::Address addr = sin->sin_addr;
 
-#if !defined(P_NETBSD)
             memcpy(&ifReq, ifName, sizeof(ifreq));
-#else
-            memset(&ifReq, 0, sizeof(ifReq));
-            strncpy(ifReq.ifr_name, ifa->ifa_name, sizeof(ifReq.ifr_name) - 1);
-#endif
 
             if (ioctl(sock.GetHandle(), SIOCGIFNETMASK, &ifReq) >= 0) {
-              PIPSocket::Address mask = 
-#ifndef P_BEOS
-    ((sockaddr_in *)&ifReq.ifr_netmask)->sin_addr;
-#else
-    ((sockaddr_in *)&ifReq.ifr_mask)->sin_addr;
-#endif // !P_BEOS
+              PIPSocket::Address mask = ((sockaddr_in *)&ifReq.ifr_mask)->sin_addr;
               PINDEX i;
               for (i = 0; i < list.GetSize(); i++) {
-#ifdef P_TORNADO
-                if (list[i].GetName() == name &&
-                    list[i].GetAddress() == addr)
-                    if(list[i].GetNetMask() == mask)
-#else
                 if (list[i].GetName() == name &&
                     list[i].GetAddress() == addr &&
                     list[i].GetNetMask() == mask)
-#endif
                   break;
               }
               if (i >= list.GetSize())
@@ -1751,17 +1466,15 @@ PBoolean PIPSocket::GetInterfaceTable(InterfaceTable & list, PBoolean includeDow
         }
       }
 
-#if defined(P_FREEBSD) || defined(P_OPENBSD) || defined(P_MACOSX) || defined(P_IOS) || defined(P_VXWORKS) || defined(P_RTEMS) || defined(P_QNX)
+#if defined(P_MACOSX) || defined(P_IOS)
       // move the ifName pointer along to the next ifreq entry
       ifName = (struct ifreq *)((char *)ifName + _SIZEOF_ADDR_IFREQ(*ifName));
-#elif !defined(P_NETBSD)
+#else
       ifName++;
 #endif
 
     }
-#if !defined(P_NETBSD)
   }
-#endif
 
 #if P_HAS_IPV6
   // build a table of IPV6 interface addresses
@@ -1929,55 +1642,6 @@ PIPSocket::Address PIPSocket::GetRouteInterfaceAddress(const Address & remoteAdd
   PTRACE(5, NULL, PTraceModule(), "Could not find route for " << remoteAddress);
   return GetInvalidAddress();
 }
-
-
-#ifdef P_VXWORKS
-
-int h_errno;
-
-struct hostent * Vx_gethostbyname(char *name, struct hostent *hp)
-{
-  u_long addr;
-  static char staticgethostname[100];
-
-  hp->h_aliases = NULL;
-  hp->h_addr_list[1] = NULL;
-  if ((int)(addr = inet_addr(name)) != ERROR) {
-    memcpy(staticgethostname, &addr, sizeof(addr));
-    hp->h_addr_list[0] = staticgethostname;
-    h_errno = SUCCESS;
-    return hp;
-  }
-  memcpy(staticgethostname, &addr, sizeof (addr));
-  hp->h_addr_list[0] = staticgethostname;
-  h_errno = SUCCESS;
-  return hp;
-}
-
-struct hostent * Vx_gethostbyaddr(char *name, struct hostent *hp)
-{
-  u_long addr;
-  static char staticgethostaddr[100];
-
-  hp->h_aliases = NULL;
-  hp->h_addr_list = NULL;
-
-  if ((int)(addr = inet_addr(name)) != ERROR) {
-    char ipStorage[INET_ADDR_LEN];
-    inet_ntoa_b(*(struct in_addr*)&addr, ipStorage);
-    sprintf(staticgethostaddr,"%s",ipStorage);
-    hp->h_name = staticgethostaddr;
-    h_errno = SUCCESS;
-  }
-  else
-  {
-    printf ("_gethostbyaddr: not able to get %s\n",name);
-    h_errno = NOTFOUND;
-  }
-  return hp;
-}
-
-#endif // P_VXWORKS
 
 
 #undef PTraceModule

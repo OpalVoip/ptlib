@@ -30,13 +30,11 @@
 ///////////////////////////////////////////////////////////////////////////////
 // PSyncPoint
 
-#if defined(P_PTHREADS) || defined(__BEOS__)
   public:
     virtual ~PSyncPoint();
   private:
     mutable pthread_mutex_t mutex;
     mutable pthread_cond_t  condVar;
     bool signalled;
-#endif
 
 // End Of File ////////////////////////////////////////////////////////////////

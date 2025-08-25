@@ -35,10 +35,6 @@
 #include <locale>
 #include <math.h>
 
-#ifdef __NUCLEUS_PLUS__
-extern "C" int vsprintf(char *, const char *, va_list);
-#endif
-
 #if P_REGEX
   #include <regex.h>
 #else
@@ -1954,7 +1950,6 @@ PString PString::RightTrim() const
     rpos--;
   }
 
-  // make Apple & Tornado gnu compiler happy
   PString retval(theArray, rpos - theArray + 1);
   return retval;
 }
@@ -2418,13 +2413,6 @@ PString & PString::sprintf(const char * fmt, ...)
 PString & PString::vsprintf(const char * fmt, va_list arg)
 {
   PINDEX len = GetLength();
-#ifdef P_VXWORKS
-  // The library provided with tornado 2.0 does not have the implementation
-  // for vsnprintf
-  // as workaround, just use a array size of 2000
-  PAssert(SetMinSize(2000), POutOfMemory);
-  m_length = ::vsprintf(theArray+len, fmt, arg);
-#else
   int providedSpace = 0;
   int requiredSpace = -1;
   do {
@@ -2435,7 +2423,6 @@ PString & PString::vsprintf(const char * fmt, va_list arg)
     requiredSpace = _vsnprintf(theArray+len, providedSpace, fmt, arg);
   } while (requiredSpace == -1 || requiredSpace >= providedSpace);
   m_length += requiredSpace;
-#endif // P_VXWORKS
 
   if (GetSize() > m_length*2)
     PAssert(MakeMinimumSize(m_length), POutOfMemory);

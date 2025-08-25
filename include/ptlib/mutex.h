@@ -329,7 +329,7 @@ class PCriticalSection : public PSync
 
 #if _WIN32
     mutable CRITICAL_SECTION criticalSection;
-#elif defined(P_PTHREADS) || defined(VX_TASKS)
+#elif defined(P_PTHREADS)
     mutable pthread_mutex_t m_mutex;
 #endif
 };

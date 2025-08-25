@@ -92,11 +92,6 @@ class PIPSocket : public PSocket
         /// sockaddr_in6 or sockaddr_in6_old) structure.
         Address(const int ai_family, const int ai_addrlen,struct sockaddr *ai_addr);
 
-#ifdef __NUCLEUS_NET__
-        Address(const struct id_struct & addr);
-        Address & operator=(const struct id_struct & addr);
-#endif
-
         /// Copy an address from another IP v4 address.
         Address & operator=(const in_addr & addr);
 
@@ -129,21 +124,9 @@ class PIPSocket : public PSocket
         bool operator!=(in_addr & addr) const { return !operator==(addr); }
         bool operator==(DWORD dw) const;
         bool operator!=(DWORD dw) const   { return !operator==(dw); }
-#ifdef P_VXWORKS
-        bool operator==(long unsigned int u) const { return  operator==((DWORD)u); }
-        bool operator!=(long unsigned int u) const { return !operator==((DWORD)u); }
-#endif
 #ifdef _WIN32
         bool operator==(unsigned u) const { return  operator==((DWORD)u); }
         bool operator!=(unsigned u) const { return !operator==((DWORD)u); }
-#endif
-#ifdef P_RTEMS
-        bool operator==(u_long u) const { return  operator==((DWORD)u); }
-        bool operator!=(u_long u) const { return !operator==((DWORD)u); }
-#endif
-#ifdef P_BEOS
-        bool operator==(in_addr_t a) const { return  operator==((DWORD)a); }
-        bool operator!=(in_addr_t a) const { return !operator==((DWORD)a); }
 #endif
         bool operator==(int i) const      { return  operator==((DWORD)i); }
         bool operator!=(int i) const      { return !operator==((DWORD)i); }

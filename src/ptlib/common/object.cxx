@@ -43,8 +43,6 @@
 #if defined(_MSC_VER)
 #include <crtdbg.h>
 #endif
-#elif defined(__NUCLEUS_PLUS__)
-#include <ptlib/NucleusDebstrm.h>
 #else
 #include <signal.h>
 #endif
@@ -527,8 +525,6 @@ PMemoryHeap::PMemoryHeap()
 #else
  pthread_mutex_init(&m_mutex, NULL);
 #endif
-#elif defined(P_VXWORKS)
-  m_mutex = semMCreate(SEM_Q_FIFO);
 #endif
   m_leakDumpStream = &cerr;
 #endif
@@ -550,8 +546,6 @@ PMemoryHeap::~PMemoryHeap()
   PProcess::Current().WaitOnExitConsoleWindow();
 #elif defined(P_PTHREADS)
   pthread_mutex_destroy(&m_mutex);
-#elif defined(P_VXWORKS)
-  semDelete((SEM_ID)m_mutex);
 #endif
 }
 
@@ -562,8 +556,6 @@ void PMemoryHeap::Lock()
   EnterCriticalSection(&m_mutex);
 #elif defined(P_PTHREADS)
   pthread_mutex_lock(&m_mutex);
-#elif defined(P_VXWORKS)
-  semTake((SEM_ID)m_mutex, WAIT_FOREVER);
 #endif
 }
 
@@ -574,8 +566,6 @@ void PMemoryHeap::Unlock()
   LeaveCriticalSection(&m_mutex);
 #elif defined(P_PTHREADS)
   pthread_mutex_unlock(&m_mutex);
-#elif defined(P_VXWORKS)
-  semGive((SEM_ID)m_mutex);
 #endif
 }
 
@@ -1456,36 +1446,6 @@ istream & operator>>(istream & stream, PUInt64 & v)
 
 
 #endif
-
-
-#ifdef P_TORNADO
-
-// the library provided with Tornado 2.0 does not contain implementation 
-// for the functions defined below, therefor the own implementation
-
-ostream & ostream::operator<<(PInt64 v)
-{
-  return *this << (long)(v >> 32) << (long)(v & 0xFFFFFFFF);
-}
-
-
-ostream & ostream::operator<<(PUInt64 v)
-{
-  return *this << (long)(v >> 32) << (long)(v & 0xFFFFFFFF);
-}
-
-istream & istream::operator>>(PInt64 & v)
-{
-  return *this >> (long)(v >> 32) >> (long)(v & 0xFFFFFFFF);
-}
-
-
-istream & istream::operator>>(PUInt64 & v)
-{
-  return *this >> (long)(v >> 32) >> (long)(v & 0xFFFFFFFF);
-}
-
-#endif // P_TORNADO
 
 
 ///////////////////////////////////////////////////////////////////////////////

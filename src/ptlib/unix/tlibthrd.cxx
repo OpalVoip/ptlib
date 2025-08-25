@@ -31,12 +31,7 @@
 #include <pthread.h>
 #include <sys/resource.h>
 
-#ifdef P_RTEMS
-#define SUSPEND_SIG SIGALRM
-#include <sched.h>
-#else
 #define SUSPEND_SIG SIGVTALRM
-#endif
 
 #if defined(P_MACOSX)
 #include <mach/mach.h>
@@ -216,11 +211,7 @@ PThread::PThread(bool isProcess)
   , PX_WaitSemMutex(MutexInitialiser)
 #endif
 {
-#ifdef P_RTEMS
-  PAssertOS(socketpair(AF_INET,SOCK_STREAM,0,unblockPipe) == 0);
-#else
   PAssertOS(::pipe(unblockPipe) == 0);
-#endif
 
   if (isProcess)
     return;
@@ -253,11 +244,7 @@ PThread::PThread(PINDEX stackSize,
   , PX_WaitSemMutex(MutexInitialiser)
 #endif
 {
-#ifdef P_RTEMS
-  PAssertOS(socketpair(AF_INET,SOCK_STREAM,0,unblockPipe) == 0);
-#else
   PAssertOS(::pipe(unblockPipe) == 0);
-#endif
   PX_NewHandle("Thread unblock pipe", PMAX(unblockPipe[0], unblockPipe[1]));
 
   // If need to be deleted automatically, make sure thread that does it runs.
@@ -417,12 +404,6 @@ void PThread::PX_StartThread()
   struct sched_param sched_params;
   PAssertWithRetry(pthread_attr_setschedpolicy, &threadAttr, GetSchedParam((Priority)PX_priority.load(), sched_params));
   PAssertWithRetry(pthread_attr_setschedparam,  &threadAttr, &sched_params);
-#elif defined(P_RTEMS)
-  pthread_attr_setinheritsched(&threadAttr, PTHREAD_EXPLICIT_SCHED);
-  pthread_attr_setschedpolicy(&threadAttr, SCHED_OTHER);
-  struct sched_param sched_param;
-  sched_param.sched_priority = 125; /* set medium priority */
-  pthread_attr_setschedparam(&threadAttr, &sched_param);
 #endif
 
   PProcess & process = PProcess::Current();

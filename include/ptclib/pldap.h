@@ -99,12 +99,7 @@ class PLDAPSession : public PObject
       AuthSimple,
       AuthSASL,
       AuthKerberos,
-#ifdef SOLARIS
-      NumAuthenticationMethod1,
-      NumAuthenticationMethod2
-#else
       NumAuthenticationMethod
-#endif
     };
 
     /**Start encrypted connection

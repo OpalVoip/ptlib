@@ -137,13 +137,8 @@ PBoolean PLDAPSession::Bind(const PString & who,
   else
     whoPtr = who;
 
-#ifdef SOLARIS
-  static const int AuthMethodCode[NumAuthenticationMethod2] = {
-    LDAP_AUTH_SIMPLE, LDAP_AUTH_SASL, LDAP_AUTH_KRBV41_30, LDAP_AUTH_KRBV42_30
-#else
   static const int AuthMethodCode[NumAuthenticationMethod] = {
     LDAP_AUTH_SIMPLE, LDAP_AUTH_SASL, LDAP_AUTH_KRBV4
-#endif
   };
   m_errorNumber = ldap_bind_s(m_ldapContext, whoPtr, passwd, AuthMethodCode[authMethod]);
   return m_errorNumber == LDAP_SUCCESS;

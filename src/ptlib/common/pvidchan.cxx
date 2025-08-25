@@ -66,10 +66,6 @@ PStringArray PVideoChannel::GetDeviceNames(Directions /*dir*/)
 
 PString PVideoChannel::GetDefaultDevice(Directions /*dir*/)
 {
-#if defined(P_FREEBSD) || defined(P_OPENBSD)
-  return "/dev/bktr0";
-#endif
-
 #ifndef DEFAULT_VIDEO
      return "/dev/video0";
 #else

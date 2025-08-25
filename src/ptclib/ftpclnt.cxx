@@ -139,7 +139,6 @@ PString PFTPClient::GetCurrentDirectory()
 
   } while (m_lastResponseInfo[quote2] != '"');
 
-  // make Apple's and Tornado's gnu compiler happy
   PString retval = m_lastResponseInfo(quote1+1, quote2-1);
   return retval;
 }

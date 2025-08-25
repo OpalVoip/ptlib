@@ -1229,7 +1229,6 @@ PStringArray PVideoInputDevice::GetDriversDeviceNames(const PString & driverName
     "V4L2",
     "1394DC",
     "1394AVC",
-    "BSDCAPTURE",
 #endif
 #ifdef P_MAC_VIDEO_DRIVER
     P_MAC_VIDEO_DRIVER,

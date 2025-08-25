@@ -49,15 +49,10 @@
 //
 
 #undef    P_LINUX
-#undef    P_FREEBSD
-#undef    P_OPENBSD
-#undef    P_NETBSD
-#undef    P_SOLARIS
 #undef    P_MACOSX
 #undef    P_IOS
 #undef    P_CYGWIN
 #undef    P_MINGW
-#undef    P_GNU_HURD
 #undef    P_ANDROID
 #undef    P_UNKNOWN_OS
 

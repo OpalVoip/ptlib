@@ -24,8 +24,8 @@
  * Contributor(s): ______________________________________.
  */
 
-#ifndef _PSYSTEMLOG
-#define _PSYSTEMLOG
+#ifndef _PTLIB_SYSLOG_H
+#define _PTLIB_SYSLOG_H
 
 #ifdef P_USE_PRAGMA
 #pragma interface
@@ -366,7 +366,7 @@ class PSystemLogToDebug : public PSystemLogTarget
     );
   //@}
 };
-#elif !defined(P_VXWORKS)
+#else
 #define P_SYSTEMLOG_TO_SYSLOG 1
 /** Log system output to the Posix syslog() function.
   */
@@ -401,7 +401,8 @@ class PSystemLogToSyslog : public PSystemLogTarget
     PString m_ident;
     int     m_priority;
 };
-#endif
+
+#endif // WIN32
 
 
 /** Log a message to the system log.
@@ -416,9 +417,8 @@ as a stream output sequence which is them output to the system log.
   } else (void)0
 
 
-#endif
-
-
 #endif //P_SYSTEMLOG
+
+#endif //_PTLIB_SYSLOG_H
 
 // End Of File ///////////////////////////////////////////////////////////////

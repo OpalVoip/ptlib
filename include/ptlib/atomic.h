@@ -214,29 +214,6 @@ private:
   #endif
   P_DEFINE_ATOMIC_PTR_CLASS(__sync_lock_test_and_set, __sync_fetch_and_add, __sync_add_and_fetch, __sync_bool_compare_and_swap);
   
-#elif defined(SOLARIS) && !defined(__GNUC__)
-
-  P_DEFINE_ATOMIC_INT_CLASS(          bool, atomic_swap_8,  atomic_add_8,  atomic_add_8_nv);
-  P_DEFINE_ATOMIC_INT_CLASS(  signed  char, atomic_swap_8,  atomic_add_8,  atomic_add_8_nv);
-  P_DEFINE_ATOMIC_INT_CLASS(unsigned  char, atomic_swap_8,  atomic_add_8,  atomic_add_8_nv);
-  P_DEFINE_ATOMIC_INT_CLASS(  signed short, atomic_swap_16, atomic_add_16, atomic_add_16_nv);
-  P_DEFINE_ATOMIC_INT_CLASS(unsigned short, atomic_swap_16, atomic_add_16, atomic_add_16_nv);
-  P_DEFINE_ATOMIC_INT_CLASS(  signed   int, atomic_swap_32, atomic_add_32, atomic_add_32_nv);
-  P_DEFINE_ATOMIC_INT_CLASS(unsigned   int, atomic_swap_32, atomic_add_32, atomic_add_32_nv);
-  P_DEFINE_ATOMIC_INT_CLASS(  signed  long, atomic_swap_32, atomic_add_32, atomic_add_32_nv);
-  P_DEFINE_ATOMIC_INT_CLASS(unsigned  long, atomic_swap_32, atomic_add_32, atomic_add_32_nv);
-  #if HAVE_LONG_LONG_INT
-    P_DEFINE_ATOMIC_INT_CLASS(signed long long, atomic_swap_64, atomic_add_64, atomic_add_64_nv);
-  #endif
-  #if HAVE_UNSIGNED_LONG_LONG_INT
-    P_DEFINE_ATOMIC_INT_CLASS(unsigned long long, atomic_swap_64, atomic_add_64, atomic_add_64_nv);
-  #endif
-  #if defined(P_64BIT)
-    P_DEFINE_ATOMIC_PTR_CLASS(atomic_swap_64, atomic_add_64, atomic_add_64_nv);
-  #else
-    P_DEFINE_ATOMIC_PTR_CLASS(atomic_swap_32, atomic_add_32, atomic_add_32_nv);
-  #endif
-
 #elif defined(P_ATOMICITY_HEADER)
 
   P_DEFINE_ATOMIC_INT_CLASS(_Atomic_word, m_storage = value, P_ATOMICITY_NAMESPACE __exchange_and_add)

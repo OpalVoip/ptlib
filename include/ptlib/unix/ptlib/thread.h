@@ -41,8 +41,6 @@
 
     void PXAbortBlock() const;
 
-#ifdef P_PTHREADS
-
   public:
 #ifndef P_HAS_SEMAPHORES
     void PXSetWaitingSemaphore(PSemaphore * sem);
@@ -91,33 +89,5 @@
     friend class PSocket;
     friend void PX_SuspendSignalHandler(int);
 
-#else // P_PTHREADS
 
-#if defined(__BEOS__)
-
-  protected:
-    static int32 ThreadFunction(void * threadPtr);
-    thread_id mId;
-    int32 mPriority;
-    PINDEX mStackSize;
-    int32 mSuspendCount;
-  public:
-    int unblockPipe[2];
-
-#elif defined(VX_TASKS)
-  public:
-    SEM_ID syncPoint;
-    static void Trace(PThreadIdentifer threadId = 0);
-
-  private:
-    static int ThreadFunction(void * threadPtr);
-    long PX_threadId;
-    int priority;
-    PINDEX originalStackSize;
-
-#endif
-
-#endif // P_PTHREADS
-
-
-// End Of File ////////////////////////////////////////////////////////////////
+    // End Of File ////////////////////////////////////////////////////////////////

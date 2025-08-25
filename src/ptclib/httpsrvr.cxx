@@ -1983,8 +1983,6 @@ bool PHTTPResource::InternalOnCommand(PHTTPServer & server,
                         const PHTTPConnectionInfo & connectInfo,
                                    PHTTP::Commands cmd)
 {
-  // Nede to split songle if into 2 so the Tornado compiler won't end with
-  // 'internal compiler error'
   if (cmd == PHTTP::GET && connectInfo.GetMIME().Contains(PHTTP::IfModifiedSinceTag()))
     if (!IsModifiedSince(PTime(connectInfo.GetMIME()[PHTTP::IfModifiedSinceTag()])))
       return server.OnError(PHTTP::NotModified, connectInfo.GetURL().AsString(), connectInfo);
