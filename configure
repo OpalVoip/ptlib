@@ -648,7 +648,6 @@ HAS_ADDRESS_SANITIZER
 DC_CFLAGS
 HAS_DC1394
 HAS_AVC1394
-HAS_BSDVIDEOCAP
 HAS_V4L2
 V4L2_LIBS
 V4L2_CFLAGS
@@ -1087,7 +1086,6 @@ enable_portaudio
 with_portaudio_dir
 enable_v4l
 enable_v4l2
-enable_bsdvideo
 enable_avc
 enable_dc
 enable_sanitize_address
@@ -1947,7 +1945,6 @@ Optional Features:
                           PortAudio library
   --disable-v4l           disable V4L video support
   --disable-v4l2          disable V4L2 video support
-  --disable-bsdvideo      disable BSD video support
   --disable-avc           disable IEEE1394/AVC video support
   --disable-dc            disable IEEE1394/DC video support
   --enable-sanitize-address
@@ -2847,70 +2844,6 @@ fi
 
 } # ac_fn_cxx_try_run
 
-# ac_fn_cxx_check_func LINENO FUNC VAR
-# ------------------------------------
-# Tests whether FUNC exists, setting the cache variable VAR accordingly
-ac_fn_cxx_check_func ()
-{
-  as_lineno=${as_lineno-"$1"} as_lineno_stack=as_lineno_stack=$as_lineno_stack
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for $2" >&5
-printf %s "checking for $2... " >&6; }
-if eval test \${$3+y}
-then :
-  printf %s "(cached) " >&6
-else case e in #(
-  e) cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-/* Define $2 to an innocuous variant, in case <limits.h> declares $2.
-   For example, HP-UX 11i <limits.h> declares gettimeofday.  */
-#define $2 innocuous_$2
-
-/* System header to define __stub macros and hopefully few prototypes,
-   which can conflict with char $2 (void); below.  */
-
-#include <limits.h>
-#undef $2
-
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char $2 (void);
-/* The GNU C library defines this for functions which it implements
-    to always fail with ENOSYS.  Some functions are actually named
-    something starting with __ and the normal name is an alias.  */
-#if defined __stub_$2 || defined __stub___$2
-choke me
-#endif
-
-int
-main (void)
-{
-return $2 ();
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_cxx_try_link "$LINENO"
-then :
-  eval "$3=yes"
-else case e in #(
-  e) eval "$3=no" ;;
-esac
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam \
-    conftest$ac_exeext conftest.$ac_ext ;;
-esac
-fi
-eval ac_res=\$$3
-	       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
-printf "%s\n" "$ac_res" >&6; }
-  eval $as_lineno_stack; ${as_lineno_stack:+:} unset as_lineno
-
-} # ac_fn_cxx_check_func
-
 # ac_fn_cxx_check_header_compile LINENO HEADER VAR INCLUDES
 # ---------------------------------------------------------
 # Tests whether HEADER exists and can be compiled using the include files in
@@ -2984,6 +2917,70 @@ fi
   as_fn_set_status $ac_retval
 
 } # ac_fn_c_try_cpp
+
+# ac_fn_cxx_check_func LINENO FUNC VAR
+# ------------------------------------
+# Tests whether FUNC exists, setting the cache variable VAR accordingly
+ac_fn_cxx_check_func ()
+{
+  as_lineno=${as_lineno-"$1"} as_lineno_stack=as_lineno_stack=$as_lineno_stack
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for $2" >&5
+printf %s "checking for $2... " >&6; }
+if eval test \${$3+y}
+then :
+  printf %s "(cached) " >&6
+else case e in #(
+  e) cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+/* Define $2 to an innocuous variant, in case <limits.h> declares $2.
+   For example, HP-UX 11i <limits.h> declares gettimeofday.  */
+#define $2 innocuous_$2
+
+/* System header to define __stub macros and hopefully few prototypes,
+   which can conflict with char $2 (void); below.  */
+
+#include <limits.h>
+#undef $2
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char $2 (void);
+/* The GNU C library defines this for functions which it implements
+    to always fail with ENOSYS.  Some functions are actually named
+    something starting with __ and the normal name is an alias.  */
+#if defined __stub_$2 || defined __stub___$2
+choke me
+#endif
+
+int
+main (void)
+{
+return $2 ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_cxx_try_link "$LINENO"
+then :
+  eval "$3=yes"
+else case e in #(
+  e) eval "$3=no" ;;
+esac
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam \
+    conftest$ac_exeext conftest.$ac_ext ;;
+esac
+fi
+eval ac_res=\$$3
+	       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
+printf "%s\n" "$ac_res" >&6; }
+  eval $as_lineno_stack; ${as_lineno_stack:+:} unset as_lineno
+
+} # ac_fn_cxx_check_func
 ac_configure_args_raw=
 for ac_arg
 do
@@ -8404,90 +8401,12 @@ case "$target_os" in
       OS_TAG="P_LINUX"
    ;;
 
-   gnu )
-      OS_TAG="P_GNU_HURD"
-   ;;
-
-   FreeBSD )
-      OS_TAG="P_FREEBSD"
-   ;;
-
-   OpenBSD )
-      OS_TAG="P_OPENBSD"
-   ;;
-
-   NetBSD )
-      OS_TAG="P_NETBSD"
-   ;;
-
-   solaris )
-      OS_TAG="P_SOLARIS"
-
-
-   oldCPPFLAGS="$CPPFLAGS"
-   CPPFLAGS="$CPPFLAGS "
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for upad128_t" >&5
-printf %s "checking for upad128_t... " >&6; }
-   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-#include <sys/types.h>
-int
-main (void)
-{
-upad128_t upad; upad._q = 0.0;
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"
-then :
-  usable=yes
-else case e in #(
-  e) usable=no
-    ;;
-esac
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $usable" >&5
-printf "%s\n" "$usable" >&6; }
-   CPPFLAGS="$oldCPPFLAGS"
-
-   if test "x$usable" = "xyes"
-then :
-  printf "%s\n" "#define P_HAS_UPAD128_T 1" >>confdefs.h
-
-
-fi
-
-
-
-            ptlib_fdsize_file=/etc/system
-      ptlib_fdsize=`cat ${ptlib_fdsize_file} | grep rlim_fd_max | cut -c1`
-
-      if test "x${ptlib_fdsize}" = "x#"; then
-         ptlib_fdsize=4098
-      else
-         ptlib_fdsize=`cat ${ptlib_fdsize_file} | grep rlim_fd_max | cut -f2 -d'='`
-         if test "x${ptlib_fdsize}" = "x"; then
-            ptlib_fdsize=4098
-         fi
-      fi
-
-      if test "x${ptlib_fdsize}" != "x4098"; then
-         CPPFLAGS="$CPPFLAGS -DFD_SETSIZE=${ptlib_fdsize}"
-      fi
-   ;;
-
    Darwin )
       OS_TAG="P_MACOSX"
    ;;
 
    iPhone* )
       OS_TAG="P_IOS"
-   ;;
-
-   beos )
-      OS_TAG="P_BEOS"
    ;;
 
    cygwin )
@@ -9205,18 +9124,6 @@ printf "%s\n" "#define PBYTE_ORDER PBIG_ENDIAN" >>confdefs.h
 else
 
 printf "%s\n" "#define PBYTE_ORDER PLITTLE_ENDIAN" >>confdefs.h
-
-fi
-
-
-if test "$target_os" != "solaris"; then
-   ac_fn_cxx_check_func "$LINENO" "swab" "ac_cv_func_swab"
-if test "x$ac_cv_func_swab" = xyes
-then :
-
-printf "%s\n" "#define USE_SYSTEM_SWAB /**/" >>confdefs.h
-
-fi
 
 fi
 
@@ -25925,56 +25832,6 @@ fi
       fi
 
 
-      # Check whether --enable-bsdvideo was given.
-if test ${enable_bsdvideo+y}
-then :
-  enableval=$enable_bsdvideo;
-fi
-
-      if test "x$enable_bsdvideo" = "xno" ; then
-         { printf "%s\n" "$as_me:${as_lineno-$LINENO}: BSD video disabled by user" >&5
-printf "%s\n" "$as_me: BSD video disabled by user" >&6;}
-      else
-         ac_fn_cxx_check_header_compile "$LINENO" "machine/ioctl_meteor.h" "ac_cv_header_machine_ioctl_meteor_h" "$ac_includes_default"
-if test "x$ac_cv_header_machine_ioctl_meteor_h" = xyes
-then :
-  HAS_BSDVIDEOCAP=1
-
-else case e in #(
-  e)
-               ac_fn_cxx_check_header_compile "$LINENO" "i386/ioctl_meteor.h" "ac_cv_header_i386_ioctl_meteor_h" "$ac_includes_default"
-if test "x$ac_cv_header_i386_ioctl_meteor_h" = xyes
-then :
-  HAS_BSDVIDEOCAP=1
-
-else case e in #(
-  e)
-                     ac_fn_cxx_check_header_compile "$LINENO" "dev/ic/bt8xx.h" "ac_cv_header_dev_ic_bt8xx_h" "$ac_includes_default"
-if test "x$ac_cv_header_dev_ic_bt8xx_h" = xyes
-then :
-  HAS_BSDVIDEOCAP=1
-
-
-fi
-
-
-                ;;
-esac
-fi
-
-
-          ;;
-esac
-fi
-
-      fi
-      if test "x$HAS_BSDVIDEOCAP" = "x1"; then
-         PTLIB_BSDVIDEOCAP=yes
-      else
-         PTLIB_BSDVIDEOCAP=no
-      fi
-
-
       # Check whether --enable-avc was given.
 if test ${enable_avc+y}
 then :
@@ -28023,16 +27880,6 @@ then :
   printf "%s\n" "                     Video4linux2 : ${PTLIB_V4L2}"
 else case e in #(
   e) printf "%s\n" "                     Video4linux2 : no"
-       ;;
-esac
-fi
-
-
-   if test ${PTLIB_BSDVIDEOCAP+y}
-then :
-  printf "%s\n" "                              BSD : ${PTLIB_BSDVIDEOCAP}"
-else case e in #(
-  e) printf "%s\n" "                              BSD : no"
        ;;
 esac
 fi
