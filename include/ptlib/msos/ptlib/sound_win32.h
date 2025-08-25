@@ -120,7 +120,7 @@ class PWaveBuffer : public PBYTEArray
   friend class PSoundChannelWin32;
 };
 
-PARRAY(PWaveBufferArray, PWaveBuffer);
+typedef PArray<PWaveBuffer> PWaveBufferArray;
 
 
 class PSoundChannelWin32: public PSoundChannel

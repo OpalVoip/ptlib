@@ -164,8 +164,6 @@ class PIpAccessControlEntry : public PObject
     PBoolean               hidden;
 };
 
-PSORTED_LIST(PIpAccessControlList_base, PIpAccessControlEntry);
-
 
 /** This class is a list of IP address mask specifications used to validate if
    an address may or may not be used in a connection.
@@ -180,11 +178,9 @@ PSORTED_LIST(PIpAccessControlList_base, PIpAccessControlEntry);
    the broadest onse later. The entry with the value having a mask of zero,
    that is the match all entry, is always last.
  */
-class PIpAccessControlList : public PIpAccessControlList_base
+class PIpAccessControlList : public PSortedList<PIpAccessControlEntry>
 {
-
-  PCLASSINFO(PIpAccessControlList, PIpAccessControlList_base)
-
+    PCLASSINFO(PIpAccessControlList, PSortedList<PIpAccessControlEntry>)
   public:
     /** Create a new, empty, access control list.
      */

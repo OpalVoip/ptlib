@@ -36,9 +36,7 @@
 #include <ptlib/sockets.h>
 
 
-PSORTED_LIST(PServiceMacros_base, PServiceMacro);
-
-class PServiceMacros_list : public PServiceMacros_base
+class PServiceMacros_list : public PSortedList<PServiceMacro>
 {
   public:
     PServiceMacros_list();

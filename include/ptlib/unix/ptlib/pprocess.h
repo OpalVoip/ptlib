@@ -27,7 +27,7 @@
  * Contributor(s): ______________________________________.
  */
 
-PDICTIONARY(PXFdDict, POrdinalKey, PThread);
+typedef POrdinalDictionary<PThread> PXFdDict;
 
 ///////////////////////////////////////////////////////////////////////////////
 // PProcess

@@ -274,10 +274,7 @@ class PIPCacheData : public PObject
 };
 
 
-
-PDICTIONARY(PHostByName_private, PCaselessString, PIPCacheData);
-
-class PHostByName : PHostByName_private
+class PHostByName : PDictionary<PCaselessString, PIPCacheData>
 {
   public:
     PBoolean GetHostName(const PString & name, PString & hostname);
@@ -309,9 +306,8 @@ class PIPCacheKey : public PObject
     PIPSocket::Address addr;
 };
 
-PDICTIONARY(PHostByAddr_private, PIPCacheKey, PIPCacheData);
 
-class PHostByAddr : PHostByAddr_private
+class PHostByAddr : PDictionary<PIPCacheKey, PIPCacheData>
 {
   public:
     PBoolean GetHostName(const PIPSocket::Address & addr, PString & hostname);

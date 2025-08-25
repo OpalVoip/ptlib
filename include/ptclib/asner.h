@@ -783,7 +783,7 @@ class PASN_Choice : public PASN_Object
 };
 
 
-PARRAY(PASN_ObjectArray, PASN_Object);
+typedef PArray<PASN_Object> PASN_ObjectArray;
 
 
 /** Class for ASN Sequence type.

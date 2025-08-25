@@ -56,7 +56,7 @@ namespace XMPP
     class Item : public PObject
     {
       PCLASSINFO(Item, PObject);
-      PDICTIONARY(PresenceInfo, PString, Presence);
+      typedef PDictionary<PString, Presence> PresenceInfo;
 
     public:
       Item(PXMLElement * item = 0);
@@ -103,7 +103,7 @@ namespace XMPP
 
       bool        m_IsDirty; // item modified locally, server needs to be updated
     };
-    PLIST(ItemList, Item);
+    typedef PList<Item> ItemList;
 
   public:
     Roster(XMPP::C2S::StreamHandler * handler = 0);

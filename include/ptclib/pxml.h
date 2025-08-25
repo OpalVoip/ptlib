@@ -363,7 +363,7 @@ class PXMLObject : public PObject
   P_REMOVE_VIRTUAL(PXMLObject *, Clone(PXMLElement *) const, 0);
 };
 
-PARRAY(PXMLObjectArray, PXMLObject);
+typedef PArray<PXMLObject> PXMLObjectArray;
 
 ////////////////////////////////////////////////////////////
 

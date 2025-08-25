@@ -47,7 +47,7 @@
 
 class PSocket;
 
-PLIST(PSocketList, PSocket);
+typedef PList<PSocket> PSocketList;
 
 
 /**A network communications channel. This is based on the concepts in the

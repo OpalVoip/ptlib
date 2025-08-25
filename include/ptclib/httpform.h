@@ -245,7 +245,7 @@ class PHTTPField : public PObject
 };
 
 
-PARRAY(PHTTPFields, PHTTPField);
+typedef PArray<PHTTPField> PHTTPFields;
 
 
 class PHTTPDividerField : public PHTTPField

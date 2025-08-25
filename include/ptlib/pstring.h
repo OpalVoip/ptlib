@@ -2388,7 +2388,7 @@ __inline PString PSTRSTRM_support(const ostream & s) { return dynamic_cast<const
 #define PSTRSTRM(arg) PSTRSTRM_support(PStringStream() << std::flush << arg << std::flush)
 
 
-// Definition for template PString memeber function, needs to be after PStringStream
+// Definition for template PString member function, needs to be after PStringStream
 template <typename T> __inline T PString::As(T t) const
 {
   PStringStream strm(*this);
@@ -2409,9 +2409,6 @@ class PStringSet;
    <code>PString</code> reference instead of a pointer as most standard collection
    functions do. This is more convenient for when string expressions are used
    as parameters to function in the collection.
-
-   See the <code>PAbstractArray</code> and <code>PArray</code> classes and
-   <code>PDECLARE_ARRAY</code> macro for more information.
 */
 class PStringArray : public PArray<PString>
 {
@@ -2606,9 +2603,6 @@ class PStringArray : public PArray<PString>
    <code>PString</code> reference instead of a pointer as most standard collection
    functions do. This is more convenient for when string expressions are used
    as parameters to function in the collection.
-
-   See the <code>PAbstractList</code> and <code>PList</code> classes and
-   <code>PDECLARE_LIST</code> macro for more information.
  */
 class PStringList : public PList<PString>
 {
@@ -2865,9 +2859,6 @@ class PSortedStringList : public PSortedList<PString>
    Unlike the normal sets, this will delete the PStrings removed from it. This
    complements the automatic creation of new PString objects when literals or
    expressions are used.
-
-   See the <code>PAbstractSet</code> and <code>PSet</code> classes and <code>PDECLARE_SET</code>
-   macro for more information.
  */
 class PStringSet : public PSet<PString>
 {
@@ -3038,47 +3029,6 @@ template <class K> class PStringDictionary : public PDictionary<K, PString>
 };
 
 
-/**Begin declaration of a dictionary of strings class.
-   This macro is used to declare a descendent of PAbstractList class,
-   customised for a particular key type <b>K</b> and data object type
-   <code>PString</code>.
-
-   If the compilation is using templates then this macro produces a descendent
-   of the <code>PStringDictionary</code> template class. If templates are not being
-   used then the macro defines a set of inline functions to do all casting of
-   types. The resultant classes have an identical set of functions in either
-   case.
-
-   See the <code>PStringDictionary</code> and <code>PAbstractDictionary</code> classes for
-   more information.
- */
-#define PDECLARE_STRING_DICTIONARY(cls, K) \
-  PDECLARE_CLASS(cls, PStringDictionary<K>) \
-  protected: \
-    cls(int dummy, const cls * c) \
-      : PStringDictionary<K>(dummy, c) { } \
-  public: \
-    cls() \
-      : PStringDictionary<K>() { } \
-    virtual PObject * Clone() const override \
-      { return PNEW cls(0, this); } \
-
-
-/**Declare a dictionary of strings class.
-   This macro is used to declare a descendent of PAbstractDictionary class,
-   customised for a particular key type <b>K</b> and data object type
-   <code>PString</code>. This macro closes the class declaration off so no additional
-   members can be added.
-
-   If the compilation is using templates then this macro produces a typedef
-   of the <code>PStringDictionary</code> template class.
-
-   See the <code>PStringDictionary</code> class and <code>PDECLARE_STRING_DICTIONARY</code>
-   macro for more information.
- */
-#define PSTRING_DICTIONARY(cls, K) typedef PStringDictionary<K> cls
-
-
 /**This is a dictionary collection class of <code>PString</code> objects, keyed by an
    ordinal value. It has all the usual functions for a collection, with the
    object types set to <code>PString</code> pointers. The class could be considered
@@ -3088,18 +3038,13 @@ template <class K> class PStringDictionary : public PDictionary<K, PString>
    <code>PString</code> reference instead of a pointer as most standard collection
    functions do. This is more convenient for when string expressions are used
    as parameters to function in the collection.
-
-   See the <code>PAbstractDictionary</code> and <code>PStringDictionary</code> classes and
-   <code>PDECLARE_DICTIONARY</code> and <code>PDECLARE_STRING_DICTIONARY</code> macros for
-   more information.
  */
-#ifdef DOC_PLUS_PLUS
-class POrdinalToString : public PStringDictionary {
-#endif
-PDECLARE_STRING_DICTIONARY(POrdinalToString, POrdinalKey);
+class POrdinalToString : public PStringDictionary<POrdinalKey>
+{
   public:
   /**@name Construction */
   //@{
+    POrdinalToString() { }
     /// Structure for static array initialiser for class.
     struct Initialiser {
       /// Ordinal key for string.
@@ -3140,13 +3085,12 @@ PDECLARE_STRING_DICTIONARY(POrdinalToString, POrdinalKey);
 
    See the PAbstractDicionary and POrdinalDictionary classes for more information.
  */
-#ifdef DOC_PLUS_PLUS
-class PStringToOrdinal : public POrdinalDictionary {
-#endif
-PDECLARE_ORDINAL_DICTIONARY(PStringToOrdinal, PString);
+class PStringToOrdinal : public POrdinalDictionary<PString>
+{
   public:
   /**@name Construction */
   //@{
+    PStringToOrdinal() { }
     /// Structure for static array initialiser for class.
     struct Initialiser {
       /// String key for ordinal.
@@ -3193,18 +3137,13 @@ PDECLARE_ORDINAL_DICTIONARY(PStringToOrdinal, PString);
    <code>PString</code> reference instead of a pointer as most standard collection
    functions do. This is more convenient for when string expressions are used
    as parameters to function in the collection.
-
-   See the <code>PAbstractDictionary</code> and <code>PStringDictionary</code> classes and
-   <code>PDECLARE_DICTIONARY</code> and <code>PDECLARE_STRING_DICTIONARY</code> macros for
-   more information.
  */
-#ifdef DOC_PLUS_PLUS
-class PStringToString : public PStringDictionary {
-#endif
-PDECLARE_STRING_DICTIONARY(PStringToString, PString);
+class PStringToString : public PStringDictionary<PString>
+{
   public:
   /**@name Construction */
   //@{
+    PStringToString() { }
     /// Structure for static array initialiser for class.
     struct Initialiser {
       /// String key for string.
@@ -3297,7 +3236,7 @@ PDECLARE_STRING_DICTIONARY(PStringToString, PString);
     This assures that the keys are caseless and has some access functions for
     bool/int types for ease of access with default values.
   */
-class PStringOptions : public PStringToString 
+class PStringOptions : public PStringToString
 {
   public:
     PStringOptions() { }

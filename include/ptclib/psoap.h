@@ -136,9 +136,6 @@ class PSOAPServerMethod : public PString
     PNotifier methodFunc;
 };
 
-PSORTED_LIST(PSOAPServerMethodList, PSOAPServerMethod);
-
-
 //! This resource will bind the methods to an http resource (a url)
 class PSOAPServerResource : public PHTTPResource
 {
@@ -175,7 +172,7 @@ class PSOAPServerResource : public PHTTPResource
 
   protected:
     PDECLARE_MUTEX(methodMutex);
-    PSOAPServerMethodList methodList;
+    PSortedList<PSOAPServerMethod> methodList;
   private:
     PString soapAction;
 };

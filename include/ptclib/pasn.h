@@ -43,7 +43,7 @@ typedef DWORD           PASNOid;
 class PASNObject;
 class PASNSequence;
 
-PARRAY(PASNObjectArray, PASNObject);
+typedef PArray<PASNObject> PASNObjectArray;
 
 
 //////////////////////////////////////////////////////////////////////////

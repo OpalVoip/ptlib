@@ -938,10 +938,6 @@ protected:
 
 //////////////////////////////////////////////////////////////////
 
-PQUEUE(PVXMLQueue, PVXMLPlayable);
-
-//////////////////////////////////////////////////////////////////
-
 class PVXMLChannel : public PDelayChannel
 {
     PCLASSINFO(PVXMLChannel, PDelayChannel);
@@ -1009,7 +1005,7 @@ class PVXMLChannel : public PDelayChannel
     PVXMLRecordable * m_recordable;
 
     // Outgoing audio variables
-    PVXMLQueue      m_playQueue;
+    PQueue<PVXMLPlayable> m_playQueue;
     PVXMLPlayable * m_currentPlayItem;
     PSimpleTimer    m_silenceTimer;
 

@@ -76,7 +76,7 @@ namespace XMPP
 
       Comparison Compare(const PObject & obj) const override;
     };
-    PSORTED_LIST(Users, User);
+    typedef PSortedList<User> Users;
 
     class Room : public PObject, public PValidatedNotifierTarget
     {

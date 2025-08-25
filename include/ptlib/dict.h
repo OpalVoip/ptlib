@@ -233,7 +233,7 @@ class PHashTable : public PCollection
 
   /**@name Overrides from class PObject */
   //@{
-    /**Get the relative rank of the two hash tables. Actally ranking hash
+    /**Get the relative rank of the two hash tables. Actually, ranking hash
        tables is really meaningless, so only equality is returned by the
        comparison. Equality is only achieved if the two instances reference the
        same hash table.
@@ -284,7 +284,7 @@ class PHashTable : public PCollection
 
        WARNING: this code requires a linear search for every operation
                 and will be VERY slow for large data sets. This function
-                is kept for backwards compatibilty only. New code should
+                is kept for backwards compatibility only. New code should
                 use the iterator based access methods
 
        This function is primarily used by the descendent template classes, or
@@ -304,7 +304,7 @@ class PHashTable : public PCollection
 
        WARNING: this code requires a linear search for every operation
                 and will be VERY slow for large data sets. This function
-                is kept for backwards compatibilty only. New code should
+                is kept for backwards compatibility only. New code should
                 use the iterator based access methods
 
        This function is primarily used by the descendent template classes, or
@@ -407,7 +407,7 @@ class PAbstractSet : public PHashTable
 
        WARNING: this code requires a linear search for every operation
                 and will be VERY slow for large data sets. This function
-                is kept for backwards compatibilty only. New code should
+                is kept for backwards compatibility only. New code should
                 use the iterator based access methods
 
        @return
@@ -421,7 +421,7 @@ class PAbstractSet : public PHashTable
 
        WARNING: this code requires a linear search for every operation
                 and will be VERY slow for large data sets. This function
-                is kept for backwards compatibilty only. New code should
+                is kept for backwards compatibility only. New code should
                 use the iterator based access methods
 
        @return
@@ -729,48 +729,6 @@ template <class T> class PSet : public PAbstractSet
 };
 
 
-/**Declare set class.
-   This macro is used to declare a descendent of <code>PAbstractSet</code> class,
-   customised for a particular object type \b T. This macro closes the
-   class declaration off so no additional members can be added.
-
-   If the compilation is using templates then this macro produces a typedef
-   of the <code>PSet</code> template class.
-
-   See the <code>PSet</code> class and <code>PDECLARE_SET</code> macro for more
-   information.
- */
-#define PSET(cls, T) typedef PSet<T> cls
-
-
-/**Begin declaration of a set class.
-   This macro is used to declare a descendent of <code>PAbstractSet</code> class,
-   customised for a particular object type \b T.
-
-   If the compilation is using templates then this macro produces a descendent
-   of the <code>PSet</code> template class. If templates are not being used then the
-   macro defines a set of inline functions to do all casting of types. The
-   resultant classes have an identical set of functions in either case.
-
-   See the <code>PSet</code> and <code>PAbstractSet</code> classes for more information.
- */
-#define PDECLARE_SET(cls, T, initDelObj) \
-  class cls : public PSet<T> { \
-    typedef PSet<T> BaseClass; PCLASSINFO(cls, BaseClass) \
-  protected: \
-    cls(int dummy, const cls * c) \
-      : BaseClass(dummy, c) { } \
-  public: \
-    cls(PBoolean initialDeleteObjects = initDelObj) \
-      : BaseClass(initialDeleteObjects) { } \
-    virtual PObject * Clone() const override \
-      { return PNEW cls(0, this); } \
-
-
-/// A set of ordinal integers
-PDECLARE_SET(POrdinalSet, POrdinalKey, true)
-};
-
 //////////////////////////////////////////////////////////////////////////////
 
 /**An abstract dictionary container.
@@ -987,9 +945,6 @@ class PAbstractDictionary : public PHashTable
 /**This template class maps the <code>PAbstractDictionary</code> to a specific key and data
    types. The functions in this class primarily do all the appropriate casting
    of types.
-
-   Note that if templates are not used the <code>PDECLARE_DICTIONARY</code> macro
-   will simulate the template instantiation.
  */
 template <class K, class D> class PDictionary : public PAbstractDictionary
 {
@@ -1099,7 +1054,7 @@ template <class K, class D> class PDictionary : public PAbstractDictionary
 
        WARNING: this code requires a linear search for every operation
                 and will be VERY slow for large data sets. This function
-                is kept for backwards compatibilty only. New code should
+                is kept for backwards compatibility only. New code should
                 use the iterator based access methods
 
        @return
@@ -1117,7 +1072,7 @@ template <class K, class D> class PDictionary : public PAbstractDictionary
 
        WARNING: this code requires a linear search for every operation
                 and will be VERY slow for large data sets. This function
-                is kept for backwards compatibilty only. New code should
+                is kept for backwards compatibility only. New code should
                 use the iterator based access methods
 
        @return
@@ -1278,52 +1233,9 @@ template <class K, class D> class PDictionary : public PAbstractDictionary
 };
 
 
-/**Declare a dictionary class.
-   This macro is used to declare a descendent of PAbstractDictionary class,
-   customised for a particular key type \b K and data object type \b D.
-   This macro closes the class declaration off so no additional members can
-   be added.
-
-   If the compilation is using templates then this macro produces a typedef
-   of the <code>PDictionary</code> template class.
-
-   See the <code>PDictionary</code> class and <code>PDECLARE_DICTIONARY</code> macro for
-   more information.
- */
-#define PDICTIONARY(cls, K, D) typedef PDictionary<K, D> cls
-
-
-/**Begin declaration of dictionary class.
-   This macro is used to declare a descendent of PAbstractDictionary class,
-   customised for a particular key type \b K and data object type \b D.
-
-   If the compilation is using templates then this macro produces a descendent
-   of the <code>PDictionary</code> template class. If templates are not being used
-   then the macro defines a set of inline functions to do all casting of types.
-   The resultant classes have an identical set of functions in either case.
-
-   See the <code>PDictionary</code> and <code>PAbstractDictionary</code> classes for more
-   information.
- */
-#define PDECLARE_DICTIONARY(cls, K, D) \
-  PDICTIONARY(cls##_PTemplate, K, D); \
-  PDECLARE_CLASS(cls, cls##_PTemplate) \
-  protected: \
-    cls(int dummy, const cls * c) \
-      : cls##_PTemplate(dummy, c) { } \
-  public: \
-    cls() \
-      : cls##_PTemplate() { } \
-    virtual PObject * Clone() const \
-      { return PNEW cls(0, this); } \
-
-
 /**This template class maps the <code>PAbstractDictionary</code> to a specific key
    type and a <code>POrdinalKey</code> data type. The functions in this class
    primarily do all the appropriate casting of types.
-
-   Note that if templates are not used the <code>PDECLARE_ORDINAL_DICTIONARY</code>
-   macro will simulate the template instantiation.
  */
 template <class K> class POrdinalDictionary : public PDictionary<K, POrdinalKey>
 {
@@ -1377,7 +1289,7 @@ template <class K> class POrdinalDictionary : public PDictionary<K, POrdinalKey>
 
        WARNING: this code requires a linear search for every operation
                 and will be VERY slow for large data sets. This function
-                is kept for backwards compatibilty only. New code should
+                is kept for backwards compatibility only. New code should
                 use the iterator based access methods
 
        @return
@@ -1411,7 +1323,7 @@ template <class K> class POrdinalDictionary : public PDictionary<K, POrdinalKey>
 
        WARNING: this code requires a linear search for every operation
                 and will be VERY slow for large data sets. This function
-                is kept for backwards compatibilty only. New code should
+                is kept for backwards compatibility only. New code should
                 use the iterator based access methods
 
        @return
@@ -1427,12 +1339,12 @@ template <class K> class POrdinalDictionary : public PDictionary<K, POrdinalKey>
        The ordinal position in the dictionary is determined by the hash values
        of the keys and the order of insertion.
 
-       The last key/data pair is remembered by the class so that subseqent
+       The last key/data pair is remembered by the class so that subsequent
        access is very fast.
 
        WARNING: this code requires a linear search for every operation
                 and will be VERY slow for large data sets. This function
-                is kept for backwards compatibilty only. New code should
+                is kept for backwards compatibility only. New code should
                 use the iterator based access methods
 
        @return
@@ -1448,48 +1360,6 @@ template <class K> class POrdinalDictionary : public PDictionary<K, POrdinalKey>
     POrdinalDictionary(int dummy, const POrdinalDictionary * c)
       : ParentClass(dummy, c) { }
 };
-
-
-/**Declare an ordinal dictionary class.
-   This macro is used to declare a descendent of PAbstractDictionary class,
-   customised for a particular key type \b K and data object type of
-   <code>POrdinalKey</code>. This macro closes the class declaration off so no
-   additional members can be added.
-
-   If the compilation is using templates then this macro produces a typedef
-   of the <code>POrdinalDictionary</code> template class.
-
-   See the <code>POrdinalDictionary</code> class and
-   <code>PDECLARE_ORDINAL_DICTIONARY</code> macro for more information.
- */
-#define PORDINAL_DICTIONARY(cls, K) typedef POrdinalDictionary<K> cls
-
-
-/**Begin declaration of an ordinal dictionary class.
-   This macro is used to declare a descendent of PAbstractList class,
-   customised for a particular key type \b K and data object type of
-   <code>POrdinalKey</code>.
-
-   If the compilation is using templates then this macro produces a descendent
-   of the <code>POrdinalDictionary</code> template class. If templates are not being
-   used then the macro defines a set of inline functions to do all casting of
-   types. The resultant classes have an identical set of functions in either
-   case.
-
-   See the <code>POrdinalDictionary</code> and <code>PAbstractDictionary</code> classes
-   for more information.
- */
-#define PDECLARE_ORDINAL_DICTIONARY(cls, K) \
-  PORDINAL_DICTIONARY(cls##_PTemplate, K); \
-  PDECLARE_CLASS(cls, POrdinalDictionary<K>) \
-  protected: \
-    cls(int dummy, const cls * c) \
-      : cls##_PTemplate(dummy, c) { } \
-  public: \
-    cls() \
-      : cls##_PTemplate() { } \
-    virtual PObject * Clone() const override \
-      { return PNEW cls(0, this); } \
 
 
 #endif // PTLIB_DICT_H

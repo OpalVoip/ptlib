@@ -607,7 +607,7 @@ class PCollection : public PContainer
 #include <ptlib/lists.h>
 
 ///////////////////////////////////////////////////////////////////////////////
-// PString class (specialised version of PBASEARRAY(char))
+// Dictionary (map) classes
 
 #include <ptlib/dict.h>
 

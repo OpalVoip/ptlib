@@ -46,9 +46,6 @@ class PXMLRPCServerMethod : public PString
 };
 
 
-PSORTED_LIST(PXMLRPCServerMethodList, PXMLRPCServerMethod);
-
-
 class PXMLRPCServerResource : public PHTTPResource
 {
   PCLASSINFO(PXMLRPCServerResource, PHTTPResource);
@@ -81,7 +78,7 @@ class PXMLRPCServerResource : public PHTTPResource
 
   protected:
     PDECLARE_MUTEX(methodMutex);
-    PXMLRPCServerMethodList methodList;
+    PSortedList<PXMLRPCServerMethod> methodList;
 };
 
 
