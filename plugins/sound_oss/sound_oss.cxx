@@ -44,7 +44,7 @@ PCREATE_SOUND_PLUGIN(OSS, PSoundChannelOSS);
 ///////////////////////////////////////////////////////////////////////////////
 // declare type for sound handle dictionary
 
-PDICTIONARY(SoundHandleDict, PString, SoundHandleEntry);
+typedef PDictionary<PString, SoundHandleEntry> SoundHandleDict;
 
 static PMutex dictMutex;
 
