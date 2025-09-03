@@ -2094,19 +2094,26 @@ PString PSSLCertificateInfo::GetSSLAutoCreateDN() const
 }
 
 
-void PSSLCertificateInfo::SetSSLCredentials(const PString & authority,
+bool PSSLCertificateInfo::SetSSLCredentials(const PString & authority,
                                             const PString & certificate,
                                             const PString & privateKey,
                                             bool autoCreate,
                                             const char * dn)
 {
   PWaitAndSignal lock(m_sslInfoMutex);
+  if (m_sslCertificateAuthority == authority &&
+      m_sslCertificate == certificate &&
+      m_sslPrivateKey == privateKey &&
+      m_sslAutoCreateCertificate == autoCreate)
+    return false;
+
   m_sslCertificateAuthority = authority;
   m_sslCertificate = certificate;
   m_sslPrivateKey = privateKey;
   m_sslAutoCreateCertificate = autoCreate;
   if (dn != NULL)
     m_sslAutoCreateDN = dn;
+  return true;
 }
 
 
@@ -2138,17 +2145,17 @@ void PSSLCertificateInfo::GetSSLCredentials(PString & authority,
 }
 
 
-void PSSLCertificateInfo::SetSSLCredentials(const PSSLCertificateInfo & info)
+bool PSSLCertificateInfo::SetSSLCredentials(const PSSLCertificateInfo & info)
 {
   if (this == &info)
-    return;
+    return false;
 
   PWaitAndSignal lock(m_sslInfoMutex);
-  info.GetSSLCredentials(m_sslCertificateAuthority,
-                         m_sslCertificate,
-                         m_sslPrivateKey,
-                         m_sslAutoCreateCertificate,
-                         m_sslAutoCreateDN);
+  return SetSSLCredentials(info.m_sslCertificateAuthority,
+                           info.m_sslCertificate,
+                           info.m_sslPrivateKey,
+                           info.m_sslAutoCreateCertificate,
+                           info.m_sslAutoCreateDN);
 }
 
 

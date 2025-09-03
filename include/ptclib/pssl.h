@@ -785,15 +785,17 @@ public:
    */
   PString GetSSLAutoCreateDN() const;
 
-  /**Set all the certificate info. */
-  void SetSSLCredentials(
+  /**Set all the certificate info.
+     @return true if credentials changed from previous value
+   */
+  bool SetSSLCredentials(
     const PString & authority,    ///< Certificate Authority directory, file or data
     const PString & certificate,  ///< Local certificate filename or data
     const PString & privateKey,   ///< Private key filename or data for above local certificate
     bool autoCreate = false,      ///< If certificate/privateKey are file paths, and do not exist, then create.
     const char * dn = NULL        ///< Distinguished Name to use if creating certificate
   );
-  void SetSSLCredentials(
+  bool SetSSLCredentials(
     const PSSLCertificateInfo & info  ///< Other certificate info to copy from
   );
 
