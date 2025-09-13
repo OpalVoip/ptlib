@@ -396,6 +396,8 @@ bool PWAVFile::SetChannels(unsigned channels)
       // DO default case
 
     default :
+      if (m_wavFmtChunk.numChannels == channels)
+        break;
       PTRACE(2, "SetChannels ignored after write started, or number of channels unsupported");
       return false;
   }
@@ -426,6 +428,8 @@ bool PWAVFile::SetSampleRate(unsigned rate)
       break;
 
     default :
+      if (m_wavFmtChunk.sampleRate == rate)
+        break;
       PTRACE(2, "SetSampleRate ignored after write started");
       return false;
   }
@@ -449,7 +453,7 @@ unsigned PWAVFile::GetRawSampleSize() const
 bool PWAVFile::SetSampleSize(unsigned v) 
 {
   if (m_status != e_PreWrite)
-    return false;
+    return m_wavFmtChunk.bitsPerSample == v;
 
   m_wavFmtChunk.bitsPerSample = (WORD)v;
   if (m_wavFmtChunk.format != fmt_PCM)
@@ -482,6 +486,9 @@ PBoolean PWAVFile::SetFormat(unsigned fmt)
 
 PBoolean PWAVFile::SetFormat(const PString & format)
 {
+  if (GetFormatString() == format)
+    return true;
+
   PWAVFileFormat * handler = PWAVFileFormatByFormatFactory::CreateInstance(format);
   if (handler == NULL)
     handler = PWAVFileFormatByIDFactory::CreateInstance(format.AsUnsigned());
