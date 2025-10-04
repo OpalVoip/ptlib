@@ -467,7 +467,7 @@ public:
     request.SetDataReceivedEventHandler(
       [this](const Aws::Http::HttpRequest*, Aws::Http::HttpResponse* response, long long)
       {
-        auto buffer = (stringstream() << response->GetResponseBody().rdbuf()).str();
+        auto buffer = (ostringstream() << response->GetResponseBody().rdbuf()).str();
         if (buffer.empty() || m_toChannel->Write(buffer.data(), buffer.length()))
           PTRACE(5, "SynthesizeSpeechAsync: transferred " << buffer.length() << " bytes");
         else if (m_toChannel->GetErrorCode() != PChannel::NotOpen)
