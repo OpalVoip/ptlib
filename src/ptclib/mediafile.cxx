@@ -531,9 +531,14 @@ public:
           !m_wavFile.SetSampleSize(track.m_size*8/track.m_channels) ||
           !m_wavFile.SetSampleRate((unsigned)track.m_rate) ||
           !m_wavFile.SetChannels(track.m_channels))
-      return SetErrorText("Cannot set WAV file track after started writing");
+      return SetErrorText(PSTRSTRM("Cannot set WAV file track format: "
+                                   << track.m_format << '@' << track.m_rate << '/'
+                                   << track.m_channels << ':' << track.m_size
+                                   << (m_wavFile.IsOpen() ? " (already open)" : "")));
 
-    PTRACE(4, "Track set for WAV file");
+    PTRACE(4, "Track set for WAV file: "
+           << track.m_format << '@' << track.m_rate << '/'
+           << track.m_channels << ':' << track.m_size);
     return true;
   }
 

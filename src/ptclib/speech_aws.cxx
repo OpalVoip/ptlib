@@ -465,35 +465,15 @@ public:
     SetRequestInfo(request, text, hint);
 
     request.SetDataReceivedEventHandler(
-      [this](const Aws::Http::HttpRequest *,
-             Aws::Http::HttpResponse * response,
-             long long PTRACE_PARAM(bytesTransferred))
+      [this](const Aws::Http::HttpRequest*, Aws::Http::HttpResponse* response, long long)
       {
-        char buffer[1024];
-        auto & body = response->GetResponseBody();
-
-        for (;;) {
-          body.read(buffer, sizeof(buffer));
-
-          auto bytesRead = body.gcount();
-          if (bytesRead <= 0) {
-            body.clear();
-            PTRACE(5, "SynthesizeSpeechAsync: could not transfer " << bytesTransferred << " bytes");
-            return;
-          }
-
-          if (!m_toChannel->Write(buffer, bytesRead)) {
-            if (m_toChannel->GetErrorCode() != PChannel::NotOpen)
-              PTRACE(2, "SynthesizeSpeechAsync: write error - " << m_toChannel->GetErrorText());
-            else
-              PTRACE(m_asyncAbort, "SynthesizeSpeechAsync: aborted");
-            body.flush();
-            body.flags(ios::failbit);
-            return;
-          }
-
-          PTRACE(5, "SynthesizeSpeechAsync: transferred " << bytesRead << " bytes");
-        }
+        auto buffer = (stringstream() << response->GetResponseBody().rdbuf()).str();
+        if (buffer.empty() || m_toChannel->Write(buffer.data(), buffer.length()))
+          PTRACE(5, "SynthesizeSpeechAsync: transferred " << buffer.length() << " bytes");
+        else if (m_toChannel->GetErrorCode() != PChannel::NotOpen)
+          PTRACE(2, "SynthesizeSpeechAsync: write error - " << m_toChannel->GetErrorText());
+        else
+          PTRACE(m_asyncAbort, "SynthesizeSpeechAsync: aborted");
       });
 
     GetClient()->SynthesizeSpeechAsync(
@@ -503,14 +483,12 @@ public:
          Aws::Polly::Model::SynthesizeSpeechOutcome outcome,
          const std::shared_ptr<const Aws::Client::AsyncCallerContext> &)
       {
-        if (outcome.IsSuccess())
-          PTRACE(4, "SynthesizeSpeechAsync successful.");
-        else
-          PTRACE(2, "SynthesizeSpeechAsync error: " << outcome.GetError());
-
         PQueueChannel * channel = dynamic_cast<PQueueChannel *>(m_toChannel.get());
+        auto prevLength = channel->GetLength();
+        PTRACE_IF(5, prevLength > 0, "SynthesizeSpeechAsync: draining queue of " << prevLength << " bytes");
+
         unsigned noDrainCount = 0;
-        for (auto prevLength = channel->GetLength(); prevLength > 0;) {
+        while (prevLength > 0) {
           PThread::Sleep(100);
 
           auto nextLength = channel->GetLength();
@@ -525,6 +503,10 @@ public:
         }
         m_toChannel->Close();
         m_toChannel.reset();
+        if (outcome.IsSuccess())
+          PTRACE(4, "SynthesizeSpeechAsync successful.");
+        else
+          PTRACE(2, "SynthesizeSpeechAsync error: " << outcome.GetError());
       });
 
     PTRACE(4, "SynthesizeSpeechAsync started.");
