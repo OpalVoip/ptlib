@@ -204,7 +204,10 @@ void PSystemLogTarget::OutputToStream(ostream & stream, PSystemLog::Level level,
 #if PTRACING
   if ((PTrace::GetOptions()&PTrace::OutputJSON) != 0) {
     if (*msg != '{') {
-      stream << "{\"@timestamp\":\"" << PTime().AsString(PTime::LongISO8601) << "\",\"Message\":" << PConstString(msg).ToLiteral() << '}' << endl;
+      stream << "{"
+          "\"@timestamp\":\"" << PTime().AsString(PTime::LongISO8601, PTime::GMT) << "\","
+          "\"Message\":" << PConstString(msg).ToLiteral()
+        << '}' << endl;
       return;
     }
   }
@@ -242,7 +245,11 @@ void PSystemLogTarget::OutputToStream(ostream & stream, PSystemLog::Level level,
 
 void PSystemLogToStderr::Output(PSystemLog::Level level, const char * msg)
 {
+#if PTRACING
+  OutputToStream(cerr, level, msg, (PTrace::GetOptions()&PTrace::GMTTime) ? PTime::GMT : PTime::Local);
+#else
   OutputToStream(cerr, level, msg);
+#endif
 }
 
 
@@ -430,7 +437,11 @@ void PSystemLogToDebug::Output(PSystemLog::Level level, const char * msg)
     return;
 
   PDebugStream strm;
+#if PTRACING
+  OutputToStream(strm, level, msg, (PTrace::GetOptions()&PTrace::GMTTime) ? PTime::GMT : PTime::Local);
+#else
   OutputToStream(strm, level, msg);
+#endif
   strm.flush();
 }
 
