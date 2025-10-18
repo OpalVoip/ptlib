@@ -34,10 +34,6 @@ Sample command lines:
   -ttttodebugstream --recognise yes no back bye
 */
 
-const char UsageStr[] = "[ options ... ] --play [ --hint <hint> ] text [ text ... ]\n"
-                        "[ options ... ] --voices"
-                        "[ options ... ] --recognise [ word ... ]";
-
 
 class MyProcess : public PProcess
 {
@@ -78,6 +74,8 @@ static PSharedPtr<PTextToSpeech> OpenTextToSpeech(const PArgList & args)
   PSharedPtr<PTextToSpeech> tts(PTextToSpeech::Create(args.GetOptionString("engine")));
   if (tts.get() == NULL)
     cerr << "No such text to speech engine!\n";
+  else if (!tts->SetOptions(PStringOptions(args.GetOptionString("options"))))
+      cerr << "Cannot set options on text to speech engine!\n";
   else if (!tts->SetVoice(args.GetOptionString("voice")))
     cerr << "No such voice for text to speech engine!\n";
   else if (!tts->SetSampleRate(args.GetOptionAs("sound-rate", 8000)))
@@ -93,11 +91,6 @@ static PSharedPtr<PTextToSpeech> OpenTextToSpeech(const PArgList & args)
 
 void MyProcess::Play(const PArgList & args)
 {
-  if (args.GetCount() == 0) {
-    args.Usage(cerr, UsageStr) << "\nNothing to play!\n";
-    return;
-  }
-
   PSharedPtr<PTextToSpeech> tts(OpenTextToSpeech(args));
   if (tts.get() == NULL)
     return;
@@ -107,12 +100,12 @@ void MyProcess::Play(const PArgList & args)
   if (fn.empty()) {
     player.reset(OpenSoundChannel(args, PSoundChannel::Player));
     if (player.get() == NULL) {
-      cerr << "Cound not create sound player!\n";
+      cerr << "Could not create sound player!\n";
       return;
     }
 
-    if (!tts->OpenChannel(player.get())) {
-      cerr << "Cound not connect sound player to text to speech engine!\n";
+    if (!args.HasOption("stream") && !tts->OpenChannel(player.get())) {
+      cerr << "Could not connect sound player to text to speech engine!\n";
       return;
     }
   }
@@ -133,10 +126,27 @@ void MyProcess::Play(const PArgList & args)
   for (PINDEX i = 0; i < args.GetCount(); ++i)
     text << args[i] << ' ';
 
-  if (tts->Speak(text, hint))
-    cout << "Text to speech output successful\n";
-  else
-    cerr << "Error speking text!\n";
+  if (args.HasOption("stream")) {
+    PSharedPtr<PChannel> channel = tts->SpeakToChannel(text, hint);
+    if (!channel) {
+      cerr << "Error streaming text!\n";
+      return;
+    }
+
+    uint8_t buffer[1000];
+    while (channel->Read(buffer, sizeof(buffer))) {
+      player->Write(buffer, channel->GetLastReadCount());
+    }
+  }
+  else {
+    if (!tts->Speak(text, hint)) {
+      cerr << "Error speaking text!\n";
+      return;
+    }
+  }
+
+  player->WaitForPlayCompletion();
+  cout << "Text to speech output successful\n";
 }
 
 
@@ -226,31 +236,31 @@ void MyProcess::Main()
   args.Parse("h-help. Display usage\n"
              "e-engine: Speech engine to use\n"
              "-sound-driver: Use sound driver\n"
-             "S-sound-device: Use sound device\n"
-             "-sound-rate: Use sound sample rate\n"
-             "-sound-channels: Use sound channels\n"
+             "s-sound-device: Use sound device\n"
+             "R-sound-rate: Use sound sample rate\n"
+             "c-sound-channels: Use sound channels\n"
              "f-file: Use WAV file\n"
              "p-play. Play text to speech\n"
              "H-hint: Hint for playing\n"
+             "S-stream. Stream text to speech\n"
              "v-voice. Voice to use with play\n"
              "V-voices. List voices that can be used to play.\n"
              "r-recognise. Recognise speech\n"
+             "O-options: Options for speech engine, opt=value, use multiple times\n"
              PTRACE_ARGLIST);
-  if (!args.IsParsed() || args.HasOption('h')) {
-    args.Usage(cerr, UsageStr);
-    return;
-  }
-
   PTRACE_INITIALISE(args);
 
-  if (args.HasOption("play"))
-    Play(args);
+  if (args.HasOption("recognise"))
+    Recognise(args);
   else if (args.HasOption("voices"))
     Voices(args);
-  else if (args.HasOption("recognise"))
-    Recognise(args);
+  else if (args.HasOption("play") && args.GetCount() > 0)
+    Play(args);
   else
-    args.Usage(cerr, UsageStr) << "\nMust have one of --play or --recognise.\n";
+    args.Usage(cerr,
+               "[ options ... ] --recognise [ word ... ]\n"
+               "[ options ... ] --voices\n"
+               "[ options ... ] --play [ --hint <hint> ] text [ text ... ]");
 }
 
 
