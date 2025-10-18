@@ -400,6 +400,9 @@
     <ClCompile Include="..\..\ptclib\speech_deep.cxx">
       <Filter>Source Files\Components\Wrappers</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\ptclib\speech_11labs.cxx">
+      <Filter>Source Files\Components\Wrappers</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\Include\PtLib\Args.h">
