@@ -289,7 +289,12 @@ ifneq ($(HAS_TEXT_TO_SPEECH)$(HAS_SPEECH_RECOGNITION),)
     SOURCES += $(COMPONENT_SRC_DIR)/speech_aws.cxx 
   endif
   ifeq ($(HAS_SSL),1)
-    SOURCES += $(COMPONENT_SRC_DIR)/speech_deep.cxx 
+    ifeq ($(HAS_SPEECH_RECOGNITION),1)
+      SOURCES += $(COMPONENT_SRC_DIR)/speech_deep.cxx 
+    endif
+    ifeq ($(HAS_TEXT_TO_SPEECH),1)
+      SOURCES += $(COMPONENT_SRC_DIR)/speech_11labs.cxx 
+    endif
   endif
 endif
 
