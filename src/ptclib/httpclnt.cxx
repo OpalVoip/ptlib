@@ -235,6 +235,37 @@ struct PHTTPClient_FileWriter : public PHTTPContentProcessor
 };
 
 
+PHTTPChannelProcessor::PHTTPChannelProcessor(PChannel & channel, bool reader)
+  : PHTTPContentProcessor(reader)
+  , m_channel(channel)
+{
+}
+
+void * PHTTPChannelProcessor::GetBuffer(PINDEX & size)
+{
+  if (!m_channel.IsOpen())
+    return NULL;
+
+  if (m_reader) {
+    if (size > sizeof(m_buffer))
+      size = sizeof(m_buffer);
+  }
+  else {
+    if (!m_channel.Read(m_buffer, sizeof(m_buffer)))
+      return NULL;
+    size = m_channel.GetLastReadCount();
+  }
+
+  return m_buffer;
+}
+
+
+bool PHTTPChannelProcessor::Process(const void * data, PINDEX length)
+{
+  return m_channel.Write(data, length);
+}
+
+
 //////////////////////////////////////////////////////////////////////////////
 // PHTTPClient
 
@@ -568,13 +599,18 @@ bool PHTTPClient::ReadContentBody(PMIMEInfo & replyMIME, ContentProcessor & proc
       if (ptr == NULL)
         return SetLastResponse(ContentProcessorError, "No buffer from HTTP content processor");
 
-      if (length == size)
-        return ReadBlock(ptr, length);
+      if (length == size) {
+        if (!ReadBlock(ptr, length))
+          return false;
+        if (!processor.Process(ptr, length))
+          return SetLastResponse(ContentProcessorError, "Content processing error");
+      }
 
       while (length > 0 && Read(ptr, PMIN(length, size))) {
-        if (!processor.Process(ptr, GetLastReadCount()))
+        PINDEX count = GetLastReadCount();
+        if (!processor.Process(ptr, count))
           return SetLastResponse(ContentProcessorError, "Content processing error");
-        length -= GetLastReadCount();
+        length -= count;
       }
       return true;
     }
@@ -616,13 +652,16 @@ bool PHTTPClient::ReadContentBody(PMIMEInfo & replyMIME, ContentProcessor & proc
     if (chunkLength == size) {
       if (!ReadBlock(ptr, chunkLength))
         return false;
+      if (!processor.Process(ptr, chunkLength))
+        return SetLastResponse(ContentProcessorError, "Content processing error");
     }
     else {
       // Read the chunk
       while (chunkLength > 0 && Read(ptr, PMIN(chunkLength, size))) {
-        if (!processor.Process(ptr, GetLastReadCount()))
+        PINDEX count = GetLastReadCount();
+        if (!processor.Process(ptr, count))
           return SetLastResponse(ContentProcessorError, "Content processing error");
-        chunkLength -= GetLastReadCount();
+        chunkLength -= count;
       }
     }
 
@@ -655,11 +694,21 @@ static bool CheckContentType(const PMIMEInfo & replyMIME, const PString & requir
 }
 
 
+bool PHTTPClient::GetTextDocument(const PURL& url,
+                                  PString& document,
+                                  const PString& requiredContentType)
+{
+  PMIMEInfo outMIME;
+  return GetTextDocument(url, outMIME, document, requiredContentType);
+}
+
+
 bool PHTTPClient::GetTextDocument(const PURL & url,
+                                   PMIMEInfo & outMIME,
                                      PString & document,
                                const PString & requiredContentType)
 {
-  PMIMEInfo outMIME, replyMIME;
+  PMIMEInfo replyMIME;
   if (!GetDocument(url, outMIME, replyMIME))
     return false;
 
@@ -679,11 +728,21 @@ bool PHTTPClient::GetTextDocument(const PURL & url,
 }
 
 
+bool PHTTPClient::GetBinaryDocument(const PURL& url,
+                                    PBYTEArray& document,
+                                    const PString& requiredContentType)
+{
+  PMIMEInfo outMIME;
+  return GetBinaryDocument(url, outMIME, document, requiredContentType);
+}
+
+
 bool PHTTPClient::GetBinaryDocument(const PURL & url,
+                                     PMIMEInfo & outMIME,
                                     PBYTEArray & document,
                                     const PString & requiredContentType)
 {
-  PMIMEInfo outMIME, replyMIME;
+  PMIMEInfo replyMIME;
   if (!GetDocument(url, outMIME, replyMIME))
     return false;
 

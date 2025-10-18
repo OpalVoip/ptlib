@@ -387,6 +387,18 @@ protected:
 };
 
 
+class PHTTPChannelProcessor : public PHTTPContentProcessor
+{
+  PChannel & m_channel;
+  uint8_t m_buffer[4096];
+
+public:
+  PHTTPChannelProcessor(PChannel & channel, bool reader);
+  virtual void * GetBuffer(PINDEX & size) override;
+  virtual bool Process(const void * data, PINDEX length) override;
+};
+
+
 class PHTTPClientAuthentication : public PObject
 {
   PCLASSINFO(PHTTPClientAuthentication, PObject);
@@ -683,8 +695,14 @@ class PHTTPClient : public PHTTP, public PSSLCertificateInfo
      */
     bool GetTextDocument(
       const PURL & url,         ///< Universal Resource Locator for document.
+      PMIMEInfo & outMIME,      ///< MIME info in request
       PString & document,       ///< Body read
       const PString & contentType = PString::Empty() ///< Content-Type header to expect
+    );
+    bool GetTextDocument(
+      const PURL& url,         ///< Universal Resource Locator for document.
+      PString& document,       ///< Body read
+      const PString& contentType = PString::Empty() ///< Content-Type header to expect
     );
 
     /** Get the document specified by the URL.
@@ -694,6 +712,12 @@ class PHTTPClient : public PHTTP, public PSSLCertificateInfo
 
         @return true if document is being transferred.
      */
+    bool GetBinaryDocument(
+      const PURL & url,         ///< Universal Resource Locator for document.
+      PMIMEInfo & outMIME,      ///< MIME info in request
+      PBYTEArray & document,    ///< Body read
+      const PString & contentType = PString::Empty() ///< Content-Type header to expect
+    );
     bool GetBinaryDocument(
       const PURL & url,         ///< Universal Resource Locator for document.
       PBYTEArray & document,    ///< Body read
