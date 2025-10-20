@@ -276,7 +276,8 @@ PBoolean PInternetProtocol::ReadLine(PString & line, PBoolean allowContinuation)
     return false;
 
   PTimeInterval oldTimeout = GetReadTimeout();
-  SetReadTimeout(readLineTimeout);
+  if (readLineTimeout < oldTimeout)
+    SetReadTimeout(readLineTimeout);
 
   while (c >= 0 && !gotEndOfLine) {
     switch (c) {
