@@ -599,13 +599,6 @@ bool PHTTPClient::ReadContentBody(PMIMEInfo & replyMIME, ContentProcessor & proc
       if (ptr == NULL)
         return SetLastResponse(ContentProcessorError, "No buffer from HTTP content processor");
 
-      if (length == size) {
-        if (!ReadBlock(ptr, length))
-          return false;
-        if (!processor.Process(ptr, length))
-          return SetLastResponse(ContentProcessorError, "Content processing error");
-      }
-
       while (length > 0 && Read(ptr, PMIN(length, size))) {
         PINDEX count = GetLastReadCount();
         if (!processor.Process(ptr, count))
@@ -649,20 +642,12 @@ bool PHTTPClient::ReadContentBody(PMIMEInfo & replyMIME, ContentProcessor & proc
     if (ptr == NULL)
       return SetLastResponse(ContentProcessorError, "No buffer from HTTP content processor");
 
-    if (chunkLength == size) {
-      if (!ReadBlock(ptr, chunkLength))
-        return false;
-      if (!processor.Process(ptr, chunkLength))
+    // Read the chunk
+    while (chunkLength > 0 && Read(ptr, PMIN(chunkLength, size))) {
+      PINDEX count = GetLastReadCount();
+      if (!processor.Process(ptr, count))
         return SetLastResponse(ContentProcessorError, "Content processing error");
-    }
-    else {
-      // Read the chunk
-      while (chunkLength > 0 && Read(ptr, PMIN(chunkLength, size))) {
-        PINDEX count = GetLastReadCount();
-        if (!processor.Process(ptr, count))
-          return SetLastResponse(ContentProcessorError, "Content processing error");
-        chunkLength -= count;
-      }
+      chunkLength -= count;
     }
 
     // Read the trailing CRLF
