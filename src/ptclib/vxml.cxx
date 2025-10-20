@@ -1664,9 +1664,9 @@ bool PVXMLSession::LoadCachedResource(const PURL & url,
                                       PBYTEArray & data,
                                       PString & contentType)
 {
-  PTRACE(4, "LoadCachedResource " << url);
-
   PTimeInterval timeout = GetTimeProperty(FetchTimeoutProperty, overrideElement);
+
+  PTRACE(4, "LoadCachedResource " << url << " timeout=" << timeout);
 
   if (url.GetScheme().NumCompare("http") != EqualTo)
     return url.LoadResource(data, PURL::LoadParams(PString::Empty(), timeout));
@@ -1731,11 +1731,11 @@ PHTTPClient * PVXMLSession::InternalCreateHTTPClient()
 PBoolean PVXMLSession::LoadURL(const PURL & url)
 {
   if (url.IsEmpty()) {
-    PTRACE(1, "No URL spcified to load");
+    PTRACE(1, "No URL specified to load");
     return false;
   }
 
-  PTRACE(4, "Loading URL " << url);
+  PTRACE(4, "Loading VXML URL " << url);
 
   // retrieve the document (may be a HTTP get)
   PBYTEArray xmlData;
