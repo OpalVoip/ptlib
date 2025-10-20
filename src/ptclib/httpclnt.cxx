@@ -981,6 +981,7 @@ bool PHTTPClient::ConnectURL(const PURL & destURL)
 
       ssl.reset(new PSSLChannel(context.release(), true));
       ssl->SetServerNameIndication(destURL.GetHostName());
+      ssl->SetReadTimeout(readTimeout);
       if (ssl->Connect(tcp.release()))
         break;
 
