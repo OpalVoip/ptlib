@@ -243,7 +243,7 @@ void MyProcess::Main()
              "p-play. Play text to speech\n"
              "H-hint: Hint for playing\n"
              "S-stream. Stream text to speech\n"
-             "v-voice. Voice to use with play\n"
+             "v-voice: Voice to use with play\n"
              "V-voices. List voices that can be used to play.\n"
              "r-recognise. Recognise speech\n"
              "O-options: Options for speech engine, opt=value, use multiple times\n"
