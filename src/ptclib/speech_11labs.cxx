@@ -374,23 +374,25 @@ bool PTextToSpeech_11Labs::InternalSpeak(const PString & text,
 }
 
 
-static void AddVoice(const PJSON::Object & voiceObj)
+static PStringOptions AddVoice(const PJSON::Object & voiceObj)
 {
+  PStringOptions voice;
+
   PString name = voiceObj.GetString("name");
   PString id = voiceObj.GetString("voice_id");
   if (id.empty())
-    return;
+    return voice;
 
   if (name.empty())
     name = id;
 
-  PStringOptions voice;
   voice.Set(PTextToSpeech::VoiceName, name);
   voice.Set(VoiceId, id);
 
   PWaitAndSignal lock(s_voiceCacheMutex);
   s_validVoices.emplace(name, voice);
   s_validVoices.emplace(id, voice);
+  return voice;
 }
 
 
@@ -486,8 +488,14 @@ bool PTextToSpeech_11Labs::InternalSetVoice(PStringOptions & voice)
   }
 
   PJSON json(reply);
-  if (json.IsType(PJSON::e_Object))
-    AddVoice(json.GetObject());
+  if (!json.IsType(PJSON::e_Object))
+    return false;
+
+  voice = AddVoice(json.GetObject());
+  if (voice.empty()) {
+    PTRACE(3, "Voice name " << voiceId << " has no id");
+    return false;
+  }
 
   PTRACE(3, "Voice ID " << voiceId << " cached");
   return true;
