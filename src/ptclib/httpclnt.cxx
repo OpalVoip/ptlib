@@ -599,7 +599,7 @@ bool PHTTPClient::ReadContentBody(PMIMEInfo & replyMIME, ContentProcessor & proc
       if (ptr == NULL)
         return SetLastResponse(ContentProcessorError, "No buffer from HTTP content processor");
 
-      while (length > 0 && Read(ptr, PMIN(length, size))) {
+      while (length > 0 && ReadBlock(ptr, PMIN(length, size))) {
         PINDEX count = GetLastReadCount();
         if (!processor.Process(ptr, count))
           return SetLastResponse(ContentProcessorError, "Content processing error");
@@ -643,7 +643,7 @@ bool PHTTPClient::ReadContentBody(PMIMEInfo & replyMIME, ContentProcessor & proc
       return SetLastResponse(ContentProcessorError, "No buffer from HTTP content processor");
 
     // Read the chunk
-    while (chunkLength > 0 && Read(ptr, PMIN(chunkLength, size))) {
+    while (chunkLength > 0 && ReadBlock(ptr, PMIN(chunkLength, size))) {
       PINDEX count = GetLastReadCount();
       if (!processor.Process(ptr, count))
         return SetLastResponse(ContentProcessorError, "Content processing error");
