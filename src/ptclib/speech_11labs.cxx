@@ -67,6 +67,7 @@ class PTextToSpeech_11Labs : public PTextToSpeech
   protected:
     // Protected virtual override
     virtual bool InternalSetVoice(PStringOptions& voice) override;
+    bool UpdateVoiceCache();
 
   private:
     unsigned m_sampleRate;
@@ -393,12 +394,57 @@ static void AddVoice(const PJSON::Object & voiceObj)
 }
 
 
+bool PTextToSpeech_11Labs::UpdateVoiceCache()
+{
+  PWaitAndSignal lock(s_voiceCacheMutex);
+
+  if (s_validVoices.size() > 2)
+    return true;
+
+  // Create HTTP client for validation
+  PHTTPClient http("PTLib 11Labs Voice Validator");
+  http.SetReadTimeout(10000); // 10 second timeout
+
+  // Use GET /v1/voices/{voice_id} endpoint
+  PURL url(m_baseUrl);
+  url.AppendPath("v1");
+  url.AppendPath("voices");
+  url.SetQueryVar("page_size", "100");
+
+  PMIMEInfo requestHeaders;
+  requestHeaders.Set("xi-api-key", m_apiKey);
+  requestHeaders.Set("Accept", PMIMEInfo::ApplicationJSON());
+
+  // Make GET request
+  PString reply;
+  if (!http.GetTextDocument(url, requestHeaders, reply)) {
+    PTRACE(2, "Voice list API failed with code: "
+            << http.GetLastResponseCode() << ' ' << http.GetLastResponseInfo());
+    return false;
+  }
+
+  PJSON json(reply);
+  if (json.IsType(PJSON::e_Object)) {
+    const PJSON::Object & root = json.GetObject();
+    if (root.IsType("voices", PJSON::e_Array)) {
+      const PJSON::Array & arr = root.GetArray("voices");
+      for (size_t i = 0; i < arr.size(); ++i) {
+        if (arr.IsType(i, PJSON::e_Object))
+          AddVoice(arr.GetObject(i));
+      }
+    }
+  }
+
+  return true;
+}
+
+
 bool PTextToSpeech_11Labs::InternalSetVoice(PStringOptions & voice)
 {
   PString voiceId = voice.Get(VoiceName, m_defaultVoiceId);
 
   // Check cache first
-  {
+  if (UpdateVoiceCache()) {
     PWaitAndSignal lock(s_voiceCacheMutex);
     auto it = s_validVoices.find(voiceId);
     if (it != s_validVoices.end()) {
@@ -452,46 +498,12 @@ PStringArray PTextToSpeech_11Labs::GetVoiceList()
 {
   PStringArray voices;
 
-  if (s_validVoices.size() < 3) {
-  // Create HTTP client for validation
-    PHTTPClient http("PTLib 11Labs Voice Validator");
-    http.SetReadTimeout(10000); // 10 second timeout
-
-    // Use GET /v1/voices/{voice_id} endpoint
-    PURL url(m_baseUrl);
-    url.AppendPath("v1");
-    url.AppendPath("voices");
-    url.SetQueryVar("page_size", "100");
-
-    PMIMEInfo requestHeaders;
-    requestHeaders.Set("xi-api-key", m_apiKey);
-    requestHeaders.Set("Accept", PMIMEInfo::ApplicationJSON());
-
-    // Make GET request
-    PString reply;
-    if (!http.GetTextDocument(url, requestHeaders, reply)) {
-      PTRACE(2, "Voice list API failed with code: "
-             << http.GetLastResponseCode() << ' ' << http.GetLastResponseInfo());
-      return voices;
-    }
-
-    PJSON json(reply);
-    if (json.IsType(PJSON::e_Object)) {
-      const PJSON::Object & root = json.GetObject();
-      if (root.IsType("voices", PJSON::e_Array)) {
-        const PJSON::Array & arr = root.GetArray("voices");
-        for (size_t i = 0; i < arr.size(); ++i) {
-          if (arr.IsType(i, PJSON::e_Object))
-            AddVoice(arr.GetObject(i));
-        }
-      }
-    }
+  if (UpdateVoiceCache()) {
+    PWaitAndSignal lock(s_voiceCacheMutex);
+    for (const auto & v : s_validVoices)
+      voices.AppendString(PSTRSTRM("name=" << v.second.Get(VoiceName) << ";"
+                                   "id=" << v.second.Get(VoiceId)));
   }
-
-  PWaitAndSignal lock(s_voiceCacheMutex);
-  for (const auto & v : s_validVoices)
-    voices.AppendString(PSTRSTRM("name=" << v.second.Get(VoiceName) << ";"
-                                 "id=" << v.second.Get(VoiceId)));
 
   return voices;
 }
