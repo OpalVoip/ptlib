@@ -66,6 +66,7 @@ static PConstString const MaxSpeechTimeoutProperty("maxspeechtimeout");
 static PConstString const CompleteTimeoutProperty("completetimeout");
 static PConstString const IncompleteTimeoutProperty("incompletetimeout");
 static PConstString const FetchTimeoutProperty("fetchtimeout");
+static PConstString const FetchHeadersProperty("fetchheaders");
 static PConstString const DocumentMaxAgeProperty("documentmaxage");
 static PConstString const DocumentMaxStaleProperty("documentmaxstale");
 static PConstString const AudioMaxAgeProperty("audiomaxage");
@@ -1194,17 +1195,13 @@ bool PVXMLPlayableHTTP::OnStart()
 
   // open the resource
   PVXMLSession & session = m_vxmlChannel->GetSession();
-  PHTTPClient * client = session.InternalCreateHTTPClient();
-  client->SetReadTimeout(session.GetTimeProperty(FetchTimeoutProperty));
-  client->SetPersistent(false);
   PMIMEInfo outMIME, replyMIME;
-  int code = client->GetDocument(m_url, outMIME, replyMIME);
-  if ((code != 200) || (replyMIME(PHTTP::TransferEncodingTag()) *= PHTTP::ChunkedTag())) {
-    delete client;
+  PAutoPtr<PHTTPClient> http(session.InternalCreateHTTPClient(session.GetTimeProperty(FetchTimeoutProperty), outMIME));
+  int code = http->GetDocument(m_url, outMIME, replyMIME);
+  if ((code != 200) || (replyMIME(PHTTP::TransferEncodingTag()) *= PHTTP::ChunkedTag()))
     return false;
-  }
 
-  return SetSubChannel(PSharedPtr<PChannel>(client));
+  return SetSubChannel(PSharedPtr<PChannel>(http.release()));
 }
 
 PFACTORY_CREATE(PFactory<PVXMLPlayable>, PVXMLPlayableHTTP, "http");
@@ -1613,11 +1610,8 @@ bool PVXMLSession::LoadActualResource(const PURL & url,
                                       PBYTEArray & data,
                                       PVXMLCache::Params & cacheParams)
 {
-  PAutoPtr<PHTTPClient> http(InternalCreateHTTPClient());
-
-  http->SetReadTimeout(timeout);
-
   PMIMEInfo outMIME, replyMIME;
+  PAutoPtr<PHTTPClient> http(InternalCreateHTTPClient(timeout, outMIME));
 
   if (!http->GetDocument(url, outMIME, replyMIME)) {
     PTRACE(2, "GET " << url << " failed with "
@@ -1714,7 +1708,7 @@ PHTTPClient * PVXMLSession::CreateHTTPClient()
 }
 
 
-PHTTPClient * PVXMLSession::InternalCreateHTTPClient()
+PHTTPClient * PVXMLSession::InternalCreateHTTPClient(const PTimeInterval & timeout, PMIMEInfo & outMIME)
 {
   PHTTPClient * http = CreateHTTPClient();
   http->SetSSLCredentials(*this);
@@ -1724,6 +1718,9 @@ PHTTPClient * PVXMLSession::InternalCreateHTTPClient()
   m_cookieMutex.Wait();
   http->SetCookies(m_cookies);
   m_cookieMutex.Signal();
+  http->SetReadTimeout(timeout);
+  http->SetPersistent(false);
+  outMIME.FromString(GetProperty(FetchHeadersProperty));
   return http;
 }
 
@@ -3595,10 +3592,9 @@ PBoolean PVXMLSession::TraverseSubmit(PXMLElement & element)
     return ThrowBadFetchError(element, "Could not GET " << url);
   }
 
-  PAutoPtr<PHTTPClient> http(InternalCreateHTTPClient());
-  http->SetReadTimeout(GetTimeProperty(FetchTimeoutProperty, &element));
+  PMIMEInfo outMIME, replyMIME;
+  PAutoPtr<PHTTPClient> http(InternalCreateHTTPClient(GetTimeProperty(FetchTimeoutProperty, &element), outMIME));
 
-  PMIMEInfo sendMIME, replyMIME;
   PString replyBody;
 
   if (urlencoded) {
@@ -3606,7 +3602,7 @@ PBoolean PVXMLSession::TraverseSubmit(PXMLElement & element)
     for (PStringSet::iterator it = namelist.begin(); it != namelist.end(); ++it)
       vars.SetAt(*it, GetVar(*it));
 
-    if (http->PostData(url, sendMIME, vars, replyMIME, replyBody) &&
+    if (http->PostData(url, outMIME, vars, replyMIME, replyBody) &&
         InternalLoadVXML(url, replyBody, PString::Empty()))
       return true;
 
@@ -3616,7 +3612,7 @@ PBoolean PVXMLSession::TraverseSubmit(PXMLElement & element)
 
   // Put in boundary
   PString boundary = "PTLibVXML314159265358979323846";
-  sendMIME.SetAt(PHTTP::ContentTypeTag(), "multipart/form-data; boundary=" + boundary);
+  outMIME.SetAt(PHTTP::ContentTypeTag(), "multipart/form-data; boundary=" + boundary);
 
   // After this all boundaries have a "--" prepended
   boundary.Splice("--", 0, 0);
@@ -3668,7 +3664,7 @@ PBoolean PVXMLSession::TraverseSubmit(PXMLElement & element)
     return ThrowError(element, PSTRSTRM(ErrorBadFetch << '.' << url.GetScheme() << '.' << http->GetLastResponseCode()),
                       "<submit> could not find anything to send using \"" << setfill(',') << namelist << '"');
 
-  if (http->ExecuteCommand(PHTTP::POST, url, sendMIME, PBYTEArray(bodyStr, false), replyMIME) == PHTTP::RequestOK &&
+  if (http->ExecuteCommand(PHTTP::POST, url, outMIME, PBYTEArray(bodyStr, false), replyMIME) == PHTTP::RequestOK &&
       http->ReadContentBody(replyMIME, replyBody) &&
       InternalLoadVXML(url, replyBody, PString::Empty()))
     return true;
