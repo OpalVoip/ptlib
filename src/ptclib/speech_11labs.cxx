@@ -78,6 +78,7 @@ class PTextToSpeech_11Labs : public PTextToSpeech
     PString m_defaultVoiceId;  // Instance-specific default voice ID
     PString m_baseUrl;
     PString m_apiKey;
+    PHTTP::Proxies m_httpProxies;
 
     // Output handling
     PWAVFile m_file;
@@ -85,7 +86,8 @@ class PTextToSpeech_11Labs : public PTextToSpeech
     PSharedPtr<PChannel> m_streamChannel;
     PThread * m_thread;
 
-    bool InternalSpeak(const PString & text, bool streamed, PAutoPtr<PHTTPClient>& http, PMIMEInfo & replyHeaders);
+    PHTTPClient * CreateHTTPCLient() const;
+    bool InternalSpeak(const PString & text, bool streamed, PHTTPClient& http, PMIMEInfo & replyHeaders);
     void StreamThread(PAutoPtr<PHTTPClient> http, PMIMEInfo replyHeaders);
 };
 
@@ -123,7 +125,7 @@ PTextToSpeech_11Labs::~PTextToSpeech_11Labs()
 
 bool PTextToSpeech_11Labs::SetOptions(const PStringOptions & options)
 {
-    // Configure API key
+  // Configure API key
   m_apiKey = options.GetString(ApiKeyTag, m_apiKey);
   //m_apiKey = "sk_b7765728d1d1c596e9b3aef83132d40bae221f796cced826";
 
@@ -132,13 +134,14 @@ bool PTextToSpeech_11Labs::SetOptions(const PStringOptions & options)
   if (!customModel.IsEmpty())
     m_modelId = customModel;
 
-// Configure custom default voice ID
+  // Configure custom default voice ID
   PString customDefaultVoice = options.GetString(DefaultVoiceIdTag, m_defaultVoiceId);
   if (!customDefaultVoice.IsEmpty()) {
     m_defaultVoiceId = customDefaultVoice;
     PTRACE(3, "Custom default voice set to: " << m_defaultVoiceId);
   }
 
+  m_httpProxies.FromOptions(options);
   return PTextToSpeech::SetOptions(options);
 }
 
@@ -250,9 +253,9 @@ bool PTextToSpeech_11Labs::Speak(const PString & text, TextType /*hint*/)
   if (!IsOpen())
     return false;
 
-  PAutoPtr<PHTTPClient> http;
+  PAutoPtr<PHTTPClient> http(CreateHTTPCLient());
   PMIMEInfo replyHeaders;
-  if (!InternalSpeak(text, false, http, replyHeaders))
+  if (!InternalSpeak(text, false, *http, replyHeaders))
     return false;
 
   PHTTPChannelProcessor processor(m_channel ? *m_channel : m_file, true);
@@ -268,9 +271,9 @@ bool PTextToSpeech_11Labs::Speak(const PString & text, TextType /*hint*/)
 
 PSharedPtr<PChannel> PTextToSpeech_11Labs::SpeakToChannel(const PString & text, TextType /*hint*/)
 {
-  PAutoPtr<PHTTPClient> http;
+  PAutoPtr<PHTTPClient> http(CreateHTTPCLient());
   PMIMEInfo replyHeaders;
-  if (!InternalSpeak(text, true, http, replyHeaders))
+  if (!InternalSpeak(text, true, *http, replyHeaders))
     return nullptr;
 
   m_streamChannel.reset(new PQueueChannel(m_sampleRate*10)); // One second of PCM
@@ -318,7 +321,7 @@ void PTextToSpeech_11Labs::StreamThread(PAutoPtr<PHTTPClient> http, PMIMEInfo re
 
 bool PTextToSpeech_11Labs::InternalSpeak(const PString & text,
                                          bool streamed,
-                                         PAutoPtr<PHTTPClient> & http,
+                                         PHTTPClient & http,
                                          PMIMEInfo & replyHeaders)
 {
   if (text.IsEmpty()) {
@@ -330,9 +333,6 @@ bool PTextToSpeech_11Labs::InternalSpeak(const PString & text,
     PTRACE(2, "Missing API key");
     return false;
   }
-
-  http.reset(new PHTTPClient("PTLib 11Labs TTS Client"));
-  http->SetReadTimeout(30000);
 
   // Use the streaming endpoint but get complete response
   PURL url(m_baseUrl);
@@ -362,9 +362,9 @@ bool PTextToSpeech_11Labs::InternalSpeak(const PString & text,
   PTRACE(4, "Calling 11Labs streaming API: " << url);
 
   // Make the POST request and get complete response
-  if (!http->PostData(url, requestHeaders, json.AsString(), replyHeaders)) {
+  if (!http.PostData(url, requestHeaders, json.AsString(), replyHeaders)) {
     PTRACE(2, "Streaming API failed with code: "
-           << http->GetLastResponseCode() << ' ' << http->GetLastResponseInfo());
+           << http.GetLastResponseCode() << ' ' << http.GetLastResponseInfo());
     return false;
   }
 
@@ -404,8 +404,7 @@ bool PTextToSpeech_11Labs::UpdateVoiceCache()
     return true;
 
   // Create HTTP client for validation
-  PHTTPClient http("PTLib 11Labs Voice Validator");
-  http.SetReadTimeout(10000); // 10 second timeout
+  PAutoPtr<PHTTPClient> http(CreateHTTPCLient());
 
   // Use GET /v1/voices/{voice_id} endpoint
   PURL url(m_baseUrl);
@@ -419,9 +418,9 @@ bool PTextToSpeech_11Labs::UpdateVoiceCache()
 
   // Make GET request
   PString reply;
-  if (!http.GetTextDocument(url, requestHeaders, reply)) {
+  if (!http->GetTextDocument(url, requestHeaders, reply)) {
     PTRACE(2, "Voice list API failed with code: "
-            << http.GetLastResponseCode() << ' ' << http.GetLastResponseInfo());
+            << http->GetLastResponseCode() << ' ' << http->GetLastResponseInfo());
     return false;
   }
 
@@ -465,8 +464,7 @@ bool PTextToSpeech_11Labs::InternalSetVoice(PStringOptions & voice)
   PTRACE(4, "Validating voice ID " << voiceId << " via API");
 
   // Create HTTP client for validation
-  PHTTPClient http("PTLib 11Labs Voice Validator");
-  http.SetReadTimeout(10000); // 10 second timeout
+  PAutoPtr<PHTTPClient> http(CreateHTTPCLient());
 
   // Use GET /v1/voices/{voice_id} endpoint
   PURL url(m_baseUrl);
@@ -482,8 +480,8 @@ bool PTextToSpeech_11Labs::InternalSetVoice(PStringOptions & voice)
 
   // Make GET request
   PString reply;
-  if (!http.GetTextDocument(url, requestHeaders, reply)) {
-    PTRACE(3, "Voice ID " << voiceId << " invalid (HTTP " << http.GetLastResponseCode() << ')');
+  if (!http->GetTextDocument(url, requestHeaders, reply)) {
+    PTRACE(3, "Voice ID " << voiceId << " invalid (HTTP " << http->GetLastResponseCode() << ')');
     return false;
   }
 
@@ -514,4 +512,13 @@ PStringArray PTextToSpeech_11Labs::GetVoiceList()
   }
 
   return voices;
+}
+
+
+PHTTPClient * PTextToSpeech_11Labs::CreateHTTPCLient() const
+{
+  PHTTPClient * http = new PHTTPClient("PTLib 11Labs TTS Client");
+  http->SetReadTimeout(5000);
+  http->SetProxies(m_httpProxies);
+  return http;
 }

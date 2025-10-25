@@ -801,9 +801,11 @@ public:
 
   virtual bool SetOptions(const PStringOptions & options) override
   {
+    // Get buffer size in milliseconds before the sample rate changes
     unsigned bufferMilliseconds = options.GetVar("AWS-Buffer-Duration", m_bufferSize * 1000 / m_sampleRate);
     bool ok1 = PSpeechRecognition::SetOptions(options); // Set sample rate (maybe)
     m_bufferSize = bufferMilliseconds * m_sampleRate / 1000;
+
     m_webSocket.SetProxies(options);
 
     m_additionalHeaders.clear();
