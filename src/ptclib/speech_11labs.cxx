@@ -88,7 +88,7 @@ class PTextToSpeech_11Labs : public PTextToSpeech
 
     PHTTPClient * CreateHTTPCLient() const;
     bool InternalSpeak(const PString & text, bool streamed, PHTTPClient& http, PMIMEInfo & replyHeaders);
-    void StreamThread(PAutoPtr<PHTTPClient> http, PMIMEInfo replyHeaders);
+    void StreamThread(PHTTPClient* http, PMIMEInfo replyHeaders);
 };
 
 PFACTORY_CREATE(PFactory<PTextToSpeech>, PTextToSpeech_11Labs, P_TEXT_TO_SPEECH_11LABS, false);
@@ -277,13 +277,13 @@ PSharedPtr<PChannel> PTextToSpeech_11Labs::SpeakToChannel(const PString & text, 
     return nullptr;
 
   m_streamChannel.reset(new PQueueChannel(m_sampleRate*10)); // One second of PCM
-  m_thread = new PThreadObj2Arg<PTextToSpeech_11Labs, PAutoPtr<PHTTPClient>, PMIMEInfo>(
-    *this, http, replyHeaders, &PTextToSpeech_11Labs::StreamThread, false, "11LabsStrm");
+  m_thread = new PThreadObj2Arg<PTextToSpeech_11Labs, PHTTPClient*, PMIMEInfo>(
+    *this, http.release(), replyHeaders, &PTextToSpeech_11Labs::StreamThread, false, "11LabsStrm");
   return m_streamChannel;
 }
 
 
-void PTextToSpeech_11Labs::StreamThread(PAutoPtr<PHTTPClient> http, PMIMEInfo replyHeaders)
+void PTextToSpeech_11Labs::StreamThread(PHTTPClient* http, PMIMEInfo replyHeaders)
 {
   PTRACE(3, "Started streaming thread");
 
@@ -314,6 +314,7 @@ void PTextToSpeech_11Labs::StreamThread(PAutoPtr<PHTTPClient> http, PMIMEInfo re
 
   m_streamChannel->Close();
   m_streamChannel.reset();
+  delete http;
 
   PTRACE(3, "Finished streaming thread");
 }
