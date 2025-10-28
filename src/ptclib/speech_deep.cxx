@@ -72,6 +72,7 @@ class PSpeechRecognition_Deepgram : public PSpeechRecognition
   PString m_language;
   PString m_endpoint;
   PString m_apiKey;
+  PHTTP::Proxies m_httpProxies;
   PStringToString m_options;
   unsigned m_bufferSize = 800; // Default 100ms
 
@@ -201,6 +202,7 @@ public:
 
     m_endpoint = options.GetString(EndpointTag, m_endpoint);
     m_apiKey = options.GetString(ApiKeyTag, m_apiKey);
+    m_httpProxies.FromOptions(options);
 
     static PStringSet SkipParams = MakeSkipParameters();
     for (PStringOptions::const_iterator opt = options.begin(); opt != options.end(); ++opt) {
@@ -208,6 +210,7 @@ public:
         m_options.SetAt(opt->first.Mid(9), opt->second);
     }
 
+    // Get buffer size in milliseconds before the sample rate changes
     unsigned bufferMilliseconds = options.GetVar(BufferDurationTag, m_bufferSize * 1000 / m_sampleRate);
     if (!PSpeechRecognition::SetOptions(options)) // Set sample rate (maybe)
       return false;
@@ -331,6 +334,7 @@ public:
       url.SetQueryVar(EncodingHeader, "linear16");
 
       m_webSocket.SetAuthorization("token " + m_apiKey);
+      m_webSocket.SetProxies(m_httpProxies);
       m_webSocket.SetBinaryMode();
       if (!m_webSocket.Connect(url))
         return false;

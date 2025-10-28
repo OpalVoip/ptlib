@@ -582,7 +582,7 @@ class PVXMLSession : public PIndirectChannel, public PSSLCertificateInfo
     bool IsFinalProcessing() const { return m_closing || m_promptMode == e_FinalProcessing; }
 
     PURL NormaliseResourceName(const PString & src);
-    PHTTPClient * InternalCreateHTTPClient();
+    PHTTPClient * InternalCreateHTTPClient(const PTimeInterval & readTimeout, PMIMEInfo & outHeaders);
 
     void PushDialogScope(PXMLElement & element);
 

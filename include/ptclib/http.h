@@ -294,10 +294,16 @@ class PHTTP : public PInternetProtocol
       Proxies(const PConfig & cfg);
       /**Get active proxy from options dictionary.
         */
-      Proxies(const PStringOptions & options);
+      Proxies(const PStringOptions & options)
+      {
+        FromOptions(options);
+      }
+
+      /// Set pxoxy values from  string options
+      void FromOptions(const PStringOptions & options);
 
       /// Set string options to pxoxy values
-      void ToOptions(PStringToString & options) const;
+      void ToOptions(PStringOptions & options) const;
 
       /// Return true if no proxies set
       bool IsEmpty() const { return m_httpProxy.empty() && m_httpsProxy.empty(); }

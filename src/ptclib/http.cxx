@@ -138,14 +138,15 @@ PHTTP::Proxies::Proxies(const PConfig & cfg)
 { }
 
 
-PHTTP::Proxies::Proxies(const PStringOptions & options)
-  : m_httpProxy(options.GetString(HttpProxyKey(), options.GetString("HTTP_PROXY", options.GetString("http_proxy"))).Trim())
-  , m_httpsProxy(options.GetString(HttpsProxyKey(), options.GetString("HTTPS_PROXY", options.GetString("https_proxy", m_httpProxy))).Trim())
-  , m_noProxy(options.GetString(NoProxyKey(), options.GetString("NO_PROXY", options.GetString("no_proxy"))))
-{ }
+void PHTTP::Proxies::FromOptions(const PStringOptions & options)
+{
+  m_httpProxy = options.GetString(HttpProxyKey(), options.GetString("HTTP_PROXY", options.GetString("http_proxy"))).Trim();
+  m_httpsProxy = options.GetString(HttpsProxyKey(), options.GetString("HTTPS_PROXY", options.GetString("https_proxy", m_httpProxy))).Trim();
+  m_noProxy = options.GetString(NoProxyKey(), options.GetString("NO_PROXY", options.GetString("no_proxy")));
+}
 
 
-void PHTTP::Proxies::ToOptions(PStringToString & options) const
+void PHTTP::Proxies::ToOptions(PStringOptions & options) const
 {
   if (m_httpProxy.empty())
     options.RemoveAt(HttpProxyKey());
