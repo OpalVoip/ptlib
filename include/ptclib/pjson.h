@@ -333,7 +333,12 @@ public:
   operator TYPE() const { return m_value; }
 
   virtual PJSON::Types GetType() const { return PJSON::e_String; }
-  virtual bool FromJSON(const PJSON::Base & field) { PStringStream s(dynamic_cast<const PJSON::String &>(field)); s >> m_value; return s.good(); }
+  virtual bool FromJSON(const PJSON::Base & field)
+  {
+    PStringStream s(dynamic_cast<const PJSON::String &>(field));
+    s >> m_value;
+    return !s.fail();
+  }
   virtual void AsJSON(PJSON::Base & field) const { dynamic_cast<PJSON::String &>(field) = PSTRSTRM(m_value); }
 
 protected:

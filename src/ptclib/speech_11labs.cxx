@@ -287,14 +287,15 @@ void PTextToSpeech_11Labs::StreamThread(PHTTPClient* http, PMIMEInfo replyHeader
 {
   PTRACE(3, "Started streaming thread");
 
-  PHTTPChannelProcessor processor(*m_streamChannel, true);
-  if (http->ReadContentBody(replyHeaders, processor)) {
-    PQueueChannel * channel = dynamic_cast<PQueueChannel *>(m_streamChannel.get());
+  PSharedPtr<PChannel> streamChannel = m_streamChannel;
+  PHTTPChannelProcessor processor(*streamChannel, true);
+  if (http->ReadContentBody(replyHeaders, processor) && streamChannel->IsOpen()) {
+    PQueueChannel * channel = dynamic_cast<PQueueChannel *>(streamChannel.get());
     auto prevLength = channel->GetLength();
     PTRACE_IF(5, prevLength > 0, "Draining queue of " << prevLength << " bytes");
 
     unsigned noDrainCount = 0;
-    while (prevLength > 0) {
+    while (prevLength > 0 && streamChannel->IsOpen()) {
       PThread::Sleep(100);
 
       auto nextLength = channel->GetLength();
@@ -312,8 +313,7 @@ void PTextToSpeech_11Labs::StreamThread(PHTTPClient* http, PMIMEInfo replyHeader
     PTRACE(2, "Write failure to channel: " << http->GetLastResponseInfo());
   }
 
-  m_streamChannel->Close();
-  m_streamChannel.reset();
+  streamChannel->Close();
   delete http;
 
   PTRACE(3, "Finished streaming thread");
