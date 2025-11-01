@@ -38,9 +38,10 @@
 
 
 static const PConstCaselessString DeepgramPrefix("Deepgram-");
-static const PConstCaselessString EndpointTag("Deepgram-Endpoint");
-static const PConstCaselessString ApiKeyTag("Deepgram-API-Key");
-static const PConstCaselessString BufferDurationTag("Deepgram-Buffer-Duration");
+static const PConstCaselessString DeepgramFluxPrefix("DeepgramFlux-");
+static const PConstCaselessString EndpointTag("Endpoint");
+static const PConstCaselessString ApiKeyTag("API-Key");
+static const PConstCaselessString BufferDurationTag("Buffer-Duration");
 
 static const PConstCaselessString SampleRateHeader("sample_rate");
 static const PConstCaselessString ChannelsHeader("channels");
@@ -50,13 +51,20 @@ static const PConstCaselessString EncodingHeader("encoding");
 static PStringSet MakeSkipParameters()
 {
   PStringSet set;
-  set += EndpointTag;
-  set += ApiKeyTag;
-  set += BufferDurationTag;
+  set += DeepgramPrefix + EndpointTag;
+  set += DeepgramPrefix + ApiKeyTag;
+  set += DeepgramPrefix + BufferDurationTag;
   set += DeepgramPrefix + SampleRateHeader;
   set += DeepgramPrefix + ChannelsHeader;
   set += DeepgramPrefix + LanguageHeader;
   set += DeepgramPrefix + EncodingHeader;
+  set += DeepgramFluxPrefix + EndpointTag;
+  set += DeepgramFluxPrefix + ApiKeyTag;
+  set += DeepgramFluxPrefix + BufferDurationTag;
+  set += DeepgramFluxPrefix + SampleRateHeader;
+  set += DeepgramFluxPrefix + ChannelsHeader;
+  set += DeepgramFluxPrefix + LanguageHeader;
+  set += DeepgramFluxPrefix + EncodingHeader;
   return set;
 };
 
@@ -67,6 +75,9 @@ static PStringSet MakeSkipParameters()
 
 class PSpeechRecognition_Deepgram : public PSpeechRecognition
 {
+  const bool m_flux;
+  const PString m_prefix;
+
   unsigned m_sampleRate;
   unsigned m_channels;
   PString m_language;
@@ -162,6 +173,17 @@ class PSpeechRecognition_Deepgram : public PSpeechRecognition
         transcript.m_confidence = 1.0f;
         transcript.m_content.MakeEmpty();
       }
+      else if (resultType == "TurnInfo") {
+        PCaselessString event = result.GetString("event");
+        transcript.m_final = event =="EndOfTurn";
+        transcript.m_when = PTimeInterval::Seconds((double)result.GetNumber("audio_window_end"));
+        transcript.m_content = result.GetString("transcript");
+        transcript.m_confidence = (float)result.GetNumber("end_of_turn_confidence");
+        if (!transcript.m_content.empty()) {
+          PTRACE(4, "Sending notification of " << transcript);
+          m_notifier(*this, transcript);
+        }
+      }
     }
 
     if (!transcript.m_final && !transcript.m_content.empty()) {
@@ -173,21 +195,31 @@ class PSpeechRecognition_Deepgram : public PSpeechRecognition
     PTRACE(4, "Reading events thread ended");
   }
 
-
-public:
-  PSpeechRecognition_Deepgram()
-    : m_sampleRate(8000)
+protected:
+  PSpeechRecognition_Deepgram(bool flux)
+    : m_flux(flux)
+    , m_prefix(flux ? DeepgramFluxPrefix : DeepgramPrefix)
+    , m_sampleRate(8000)
     , m_channels(1)
     , m_language("en-US")
   {
     PConfig env(PConfig::Environment);
     m_apiKey = env.GetString("DEEPGRAM_API_KEY");
-    m_endpoint = env.GetString("DEEPGRAM_ENDPOINT", "wss://api.deepgram.com/v1");
-    m_options.SetAt("utterance_end_ms", "2000");
-    m_options.SetAt("interim_results", "true");
+    if (flux) {
+      m_endpoint = env.GetString("DEEPGRAM_FLUX_ENDPOINT", "wss://api.deepgram.com/v2");
+      m_options.SetAt("model", "flux-general-en");
+      m_options.SetAt("eot_timeout_ms", "1000");
+    }
+    else {
+      m_endpoint = env.GetString("DEEPGRAM_ENDPOINT", "wss://api.deepgram.com/v1");
+      m_options.SetAt("utterance_end_ms", "2000");
+      m_options.SetAt("interim_results", "true");
+    }
+    m_options.SetAt(EncodingHeader, "linear16");
   }
 
 
+public:
   ~PSpeechRecognition_Deepgram()
   {
     Close();
@@ -200,18 +232,18 @@ public:
     if (IsOpen())
       return false;
 
-    m_endpoint = options.GetString(EndpointTag, m_endpoint);
-    m_apiKey = options.GetString(ApiKeyTag, m_apiKey);
+    m_endpoint = options.GetString(m_prefix + EndpointTag, m_endpoint);
+    m_apiKey = options.GetString(m_prefix + ApiKeyTag, m_apiKey);
     m_httpProxies.FromOptions(options);
 
     static PStringSet SkipParams = MakeSkipParameters();
     for (PStringOptions::const_iterator opt = options.begin(); opt != options.end(); ++opt) {
-      if (opt->first.starts_with(DeepgramPrefix) && !SkipParams.Contains(opt->first))
+      if (opt->first.starts_with(m_prefix) && !SkipParams.Contains(opt->first))
         m_options.SetAt(opt->first.Mid(9), opt->second);
     }
 
     // Get buffer size in milliseconds before the sample rate changes
-    unsigned bufferMilliseconds = options.GetVar(BufferDurationTag, m_bufferSize * 1000 / m_sampleRate);
+    unsigned bufferMilliseconds = options.GetVar(m_prefix + BufferDurationTag, m_bufferSize * 1000 / m_sampleRate);
     if (!PSpeechRecognition::SetOptions(options)) // Set sample rate (maybe)
       return false;
 
@@ -329,9 +361,10 @@ public:
       for (PStringOptions::const_iterator opt = m_options.begin(); opt != m_options.end(); ++opt)
         url.SetQueryVar(opt->first, opt->second);
       url.SetQueryVar(SampleRateHeader, m_sampleRate);
-      url.SetQueryVar(ChannelsHeader, m_channels);
-      url.SetQueryVar(LanguageHeader, m_language);
-      url.SetQueryVar(EncodingHeader, "linear16");
+      if (!m_flux) {
+        url.SetQueryVar(ChannelsHeader, m_channels);
+        url.SetQueryVar(LanguageHeader, m_language);
+      }
 
       m_webSocket.SetAuthorization("token " + m_apiKey);
       m_webSocket.SetProxies(m_httpProxies);
@@ -357,4 +390,22 @@ public:
   }
 };
 
-PFACTORY_CREATE(PFactory<PSpeechRecognition>, PSpeechRecognition_Deepgram, P_SPEECH_RECOGNITION_DEEPGRAM, false);
+class PSpeechRecognition_DeepgramBasic : public PSpeechRecognition_Deepgram
+{
+public:
+  PSpeechRecognition_DeepgramBasic()
+    : PSpeechRecognition_Deepgram(false)
+  { }
+};
+
+PFACTORY_CREATE(PFactory<PSpeechRecognition>, PSpeechRecognition_DeepgramBasic, P_SPEECH_RECOGNITION_DEEPGRAM, false);
+
+class PSpeechRecognition_DeepgramFlux : public PSpeechRecognition_Deepgram
+{
+public:
+  PSpeechRecognition_DeepgramFlux()
+    : PSpeechRecognition_Deepgram(true)
+  { }
+};
+
+PFACTORY_CREATE(PFactory<PSpeechRecognition>, PSpeechRecognition_DeepgramFlux, P_SPEECH_RECOGNITION_DEEPGRAM "Flux", false);
