@@ -42,6 +42,7 @@ static const PConstCaselessString DeepgramFluxPrefix("DeepgramFlux-");
 static const PConstCaselessString EndpointTag("Endpoint");
 static const PConstCaselessString ApiKeyTag("API-Key");
 static const PConstCaselessString BufferDurationTag("Buffer-Duration");
+static const PConstCaselessString FinalHeuristicTag("Deepgram-IsFinal-Heuristic");
 
 static const PConstCaselessString SampleRateHeader("sample_rate");
 static const PConstCaselessString ChannelsHeader("channels");
@@ -65,6 +66,7 @@ static PStringSet MakeSkipParameters()
   set += DeepgramFluxPrefix + ChannelsHeader;
   set += DeepgramFluxPrefix + LanguageHeader;
   set += DeepgramFluxPrefix + EncodingHeader;
+  set += FinalHeuristicTag;
   return set;
 };
 
@@ -83,6 +85,7 @@ class PSpeechRecognition_Deepgram : public PSpeechRecognition
   PString m_language;
   PString m_endpoint;
   PString m_apiKey;
+  bool m_isFinalHeuristic;
   PHTTP::Proxies m_httpProxies;
   PStringToString m_options;
   unsigned m_bufferSize = 800; // Default 100ms
@@ -144,10 +147,11 @@ class PSpeechRecognition_Deepgram : public PSpeechRecognition
           const PJSON::Object & alternative = alternatives.GetObject(idxAlternative);
           auto partial = alternatives.GetObject(idxAlternative).GetString("transcript");
           if (!partial.empty()) {
-            if (result.GetBoolean("is_final"))
+            bool isFinal = result.GetBoolean("is_final");
+            if (isFinal)
               transcript.m_content &= partial;
             transcript.m_when = PTimeInterval::Seconds((double)result.GetNumber("start"));
-            transcript.m_final = result.GetBoolean("speech_final");
+            transcript.m_final = m_isFinalHeuristic ? isFinal : result.GetBoolean("speech_final");
 
             auto confidence = (float)alternative.GetNumber("confidence");
             if (confidence > 0 && transcript.m_confidence > confidence)
@@ -201,6 +205,7 @@ protected:
     , m_prefix(flux ? DeepgramFluxPrefix : DeepgramPrefix)
     , m_sampleRate(8000)
     , m_channels(1)
+    , m_isFinalHeuristic(false)
     , m_language("en-US")
   {
     PConfig env(PConfig::Environment);
@@ -234,6 +239,7 @@ public:
 
     m_endpoint = options.GetString(m_prefix + EndpointTag, m_endpoint);
     m_apiKey = options.GetString(m_prefix + ApiKeyTag, m_apiKey);
+    m_isFinalHeuristic = options.GetBoolean(FinalHeuristicTag, m_isFinalHeuristic);
     m_httpProxies.FromOptions(options);
 
     static PStringSet SkipParams = MakeSkipParameters();
