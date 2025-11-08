@@ -205,8 +205,8 @@ protected:
     , m_prefix(flux ? DeepgramFluxPrefix : DeepgramPrefix)
     , m_sampleRate(8000)
     , m_channels(1)
-    , m_isFinalHeuristic(false)
     , m_language("en-US")
+    , m_isFinalHeuristic(false)
   {
     PConfig env(PConfig::Environment);
     m_apiKey = env.GetString("DEEPGRAM_API_KEY");
