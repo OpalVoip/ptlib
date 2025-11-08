@@ -85,6 +85,7 @@ class PTextToSpeech_11Labs : public PTextToSpeech
     PChannel* m_channel;
     PSharedPtr<PChannel> m_streamChannel;
     PThread * m_thread;
+    PDECLARE_MUTEX(m_mutex);
 
     PHTTPClient * CreateHTTPCLient() const;
     bool InternalSpeak(const PString & text, bool streamed, PHTTPClient& http, PMIMEInfo & replyHeaders);
@@ -125,7 +126,11 @@ PTextToSpeech_11Labs::~PTextToSpeech_11Labs()
 
 bool PTextToSpeech_11Labs::SetOptions(const PStringOptions & options)
 {
-  // Configure API key
+  PWaitAndSignal lock(m_mutex);
+  if (IsOpen())
+    return false;
+
+// Configure API key
   m_apiKey = options.GetString(ApiKeyTag, m_apiKey);
   //m_apiKey = "sk_b7765728d1d1c596e9b3aef83132d40bae221f796cced826";
 
@@ -148,6 +153,10 @@ bool PTextToSpeech_11Labs::SetOptions(const PStringOptions & options)
 
 bool PTextToSpeech_11Labs::SetSampleRate(unsigned rate)
 {
+  PWaitAndSignal lock(m_mutex);
+  if (IsOpen())
+    return false;
+
   PTRACE(4, "Invoking ElevenLabs SetSampleRate: " << rate);
   m_sampleRate = rate;
   return true;
@@ -162,6 +171,10 @@ unsigned PTextToSpeech_11Labs::GetSampleRate() const
 
 bool PTextToSpeech_11Labs::SetChannels(unsigned channels)
 {
+  PWaitAndSignal lock(m_mutex);
+  if (IsOpen())
+    return false;
+
   if (channels != 1)
     return false;
 
@@ -198,6 +211,8 @@ bool PTextToSpeech_11Labs::OpenFile(const PFilePath & fn)
 
   Close();
 
+  PWaitAndSignal lock(m_mutex);
+
   m_file.SetChannels(m_channels);
   m_file.SetSampleRate(m_sampleRate);
   if (m_file.Open(fn, PFile::WriteOnly))
@@ -210,19 +225,23 @@ bool PTextToSpeech_11Labs::OpenFile(const PFilePath & fn)
 
 bool PTextToSpeech_11Labs::IsOpen() const
 {
+  PWaitAndSignal lock(m_mutex);
+
   if (m_channel || m_file.IsOpen())
     return true;
 
 // Only consider "open" if we have an active file OR a valid streaming channel
 // This prevents the VXML system from trying to use a TTS engine that's being shut down
-  auto channel = m_streamChannel;
-  return channel && channel->IsOpen();
+  return m_streamChannel && m_streamChannel->IsOpen();
 }
 
 
 bool PTextToSpeech_11Labs::OpenChannel(PChannel * channel)
 {
   Close();
+
+  PWaitAndSignal lock(m_mutex);
+
   m_channel = channel;
   return channel != nullptr;
 }
@@ -232,17 +251,19 @@ bool PTextToSpeech_11Labs::Close()
 {
   PTRACE(4, "Closing");
 
+  m_mutex.Wait();
+
   m_isOpen = false;
   m_file.Close();
   m_channel = nullptr;
 
-  auto channel = std::exchange(m_streamChannel, nullptr);
-  if (channel) {
+  if (m_streamChannel) {
     PTRACE(4, "Closing streaming channel gracefully");
-    channel->Close();
+    m_streamChannel->Close();
+    m_streamChannel.reset();
   }
 
-  PThread::WaitAndDelete(m_thread);
+  PThread::WaitAndDelete(m_thread, 2000, &m_mutex, false);
 
   return true;
 }
@@ -271,6 +292,10 @@ bool PTextToSpeech_11Labs::Speak(const PString & text, TextType /*hint*/)
 
 PSharedPtr<PChannel> PTextToSpeech_11Labs::SpeakToChannel(const PString & text, TextType /*hint*/)
 {
+  Close();
+
+  PWaitAndSignal lock(m_mutex);
+
   PAutoPtr<PHTTPClient> http(CreateHTTPCLient());
   PMIMEInfo replyHeaders;
   if (!InternalSpeak(text, true, *http, replyHeaders))
@@ -283,11 +308,20 @@ PSharedPtr<PChannel> PTextToSpeech_11Labs::SpeakToChannel(const PString & text, 
 }
 
 
-void PTextToSpeech_11Labs::StreamThread(PHTTPClient* http, PMIMEInfo replyHeaders)
+void PTextToSpeech_11Labs::StreamThread(PHTTPClient* httpArg, PMIMEInfo replyHeaders)
 {
+  PAutoPtr<PHTTPClient> http(httpArg);
+
+  m_mutex.Wait();
+  auto streamChannel = m_streamChannel;
+  m_mutex.Signal();
+  if (!streamChannel) {
+    PTRACE(3, "Stopped streaming thread before it started");
+    return;
+  }
+
   PTRACE(3, "Started streaming thread");
 
-  PSharedPtr<PChannel> streamChannel = m_streamChannel;
   PHTTPChannelProcessor processor(*streamChannel, true);
   if (http->ReadContentBody(replyHeaders, processor) && streamChannel->IsOpen()) {
     PQueueChannel * channel = dynamic_cast<PQueueChannel *>(streamChannel.get());
@@ -314,7 +348,6 @@ void PTextToSpeech_11Labs::StreamThread(PHTTPClient* http, PMIMEInfo replyHeader
   }
 
   streamChannel->Close();
-  delete http;
 
   PTRACE(3, "Finished streaming thread");
 }
