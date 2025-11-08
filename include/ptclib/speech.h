@@ -191,7 +191,9 @@ class PSpeechRecognition : public PObject
 #endif
 #if P_SSL
   #define P_SPEECH_RECOGNITION_DEEPGRAM "Deepgram"
-  PFACTORY_LOAD(PSpeechRecognition_Deepgram);
+  PFACTORY_LOAD(PSpeechRecognition_DeepgramBasic);
+  #define P_SPEECH_RECOGNITION_DEEPGRAM_FLUX "DeepgramFlux"
+  PFACTORY_LOAD(PSpeechRecognition_DeepgramFlux);
 #endif
 
 
