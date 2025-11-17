@@ -73,6 +73,8 @@ class PJSON : public PObject
         virtual Base * DeepClone() const override;
 
         bool IsType(const PString & name, Types type) const;
+        bool IsObject(const PString & name) const { return IsType(name, e_Object); }
+        bool IsArray(const PString & name) const { return IsType(name, e_Array); }
 
         template <class T> const T * Get(const PString & name) const
         {
@@ -134,6 +136,8 @@ class PJSON : public PObject
         virtual Base * DeepClone() const override;
 
         bool IsType(size_t index, Types type) const;
+        bool IsObject(size_t index) const { return IsType(index, e_Object); }
+        bool IsArray(size_t index) const { return IsType(index, e_Array); }
 
         template <class T> const T * Get(size_t index) const { return index < size() ? dynamic_cast<const T *>(at(index)) : NULL; }
         template <class T>       T * Get(size_t index)       { return index < size() ? dynamic_cast<      T *>(at(index)) : NULL; }
@@ -243,6 +247,8 @@ class PJSON : public PObject
     bool IsValid() const { return m_valid; }
 
     bool IsType(Types type) const { return PAssertNULL(m_root) && m_root->IsType(type); }
+    bool IsObject() const { return IsType(e_Object); }
+    bool IsArray() const { return IsType(e_Array); }
 
     void Set(Types type);
 
