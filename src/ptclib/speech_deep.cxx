@@ -245,7 +245,7 @@ public:
     static PStringSet SkipParams = MakeSkipParameters();
     for (PStringOptions::const_iterator opt = options.begin(); opt != options.end(); ++opt) {
       if (opt->first.starts_with(m_prefix) && !SkipParams.Contains(opt->first))
-        m_options.SetAt(opt->first.Mid(9), opt->second);
+        m_options.SetAt(opt->first.Mid(m_prefix.length()), opt->second);
     }
 
     // Get buffer size in milliseconds before the sample rate changes
