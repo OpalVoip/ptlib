@@ -586,6 +586,8 @@ class PVXMLSession : public PIndirectChannel, public PSSLCertificateInfo
 
     void PushDialogScope(PXMLElement & element);
 
+    bool PlaySSML(const PXMLElement & element);
+
     PDECLARE_MUTEX(m_sessionMutex);
 
     PString          m_xmlLanguage;
@@ -930,10 +932,8 @@ class PVXMLPlayableTTS : public PVXMLPlayable
     virtual bool OnStart() override;
     virtual bool OnRepeat() override;
     virtual void OnStop() override;
-protected:
-    PTextToSpeech * m_textToSpeech;
-    PString m_textToPlay;
-    PTextToSpeech::TextType m_type;
+  protected:
+    PSharedPtr<PChannel> m_streamedSpeech;
 };
 
 //////////////////////////////////////////////////////////////////

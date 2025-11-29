@@ -997,19 +997,35 @@ PFACTORY_CREATE(PFactory<PVXMLPlayable>, PVXMLPlayableFileList, "FileList");
 ///////////////////////////////////////////////////////////////
 
 PVXMLPlayableTTS::PVXMLPlayableTTS()
-  : m_textToSpeech(NULL)
-  , m_type(PTextToSpeech::Default)
 {
 }
 
 
 PBoolean PVXMLPlayableTTS::Open(PVXMLChannel & chan, const PString & args, PINDEX delay, PINDEX repeat, PBoolean autoDelete)
 {
-  PString type;
-  if (args.Split('\n', type, m_textToPlay, PString::SplitDefaultToAfter))
-    m_type = PTextToSpeech::TextTypeFromString(type);
+   PTextToSpeech * textToSpeech = chan.GetSession().GetTextToSpeech();
+  if (textToSpeech == NULL) {
+    PTRACE(2, "Cannot queue text as no TTS engine.");
+    return false;
+  }
 
-  return PVXMLPlayable::Open(chan, args, delay, repeat, autoDelete);
+  if (!textToSpeech->SetSampleRate(chan.GetSampleRate()) ||
+      !textToSpeech->SetChannels(chan.GetChannels())) {
+    PTRACE(2, "TTS engine incompatible with audio channel format.");
+    return false;
+  }
+
+  PString type, text;
+  PAssert(args.Split('\n', type, text), PLogicError);
+  PTextToSpeech::TextType hint = PTextToSpeech::TextTypeFromString(type);
+  PAssert(hint != PTextToSpeech::EndTextType, PLogicError);
+
+  m_streamedSpeech = textToSpeech->SpeakToChannel(text, hint);
+  if (m_streamedSpeech)
+    return PVXMLPlayable::Open(chan, args, delay, repeat, autoDelete);
+
+  PTRACE(2, "TTS engine cannot do streams.");
+  return false;
 }
 
 
@@ -1018,23 +1034,9 @@ bool PVXMLPlayableTTS::OnStart()
   if (PAssertNULL(m_vxmlChannel) == NULL)
     return false;
 
-  if (m_textToSpeech == NULL) {
-    m_textToSpeech = m_vxmlChannel->GetSession().GetTextToSpeech();
-    if (m_textToSpeech == NULL) {
-      PTRACE(2, "Cannot queue text as no TTS engine.");
-      return false;
-    }
-  }
-
-  if (!m_textToSpeech->SetSampleRate(m_vxmlChannel->GetSampleRate()) ||
-      !m_textToSpeech->SetChannels(m_vxmlChannel->GetChannels()))
-    return false;
-
-  if (SetSubChannel(m_textToSpeech->SpeakToChannel(m_textToPlay, m_type)))
-    return true;
-
-  PTRACE(2, "TTS engine cannot do streams.");
-  return false;
+  bool result = SetSubChannel(m_streamedSpeech);
+  m_streamedSpeech.reset();
+  return result;
 }
 
 
@@ -1050,8 +1052,11 @@ bool PVXMLPlayableTTS::OnRepeat()
 
 void PVXMLPlayableTTS::OnStop()
 {
-  if (m_textToSpeech != NULL)
-    m_textToSpeech->Close();
+  if (m_vxmlChannel != NULL) {
+    PTextToSpeech * textToSpeech = m_vxmlChannel->GetSession().GetTextToSpeech();
+    if (textToSpeech)
+      textToSpeech->Close();
+  }
 }
 
 
@@ -2982,13 +2987,15 @@ PBoolean PVXMLSession::PlayText(const PString & textToPlay,
   PVXMLCache::Params cacheParams;
   cacheParams.m_maxAge = GetTimeProperty(AudioMaxAgeProperty);
 
-  if (cache == NULL || cacheParams.m_maxAge <= 0)
-    return GetVXMLChannel()->QueuePlayable("TTS", PSTRSTRM(type << '\n' << textToPlay), repeat, delay);
+  PVXMLChannel & channel = *GetVXMLChannel();
+  if ((cache == NULL || cacheParams.m_maxAge <= 0) &&
+        channel.QueuePlayable("TTS", PSTRSTRM(type << '\n' << textToPlay), repeat, delay))
+    return true;
 
   PString fileList;
 
   cacheParams.m_prefix.sprintf("tts%i", type);
-  cacheParams.m_suffix = GetVXMLChannel()->GetMediaFileSuffix() + ".wav";
+  cacheParams.m_suffix = channel.GetMediaFileSuffix() + ".wav";
 
   // Convert each line into it's own cached WAV file.
   PStringArray lines = textToPlay.Lines();
@@ -3012,8 +3019,8 @@ PBoolean PVXMLSession::PlayText(const PString & textToPlay,
     cacheParams.m_file.Close();
 
     cache->FinishCache(cacheParams,
-                       m_textToSpeech->SetSampleRate(GetVXMLChannel()->GetSampleRate()) &&
-                       m_textToSpeech->SetChannels(GetVXMLChannel()->GetChannels()) &&
+                       m_textToSpeech->SetSampleRate(channel.GetSampleRate()) &&
+                       m_textToSpeech->SetChannels(channel.GetChannels()) &&
                        m_textToSpeech->OpenFile(cacheParams.m_file.GetFilePath()) &&
                        m_textToSpeech->Speak(cacheParams.m_key, type) &&
                        m_textToSpeech->Close() &&
@@ -3021,7 +3028,21 @@ PBoolean PVXMLSession::PlayText(const PString & textToPlay,
     fileList += cacheParams.m_file.GetFilePath() + '\n';
   }
 
-  return GetVXMLChannel()->QueuePlayable("FileList", fileList, repeat, delay);
+  return channel.QueuePlayable("FileList", fileList, repeat, delay);
+}
+
+
+bool PVXMLSession::PlaySSML(const PXMLElement & element)
+{
+  if (m_textToSpeech == NULL || !m_textToSpeech->Supports(PTextToSpeech::SSML))
+    return false;
+
+  PXML ssml;
+  PXMLElement * speak = ssml.SetRootElement("speak");
+  speak->SetAttribute("xml:lang", m_currentXML->GetRootElement()->GetAttribute("xml:lang"));
+  for (PINDEX i = 0; i < element.GetSize(); ++i)
+    speak->AddSubObject(element.GetSubObject(i)->Clone());
+  return GetVXMLChannel()->QueuePlayable("TTS", PSTRSTRM("SSML\n" << ssml));
 }
 
 
@@ -3218,16 +3239,16 @@ PBoolean PVXMLSession::TraverseVoice(PXMLElement & element)
       if (ordering[0] == NameAttribute) {
         for (PINDEX i = 0; i < names.GetSize(); ++i)
           if (m_textToSpeech->SetVoice(PSTRSTRM("name=" << names[i])))
-            return true;
+            return !PlaySSML(element);
       }
       else if (ordering[0] == LanguagesAttribute) {
         for (PINDEX i = 0; i < languages.GetSize(); ++i)
           if (m_textToSpeech->SetVoice(PSTRSTRM("language=" << languages[i])))
-            return true;
+            return !PlaySSML(element);
       }
       else {
         if (m_textToSpeech->SetVoice(PSTRSTRM("gender=" << gender)))
-          return true;
+          return !PlaySSML(element);
       }
       break;
     case 2 :
@@ -3235,42 +3256,42 @@ PBoolean PVXMLSession::TraverseVoice(PXMLElement & element)
         for (PINDEX i = 0; i < names.GetSize(); ++i)
           for (PINDEX j = 0; j < languages.GetSize(); ++j)
             if (m_textToSpeech->SetVoice(PSTRSTRM("name=" << names[i] << ";language=" << languages[j])))
-              return true;
+              return !PlaySSML(element);
         if (prioritySelect) {
           for (PINDEX i = 0; i < names.GetSize(); ++i)
             if (m_textToSpeech->SetVoice(PSTRSTRM("name=" << names[i])))
-              return true;
+              return !PlaySSML(element);
         }
       }
       else if (ordering[0] == LanguagesAttribute && ordering[1] == NameAttribute) {
         for (PINDEX j = 0; j < languages.GetSize(); ++j)
           for (PINDEX i = 0; i < names.GetSize(); ++i)
             if (m_textToSpeech->SetVoice(PSTRSTRM("name=" << names[i] << ";language=" << languages[j])))
-              return true;
+              return !PlaySSML(element);
         if (prioritySelect) {
           for (PINDEX i = 0; i < languages.GetSize(); ++i)
             if (m_textToSpeech->SetVoice(PSTRSTRM("language=" << languages[i])))
-              return true;
+              return !PlaySSML(element);
         }
       }
       else if (ordering[0] == NameAttribute || ordering[1] == NameAttribute) {
         for (PINDEX i = 0; i < names.GetSize(); ++i)
           if (m_textToSpeech->SetVoice(PSTRSTRM("name=" << names[i] << ";gender=" << gender)))
-            return true;
+            return !PlaySSML(element);
         if (prioritySelect) {
           for (PINDEX i = 0; i < names.GetSize(); ++i)
             if (m_textToSpeech->SetVoice(PSTRSTRM("name=" << names[i])))
-              return true;
+              return !PlaySSML(element);
         }
       }
       else {
         for (PINDEX i = 0; i < languages.GetSize(); ++i)
           if (m_textToSpeech->SetVoice(PSTRSTRM("language=" << languages[i] << ";gender=" << gender)))
-            return true;
+            return !PlaySSML(element);
         if (prioritySelect) {
           for (PINDEX i = 0; i < languages.GetSize(); ++i)
             if (m_textToSpeech->SetVoice(PSTRSTRM("language=" << languages[i])))
-              return true;
+              return !PlaySSML(element);
         }
       }
       break;
@@ -3279,28 +3300,28 @@ PBoolean PVXMLSession::TraverseVoice(PXMLElement & element)
         for (PINDEX i = 0; i < names.GetSize(); ++i)
           for (PINDEX j = 0; j < languages.GetSize(); ++j)
             if (m_textToSpeech->SetVoice(PSTRSTRM("name=" << names[i] << ";language=" << languages[j] << ";gender=" << gender)))
-              return true;
+              return !PlaySSML(element);
         if (prioritySelect) {
           for (PINDEX i = 0; i < names.GetSize(); ++i)
             if (m_textToSpeech->SetVoice(PSTRSTRM("name=" << names[i] << ";gender=" << gender)))
-              return true;
+              return !PlaySSML(element);
           for (PINDEX i = 0; i < names.GetSize(); ++i)
             if (m_textToSpeech->SetVoice(PSTRSTRM("name=" << names[i])))
-              return true;
+              return !PlaySSML(element);
         }
       }
       else {
         for (PINDEX j = 0; j < languages.GetSize(); ++j)
           for (PINDEX i = 0; i < names.GetSize(); ++i)
             if (m_textToSpeech->SetVoice(PSTRSTRM("name=" << names[i] << ";language=" << languages[j] << ";gender=" << gender)))
-              return true;
+              return !PlaySSML(element);
         if (prioritySelect) {
           for (PINDEX i = 0; i < languages.GetSize(); ++i)
             if (m_textToSpeech->SetVoice(PSTRSTRM("language=" << languages[i] << ";gender=" << gender)))
-              return true;
+              return !PlaySSML(element);
           for (PINDEX i = 0; i < languages.GetSize(); ++i)
             if (m_textToSpeech->SetVoice(PSTRSTRM("language=" << languages[i])))
-              return true;
+              return !PlaySSML(element);
         }
       }
   }
@@ -4023,7 +4044,7 @@ PBoolean PVXMLSession::TraversePrompt(PXMLElement & element)
     it->Setup(element.GetAttribute(TimeoutProperty), m_canBargeIn);
   m_grammersMutex.Signal();
 
-  return true;
+  return !PlaySSML(element);
 }
 
 
