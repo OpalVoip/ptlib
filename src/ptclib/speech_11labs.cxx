@@ -54,6 +54,7 @@ class PTextToSpeech_11Labs : public PTextToSpeech
     virtual unsigned GetChannels() const override;
     virtual bool SetVolume(unsigned volume) override;
     virtual unsigned GetVolume() const override;
+    virtual bool Supports(TextType type) const override;
     virtual bool OpenFile(const PFilePath& fn) override;
     virtual bool IsOpen() const override;
     virtual bool Close() override;
@@ -202,6 +203,12 @@ bool PTextToSpeech_11Labs::SetVolume(unsigned volume)
 unsigned PTextToSpeech_11Labs::GetVolume() const
 {
   return m_volume;
+}
+
+
+bool PTextToSpeech_11Labs::Supports(TextType type) const override
+{
+  return type == Default || type == PartialSSML;
 }
 
 

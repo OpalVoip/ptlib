@@ -82,7 +82,8 @@ class PTextToSpeech : public PObject
       Duration,
       Spell,
       Boolean,
-      SSML
+      FullSSML,
+      PartialSSML // Does not support <voice> tag
     );
     virtual bool Supports(TextType type) const;
 

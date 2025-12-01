@@ -81,7 +81,8 @@ static const char * HintToAWS[PTextToSpeech::TextType::NumTextType] = {
   NULL, // Duration,
   "characters", // Spell,
   NULL, // Boolean
-  ""  // SSML
+  NULL, // FullSSML
+  "" // PartialSSML
 };
 
 class PTextToSpeech_AWS : public PTextToSpeech, PAwsClient<Aws::Polly::PollyClient>
@@ -113,7 +114,7 @@ class PTextToSpeech_AWS : public PTextToSpeech, PAwsClient<Aws::Polly::PollyClie
     request.SetLanguageCode(GetLanguageCodeForName(m_voice.Get(VoiceLanguage)));
     request.SetEngine(GetEngineForName(m_voice.Get(VoiceEngine)));
 
-    if (hint == SSML)
+    if (hint == PartialSSML)
       request.SetText(text.c_str());
     else {
       PStringStream strm;

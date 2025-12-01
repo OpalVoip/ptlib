@@ -3032,9 +3032,9 @@ PBoolean PVXMLSession::PlayText(const PString & textToPlay,
 }
 
 
-bool PVXMLSession::PlaySSML(const PXMLElement & element)
+bool PVXMLSession::PlaySSML(const PXMLElement & element, PTextToSpeech::TextType type)
 {
-  if (m_textToSpeech == NULL || !m_textToSpeech->Supports(PTextToSpeech::SSML))
+  if (m_textToSpeech == NULL || !m_textToSpeech->Supports(type))
     return false;
 
   PXML ssml;
@@ -3239,16 +3239,16 @@ PBoolean PVXMLSession::TraverseVoice(PXMLElement & element)
       if (ordering[0] == NameAttribute) {
         for (PINDEX i = 0; i < names.GetSize(); ++i)
           if (m_textToSpeech->SetVoice(PSTRSTRM("name=" << names[i])))
-            return !PlaySSML(element);
+            return !PlaySSML(element, PTextToSpeech::PartialSSML);
       }
       else if (ordering[0] == LanguagesAttribute) {
         for (PINDEX i = 0; i < languages.GetSize(); ++i)
           if (m_textToSpeech->SetVoice(PSTRSTRM("language=" << languages[i])))
-            return !PlaySSML(element);
+            return !PlaySSML(element, PTextToSpeech::PartialSSML);
       }
       else {
         if (m_textToSpeech->SetVoice(PSTRSTRM("gender=" << gender)))
-          return !PlaySSML(element);
+          return !PlaySSML(element, PTextToSpeech::PartialSSML);
       }
       break;
     case 2 :
@@ -3256,42 +3256,42 @@ PBoolean PVXMLSession::TraverseVoice(PXMLElement & element)
         for (PINDEX i = 0; i < names.GetSize(); ++i)
           for (PINDEX j = 0; j < languages.GetSize(); ++j)
             if (m_textToSpeech->SetVoice(PSTRSTRM("name=" << names[i] << ";language=" << languages[j])))
-              return !PlaySSML(element);
+              return !PlaySSML(element, PTextToSpeech::PartialSSML);
         if (prioritySelect) {
           for (PINDEX i = 0; i < names.GetSize(); ++i)
             if (m_textToSpeech->SetVoice(PSTRSTRM("name=" << names[i])))
-              return !PlaySSML(element);
+              return !PlaySSML(element, PTextToSpeech::PartialSSML);
         }
       }
       else if (ordering[0] == LanguagesAttribute && ordering[1] == NameAttribute) {
         for (PINDEX j = 0; j < languages.GetSize(); ++j)
           for (PINDEX i = 0; i < names.GetSize(); ++i)
             if (m_textToSpeech->SetVoice(PSTRSTRM("name=" << names[i] << ";language=" << languages[j])))
-              return !PlaySSML(element);
+              return !PlaySSML(element, PTextToSpeech::PartialSSML);
         if (prioritySelect) {
           for (PINDEX i = 0; i < languages.GetSize(); ++i)
             if (m_textToSpeech->SetVoice(PSTRSTRM("language=" << languages[i])))
-              return !PlaySSML(element);
+              return !PlaySSML(element, PTextToSpeech::PartialSSML);
         }
       }
       else if (ordering[0] == NameAttribute || ordering[1] == NameAttribute) {
         for (PINDEX i = 0; i < names.GetSize(); ++i)
           if (m_textToSpeech->SetVoice(PSTRSTRM("name=" << names[i] << ";gender=" << gender)))
-            return !PlaySSML(element);
+            return !PlaySSML(element, PTextToSpeech::PartialSSML);
         if (prioritySelect) {
           for (PINDEX i = 0; i < names.GetSize(); ++i)
             if (m_textToSpeech->SetVoice(PSTRSTRM("name=" << names[i])))
-              return !PlaySSML(element);
+              return !PlaySSML(element, PTextToSpeech::PartialSSML);
         }
       }
       else {
         for (PINDEX i = 0; i < languages.GetSize(); ++i)
           if (m_textToSpeech->SetVoice(PSTRSTRM("language=" << languages[i] << ";gender=" << gender)))
-            return !PlaySSML(element);
+            return !PlaySSML(element, PTextToSpeech::PartialSSML);
         if (prioritySelect) {
           for (PINDEX i = 0; i < languages.GetSize(); ++i)
             if (m_textToSpeech->SetVoice(PSTRSTRM("language=" << languages[i])))
-              return !PlaySSML(element);
+              return !PlaySSML(element, PTextToSpeech::PartialSSML);
         }
       }
       break;
@@ -3300,28 +3300,28 @@ PBoolean PVXMLSession::TraverseVoice(PXMLElement & element)
         for (PINDEX i = 0; i < names.GetSize(); ++i)
           for (PINDEX j = 0; j < languages.GetSize(); ++j)
             if (m_textToSpeech->SetVoice(PSTRSTRM("name=" << names[i] << ";language=" << languages[j] << ";gender=" << gender)))
-              return !PlaySSML(element);
+              return !PlaySSML(element, PTextToSpeech::PartialSSML);
         if (prioritySelect) {
           for (PINDEX i = 0; i < names.GetSize(); ++i)
             if (m_textToSpeech->SetVoice(PSTRSTRM("name=" << names[i] << ";gender=" << gender)))
-              return !PlaySSML(element);
+              return !PlaySSML(element, PTextToSpeech::PartialSSML);
           for (PINDEX i = 0; i < names.GetSize(); ++i)
             if (m_textToSpeech->SetVoice(PSTRSTRM("name=" << names[i])))
-              return !PlaySSML(element);
+              return !PlaySSML(element, PTextToSpeech::PartialSSML);
         }
       }
       else {
         for (PINDEX j = 0; j < languages.GetSize(); ++j)
           for (PINDEX i = 0; i < names.GetSize(); ++i)
             if (m_textToSpeech->SetVoice(PSTRSTRM("name=" << names[i] << ";language=" << languages[j] << ";gender=" << gender)))
-              return !PlaySSML(element);
+              return !PlaySSML(element, PTextToSpeech::PartialSSML);
         if (prioritySelect) {
           for (PINDEX i = 0; i < languages.GetSize(); ++i)
             if (m_textToSpeech->SetVoice(PSTRSTRM("language=" << languages[i] << ";gender=" << gender)))
-              return !PlaySSML(element);
+              return !PlaySSML(element, PTextToSpeech::PartialSSML);
           for (PINDEX i = 0; i < languages.GetSize(); ++i)
             if (m_textToSpeech->SetVoice(PSTRSTRM("language=" << languages[i])))
-              return !PlaySSML(element);
+              return !PlaySSML(element, PTextToSpeech::PartialSSML);
         }
       }
   }
@@ -4044,7 +4044,7 @@ PBoolean PVXMLSession::TraversePrompt(PXMLElement & element)
     it->Setup(element.GetAttribute(TimeoutProperty), m_canBargeIn);
   m_grammersMutex.Signal();
 
-  return !PlaySSML(element);
+  return !PlaySSML(element, PTextToSpeech::FullSSML);
 }
 
 

@@ -586,7 +586,7 @@ class PVXMLSession : public PIndirectChannel, public PSSLCertificateInfo
 
     void PushDialogScope(PXMLElement & element);
 
-    bool PlaySSML(const PXMLElement & element);
+    bool PlaySSML(const PXMLElement & element, PTextToSpeech::TextType type);
 
     PDECLARE_MUTEX(m_sessionMutex);
 
