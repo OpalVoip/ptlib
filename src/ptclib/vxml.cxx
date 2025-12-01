@@ -3042,7 +3042,7 @@ bool PVXMLSession::PlaySSML(const PXMLElement & element, PTextToSpeech::TextType
   speak->SetAttribute("xml:lang", m_currentXML->GetRootElement()->GetAttribute("xml:lang"));
   for (PINDEX i = 0; i < element.GetSize(); ++i)
     speak->AddSubObject(element.GetSubObject(i)->Clone());
-  return GetVXMLChannel()->QueuePlayable("TTS", PSTRSTRM("SSML\n" << ssml));
+  return GetVXMLChannel()->QueuePlayable("TTS", PSTRSTRM(type << '\n' << ssml));
 }
 
 
