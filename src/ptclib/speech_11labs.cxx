@@ -395,6 +395,27 @@ bool PTextToSpeech_11Labs::InternalSpeak(const PString & text,
   voiceSettings.SetNumber("stability", 0.5);
   voiceSettings.SetNumber("similarity_boost", 0.5);
 
+  if (PCaselessString(text).Find("prosody") != P_MAX_INDEX) {
+    // We need to fake the <prosody> parameters as is ignored
+    PXML ssml;
+    if (ssml.Load(text)) {
+      PXMLElement * prosody = ssml.GetRootElement()->GetElement("prosody");
+      if (prosody != NULL) {
+        PCaselessString rate = prosody->GetAttribute("rate");
+        if (rate == "x-fast")
+          voiceSettings.SetNumber("speed", 1.2);
+        else if (rate == "fast")
+          voiceSettings.SetNumber("speed", 1.1);
+        else if (rate == "slow")
+          voiceSettings.SetNumber("speed", 0.85);
+        else if (rate == "x-slow")
+          voiceSettings.SetNumber("speed", 0.7);
+        else
+          voiceSettings.SetNumber("speed", 1);
+      }
+    }
+  }
+
   // Set up request headers
   PMIMEInfo requestHeaders;
   requestHeaders.Set(PHTTP::ContentTypeTag, PMIMEInfo::ApplicationJSON());
