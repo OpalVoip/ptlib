@@ -27,6 +27,7 @@
 #include <ptlib.h>
 #include <ptclib/speech.h>
 #include <ptclib/http.h>
+#include <ptclib/pxml.h>
 #include <ptclib/pjson.h>
 #include <ptclib/pwavfile.h>
 #include <ptclib/qchannel.h>
@@ -466,12 +467,12 @@ bool PTextToSpeech_11Labs::UpdateVoiceCache()
   }
 
   PJSON json(reply);
-  if (json.IsType(PJSON::e_Object)) {
+  if (json.IsObject()) {
     const PJSON::Object & root = json.GetObject();
-    if (root.IsType("voices", PJSON::e_Array)) {
+    if (root.IsArray("voices")) {
       const PJSON::Array & arr = root.GetArray("voices");
       for (size_t i = 0; i < arr.size(); ++i) {
-        if (arr.IsType(i, PJSON::e_Object))
+        if (arr.IsObject(i))
           AddVoice(arr.GetObject(i));
       }
     }
@@ -527,7 +528,7 @@ bool PTextToSpeech_11Labs::InternalSetVoice(PStringOptions & voice)
   }
 
   PJSON json(reply);
-  if (!json.IsType(PJSON::e_Object))
+  if (!json.IsObject())
     return false;
 
   voice = AddVoice(json.GetObject());

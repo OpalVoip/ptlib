@@ -763,22 +763,22 @@ class PSpeechRecognition_AWS : public PSpeechRecognition, PAwsClient<Aws::Transc
         if (messageType == "event") {
           PString type = headers.Get(":event-type");
           if (type == "TranscriptEvent" &&
-              json.IsType(PJSON::e_Object) &&
-              json.GetObject().IsType("Transcript", PJSON::e_Object) &&
-              json.GetObject().GetObject("Transcript").IsType("Results", PJSON::e_Array)) {
+              json.IsObject() &&
+              json.GetObject().IsObject("Transcript") &&
+              json.GetObject().GetObject("Transcript").IsObject("Results")) {
             PJSON::Array const & results = json.GetObject().GetObject("Transcript").GetArray("Results");
             PTRACE_IF(4, !results.empty(), "Received " << type << ":\n" << json.AsString(4, 2));
             for (size_t idxResult = 0; idxResult < results.size(); ++idxResult) {
-              if (results.IsType(idxResult, PJSON::e_Object)) {
+              if (results.IsObject(idxResult)) {
                 PJSON::Object const & result = results.GetObject(idxResult);
-                if (result.IsType("Alternatives", PJSON::e_Array)) {
+                if (result.IsArray("Alternatives")) {
                   bool atLeastOnePronunciation = false;
                   PJSON::Array const & alternatives = result.GetArray("Alternatives");
                   for (size_t idxAlternative = 0; idxAlternative < alternatives.size(); ++idxAlternative) {
-                    if (alternatives.GetObject(idxAlternative).IsType("Items", PJSON::e_Array)) {
+                    if (alternatives.GetObject(idxAlternative).IsArray("Items")) {
                       PJSON::Array const & items = alternatives.GetObject(idxAlternative).GetArray("Items");
                       for (size_t idxItem = 0; idxItem < items.size(); ++idxItem) {
-                        if (items.IsType(idxItem, PJSON::e_Object)) {
+                        if (items.IsObject(idxItem)) {
                           PJSON::Object const & item = items.GetObject(idxItem);
                           transcript.m_final = false;
                           transcript.m_when = PTimeInterval::Seconds((double)item.GetNumber("StartTime"));
@@ -823,7 +823,7 @@ class PSpeechRecognition_AWS : public PSpeechRecognition, PAwsClient<Aws::Transc
             log << '\n' << data;
           else {
             PString msg;
-            if (json.IsType(PJSON::e_Object))
+            if (json.IsObject())
               msg = json.GetObject().GetString("Message");
             else if (json.IsType(PJSON::e_String))
               msg = json.GetString();
