@@ -116,6 +116,13 @@ class PSharedPtr : public PContainer
     element_type * ptr;
 };
 
+#else // __cplusplus 201103L
+
+template <typename T> using PSharedPtr = std::shared_ptr<T>;
+
+#endif // __cplusplus
+
+#if __cplusplus < 202002L
 
 template <typename T> class PAtomicSharedPtr
 {
@@ -146,10 +153,10 @@ protected:
 
 #else // __cplusplus
 
-template <typename T> using PSharedPtr = std::shared_ptr<T>;
 template <typename T> using PAtomicSharedPtr = std::atomic<std::shared_ptr<T>>;
 
-#endif // __cplusplus
+#endif // __cplusplus 202002L
+
 
 #endif // PTLIB_SHAREDPTR_H
 
