@@ -119,7 +119,7 @@ class PSpeechRecognition_Deepgram : public PSpeechRecognition
         continue;
       }
 
-      if (!json.IsType(PJSON::e_Object)) {
+      if (!json.IsObject()) {
         PTRACE(2, "Unexpected JSON:\n" << json.AsString(4, 2));
         continue;
       }
@@ -129,18 +129,18 @@ class PSpeechRecognition_Deepgram : public PSpeechRecognition
       const PJSON::Object & result = json.GetObject();
       PCaselessString resultType = result.GetString("type");
       if (resultType == "Results") {
-        if (!result.IsType("channel", PJSON::e_Object)) {
+        if (!result.IsObject("channel")) {
           PTRACE(2, "Unexpected JSON:\n" << json.AsString(4, 2));
           continue;
         }
         const PJSON::Object & channel = result.GetObject("channel");
-        if (!channel.IsType("alternatives", PJSON::e_Array)) {
+        if (!channel.IsArray("alternatives")) {
           PTRACE(2, "Unexpected JSON:\n" << json.AsString(4, 2));
           continue;
         }
         const PJSON::Array & alternatives = channel.GetArray("alternatives");
         for (size_t idxAlternative = 0; idxAlternative < alternatives.size(); ++idxAlternative) {
-          if (!alternatives.IsType(idxAlternative, PJSON::e_Object)) {
+          if (!alternatives.IsObject(idxAlternative)) {
             PTRACE(2, "Unexpected JSON:\n" << json.AsString(4, 2));
             continue;
           }
@@ -245,7 +245,7 @@ public:
     static PStringSet SkipParams = MakeSkipParameters();
     for (PStringOptions::const_iterator opt = options.begin(); opt != options.end(); ++opt) {
       if (opt->first.starts_with(m_prefix) && !SkipParams.Contains(opt->first))
-        m_options.SetAt(opt->first.Mid(9), opt->second);
+        m_options.SetAt(opt->first.Mid(m_prefix.length()), opt->second);
     }
 
     // Get buffer size in milliseconds before the sample rate changes

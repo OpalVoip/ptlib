@@ -67,6 +67,24 @@ static PConstCaselessString DefaultVoiceLanguage("TTS-Language");
 static PConstCaselessString DefaultVoiceGender("TTS-Gender");
 static PConstCaselessString DefaultVoiceEngine("TTS-Engine");
 
+static const char * HintToAWS[PTextToSpeech::TextType::NumTextType] = {
+  "", // Default,
+  NULL, // Literal,
+  "digits", // Digits,
+  "cardinal", // Number,
+  "cardinal", // Currency,
+  "time", // Time,
+  "date", // Date,
+  NULL, // DateAndTime,
+  "telephone", // Phone,
+  NULL, // IPAddress,
+  NULL, // Duration,
+  "characters", // Spell,
+  NULL, // Boolean
+  NULL, // FullSSML
+  "" // PartialSSML
+};
+
 class PTextToSpeech_AWS : public PTextToSpeech, PAwsClient<Aws::Polly::PollyClient>
 {
   PCLASSINFO(PTextToSpeech_AWS, PTextToSpeech);
@@ -80,53 +98,41 @@ class PTextToSpeech_AWS : public PTextToSpeech, PAwsClient<Aws::Polly::PollyClie
   bool            m_sampleRate8k{ true };
   PWAVFile        m_file;
   PChannel      * m_openedChannel{ nullptr };
-  PSharedPtr<PChannel> m_toChannel;
+  PSharedPtr<PChannel> m_streamChannel;
+  enum StreamState { e_StreamIdle, e_StreamStarting, e_StreamError, e_StreamStarted };
+  std::atomic<StreamState> m_streamState{ e_StreamIdle };
   PTRACE_THROTTLE(m_asyncAbort, 3, 500);
 
   void SetRequestInfo(Aws::Polly::Model::SynthesizeSpeechRequest & request, const PString & text, TextType hint)
   {
+    if (m_voice.empty())
+      InitVoiceList();
+
     request.SetOutputFormat(Aws::Polly::Model::OutputFormat::pcm);
     request.SetSampleRate(m_sampleRate8k ? "8000" : "16000");
     request.SetVoiceId(Aws::Polly::Model::VoiceIdMapper::GetVoiceIdForName(m_voice.Get(VoiceName).c_str()));
     request.SetLanguageCode(GetLanguageCodeForName(m_voice.Get(VoiceLanguage)));
     request.SetEngine(GetEngineForName(m_voice.Get(VoiceEngine)));
 
-    static const char * HintToAWS[TextType::NumTextType] = {
-      NULL, // Default,
-      NULL, // Literal,
-      "digits", // Digits,
-      "cardinal", // Number,
-      "cardinal", // Currency,
-      "time", // Time,
-      "date", // Date,
-      NULL, // DateAndTime,
-      "telephone", // Phone,
-      NULL, // IPAddress,
-      NULL, // Duration,
-      "characters", // Spell,
-      NULL, // Boolean
-    };
-    PStringStream strm;
-    strm << "<speak>";
-    if (HintToAWS[hint] == NULL)
-      strm << PXML::EscapeSpecialChars(text);
+    if (hint == PartialSSML)
+      request.SetText(text.c_str());
     else {
-      strm << "<say-as interpret-as=\"" << HintToAWS[hint] << '"';
-      if (hint == Date) {
-        static const char * DateOrder[] = { "mdy", "dmy", "ymd" };
-        strm << " format=\"" << DateOrder[PTime::GetDateOrder()] << '"';
+      PStringStream strm;
+      strm << "<speak>";
+      if (HintToAWS[hint] == NULL || HintToAWS[hint][0] =='\0')
+        strm << PXML::EscapeSpecialChars(text);
+      else {
+        strm << "<say-as interpret-as=\"" << HintToAWS[hint] << '"';
+        if (hint == Date) {
+          static const char * DateOrder[] = { "mdy", "dmy", "ymd" };
+          strm << " format=\"" << DateOrder[PTime::GetDateOrder()] << '"';
+        }
+        strm << '>' << PXML::EscapeSpecialChars(text) << "</say-as>";
       }
-      strm << '>' << PXML::EscapeSpecialChars(text) << "</say-as>";
+      strm << "</speak>";
+      request.SetText(strm.c_str());
     }
-    strm << "</speak>";
-    request.SetText(strm.c_str());
     request.SetTextType(Aws::Polly::Model::TextType::ssml);
-  }
-
-public:
-  ~PTextToSpeech_AWS()
-  {
-    Close();
   }
 
   // We have all our own lookup functions as the default AWS code (IMHO stupidly)
@@ -156,6 +162,63 @@ public:
       return code;
     PTRACE(3, "Invalid engine: \"" << name << '"');
     return Aws::Polly::Model::Engine::NOT_SET;
+  }
+
+  bool InitVoiceList()
+  {
+    if (!m_voices.empty())
+      return true;
+
+    //Enumerate the available voices
+    auto outcome = GetClient()->DescribeVoices(Aws::Polly::Model::DescribeVoicesRequest());
+    if (!outcome.IsSuccess()) {
+      PTRACE(2, "Could not describe voices: " << outcome.GetError().GetMessage());
+      return false;
+    }
+
+    for (const auto & voice : outcome.GetResult().GetVoices()) {
+      PCaselessString voiceName = Aws::Polly::Model::VoiceIdMapper::GetNameForVoiceId(voice.GetId());
+      PStringOptions * opts = new PStringOptions;
+      opts->Set(VoiceName, voiceName);
+      opts->Set(VoiceLanguage, Aws::Polly::Model::LanguageCodeMapper::GetNameForLanguageCode(voice.GetLanguageCode()));
+      opts->Set(VoiceGender, Aws::Polly::Model::GenderMapper::GetNameForGender(voice.GetGender()));
+
+      PStringStream strm;
+      for (auto engine : voice.GetSupportedEngines()) {
+        if (engine == Aws::Polly::Model::Engine::NOT_SET)
+          continue;
+        if (!strm.empty())
+          strm << '+';
+        strm << Aws::Polly::Model::EngineMapper::GetNameForEngine(engine);
+      }
+      opts->Set(VoiceEngines, strm);
+
+      m_voices.SetAt(voiceName, opts);
+    }
+
+    if (m_voice.empty()) {
+      PStringStream defaultVoice;
+      defaultVoice = "language=";
+      if (m_defaultLanguage != Aws::Polly::Model::LanguageCode::NOT_SET)
+        defaultVoice << Aws::Polly::Model::LanguageCodeMapper::GetNameForLanguageCode(m_defaultLanguage);
+      else
+        defaultVoice << "en-US";
+      defaultVoice << ";gender=";
+      if (m_defaultGender != Aws::Polly::Model::Gender::NOT_SET)
+        defaultVoice << Aws::Polly::Model::GenderMapper::GetNameForGender(m_defaultGender);
+      else
+        defaultVoice << "Female";
+      if (!SetVoice(defaultVoice))
+        return false;
+    }
+
+    return true;
+  }
+
+public:
+  ~PTextToSpeech_AWS()
+  {
+    Close();
   }
 
   virtual bool SetOptions(const PStringOptions & options) override
@@ -194,34 +257,8 @@ public:
   virtual PStringArray GetVoiceList() override
   {
     PStringArray voices;
-    if (m_voices.empty()) {
-      //Enumerate the available voices
-      auto outcome = GetClient()->DescribeVoices(Aws::Polly::Model::DescribeVoicesRequest());
-      if (!outcome.IsSuccess()) {
-        PTRACE(2, "Could not describe voices: " << outcome.GetError().GetMessage());
-        return voices;
-      }
-
-      for (const auto & voice : outcome.GetResult().GetVoices()) {
-        PCaselessString voiceName = Aws::Polly::Model::VoiceIdMapper::GetNameForVoiceId(voice.GetId());
-        PStringOptions * opts = new PStringOptions;
-        opts->Set(VoiceName, voiceName);
-        opts->Set(VoiceLanguage, Aws::Polly::Model::LanguageCodeMapper::GetNameForLanguageCode(voice.GetLanguageCode()));
-        opts->Set(VoiceGender, Aws::Polly::Model::GenderMapper::GetNameForGender(voice.GetGender()));
-
-        PStringStream strm;
-        for (auto engine : voice.GetSupportedEngines()) {
-          if (engine == Aws::Polly::Model::Engine::NOT_SET)
-            continue;
-          if (!strm.empty())
-            strm << '+';
-          strm << Aws::Polly::Model::EngineMapper::GetNameForEngine(engine);
-        }
-        opts->Set(VoiceEngines, strm);
-
-        m_voices.SetAt(voiceName, opts);
-      }
-    }
+    if (m_voices.empty() && !InitVoiceList())
+      return voices;
 
     for (const auto & voice : m_voices) {
       PStringStream strm;
@@ -277,8 +314,8 @@ public:
     if (voice == m_voice)
       return ValidateEngine(voice);
 
-    if (m_voices.empty())
-      GetVoiceList();
+    if (!InitVoiceList())
+      return false;
 
     PCaselessString language = voice.Get(VoiceLanguage);
     if (!language.empty() && GetLanguageCodeForName(language) == Aws::Polly::Model::LanguageCode::NOT_SET)
@@ -372,6 +409,12 @@ public:
   }
 
 
+  bool Supports(TextType type) const override
+  {
+    return HintToAWS[type] != NULL;
+  }
+
+
   bool OpenFile(const PFilePath & fn) override
   {
     Close();
@@ -394,7 +437,7 @@ public:
 
   bool IsOpen() const override
   {
-    return m_toChannel || m_openedChannel || m_file.IsOpen();
+    return m_streamChannel || m_openedChannel || m_file.IsOpen();
   }
 
 
@@ -403,7 +446,7 @@ public:
     m_openedChannel= nullptr;
     m_file.Close();
 
-    auto channel = m_toChannel;
+    auto channel = m_streamChannel;
     if (!channel)
       return true;
 
@@ -411,7 +454,7 @@ public:
 
     PSimpleTimer failsafe(0, 10);
     while (failsafe.IsRunning()) {
-      if (!m_toChannel)
+      if (!m_streamChannel)
         return true;
       PThread::Sleep(100);
     }
@@ -459,7 +502,8 @@ public:
     if (IsOpen())
       return nullptr;
 
-    m_toChannel.reset(new PQueueChannel(m_sampleRate8k ? 16000 : 32000)); // One second of PCM
+    m_streamChannel.reset(new PQueueChannel(m_sampleRate8k ? 16000 : 32000)); // One second of PCM
+    m_streamState = e_StreamStarting;
 
     Aws::Polly::Model::SynthesizeSpeechRequest request;
     SetRequestInfo(request, text, hint);
@@ -467,11 +511,16 @@ public:
     request.SetDataReceivedEventHandler(
       [this](const Aws::Http::HttpRequest*, Aws::Http::HttpResponse* response, long long)
       {
-        auto buffer = (ostringstream() << response->GetResponseBody().rdbuf()).str();
-        if (buffer.empty() || m_toChannel->Write(buffer.data(), buffer.length()))
+        auto buffer = (std::stringstream() << response->GetResponseBody().rdbuf()).str();
+
+        StreamState expect = e_StreamStarting;
+        m_streamState.compare_exchange_strong(expect,
+            buffer.compare(0, 10, "{\"message\"") == 0 ? e_StreamError : e_StreamStarted);
+
+        if (buffer.empty() || m_streamChannel->Write(buffer.data(), buffer.length()))
           PTRACE(5, "SynthesizeSpeechAsync: transferred " << buffer.length() << " bytes");
-        else if (m_toChannel->GetErrorCode() != PChannel::NotOpen)
-          PTRACE(2, "SynthesizeSpeechAsync: write error - " << m_toChannel->GetErrorText());
+        else if (m_streamChannel->GetErrorCode() != PChannel::NotOpen)
+          PTRACE(2, "SynthesizeSpeechAsync: write error - " << m_streamChannel->GetErrorText());
         else
           PTRACE(m_asyncAbort, "SynthesizeSpeechAsync: aborted");
       });
@@ -483,34 +532,55 @@ public:
          Aws::Polly::Model::SynthesizeSpeechOutcome outcome,
          const std::shared_ptr<const Aws::Client::AsyncCallerContext> &)
       {
-        PQueueChannel * channel = dynamic_cast<PQueueChannel *>(m_toChannel.get());
+        PQueueChannel * channel = dynamic_cast<PQueueChannel *>(m_streamChannel.get());
         auto prevLength = channel->GetLength();
-        PTRACE_IF(5, prevLength > 0, "SynthesizeSpeechAsync: draining queue of " << prevLength << " bytes");
 
-        unsigned noDrainCount = 0;
-        while (prevLength > 0) {
-          PThread::Sleep(100);
+        if (!outcome.IsSuccess())
+          PTRACE(2, "SynthesizeSpeechAsync: error - " << outcome.GetError() << '\n' << channel->ReadString(prevLength));
+        else {
+          PTRACE_IF(5, prevLength > 0, "SynthesizeSpeechAsync: draining queue of " << prevLength << " bytes");
 
-          auto nextLength = channel->GetLength();
-          if (nextLength != prevLength)
-            noDrainCount = 0;
-          else if (noDrainCount++ > 4) {
-            PTRACE(5, "SynthesizeSpeechAsync: nothing draining queue.");
-            break;
+          unsigned noDrainCount = 0;
+          while (prevLength > 0) {
+            PThread::Sleep(100);
+
+            auto nextLength = channel->GetLength();
+            if (nextLength != prevLength)
+              noDrainCount = 0;
+            else if (noDrainCount++ > 4) {
+              PTRACE(5, "SynthesizeSpeechAsync: nothing draining queue.");
+              break;
+            }
+
+            prevLength = nextLength;
           }
-
-          prevLength = nextLength;
+          PTRACE(4, "SynthesizeSpeechAsync: successful.");
         }
-        m_toChannel->Close();
-        m_toChannel.reset();
-        if (outcome.IsSuccess())
-          PTRACE(4, "SynthesizeSpeechAsync successful.");
-        else
-          PTRACE(2, "SynthesizeSpeechAsync error: " << outcome.GetError());
+
+        m_streamChannel->Close();
+        m_streamChannel.reset();
+        m_streamState = e_StreamIdle;
       });
 
-    PTRACE(4, "SynthesizeSpeechAsync started.");
-    return m_toChannel;
+    PTRACE(4, "SynthesizeSpeechAsync: starting.");
+    PSimpleTimer timer(0, 2);
+    while (timer.IsRunning()) {
+      switch (m_streamState) {
+        case e_StreamStarted :
+          PTRACE(4, "SynthesizeSpeechAsync: started.");
+          //Do next case
+        case e_StreamIdle:
+          return m_streamChannel;
+        case e_StreamStarting:
+        case e_StreamError:
+          PThread::Sleep(10);
+      }
+    }
+
+    PTRACE(2, "SynthesizeSpeechAsync: failed to start.");
+    Close();
+    m_streamState = e_StreamIdle;
+    return m_streamChannel;
   }
 };
 
@@ -693,22 +763,22 @@ class PSpeechRecognition_AWS : public PSpeechRecognition, PAwsClient<Aws::Transc
         if (messageType == "event") {
           PString type = headers.Get(":event-type");
           if (type == "TranscriptEvent" &&
-              json.IsType(PJSON::e_Object) &&
-              json.GetObject().IsType("Transcript", PJSON::e_Object) &&
-              json.GetObject().GetObject("Transcript").IsType("Results", PJSON::e_Array)) {
+              json.IsObject() &&
+              json.GetObject().IsObject("Transcript") &&
+              json.GetObject().GetObject("Transcript").IsObject("Results")) {
             PJSON::Array const & results = json.GetObject().GetObject("Transcript").GetArray("Results");
             PTRACE_IF(4, !results.empty(), "Received " << type << ":\n" << json.AsString(4, 2));
             for (size_t idxResult = 0; idxResult < results.size(); ++idxResult) {
-              if (results.IsType(idxResult, PJSON::e_Object)) {
+              if (results.IsObject(idxResult)) {
                 PJSON::Object const & result = results.GetObject(idxResult);
-                if (result.IsType("Alternatives", PJSON::e_Array)) {
+                if (result.IsArray("Alternatives")) {
                   bool atLeastOnePronunciation = false;
                   PJSON::Array const & alternatives = result.GetArray("Alternatives");
                   for (size_t idxAlternative = 0; idxAlternative < alternatives.size(); ++idxAlternative) {
-                    if (alternatives.GetObject(idxAlternative).IsType("Items", PJSON::e_Array)) {
+                    if (alternatives.GetObject(idxAlternative).IsArray("Items")) {
                       PJSON::Array const & items = alternatives.GetObject(idxAlternative).GetArray("Items");
                       for (size_t idxItem = 0; idxItem < items.size(); ++idxItem) {
-                        if (items.IsType(idxItem, PJSON::e_Object)) {
+                        if (items.IsObject(idxItem)) {
                           PJSON::Object const & item = items.GetObject(idxItem);
                           transcript.m_final = false;
                           transcript.m_when = PTimeInterval::Seconds((double)item.GetNumber("StartTime"));
@@ -753,7 +823,7 @@ class PSpeechRecognition_AWS : public PSpeechRecognition, PAwsClient<Aws::Transc
             log << '\n' << data;
           else {
             PString msg;
-            if (json.IsType(PJSON::e_Object))
+            if (json.IsObject())
               msg = json.GetObject().GetString("Message");
             else if (json.IsType(PJSON::e_String))
               msg = json.GetString();

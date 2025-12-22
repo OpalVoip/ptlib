@@ -27,6 +27,7 @@
 #include <ptlib.h>
 #include <ptclib/speech.h>
 #include <ptclib/http.h>
+#include <ptclib/pxml.h>
 #include <ptclib/pjson.h>
 #include <ptclib/pwavfile.h>
 #include <ptclib/qchannel.h>
@@ -54,6 +55,7 @@ class PTextToSpeech_11Labs : public PTextToSpeech
     virtual unsigned GetChannels() const override;
     virtual bool SetVolume(unsigned volume) override;
     virtual unsigned GetVolume() const override;
+    virtual bool Supports(TextType type) const override;
     virtual bool OpenFile(const PFilePath& fn) override;
     virtual bool IsOpen() const override;
     virtual bool Close() override;
@@ -202,6 +204,12 @@ bool PTextToSpeech_11Labs::SetVolume(unsigned volume)
 unsigned PTextToSpeech_11Labs::GetVolume() const
 {
   return m_volume;
+}
+
+
+bool PTextToSpeech_11Labs::Supports(TextType type) const
+{
+  return type == Default || type == PartialSSML;
 }
 
 
@@ -387,6 +395,27 @@ bool PTextToSpeech_11Labs::InternalSpeak(const PString & text,
   voiceSettings.SetNumber("stability", 0.5);
   voiceSettings.SetNumber("similarity_boost", 0.5);
 
+  if (PCaselessString(text).Find("prosody") != P_MAX_INDEX) {
+    // We need to fake the <prosody> parameters as is ignored
+    PXML ssml;
+    if (ssml.Load(text)) {
+      PXMLElement * prosody = ssml.GetRootElement()->GetElement("prosody");
+      if (prosody != NULL) {
+        PCaselessString rate = prosody->GetAttribute("rate");
+        if (rate == "x-fast")
+          voiceSettings.SetNumber("speed", 1.2);
+        else if (rate == "fast")
+          voiceSettings.SetNumber("speed", 1.1);
+        else if (rate == "slow")
+          voiceSettings.SetNumber("speed", 0.85);
+        else if (rate == "x-slow")
+          voiceSettings.SetNumber("speed", 0.7);
+        else
+          voiceSettings.SetNumber("speed", 1);
+      }
+    }
+  }
+
   // Set up request headers
   PMIMEInfo requestHeaders;
   requestHeaders.Set(PHTTP::ContentTypeTag, PMIMEInfo::ApplicationJSON());
@@ -459,12 +488,12 @@ bool PTextToSpeech_11Labs::UpdateVoiceCache()
   }
 
   PJSON json(reply);
-  if (json.IsType(PJSON::e_Object)) {
+  if (json.IsObject()) {
     const PJSON::Object & root = json.GetObject();
-    if (root.IsType("voices", PJSON::e_Array)) {
+    if (root.IsArray("voices")) {
       const PJSON::Array & arr = root.GetArray("voices");
       for (size_t i = 0; i < arr.size(); ++i) {
-        if (arr.IsType(i, PJSON::e_Object))
+        if (arr.IsObject(i))
           AddVoice(arr.GetObject(i));
       }
     }
@@ -520,7 +549,7 @@ bool PTextToSpeech_11Labs::InternalSetVoice(PStringOptions & voice)
   }
 
   PJSON json(reply);
-  if (!json.IsType(PJSON::e_Object))
+  if (!json.IsObject())
     return false;
 
   voice = AddVoice(json.GetObject());

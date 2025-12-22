@@ -148,6 +148,18 @@ PString PTextToSpeech::GetVoice() const
 }
 
 
+bool PTextToSpeech::InternalSetVoice(PStringOptions & /*voice*/)
+{
+  return true;
+}
+
+
+bool PTextToSpeech::Supports(TextType type) const
+{
+  return type == Default;
+}
+
+
 bool PTextToSpeech::OpenChannel(PChannel * /*channel*/)
 {
   Close();

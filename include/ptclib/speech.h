@@ -81,8 +81,11 @@ class PTextToSpeech : public PObject
       IPAddress,
       Duration,
       Spell,
-      Boolean
+      Boolean,
+      FullSSML,
+      PartialSSML // Does not support <voice> tag
     );
+    virtual bool Supports(TextType type) const;
 
     virtual bool Speak(const PString & text, TextType hint = Default) = 0;
     virtual PSharedPtr<PChannel> SpeakToChannel(const PString & text, TextType hint = Default);
@@ -92,7 +95,7 @@ class PTextToSpeech : public PObject
     static const PCaselessString & VoiceGender();
 
   protected:
-    virtual bool InternalSetVoice(PStringOptions & /*voice*/) { return true; }
+    virtual bool InternalSetVoice(PStringOptions & /*voice*/);
     PStringOptions m_voice;
 };
 

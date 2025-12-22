@@ -117,9 +117,37 @@ class PSharedPtr : public PContainer
 };
 
 
+template <typename T> class PAtomicSharedPtr
+{
+public:
+  typedef PSharedPtr<T> ptr;
+
+  PAtomicSharedPtr() { }
+  PAtomicSharedPtr(const ptr & p) : m_pointer(p) { }
+
+  ptr load() const { PWaitAndSignal lock(m_mutex); return m_pointer; }
+  operator ptr() const { return load(); }
+
+  void store(const ptr & p) { PWaitAndSignal lock(m_mutex); m_pointer = p; }
+  PAtomicSharedPtr & operator=(const ptr & p) { store(p); return *this; }
+
+  ptr exchange(const ptr & p)
+  {
+    PWaitAndSignal lock(m_mutex);
+    ptr prev = m_pointer;
+    m_pointer = p;
+    return prev;
+  }
+
+protected:
+  PCriticalSection m_mutex;
+  PSharedPtr<T> m_pointer;
+};
+
 #else // __cplusplus
 
 template <typename T> using PSharedPtr = std::shared_ptr<T>;
+template <typename T> using PAtomicSharedPtr = std::atomic<std::shared_ptr<T>>;
 
 #endif // __cplusplus
 

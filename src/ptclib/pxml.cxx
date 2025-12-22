@@ -1184,7 +1184,7 @@ bool PXMLBase::OutputIndent(ostream & strm, int indent, const PString & elementN
     return true;
   }
 
-  if (indent > 1 && m_options & PXML::Indent) {
+  if (indent > 1 && (m_options & PXML::Indent)) {
     strm << setw((indent-1)*2) << " ";
     return true;
   }
@@ -1212,10 +1212,10 @@ void PXMLData::Output(ostream & strm, const PXMLBase & xml, int indent) const
   xml.OutputProgress();
   bool newLine = xml.OutputIndent(strm, indent, m_parent->GetName());
 
-  strm << PXML::EscapeSpecialChars(m_value);
-
   if (newLine)
-    strm << endl;
+    strm << PXML::EscapeSpecialChars(m_value) << endl;
+  else
+    strm << PXML::EscapeSpecialChars(m_value.Trim());
 }
 
 
@@ -1451,10 +1451,10 @@ void PXMLElement::Output(ostream & strm, const PXMLBase & xml, int indent) const
 {
   xml.OutputProgress();
 
-  PString elementName;
+  PString parentName;
   if (m_parent != NULL)
-    elementName = m_parent->GetName();
-  bool newLine = xml.OutputIndent(strm, indent, elementName);
+    parentName = m_parent->GetName();
+  bool newLine = xml.OutputIndent(strm, indent, parentName);
 
   strm << '<' << m_name;
 
@@ -1469,18 +1469,16 @@ void PXMLElement::Output(ostream & strm, const PXMLBase & xml, int indent) const
   else {
     strm << '>';
 
-    if (!m_subObjects.IsEmpty()) {
-      if (m_subObjects.GetSize() == 1 && !m_subObjects[0].IsElement())
-        m_subObjects[0].Output(strm, xml, 0);
-      else {
-        if (newLine)
-          strm << endl;
+    if (m_subObjects.GetSize() == 1 && !m_subObjects[0].IsElement())
+      m_subObjects[0].Output(strm, xml, 0);
+    else {
+      if (newLine)
+        strm << endl;
 
-        for (PINDEX i = 0; i < m_subObjects.GetSize(); i++)
-          m_subObjects[i].Output(strm, xml, indent + 1);
+      for (PINDEX i = 0; i < m_subObjects.GetSize(); i++)
+        m_subObjects[i].Output(strm, xml, indent + 1);
 
-        xml.OutputIndent(strm, indent, elementName);
-      }
+      xml.OutputIndent(strm, indent, parentName);
     }
     strm << "</" << m_name << '>';
   }
