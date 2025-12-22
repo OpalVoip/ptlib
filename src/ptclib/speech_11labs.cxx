@@ -207,7 +207,7 @@ unsigned PTextToSpeech_11Labs::GetVolume() const
 }
 
 
-bool PTextToSpeech_11Labs::Supports(TextType type) const override
+bool PTextToSpeech_11Labs::Supports(TextType type) const
 {
   return type == Default || type == PartialSSML;
 }
