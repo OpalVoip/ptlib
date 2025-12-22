@@ -64,7 +64,7 @@ class PTextToSpeech_11Labs : public PTextToSpeech
     // Optional virtual overrides
     virtual bool SetOptions(const PStringOptions& options) override;
     virtual bool OpenChannel(PChannel* channel) override;
-    virtual PSharedPtr<PChannel> SpeakToChannel(const PString& text, TextType hint = Default) override;
+    virtual std::shared_ptr<PChannel> SpeakToChannel(const PString& text, TextType hint = Default) override;
 
   protected:
     // Protected virtual override
@@ -85,7 +85,7 @@ class PTextToSpeech_11Labs : public PTextToSpeech
     // Output handling
     PWAVFile m_file;
     PChannel* m_channel;
-    PSharedPtr<PChannel> m_streamChannel;
+    std::shared_ptr<PChannel> m_streamChannel;
     PThread * m_thread;
     PDECLARE_MUTEX(m_mutex);
 
@@ -298,7 +298,7 @@ bool PTextToSpeech_11Labs::Speak(const PString & text, TextType /*hint*/)
 }
 
 
-PSharedPtr<PChannel> PTextToSpeech_11Labs::SpeakToChannel(const PString & text, TextType /*hint*/)
+std::shared_ptr<PChannel> PTextToSpeech_11Labs::SpeakToChannel(const PString & text, TextType /*hint*/)
 {
   Close();
 

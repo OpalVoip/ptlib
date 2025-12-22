@@ -72,7 +72,7 @@ class VxmlTest : public PProcess
     PDECLARE_NOTIFIER(PCLI::Arguments, VxmlTest, GetVar);
     PDECLARE_NOTIFIER(PCLI::Arguments, VxmlTest, TransferStatus);
     PDECLARE_NOTIFIER(PCLI::Arguments, VxmlTest, Disconnect);
-    std::vector< PSharedPtr<TestInstance> > m_tests;
+    std::vector< std::shared_ptr<TestInstance> > m_tests;
     bool m_exitOnCompletion;
     PCLIStandard m_cli;
 

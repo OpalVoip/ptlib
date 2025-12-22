@@ -240,7 +240,7 @@ PINDEX PGloballyUniqueID::HashFunction() const
   return qwords[0] ^ qwords[1];
 #else
   uint32_t * dwords = (uint32_t *)GetPointer();
-  return (dwords[0] ^ dwords[1] ^ dwords[2] ^ dwords[3]) % NumBuckets;
+  return dwords[0] ^ dwords[1] ^ dwords[2] ^ dwords[3];
 #endif
 }
 

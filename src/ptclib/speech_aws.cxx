@@ -98,7 +98,7 @@ class PTextToSpeech_AWS : public PTextToSpeech, PAwsClient<Aws::Polly::PollyClie
   bool            m_sampleRate8k{ true };
   PWAVFile        m_file;
   PChannel      * m_openedChannel{ nullptr };
-  PSharedPtr<PChannel> m_streamChannel;
+  std::shared_ptr<PChannel> m_streamChannel;
   enum StreamState { e_StreamIdle, e_StreamStarting, e_StreamError, e_StreamStarted };
   std::atomic<StreamState> m_streamState{ e_StreamIdle };
   PTRACE_THROTTLE(m_asyncAbort, 3, 500);
@@ -497,7 +497,7 @@ public:
     return true;
   }
 
-  PSharedPtr<PChannel> SpeakToChannel(const PString & text, TextType hint) override
+  std::shared_ptr<PChannel> SpeakToChannel(const PString & text, TextType hint) override
   {
     if (IsOpen())
       return nullptr;

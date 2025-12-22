@@ -2695,7 +2695,7 @@ void PProcess::HouseKeeping()
     if (cleanExternalThreads.HasExpired()) {
       cleanExternalThreads = CleanExternalThreadsTime;
       // Delete old threads as this vector pops off the stack, outside of the mutex lock
-      std::vector< PSharedPtr<PExternalThread> > oldThreads;
+      std::vector< std::shared_ptr<PExternalThread> > oldThreads;
       PWaitAndSignal mutex(m_threadMutex);
       for (ThreadList::iterator it = m_externalThreads.begin(); it != m_externalThreads.end();) {
         if ((*it)->IsTerminated()) {
@@ -2973,13 +2973,11 @@ static int SignalsToHandle[] = {
   0
 };
 
-#if __cplusplus >=201100L
 void HandleTerminate()
 {
   PTRACE(2, "PTLib", "Received std::terminate()");
   std::abort(); // Dump core
 }
-#endif
 
 void PProcess::AddRunTimeSignalHandlers(const int * signals)
 {
@@ -2996,9 +2994,7 @@ void PProcess::AddRunTimeSignalHandlers(const int * signals)
       previous = PlatformSetRunTimeSignalHandler(signal);
   }
 
-#if __cplusplus >= 201100L
   std::set_terminate(HandleTerminate);
-#endif
 }
 
 
@@ -3490,7 +3486,7 @@ PThread * PThread::Current()
     return NULL;
 
   // Construct PExternalThread outside of the mutex to avoid deadlock potential
-  PSharedPtr<PExternalThread> thread(new PExternalThread());
+  std::shared_ptr<PExternalThread> thread(new PExternalThread());
 
   PWaitAndSignal mutex(process.m_threadMutex);
   process.m_externalThreads.push_back(thread);

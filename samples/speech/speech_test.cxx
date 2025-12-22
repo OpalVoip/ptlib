@@ -69,9 +69,9 @@ static PSoundChannel * OpenSoundChannel(const PArgList & args, PSoundChannel::Di
 }
 
 
-static PSharedPtr<PTextToSpeech> OpenTextToSpeech(const PArgList & args)
+static std::shared_ptr<PTextToSpeech> OpenTextToSpeech(const PArgList & args)
 {
-  PSharedPtr<PTextToSpeech> tts(PTextToSpeech::Create(args.GetOptionString("engine")));
+  std::shared_ptr<PTextToSpeech> tts(PTextToSpeech::Create(args.GetOptionString("engine")));
   if (tts.get() == NULL)
     cerr << "No such text to speech engine!\n";
   else if (!tts->SetOptions(PStringOptions(args.GetOptionString("options"))))
@@ -85,17 +85,17 @@ static PSharedPtr<PTextToSpeech> OpenTextToSpeech(const PArgList & args)
   else
     return tts;
 
-  return PSharedPtr<PTextToSpeech>();
+  return nullptr;
 }
 
 
 void MyProcess::Play(const PArgList & args)
 {
-  PSharedPtr<PTextToSpeech> tts(OpenTextToSpeech(args));
+  std::shared_ptr<PTextToSpeech> tts(OpenTextToSpeech(args));
   if (tts.get() == NULL)
     return;
 
-  PSharedPtr<PSoundChannel> player;
+  std::shared_ptr<PSoundChannel> player;
   PFilePath fn = args.GetOptionString("file");
   if (fn.empty()) {
     player.reset(OpenSoundChannel(args, PSoundChannel::Player));
@@ -127,7 +127,7 @@ void MyProcess::Play(const PArgList & args)
     text << args[i] << ' ';
 
   if (args.HasOption("stream")) {
-    PSharedPtr<PChannel> channel = tts->SpeakToChannel(text, hint);
+    std::shared_ptr<PChannel> channel(tts->SpeakToChannel(text, hint));
     if (!channel) {
       cerr << "Error streaming text!\n";
       return;
@@ -152,7 +152,7 @@ void MyProcess::Play(const PArgList & args)
 
 void MyProcess::Voices(const PArgList & args)
 {
-  PSharedPtr<PTextToSpeech> tts(OpenTextToSpeech(args));
+  std::shared_ptr<PTextToSpeech> tts(OpenTextToSpeech(args));
   if (tts.get() != NULL)
     cout << setfill('\n') << tts->GetVoiceList() << endl;
 }
@@ -160,7 +160,7 @@ void MyProcess::Voices(const PArgList & args)
 
 void MyProcess::Recognise(const PArgList & args)
 {
-  PSharedPtr<PSpeechRecognition> sr(PSpeechRecognition::Create(args.GetOptionString("engine")));
+  std::shared_ptr<PSpeechRecognition> sr(PSpeechRecognition::Create(args.GetOptionString("engine")));
   if (sr.get() == NULL) {
     cerr << "No such speech recognition engine!\n";
     return;

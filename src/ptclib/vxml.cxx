@@ -844,7 +844,7 @@ void PVXMLPlayable::OnStop()
 }
 
 
-bool PVXMLPlayable::SetSubChannel(PSharedPtr<PChannel> channel)
+bool PVXMLPlayable::SetSubChannel(std::shared_ptr<PChannel> channel)
 {
   if (!channel)
     return false;
@@ -852,11 +852,7 @@ bool PVXMLPlayable::SetSubChannel(PSharedPtr<PChannel> channel)
   if (!m_vxmlChannel->SetReadChannel(channel.get(), false))
     return false;
 
-#if __cplusplus < 201103L
-  m_subChannel = channel;
-#else
   m_subChannel = std::move(channel);
-#endif
   return true;
 }
 
@@ -894,7 +890,7 @@ bool PVXMLPlayableFile::OnStart()
   if (PAssertNULL(m_vxmlChannel) == NULL)
     return false;
 
-  if (SetSubChannel(PSharedPtr<PChannel>(m_vxmlChannel->OpenMediaFile(m_filePath, false)))) {
+  if (SetSubChannel(std::shared_ptr<PChannel>(m_vxmlChannel->OpenMediaFile(m_filePath, false)))) {
     PTRACE(3, "Playing file \"" << m_filePath << '"');
     return true;
   }
@@ -1101,7 +1097,7 @@ bool PVXMLPlayableCommand::OnStart()
   }
 
   PTRACE(3, "Playing command \"" << cmd << '"');
-  return SetSubChannel(PSharedPtr<PChannel>(pipe.release()));
+  return SetSubChannel(std::shared_ptr<PChannel>(pipe.release()));
 }
 
 
@@ -1139,7 +1135,7 @@ bool PVXMLPlayableData::OnStart()
     return false;
 
   PTRACE(3, "Playing " << m_data.GetSize() << " bytes of memory");
-  return SetSubChannel(PSharedPtr<PChannel>(new PMemoryFile(m_data)));
+  return SetSubChannel(std::shared_ptr<PChannel>(new PMemoryFile(m_data)));
 }
 
 
@@ -1206,7 +1202,7 @@ bool PVXMLPlayableHTTP::OnStart()
   if ((code != 200) || (replyMIME(PHTTP::TransferEncodingTag()) *= PHTTP::ChunkedTag()))
     return false;
 
-  return SetSubChannel(PSharedPtr<PChannel>(http.release()));
+  return SetSubChannel(std::shared_ptr<PChannel>(http.release()));
 }
 
 PFACTORY_CREATE(PFactory<PVXMLPlayable>, PVXMLPlayableHTTP, "http");
@@ -3375,7 +3371,7 @@ PBoolean PVXMLSession::TraverseGrammar(PXMLElement & element)
     PString src = element.GetAttribute(SrcAttribute);
     PConstString builtin("builtin:");
     if (src.NumCompare(builtin, builtin.length()) == EqualTo) {
-      PINDEX pos = src.Find('/');
+      size_t pos = src.Find('/');
       if (pos == P_MAX_INDEX || pos <= builtin.length())
         type = src.Mid(builtin.length());
       else {
@@ -4560,7 +4556,7 @@ PVXMLMenuGrammar::PVXMLMenuGrammar(const PVXMLGrammarInit & init)
 void PVXMLMenuGrammar::OnInput(const PString & input)
 {
   static const PConstString ValidMenuDTMF("0123456789*#ABCDabcd");
-  for (PINDEX i = 0; i < input.length(); ++i) {
+  for (size_t i = 0; i < input.length(); ++i) {
     if (ValidMenuDTMF.Find(input[i]) != P_MAX_INDEX) {
       SetFilled(input);
       return;

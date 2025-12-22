@@ -811,7 +811,7 @@ class PVXMLPlayable : public PObject
     friend class PVXMLChannel;
 
   protected:
-    bool SetSubChannel(PSharedPtr<PChannel> channel);
+    bool SetSubChannel(std::shared_ptr<PChannel> channel);
     template <class C> C * GetSubChannel() const { return dynamic_cast<C *>(m_subChannel.get()); }
 
     PVXMLChannel * m_vxmlChannel;
@@ -821,7 +821,7 @@ class PVXMLPlayable : public PObject
     bool     m_autoDelete;
     bool     m_delayDone; // very tacky flag used to indicate when the post-play delay has been done
   private:
-    PSharedPtr<PChannel> m_subChannel;
+    std::shared_ptr<PChannel> m_subChannel;
 };
 
 //////////////////////////////////////////////////////////////////
@@ -933,7 +933,7 @@ class PVXMLPlayableTTS : public PVXMLPlayable
     virtual bool OnRepeat() override;
     virtual void OnStop() override;
   protected:
-    PSharedPtr<PChannel> m_streamedSpeech;
+    std::shared_ptr<PChannel> m_streamedSpeech;
 };
 
 //////////////////////////////////////////////////////////////////

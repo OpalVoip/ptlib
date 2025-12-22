@@ -262,11 +262,7 @@ class PStreamableBitwiseEnum : public PBitwiseEnum<BaseEnum, MaxValue, BaseInt>
     virtual char const * const * Names() const = 0;
 };
 
-#if __cplusplus < 201103L
-  #define P_DECLARE_STREAMABLE_BITWISE_ENUM_BASE
-#else
-  #define P_DECLARE_STREAMABLE_BITWISE_ENUM_BASE : unsigned
-#endif
+#define P_DECLARE_STREAMABLE_BITWISE_ENUM_BASE : unsigned
 
 #define P_DECLARE_STREAMABLE_BITWISE_ENUM_EX(name, count, values, ...) \
   enum name##_Bits P_DECLARE_STREAMABLE_BITWISE_ENUM_BASE { P_DECLARE_BITWISE_ENUM_##count values }; \

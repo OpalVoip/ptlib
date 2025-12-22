@@ -908,13 +908,9 @@ static PUniqueThreadIdentifier GetCurrentUniqueIdentifier()
 
 PUniqueThreadIdentifier PThread::GetCurrentUniqueIdentifier()
 {
-#if (__cplusplus >= 201103L)
   // Cache the unique ID in TLS to avoid frequent syscalls
   thread_local PUniqueThreadIdentifier uniqueId = ::GetCurrentUniqueIdentifier();
   return uniqueId;
-#else
-  return ::GetCurrentUniqueIdentifier();
-#endif
 }
 
 

@@ -93,7 +93,7 @@ void VxmlTest::Main()
   m_exitOnCompletion = args.HasOption("exit-on-completion");
 
   do {
-    PSharedPtr<TestInstance> instance(new TestInstance());
+    auto instance = std::make_shared<TestInstance>();
     if (instance->Initialise(m_tests.size(), args))
       m_tests.push_back(instance);
   } while (args.Parse("-player-driver:"
@@ -128,7 +128,7 @@ void VxmlTest::Main()
 void VxmlTest::OnEndSession()
 {
   bool allDone = true;
-  for (std::vector< PSharedPtr<TestInstance> >::iterator it = m_tests.begin(); it != m_tests.end(); ++it) {
+  for (auto it = m_tests.begin(); it != m_tests.end(); ++it) {
     if ((*it)->IsOpen()) {
       allDone = false;
       break;

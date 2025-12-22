@@ -411,49 +411,25 @@ PObject::Comparison PSmartPointer::Compare(const PObject & obj) const
 #undef realloc
 #undef free
 
-#if (__cplusplus >= 201103L)
-void * operator new(size_t nSize)
-#elif (__GNUC__ >= 3) || ((__GNUC__ == 2)&&(__GNUC_MINOR__ >= 95)) //2.95.X & 3.X
-void * operator new(size_t nSize) throw (std::bad_alloc)
-#else
-void * operator new(size_t nSize)
-#endif
+__inline void * operator new(size_t nSize)
 {
   return PMemoryHeap::Allocate(nSize, (const char *)NULL, 0, NULL);
 }
 
 
-#if (__cplusplus >= 201103L)
-void * operator new[](size_t nSize)
-#elif (__GNUC__ >= 3) || ((__GNUC__ == 2)&&(__GNUC_MINOR__ >= 95)) //2.95.X & 3.X
-void * operator new[](size_t nSize) throw (std::bad_alloc)
-#else
-void * operator new[](size_t nSize)
-#endif
+__inline void * operator new[](size_t nSize)
 {
   return PMemoryHeap::Allocate(nSize, (const char *)NULL, 0, NULL);
 }
 
 
-#if (__cplusplus >= 201103L)
-void operator delete(void * ptr) noexcept
-#elif (__GNUC__ >= 3) || ((__GNUC__ == 2)&&(__GNUC_MINOR__ >= 95)) //2.95.X & 3.X
-void operator delete(void * ptr) throw()
-#else
-void operator delete(void * ptr)
-#endif
+__inline void operator delete(void * ptr) noexcept
 {
   PMemoryHeap::Deallocate(ptr, NULL);
 }
 
 
-#if (__cplusplus >= 201103L)
-void operator delete[](void * ptr) noexcept
-#elif (__GNUC__ >= 3) || ((__GNUC__ == 2)&&(__GNUC_MINOR__ >= 95)) //2.95.X & 3.X
-void operator delete[](void * ptr) throw()
-#else
-void operator delete[](void * ptr)
-#endif
+__inline void operator delete[](void * ptr) noexcept
 {
   PMemoryHeap::Deallocate(ptr, NULL);
 }

@@ -1002,33 +1002,14 @@ typedef intptr_t P_INT_PTR;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Deal with different C++ versions and std::auto_ptr deprecation
-#if __cplusplus < 201103L
-#define override
-
-struct PNonCopyable
-{
-  PNonCopyable() { }
-private:
-  PNonCopyable(const PNonCopyable &) { }
-  PNonCopyable & operator=(const PNonCopyable &) { return *this; }
-};
-template <typename T> class PAutoPtr : public std::auto_ptr<T>
-{
-public:
-  PAutoPtr() { }
-  explicit PAutoPtr(T * p) : std::auto_ptr<T>(p) { }
-  PAutoPtr(PAutoPtr & other) : std::auto_ptr<T>(other.release()) { }
-  void transfer(PAutoPtr & other) { this->reset(other.release()); }
-  bool operator!() const { return this->get() == NULL; }
-  operator bool() const { return this->get() != NULL; }
-};
-#else // __cplusplus
 struct PNonCopyable
 {
   PNonCopyable() = default;
   PNonCopyable(const PNonCopyable &) = delete;
   PNonCopyable & operator=(const PNonCopyable &) = delete;
 };
+
+// For backward compatibility
 template <typename T> class PAutoPtr : public std::unique_ptr<T>
 {
 public:
@@ -1046,7 +1027,6 @@ struct std::hash<PObject>
     return obj.HashFunction();
   }
 };
-#endif // __cplusplus
 
 
 ///////////////////////////////////////////////////////////////////////////////

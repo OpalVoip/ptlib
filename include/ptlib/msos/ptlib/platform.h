@@ -220,14 +220,8 @@ class PWin32Handle
     bool Wait(DWORD timeout) const;
     bool Duplicate(HANDLE h, DWORD flags = DUPLICATE_SAME_ACCESS, DWORD access = 0);
 
-#if __cplusplus < 201103L
-  private:
-    PWin32Handle(const PWin32Handle &) : m_handle() { }
-    void operator=(const PWin32Handle &) { }
-#else
     PWin32Handle(const PWin32Handle &) = delete;
     PWin32Handle & operator=(const PWin32Handle &) = delete;
-#endif
 };
 
 

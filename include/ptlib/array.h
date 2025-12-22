@@ -444,7 +444,6 @@ template <class T> class PBaseArray : public PAbstractArray
       ostream & stream,
       PINDEX index
     ) const override {
-#if __cplusplus >= 202002L
       if constexpr (std::is_same<wchar_t, T>::value) {
         char buffer[11];
         int length = P_DISABLE_MSVC_WARNINGS(4996, wctomb(buffer, GetAt(index)));
@@ -456,9 +455,6 @@ template <class T> class PBaseArray : public PAbstractArray
       else {
         stream << GetAt(index);
       }
-#else
-      stream << GetAt(index);
-#endif
     }
 
     PBaseArray(PContainerReference & reference_) : PAbstractArray(reference_, sizeof(T)) { }

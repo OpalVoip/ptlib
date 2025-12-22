@@ -167,7 +167,7 @@ bool PTextToSpeech::OpenChannel(PChannel * /*channel*/)
 }
 
 
-PSharedPtr<PChannel> PTextToSpeech::SpeakToChannel(const PString &, TextType)
+std::shared_ptr<PChannel> PTextToSpeech::SpeakToChannel(const PString &, TextType)
 {
   return NULL;
 }

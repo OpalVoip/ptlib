@@ -1107,9 +1107,9 @@ int main(int argc, char* argv[])
   for (feature = g_features.begin(); feature != g_features.end(); feature++)
     feature->RunDependencies();
 
-  int longestNameWidth = 0;
+  size_t longestNameWidth = 0;
   for (feature = g_features.begin(); feature != g_features.end(); feature++) {
-    int length = feature->m_displayName.length();
+    size_t length = feature->m_displayName.length();
     if (length > longestNameWidth)
       longestNameWidth = length;
   }
