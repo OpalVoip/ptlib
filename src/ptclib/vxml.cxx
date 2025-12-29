@@ -2243,6 +2243,7 @@ bool PVXMLSession::ProcessEvents()
 
   m_sessionMutex.Signal();
   m_waitForEvent.Wait();
+  PTRACE(4, "Event received");
   m_sessionMutex.Wait();
 
   if (m_closing || m_newXML.get() == NULL)
