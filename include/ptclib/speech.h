@@ -114,7 +114,7 @@ PFACTORY_LOAD(PTextToSpeech_WAV);
   #define P_TEXT_TO_SPEECH_AWS "AWS"
   PFACTORY_LOAD(PTextToSpeech_AWS);
 #endif
-#if P_SSL
+#if P_SSL && P_XML
   #define P_TEXT_TO_SPEECH_11LABS "11Labs"
   PFACTORY_LOAD(PTextToSpeech_11Labs);
 #endif
