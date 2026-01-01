@@ -975,15 +975,6 @@ void PIPSocket::PrintOn(ostream & str) const
 }
 
 
-PString PIPSocket::GetHostName()
-{
-  char name[100];
-  if (gethostname(name, sizeof(name)-1) != 0)
-    return "localhost";
-  name[sizeof(name)-1] = '\0';
-  return name;
-}
-
 
 PString PIPSocket::GetHostName(const PString & hostname)
 {

@@ -25,6 +25,9 @@
  */
 
 #include <ptlib.h>
+
+#if P_TEXT_TO_SPEECH && P_SSL && P_XML
+
 #include <ptclib/speech.h>
 #include <ptclib/http.h>
 #include <ptclib/pxml.h>
@@ -585,3 +588,5 @@ PHTTPClient * PTextToSpeech_11Labs::CreateHTTPCLient() const
   http->SetProxies(m_httpProxies);
   return http;
 }
+
+#endif // P_TEXT_TO_SPEECH && P_SSL && P_XML

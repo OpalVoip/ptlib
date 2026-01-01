@@ -43,7 +43,7 @@ class LogFile:
         line = self.file.readline()
         if line:
             self.line_num += 1
-            if self.line_num % 100000 == 0:
+            if self.line_num % 10000 == 0:
                 print(f"Processed {self.line_num} lines...", end='\r')
         return line
 
@@ -72,7 +72,10 @@ class LogFile:
         while self.readlog():
             for name, regex in patterns:
                 if re.search(regex, self.log_line):
-                    entries[name].append(LogEntry(self.log_line.strip(), self.line_num))
+                    try:
+                        entries[name].append(LogEntry(self.log_line.strip(), self.line_num))
+                    except:
+                        print(f"Could not parse line {self.line_num}\n{sys.exception()}\n{self.log_line}\n")
                     break
 
         print(f"Processed {self.line_num} lines in {filename}")

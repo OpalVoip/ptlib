@@ -154,7 +154,19 @@ extern void PPlatformWalkStack(ostream & strm, PThreadIdentifier id, PUniqueThre
 #endif // PTRACING
 
 
-PAssertWalkStackModes PAssertWalkStackMode = PAssertWalkStackSymbols;
+static PAssertWalkStackModes InitialisePAssertWalkStackMode()
+{
+  const char* mode = getenv("PTLIB_WALK_STACK_MODE");
+  if (mode == NULL)
+    return PAssertWalkStackSymbols;
+  size_t len = strlen(mode);
+  if (strnicmp(mode, "disable", len) == 0)
+    return PAssertWalkStackDisabled;
+  if (strnicmp(mode, "symbols", len) == 0)
+    return PAssertWalkStackSymbols;
+  return PAssertWalkStackNoSymbols;
+}
+PAssertWalkStackModes PAssertWalkStackMode = InitialisePAssertWalkStackMode();
 unsigned PAssertCount;
 
 static PDebugLocation const s_ExceptionLocation("try/catch");

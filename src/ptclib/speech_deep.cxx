@@ -320,13 +320,35 @@ public:
     PTRACE(4, "Opening " << *this);
 
     m_notifier = notifier;
+
+    PURL url(m_endpoint);
+    url.AppendPath("listen");
+    for (PStringOptions::const_iterator opt = m_options.begin(); opt != m_options.end(); ++opt)
+      url.SetQueryVar(opt->first, opt->second);
+    url.SetQueryVar(SampleRateHeader, m_sampleRate);
+    if (!m_flux) {
+      url.SetQueryVar(ChannelsHeader, m_channels);
+      url.SetQueryVar(LanguageHeader, m_language);
+    }
+
+    m_webSocket.SetAuthorization("token " + m_apiKey);
+    m_webSocket.SetProxies(m_httpProxies);
+    m_webSocket.SetBinaryMode();
+    if (!m_webSocket.Connect(url))
+      return false;
+
+    m_eventThread = new PThreadObj<PSpeechRecognition_Deepgram>(*this,
+                                                                &PSpeechRecognition_Deepgram::ReadEvents,
+                                                                false,
+                                                                "AWS-SR");
+    PTRACE(3, "Opened speech recognition.");
     return true;
   }
 
 
   virtual bool IsOpen() const override
   {
-    return m_notifier != Notifier();
+    return m_notifier != Notifier() && m_webSocket.IsOpen();
   }
 
 
@@ -359,28 +381,6 @@ public:
     PWaitAndSignal lock(m_mutex);
     if (!IsOpen())
       return false;
-
-    if (!m_webSocket.IsOpen()) {
-
-      PURL url(m_endpoint);
-      url.AppendPath("listen");
-      for (PStringOptions::const_iterator opt = m_options.begin(); opt != m_options.end(); ++opt)
-        url.SetQueryVar(opt->first, opt->second);
-      url.SetQueryVar(SampleRateHeader, m_sampleRate);
-      if (!m_flux) {
-        url.SetQueryVar(ChannelsHeader, m_channels);
-        url.SetQueryVar(LanguageHeader, m_language);
-      }
-
-      m_webSocket.SetAuthorization("token " + m_apiKey);
-      m_webSocket.SetProxies(m_httpProxies);
-      m_webSocket.SetBinaryMode();
-      if (!m_webSocket.Connect(url))
-        return false;
-
-      m_eventThread = new PThreadObj<PSpeechRecognition_Deepgram>(*this, &PSpeechRecognition_Deepgram::ReadEvents, false, "AWS-SR");
-      PTRACE(3, "Opened speech recognition.");
-    }
 
     m_buffer.insert(m_buffer.end(), samples, samples+sampleCount);
     if (m_buffer.size() < m_bufferSize)

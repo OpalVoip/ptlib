@@ -1433,22 +1433,22 @@ unsigned PThread::GetNumProcessors()
 }
 
 
-static bool s_IsGUIProcess = true;
+static bool s_IsGUIProcess = false;
 static atomic<bool> s_checkGUIProcess(false);
 
 static BOOL CALLBACK EnumWindowsProc(HWND hWnd, LPARAM thisProcess)
 {
-  char wndClassName[100];
-  GetClassName(hWnd, wndClassName, sizeof(wndClassName));
-  if (strcmp(wndClassName, "ConsoleWindowClass") != 0)
-    return TRUE;
-
   DWORD wndProcess;
   GetWindowThreadProcessId(hWnd, &wndProcess);
   if (wndProcess != (DWORD)thisProcess)
     return TRUE;
 
-  s_IsGUIProcess = false;
+  char wndClassName[100];
+  GetClassName(hWnd, wndClassName, sizeof(wndClassName));
+  if (strcmp(wndClassName, "ConsoleWindowClass") == 0)
+    return TRUE;
+
+  s_IsGUIProcess = true;
   return FALSE;
 }
 

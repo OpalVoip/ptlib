@@ -700,6 +700,16 @@ PIPSocket::PIPSocket()
 }
 
 
+PString PIPSocket::GetHostName()
+{
+  char name[100];
+  if (gethostname(name, sizeof(name) - 1) != 0)
+    return "localhost";
+  name[sizeof(name) - 1] = '\0';
+  return name;
+}
+
+
 bool PIPSocket::SetQoS(const QoS & qos)
 {
   m_qos = qos;
