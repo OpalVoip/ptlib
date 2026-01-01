@@ -276,7 +276,13 @@ PTHREAD_MUTEX_RECURSIVE_NP
   PTraceInfo()
     : m_currentLevel(0)
     , m_thresholdLevel(0)
-    , m_options(Blocks | Timestamp | Thread | FileAndLine | HasFilePermissions | (PFileInfo::DefaultPerms << FilePermissionShift))
+    , m_options(Blocks |
+                DateAndTime |
+                Thread |
+                FileAndLine |
+                ContextIdentifier |
+                HasFilePermissions |
+                (PFileInfo::DefaultPerms << FilePermissionShift))
 #ifdef __NUCLEUS_PLUS__
     , m_stream(NULL)
 #else
