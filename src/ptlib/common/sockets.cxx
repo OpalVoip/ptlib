@@ -1049,16 +1049,6 @@ void PIPSocket::PrintOn(ostream & str) const
 }
 
 
-PString PIPSocket::GetHostName()
-{
-  char name[100];
-  if (gethostname(name, sizeof(name)-1) != 0)
-    return "localhost";
-  name[sizeof(name)-1] = '\0';
-  return name;
-}
-
-
 PBoolean PIPSocket::IsLocalHost(const PString & hostname)
 {
   if (hostname.IsEmpty())

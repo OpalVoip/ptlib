@@ -883,6 +883,17 @@ PIPSocket::PIPSocket()
 }
 
 
+PString PIPSocket::GetHostName()
+{
+  DWORD sz = 0;
+  GetComputerNameEx(ComputerNameDnsHostname, NULL, &sz);
+  std::vector<char> name(sz);
+  if (GetComputerNameEx(ComputerNameDnsHostname, name.data(), &sz))
+    return name.data();
+  return "localhost";
+}
+
+
 #if P_QWAVE
 PBoolean PIPSocket::Close()
 {
