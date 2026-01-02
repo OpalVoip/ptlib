@@ -162,9 +162,9 @@ static PAssertWalkStackModes InitialisePAssertWalkStackMode()
   if (mode == NULL)
     return PAssertWalkStackSymbols;
   size_t len = strlen(mode);
-  if (strnicmp(mode, "disable", len) == 0)
+  if (strncasecmp(mode, "disable", len) == 0)
     return PAssertWalkStackDisabled;
-  if (strnicmp(mode, "symbols", len) == 0)
+  if (strncasecmp(mode, "symbols", len) == 0)
     return PAssertWalkStackSymbols;
   return PAssertWalkStackNoSymbols;
 }
