@@ -566,6 +566,38 @@ bool PSpeechRecognition::ActivateVocabulary(const PStringSet &, const PStringSet
 }
 
 
+bool PSpeechRecognition::Listen(const PFilePath & fn)
+{
+  if (!PAssert(!fn.empty(), PInvalidParameter))
+    return false;
+
+  PWaitAndSignal lock(m_mutex);
+  if (!IsOpen())
+    return false;
+
+  PWAVFile wavFile;
+  if (!wavFile.Open(fn, PFile::ReadOnly))
+    return false;
+
+  if (wavFile.GetFormat() != PWAVFile::fmt_PCM ||
+      wavFile.GetChannels() != 1 ||
+      wavFile.GetSampleSize() != 16 ||
+      !SetSampleRate(wavFile.GetSampleRate())) {
+    PTRACE(1, "Invalid WAV file: " << fn);
+    return false;
+  }
+
+  std::vector<int16_t> buffer(4096);
+  while (wavFile.Read(buffer.data(), buffer.size()*sizeof(int16_t))) {
+    if (!Listen(buffer.data(), wavFile.GetLastReadCount()/sizeof(int16_t)))
+      return false;
+  }
+
+  PTRACE(4, "Written " << fn);
+  return wavFile.GetErrorCode() == PChannel::NoError;
+}
+
+
 PSpeechRecognition::Transcript::Transcript()
   : m_final(false)
   , m_confidence(1.0f)
