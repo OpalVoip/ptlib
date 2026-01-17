@@ -39,8 +39,10 @@
 
 static const PConstCaselessString ApiKeyTag("11Labs-API-Key");
 static const PConstCaselessString ModelIdTag("11Labs-Model-Id");
+static const PConstCaselessString SettingsTag("11Labs-Settings");
 static const PConstCaselessString DefaultVoiceIdTag("11Labs-Default-Voice-Id");
 static const PConstCaselessString VoiceId("id");
+static const PConstCaselessString VoiceSettings("voice_settings");
 
 class PTextToSpeech_11Labs : public PTextToSpeech
 {
@@ -79,7 +81,7 @@ class PTextToSpeech_11Labs : public PTextToSpeech
     unsigned m_channels;
     unsigned m_volume;
     bool m_isOpen;
-    PString m_modelId;
+    PJSON m_settings;
     PString m_defaultVoiceId;  // Instance-specific default voice ID
     PString m_baseUrl;
     PString m_apiKey;
@@ -113,13 +115,18 @@ PTextToSpeech_11Labs::PTextToSpeech_11Labs()
   , m_channels(1)
   , m_volume(100)
   , m_isOpen(false)
-  , m_modelId("eleven_turbo_v2_5")
+  , m_settings(PJSON::e_Object)
   , m_defaultVoiceId("Hope")  // Default can be overridden via SetOptions
   , m_baseUrl("https://api.elevenlabs.io")
   , m_apiKey(PConfig(PConfig::Environment).GetString("11LABS_API_KEY"))
   , m_channel(nullptr)
   , m_thread(nullptr)
 {
+  PJSON::Object & settings = m_settings.GetObject();
+  settings.SetString("modelId", "eleven_turbo_v2_5");
+  PJSON::Object & voiceSettings = settings.SetObject(VoiceSettings);
+  voiceSettings.SetNumber("stability", 0.5);
+  voiceSettings.SetNumber("similarity_boost", 0.5);
 }
 
 
@@ -140,9 +147,20 @@ bool PTextToSpeech_11Labs::SetOptions(const PStringOptions & options)
   //m_apiKey = "sk_b7765728d1d1c596e9b3aef83132d40bae221f796cced826";
 
   // Configure custom model
-  PString customModel = options.GetString(ModelIdTag, m_modelId);
+  PJSON json(options.GetString(SettingsTag));
+  if (json.IsValid()) {
+    if (json.IsObject()) {
+      PJSON::Object & settings = json.GetObject();
+      if (!settings.IsObject(VoiceSettings))
+        settings.SetObject(VoiceSettings); // Make sure this exists.
+      m_settings = json;
+    }
+  }
+
+  // Backward compatibility
+  PString customModel = options.GetString(ModelIdTag);
   if (!customModel.IsEmpty())
-    m_modelId = customModel;
+    m_settings.GetObject().SetString("modelId", customModel);
 
   // Configure custom default voice ID
   PString customDefaultVoice = options.GetString(DefaultVoiceIdTag, m_defaultVoiceId);
@@ -389,14 +407,9 @@ bool PTextToSpeech_11Labs::InternalSpeak(const PString & text,
   url.SetQueryVar("output_format", PSTRSTRM("pcm_" << m_sampleRate));
 
   // Prepare the JSON request body
-  PJSON json(PJSON::e_Object);
+  PJSON json = m_settings;
   PJSON::Object & settings = json.GetObject();
   settings.SetString("text", text);
-  settings.SetString("model_id", m_modelId);
-
-  PJSON::Object & voiceSettings = settings.SetObject("voice_settings");
-  voiceSettings.SetNumber("stability", 0.5);
-  voiceSettings.SetNumber("similarity_boost", 0.5);
 
   if (PCaselessString(text).Find("prosody") != P_MAX_INDEX) {
     // We need to fake the <prosody> parameters as is ignored
@@ -404,6 +417,7 @@ bool PTextToSpeech_11Labs::InternalSpeak(const PString & text,
     if (ssml.Load(text)) {
       PXMLElement * prosody = ssml.GetRootElement()->GetElement("prosody");
       if (prosody != NULL) {
+        PJSON::Object & voiceSettings = settings.GetObject(VoiceSettings);
         PCaselessString rate = prosody->GetAttribute("rate");
         if (rate == "x-fast")
           voiceSettings.SetNumber("speed", 1.2);
