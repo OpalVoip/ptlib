@@ -190,7 +190,7 @@ unsigned PTrace::MaxStackWalk = 32;
 class PTraceInfo : public PTrace
 {
   /* NOTE you cannot have any complex types in this structure. Anything
-     that might do an asert or PTRACE will crash due to recursion.
+     that might do an assert or PTRACE will crash due to recursion.
    */
 
 public:
@@ -3129,7 +3129,7 @@ const char * PProcess::GetRunTimeSignalName(int signal)
   }
 
   /* Not strictly thread safe, but should be extremely rare for two signal
-     handlers in two differnt threads get an unknown signal at exactly
+     handlers in two different threads get an unknown signal at exactly
      the same time, and we don't want to do any heap operations here in
      case the heap is trashed and the signal is a SIGSEGV etc. */
   static char buffer[100];
@@ -3166,7 +3166,7 @@ void PProcess::PrintOn(ostream & strm) const
 #if PTRACING
 void PProcess::ProfileUpdateLogTimer(PTimer&, P_INT_PTR shuttingDown)
 {
-  static unsigned Level = 3;
+  static unsigned Level = 2;
   if (!PTrace::CanTrace(Level))
     return;
 
