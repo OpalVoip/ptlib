@@ -606,8 +606,6 @@ class PSpeechRecognition_AWS : public PSpeechRecognition, PAwsClient<Aws::Transc
   PWebSocket m_webSocket;
   PThread  * m_eventThread = nullptr;
   std::vector<int16_t> m_buffer;
-  PDECLARE_MUTEX(m_openMutex);
-  PDECLARE_MUTEX(m_eventMutex);
 
   #pragma pack(1)
   struct Prelude
@@ -748,6 +746,42 @@ class PSpeechRecognition_AWS : public PSpeechRecognition, PAwsClient<Aws::Transc
   void ReadEvents()
   {
     PTRACE(4, "Reading events thread started");
+
+    {
+      PWaitAndSignal lock(m_mutex);
+
+      HeaderMap headers;
+      headers["media-encoding"] = "pcm";
+      headers["sample-rate"] = GetSampleRate();
+
+      if (m_activeVocabularies.empty())
+        headers["language-code"] = GetLanguage();
+      else {
+        if (m_activeVocabularies.size() > 1)
+          headers["vocabulary-names"] = PSTRSTRM(setfill(',') << m_activeVocabularies);
+        else
+          headers["vocabulary-name"] = *m_activeVocabularies.begin();
+
+        if (m_activeLanguages.empty())
+          headers["language-code"] = GetLanguage();
+        else if (m_activeLanguages.size() == 1)
+          headers["language-code"] = *m_activeLanguages.begin();
+        else {
+          headers["identify-language"] = "true";
+          headers["language-options"] = PSTRSTRM(setfill(',') << m_activeLanguages);
+        }
+      }
+
+      headers.insert(m_additionalHeaders.begin(), m_additionalHeaders.end());
+
+      m_webSocket.SetBinaryMode();
+
+      PURL url = SignURL("wss://transcribestreaming:8443/stream-transcription-websocket", "transcribe", headers);
+      PTRACE(3, "Opening " << url);
+      if (!m_webSocket.Connect(url))
+        PTRACE(2, "Error opening WebSocket: " << m_webSocket.GetErrorText());
+    }
+
     Transcript transcript;
     while (m_webSocket.IsOpen()) {
       PBYTEArray data;
@@ -891,7 +925,7 @@ public:
 
   virtual bool SetSampleRate(unsigned rate) override
   {
-    PWaitAndSignal lock(m_openMutex);
+    PWaitAndSignal lock(m_mutex);
     if (IsOpen())
       return false;
 
@@ -920,7 +954,7 @@ public:
 
   virtual bool SetLanguage(const PString & language) override
   {
-    PWaitAndSignal lock(m_openMutex);
+    PWaitAndSignal lock(m_mutex);
     if (IsOpen())
       return false;
 
@@ -974,43 +1008,11 @@ public:
 
   virtual bool Open(const Notifier & notifier) override
   {
-    PWaitAndSignal lock(m_openMutex);
+    PWaitAndSignal lock(m_mutex);
     Close();
-
-    PTRACE(4, "Opening " << *this);
 
     m_notifier = notifier;
 
-    HeaderMap headers;
-    headers["media-encoding"] = "pcm";
-    headers["sample-rate"] = GetSampleRate();
-
-    if (m_activeVocabularies.empty())
-      headers["language-code"] = GetLanguage();
-    else {
-      if (m_activeVocabularies.size() > 1)
-        headers["vocabulary-names"] = PSTRSTRM(setfill(',') << m_activeVocabularies);
-      else
-        headers["vocabulary-name"] = *m_activeVocabularies.begin();
-
-      if (m_activeLanguages.empty())
-        headers["language-code"] = GetLanguage();
-      else if (m_activeLanguages.size() == 1)
-        headers["language-code"] = *m_activeLanguages.begin();
-      else {
-        headers["identify-language"] = "true";
-        headers["language-options"] = PSTRSTRM(setfill(',') << m_activeLanguages);
-      }
-    }
-
-    headers.insert(m_additionalHeaders.begin(), m_additionalHeaders.end());
-
-    PURL url = SignURL("wss://transcribestreaming:8443/stream-transcription-websocket", "transcribe", headers);
-
-    if (!m_webSocket.Connect(url))
-      return false;
-
-    m_webSocket.SetBinaryMode();
     m_eventThread = new PThreadObj<PSpeechRecognition_AWS>(*this, &PSpeechRecognition_AWS::ReadEvents, false, "AWS-SR");
     PTRACE(3, "Opened speech recognition.");
     return true;
@@ -1019,13 +1021,13 @@ public:
 
   virtual bool IsOpen() const override
   {
-    return m_webSocket.IsOpen();
+    return m_notifier != Notifier() && m_webSocket.IsOpen();
   }
 
 
   virtual bool Close() override
   {
-    PWaitAndSignal lock(m_openMutex);
+    PWaitAndSignal lock(m_mutex);
     if (!IsOpen())
       return false;
 
@@ -1037,43 +1039,9 @@ public:
   }
 
 
-  virtual bool Listen(const PFilePath & fn) override
-  {
-    if (!PAssert(!fn.empty(), PInvalidParameter))
-      return false;
-
-    PWaitAndSignal lock(m_openMutex);
-    if (!m_webSocket.IsOpen())
-      return false;
-
-    PWAVFile wavFile;
-    if (!wavFile.Open(fn, PFile::ReadOnly))
-      return false;
-
-    if (wavFile.GetFormat() != PWAVFile::fmt_PCM ||
-        wavFile.GetChannels() != 1 ||
-        wavFile.GetSampleSize() != 16 ||
-        !SetSampleRate(wavFile.GetSampleRate()))
-    {
-      PTRACE(1, "Invalid WAV file: " << fn);
-      return false;
-    }
-
-    m_buffer.resize(4096);
-    while (wavFile.Read(m_buffer.data(), m_buffer.size()*sizeof(int16_t))) {
-      if (!WriteAudioEvent(m_buffer.data(), wavFile.GetLastReadCount()/sizeof(int16_t)))
-        return false;
-    }
-
-    WriteAudioEvent(NULL, 0); // Empty event ends the stream
-    PTRACE(4, "Written " << fn);
-    return wavFile.GetErrorCode() == PChannel::NoError;
-  }
-
-
   virtual bool Listen(const int16_t * samples, size_t sampleCount) override
   {
-    PWaitAndSignal lock(m_openMutex);
+    PWaitAndSignal lock(m_mutex);
     if (!m_webSocket.IsOpen())
       return false;
 

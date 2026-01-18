@@ -114,7 +114,7 @@ PFACTORY_LOAD(PTextToSpeech_WAV);
   #define P_TEXT_TO_SPEECH_AWS "AWS"
   PFACTORY_LOAD(PTextToSpeech_AWS);
 #endif
-#if P_SSL && P_XML
+#if P_SSL && P_EXPAT
   #define P_TEXT_TO_SPEECH_11LABS "11Labs"
   PFACTORY_LOAD(PTextToSpeech_11Labs);
 #endif
@@ -177,11 +177,12 @@ class PSpeechRecognition : public PObject
     virtual bool IsOpen() const = 0;
     virtual bool Close() = 0;
 
-    virtual bool Listen(const PFilePath & fn) = 0;
+    virtual bool Listen(const PFilePath & fn);
     virtual bool Listen(const short * samples, size_t sampleCount) = 0;
 
   protected:
     Notifier m_notifier;
+    PDECLARE_MUTEX(m_mutex);
 };
 
 #if P_SAPI && 0 // Not working yet!

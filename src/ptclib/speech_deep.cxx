@@ -93,19 +93,40 @@ class PSpeechRecognition_Deepgram : public PSpeechRecognition
   PWebSocket m_webSocket;
   PThread  * m_eventThread = nullptr;
   std::vector<int16_t> m_buffer;
-  PDECLARE_MUTEX(m_mutex);
 
 
   void ReadEvents()
   {
     PTRACE(4, "Reading events thread started");
+
+    {
+      PWaitAndSignal lock(m_mutex);
+      PURL url(m_endpoint, "wss");
+      url.AppendPath("listen");
+      for (PStringOptions::const_iterator opt = m_options.begin(); opt != m_options.end(); ++opt)
+        url.SetQueryVar(opt->first, opt->second);
+      url.SetQueryVar(SampleRateHeader, m_sampleRate);
+      if (!m_flux) {
+        url.SetQueryVar(ChannelsHeader, m_channels);
+        url.SetQueryVar(LanguageHeader, m_language);
+      }
+
+      m_webSocket.SetAuthorization("token " + m_apiKey);
+      m_webSocket.SetProxies(m_httpProxies);
+      m_webSocket.SetBinaryMode();
+
+      PTRACE(3, "Opening " << url);
+      if (!m_webSocket.Connect(url))
+        PTRACE(2, "Error opening WebSocket: " << m_webSocket.GetErrorText());
+    }
+
     Transcript transcript;
     while (m_webSocket.IsOpen()) {
       PBYTEArray data;
       if (!m_webSocket.ReadMessage(data)) {
         if (m_webSocket.IsOpen()) {
           PTRACE_IF(2, m_webSocket.GetErrorCode() != PChannel::NoError,
-                    "Error reading WebSocket:" << m_webSocket.GetErrorText());
+                    "Error reading WebSocket: " << m_webSocket.GetErrorText());
           Close();
         }
         break;
@@ -317,25 +338,7 @@ public:
     PWaitAndSignal lock(m_mutex);
     Close();
 
-    PTRACE(4, "Opening " << *this);
-
     m_notifier = notifier;
-
-    PURL url(m_endpoint);
-    url.AppendPath("listen");
-    for (PStringOptions::const_iterator opt = m_options.begin(); opt != m_options.end(); ++opt)
-      url.SetQueryVar(opt->first, opt->second);
-    url.SetQueryVar(SampleRateHeader, m_sampleRate);
-    if (!m_flux) {
-      url.SetQueryVar(ChannelsHeader, m_channels);
-      url.SetQueryVar(LanguageHeader, m_language);
-    }
-
-    m_webSocket.SetAuthorization("token " + m_apiKey);
-    m_webSocket.SetProxies(m_httpProxies);
-    m_webSocket.SetBinaryMode();
-    if (!m_webSocket.Connect(url))
-      return false;
 
     m_eventThread = new PThreadObj<PSpeechRecognition_Deepgram>(*this,
                                                                 &PSpeechRecognition_Deepgram::ReadEvents,
@@ -364,15 +367,6 @@ public:
 
     m_notifier = Notifier();
     return true;
-  }
-
-
-  virtual bool Listen(const PFilePath & fn) override
-  {
-    if (!PAssert(!fn.empty(), PInvalidParameter))
-      return false;
-
-    return false;
   }
 
 
