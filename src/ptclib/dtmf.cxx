@@ -53,8 +53,6 @@ PDTMFDecoder::PDTMFDecoder(unsigned frequencey, unsigned mult, unsigned div)
 
 void PDTMFDecoder::Reset(unsigned frequencey, unsigned mult, unsigned div)
 {
-  PTRACE(4, "DTMF", "Reset detector");
-
   if (frequencey > 0)
     m_frequency = frequencey;
   if (mult > 0)
@@ -66,6 +64,10 @@ void PDTMFDecoder::Reset(unsigned frequencey, unsigned mult, unsigned div)
   m_inputAmplitude = 0;
   for (int i = 0; i < NumTones; i++)
     y[i] = h[i] = k[i] = 0;
+
+  PTRACE(4, "DTMF", "Reset detector:"
+         " freq=" << m_frequency << ","
+         " scale=" << m_scaleMultiplier << '/' << m_scaleDivisor);
 }
 
 PString PDTMFDecoder::Decode(const short * sampleData, PINDEX numSamples)
