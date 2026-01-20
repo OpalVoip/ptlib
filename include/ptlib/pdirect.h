@@ -208,6 +208,18 @@ class PDirectory : public PFilePathString
       const char * cpathname      ///< Directory path name for new object.
     );
 
+    /**Append the path to the directory.
+     */
+    PDirectory& operator+=(
+      const PString & pathname    ///< Directory path name for new object.
+    );
+
+    /**Append the path to the directory.
+     */
+    PDirectory& operator+=(
+      const char* cpathname      ///< Directory path name for new object.
+    );
+
     PDirectory(const PDirectory &);
     PDirectory & operator=(const PDirectory &);
     ~PDirectory() { Close(); }

@@ -329,16 +329,6 @@ PINLINE PChannel * PIndirectChannel::GetWriteChannel() const
 ///////////////////////////////////////////////////////////////////////////////
 // PDirectory
 
-PINLINE PDirectory & PDirectory::operator=(const PDirectory & str)
-  { Close(); PFilePathString::operator=(str); return *this; }
-
-PINLINE PDirectory & PDirectory::operator=(const PString & str)
-  { Close(); PFilePathString::operator=(PFilePath::Canonicalise(str, true)); return *this; }
-
-PINLINE PDirectory & PDirectory::operator=(const char * cstr)
-  { Close(); PFilePathString::operator=(PFilePath::Canonicalise(cstr, true)); return *this; }
-
-
 PINLINE bool PDirectory::Exists() const
   { return Exists(*this); }
 

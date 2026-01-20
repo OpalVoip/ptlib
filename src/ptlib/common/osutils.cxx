@@ -1262,6 +1262,47 @@ PDirectory::PDirectory(const PDirectory & dir)
 }
 
 
+
+PDirectory& PDirectory::operator=(const PDirectory& str)
+{
+  Close();
+  PFilePathString::operator=(str);
+  return *this;
+}
+
+
+PDirectory& PDirectory::operator=(const PString& str)
+{
+  Close();
+  PFilePathString::operator=(PFilePath::Canonicalise(str, true));
+  return *this;
+}
+
+
+PDirectory& PDirectory::operator=(const char* cstr)
+{
+  Close();
+  PFilePathString::operator=(PFilePath::Canonicalise(cstr, true));
+  return *this;
+}
+
+
+PDirectory& PDirectory::operator+=(const PString& pathname)
+{
+  Close();
+  PFilePathString::operator=(PFilePath::Canonicalise(*this + pathname, true));
+  return *this;
+}
+
+
+PDirectory& PDirectory::operator+=(const char* cpathname)
+{
+  Close();
+  PFilePathString::operator=(PFilePath::Canonicalise(*this + cpathname, true));
+  return *this;
+}
+
+
 bool PDirectory::RemoveTree(const PString & path, bool force)
 {
   PDirectory dir(path);
