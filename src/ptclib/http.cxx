@@ -54,6 +54,7 @@ static char const * const HTTPCommands[PHTTP::NumCommands] = {
 
 const PCaselessString & PHTTP::HostTag             () { static const PConstCaselessString s("Host"); return s; }
 const PCaselessString & PHTTP::AllowTag            () { static const PConstCaselessString s("Allow"); return s; }
+const PCaselessString & PHTTP::AcceptTag           () { static const PConstCaselessString s("Accept"); return s; }
 const PCaselessString & PHTTP::AuthorizationTag    () { static const PConstCaselessString s("Authorization"); return s; }
 const PCaselessString & PHTTP::ContentEncodingTag  () { static const PConstCaselessString s("Content-Encoding"); return s; }
 const PCaselessString & PHTTP::ContentLengthTag    () { static const PConstCaselessString s("Content-Length"); return s; }

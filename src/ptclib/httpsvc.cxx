@@ -524,10 +524,10 @@ void PConfigPage::OnLoadedText(PHTTPRequest & request, PString & text)
 }
 
 
-PBoolean PConfigPage::OnPOST(PHTTPServer & server, const PHTTPConnectionInfo & connectInfo)
+bool PConfigPage::OnPostRequest(PHTTPRequest & request)
 {
-  server.GetConnectionInfo().DisablePersistence();
-  return PHTTPConfig::OnPOST(server, connectInfo);
+  request.server.GetConnectionInfo().DisablePersistence();
+  return PHTTPConfig::OnPostRequest(request);
 }
 
 
@@ -585,10 +585,10 @@ void PConfigSectionsPage::OnLoadedText(PHTTPRequest & request, PString & text)
 }
 
 
-PBoolean PConfigSectionsPage::OnPOST(PHTTPServer & server, const PHTTPConnectionInfo & connectInfo)
+bool PConfigSectionsPage::OnPostRequest(PHTTPRequest& request)
 {
-  server.GetConnectionInfo().DisablePersistence();
-  return PHTTPConfigSectionList::OnPOST(server, connectInfo);
+  request.server.GetConnectionInfo().DisablePersistence();
+  return PHTTPConfigSectionList::OnPostRequest(request);
 }
 
 

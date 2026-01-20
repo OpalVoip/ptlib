@@ -221,6 +221,7 @@ class PHTTP : public PInternetProtocol
     // Common MIME header tags
     static const PCaselessString & HostTag();
     static const PCaselessString & AllowTag();
+    static const PCaselessString & AcceptTag();
     static const PCaselessString & AuthorizationTag();
     static const PCaselessString & ContentEncodingTag();
     static const PCaselessString & ContentLengthTag();
@@ -922,6 +923,7 @@ class PHTTPClient : public PHTTP, public PSSLCertificateInfo
     PString      m_userAgentName;
     bool         m_persist;
     unsigned     m_maxRedirects;
+    bool         m_readBodyOnError;
     Proxies      m_proxies;
     PHTTPCookies m_cookies;
     struct {
@@ -2132,20 +2134,88 @@ class PHTTPResource : public PObject
       PHTTPConnectionInfo & connectInfo   ///< HTTP connection information
     );
 
-    /** Handle the GET command passed from the HTTP socket.
+    /**Called when a request is received.
+       @return true if response was sent, false if an error is to be formulated.
+       */
+    virtual void OnCommand(
+      PHTTPServer& server,       ///< HTTP server that received the request
+      const PHTTPConnectionInfo& connectInfo   ///< HTTP connection information
+    );
 
-       The default action is to check the authorisation for the resource and
-       call the virtual functions <code>LoadHeaders()</code> and
-       <code>OnGETData()</code> to get a resource to be sent to the socket.
+    /**Called when a request is received.
+       @return true if response was sent, false if an error is to be formulated.
+       */
+    virtual bool OnCommand(
+      PHTTPRequest& request       ///< request state information
+    );
+
+    /**Handle a GET command.
+       The default action calls <code>OnGETData()</code>.
+
+       @return true if response was sent, false if an error is to be formulated.
+    */
+    virtual bool OnGetRequest(
+      PHTTPRequest & request                      ///< request state information
+    );
+
+    /**Handle a POST command.
+       The default action calls <code>OnPostData()</code>.
 
        @return
-       true if the connection may persist, false if the connection must close.
-       If there is no ContentLength field in the response, this value must
-       be false for correct operation.
-     */
-    virtual bool OnGET(
-      PHTTPServer & server,       ///< HTTP server that received the request
-      const PHTTPConnectionInfo & conInfo  ///< HTTP connection information
+       true if response was sent, false if an error is to be formulated.
+    */
+    virtual bool OnPostRequest(
+      PHTTPRequest& request          ///< request information
+    );
+
+    /**Handle a PUT command.
+       The default action sends an unsupported error.
+
+       @return
+       true if response was sent, false if an error is to be formulated.
+    */
+    virtual bool OnPutRequest(
+      PHTTPRequest& request          ///< request information
+    );
+
+    /**Handle a PATCH command.
+       The default action sends an unsupported error.
+
+       @return
+       true if response was sent, false if an error is to be formulated.
+    */
+    virtual bool OnPatchRequest(
+      PHTTPRequest& request          ///< request information
+    );
+
+    /**Handle a DELETE command.
+       The default action sends an unsupported error.
+
+       @return
+       true if response was sent, false if an error is to be formulated.
+    */
+    virtual bool OnDeleteRequest(
+      PHTTPRequest& request          ///< request information
+    );
+
+    /**Handle a OPTIONS command.
+       The default action return OK with optional CORS headers.
+
+       @return
+       true if response was sent, false if an error is to be formulated.
+    */
+    virtual bool OnOptionsRequest(
+      PHTTPRequest& request                      ///< request state information
+    );
+
+    /**Handle a HEAD command.
+       The default action calls <code>LoadHeaders()</code> and returns OK.
+
+       @return
+       true if response was sent, false if an error is to be formulated.
+    */
+    virtual bool OnHeadRequest(
+      PHTTPRequest& request                      ///< request state information
     );
 
     /**Send the data associated with a GET command.
@@ -2158,44 +2228,7 @@ class PHTTPResource : public PObject
        be false for correct operation.
     */
     virtual bool OnGETData(
-      PHTTPRequest & request                      ///< request state information
-    );
-
-    /** Handle the HEAD command passed from the HTTP socket.
-
-       The default action is to check the authorisation for the resource and
-       call the virtual <code>LoadHeaders()</code> to get the header information to
-       be sent to the socket.
-
-       @return
-       true if the connection may persist, false if the connection must close
-       If there is no ContentLength field in the response, this value must
-       be false for correct operation.
-     */
-    virtual bool OnHEAD(
-      PHTTPServer & server,       ///< HTTP server that received the request
-      const PHTTPConnectionInfo & conInfo ///< HTTP connection information
-    );
-
-    /** Handle the POST command passed from the HTTP socket.
-
-       The default action is to check the authorisation for the resource and
-       call the virtual <code>Post()</code> function to handle the data being
-       received.
-
-       @return
-       true if the connection may persist, false if the connection must close
-       If there is no ContentLength field in the response, this value must
-       be false for correct operation.
-     */
-    virtual bool OnPOST(
-      PHTTPServer & server,       ///< HTTP server that received the request
-      const PHTTPConnectionInfo & conInfo ///< HTTP connection information
-    );
-
-    virtual bool OnOPTIONS(
-      PHTTPServer & server,                ///< HTTP server that received the request
-      const PHTTPConnectionInfo & conInfo  ///< HTTP connection information
+      PHTTPRequest& request                      ///< request state information
     );
 
     /**Send the data associated with a POST command.
@@ -2208,8 +2241,8 @@ class PHTTPResource : public PObject
        be false for correct operation.
     */
     virtual PBoolean OnPOSTData(
-      PHTTPRequest & request,        ///< request information
-      const PStringToString & data   ///< Variables in the POST data.
+      PHTTPRequest& request,        ///< request information
+      const PStringToString& data   ///< Variables in the POST data.
     );
 
     /** Check to see if the resource has been modified since the date
@@ -2376,14 +2409,6 @@ class PHTTPResource : public PObject
     );
 
 
-    /** common code for GET and HEAD commands */
-    virtual bool InternalOnCommand(
-      PHTTPServer & server,       ///<  HTTP server that received the request
-      const PHTTPConnectionInfo & conInfo,  ///< Connection information
-      PHTTP::Commands cmd              ///< Command being processed
-    );
-
-
     PURL             m_baseURL;     ///< Base URL for the resource, may accept URLS with a longer hierarchy
     PString          m_contentType; ///< MIME content type for the resource
     PHTTPAuthority * m_authority;   ///< Authorisation method for the resource
@@ -2391,10 +2416,14 @@ class PHTTPResource : public PObject
     atomic<unsigned> m_hitCount;    ///< Count of number of times resource was accessed. 
 
     P_REMOVE_VIRTUAL(PBoolean,OnGET(PHTTPServer&,const PURL&,const PMIMEInfo&,const PHTTPConnectionInfo&),false);
+    P_REMOVE_VIRTUAL(bool,OnGET(PHTTPServer&,const PHTTPConnectionInfo&),false);
     P_REMOVE_VIRTUAL(PBoolean,OnHEAD(PHTTPServer&,const PURL&,const PMIMEInfo&,const PHTTPConnectionInfo &),false);
+    P_REMOVE_VIRTUAL(bool,OnHEAD(PHTTPServer&,const PHTTPConnectionInfo&),false);
     P_REMOVE_VIRTUAL(PBoolean,OnGETOrHEAD(PHTTPServer&,const PURL&,const PMIMEInfo&,const PHTTPConnectionInfo&,PBoolean),false);
     P_REMOVE_VIRTUAL(PBoolean,OnPOST(PHTTPServer&,const PURL&,const PMIMEInfo&,const PStringToString&,const PHTTPConnectionInfo&),false);
+    P_REMOVE_VIRTUAL(bool,OnPOST(PHTTPServer&,const PHTTPConnectionInfo&),false);
     P_REMOVE_VIRTUAL(PBoolean,OnGETData(PHTTPServer&,const PURL&,const PHTTPConnectionInfo&,PHTTPRequest&),false);
+    P_REMOVE_VIRTUAL(bool,OnOPTIONS(PHTTPServer&,const PHTTPConnectionInfo&),false);
     P_REMOVE_VIRTUAL(PHTTPRequest*,CreateRequest(const PURL&,const PMIMEInfo&,const PMultiPartList&,PHTTPServer&),NULL);
 };
 

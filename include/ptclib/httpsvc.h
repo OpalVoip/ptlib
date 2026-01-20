@@ -226,9 +226,8 @@ class PConfigPage : public PHTTPConfig
 
     void OnLoadedText(PHTTPRequest &, PString & text) override;
 
-    virtual PBoolean OnPOST(
-      PHTTPServer & server,
-      const PHTTPConnectionInfo & connectInfo
+    virtual bool OnPostRequest(
+      PHTTPRequest& request
     ) override;
 
     virtual PBoolean Post(
@@ -266,9 +265,8 @@ class PConfigSectionsPage : public PHTTPConfigSectionList
 
     void OnLoadedText(PHTTPRequest &, PString & text) override;
 
-    virtual PBoolean OnPOST(
-      PHTTPServer & server,
-      const PHTTPConnectionInfo & connectInfo
+    virtual bool OnPostRequest(
+      PHTTPRequest& request
     ) override;
 
     virtual PBoolean Post(

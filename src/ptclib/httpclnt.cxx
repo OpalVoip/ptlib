@@ -273,6 +273,7 @@ PHTTPClient::PHTTPClient(const PString & userAgent)
   : m_userAgentName(userAgent)
   , m_persist(true)
   , m_maxRedirects(10)
+  , m_readBodyOnError(true)
   , m_authentication(NULL)
   , m_commandUrlFormat(PURL::RelativeOnly)
 {
@@ -530,7 +531,7 @@ bool PHTTPClient::ReadResponse(PMIMEInfo & replyMIME)
     return SetLastResponse(TransportReadError, "Response MIME", PChannel::LastReadError);
 
   PString body;
-  if (m_lastResponseCode >= 300) {
+  if (m_readBodyOnError && m_lastResponseCode >= 300) {
     bool readOK;
     static const long MaxBodyOnError = 1000000; // Protect against malice
     if (replyMIME.GetInteger(ContentLengthTag, MaxBodyOnError) < MaxBodyOnError)

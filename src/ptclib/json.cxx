@@ -1290,5 +1290,137 @@ PString PJWT::GetPrivate(const PString & key) const
   return GetObject().GetString(key);
 }
 
-
 #endif // P_SSL
+
+#if P_HTTP
+
+PRESTClient::PRESTClient(const PString& baseURL, const PString& userAgentName)
+  : PHTTPClient(userAgentName)
+  , m_baseURL(baseURL)
+{
+  m_readBodyOnError = false;
+}
+
+
+bool PRESTClient::Execute(PHTTP::Commands method,
+                          const PString& endpoint,
+                          const PStringOptions& parameters,
+                          const PAbstractJSON& request,
+                          PAbstractJSON& response)
+{
+  PURL url = m_baseURL;
+  url.AppendPathStr(endpoint);
+  url.SetParamVars(parameters);
+
+  PMIMEInfo requestHeaders, responseHeaders;
+  requestHeaders.SetAt(PHTTP::ContentTypeTag, PMIMEInfo::ApplicationJSON());
+  requestHeaders.SetAt(PHTTP::AcceptTag, PMIMEInfo::ApplicationJSON());
+
+  auto result = ExecuteCommand(method, url, requestHeaders, request.AsString(), responseHeaders);
+  if (result < 100)
+    return false;
+
+  if (responseHeaders.Get(PHTTP::ContentTypeTag) != PMIMEInfo::ApplicationJSON()) {
+    if (result < 300) {
+      m_lastResponseCode = PHTTP::BadResponse;
+      m_lastResponseInfo = "Response not JSON content type";
+    }
+    return false;
+  }
+
+  PString responseStr;
+  if (!ReadContentBody(responseHeaders, responseStr))
+    return false;
+
+  if (result != PHTTP::NoContent && !response.FromString(responseStr)) {
+    m_lastResponseCode = PHTTP::BadResponse;
+    m_lastResponseInfo = "Response invalid JSON";
+    return false;
+  }
+
+  return result < 300;
+}
+
+
+bool PRESTClient::Post(const PString& endpoint, const PAbstractJSON& request, PAbstractJSON& response)
+{
+  return Execute(PHTTP::POST, endpoint, PStringOptions(), request, response);
+}
+
+
+bool PRESTClient::Get(const PString& endpoint, PAbstractJSON& response)
+{
+  return Execute(PHTTP::GET, endpoint, PStringOptions(), PJSONRecord(), response);
+}
+
+
+bool PRESTClient::Get(const PString& endpoint, const PStringOptions& parameters, PAbstractJSON& response)
+{
+  return Execute(PHTTP::GET, endpoint, parameters, PJSONRecord(), response);
+}
+
+
+bool PRESTClient::Put(const PString& endpoint, const PAbstractJSON& request)
+{
+  PJSONRecord response;
+  return Execute(PHTTP::PUT, endpoint, PStringOptions(), request, response);
+}
+
+
+bool PRESTClient::Patch(const PString& endpoint, const PAbstractJSON& request)
+{
+  PJSONRecord response;
+  return Execute(PHTTP::PATCH, endpoint, PStringOptions(), request, response);
+}
+
+
+bool PRESTClient::Delete(const PString& endpoint, const PStringOptions& parameters)
+{
+  PJSON response;
+  return Execute(PHTTP::DELETE, endpoint, parameters, PJSON(), response);
+}
+
+
+PRESTResourceBase::PRESTResourceBase(const PString& endpoint)
+  : PHTTPResource(endpoint)
+{
+}
+
+
+PBoolean PRESTResourceBase::LoadHeaders(PHTTPRequest&)
+{
+  return true;
+}
+
+
+bool PRESTResourceBase::OnCommand(PHTTPRequest& request)
+{
+  auto& rest = dynamic_cast<PRESTRequestBase&>(request);
+
+  request.outMIME.SetAt(PHTTP::ContentTypeTag, PMIMEInfo::ApplicationJSON());
+
+  if (!rest.GetAbstractRequest().FromString(request.GetEntityBody()))
+    request.code = PHTTP::BadRequest;
+  else if (!PHTTPResource::OnCommand(request) || request.code == PHTTP::NoContent)
+    return false;
+  else if (request.code / 100 == 2)
+    return request.SendResponse(rest.GetAbstractResponse().AsString());
+
+  PJSON json(PJSON::e_Object);
+  PJSON::Object& error = json.GetObject();
+  switch (request.code) {
+    case PHTTP::BadRequest:
+      error.SetString("error", "Invalid request");
+      break;
+    case PHTTP::NotFound:
+      error.SetString("error", "Instance not found");
+      break;
+    default:
+      error.SetString("error", "Code " + PString(request.code));
+  }
+
+  return request.SendResponse(json.AsString());
+}
+
+
+#endif // P_HTTP

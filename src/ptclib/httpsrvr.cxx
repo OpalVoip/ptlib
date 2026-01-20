@@ -349,8 +349,17 @@ bool PHTTPServer::OnCommand(PINDEX cmd, const PURL &, const PString & args, PHTT
 {
   bool persist = false;
 
-  // Handle the local request
-  switch (cmd) {
+  m_urlSpace.StartRead();
+  PHTTPResource* resource = m_urlSpace.FindResource(connectInfo.GetURL());
+  if (resource != NULL) {
+    resource->OnCommand(*this, m_connectInfo);
+    m_urlSpace.EndRead();
+  }
+  else {
+    m_urlSpace.EndRead();
+
+    // Handle the local request
+    switch (cmd) {
     case GET :
       connectInfo.DecodeMultipartFormInfo();
       persist = OnGET(connectInfo);
@@ -364,12 +373,15 @@ bool PHTTPServer::OnCommand(PINDEX cmd, const PURL &, const PString & args, PHTT
       connectInfo.DecodeMultipartFormInfo();
       persist = OnPOST(connectInfo);
       break;
-   case OPTIONS:
+
+    case OPTIONS:
       connectInfo.DecodeMultipartFormInfo();
       persist = OnOPTIONS(connectInfo);
       break;
+
     default:
       persist = OnUnknown(args, connectInfo);
+    }
   }
 
   return persist;
@@ -515,62 +527,25 @@ void PHTTPServer::SetURLSpace(const PHTTPSpace & space)
 
 bool PHTTPServer::OnGET(const PHTTPConnectionInfo & conInfo)
 {
-  m_urlSpace.StartRead();
-  PHTTPResource * resource = m_urlSpace.FindResource(conInfo.GetURL());
-  if (resource == NULL) {
-    m_urlSpace.EndRead();
-    return OnError(NotFound, conInfo.GetURL().AsString(), m_connectInfo);
-  }
-
-  bool retval = resource->OnGET(*this, m_connectInfo);
-  m_urlSpace.EndRead();
-  return retval;
+  return OnError(NotFound, conInfo.GetURL().AsString(), m_connectInfo);
 }
 
 
 bool PHTTPServer::OnHEAD(const PHTTPConnectionInfo & conInfo)
 {
-  m_urlSpace.StartRead();
-  PHTTPResource * resource = m_urlSpace.FindResource(conInfo.GetURL());
-  if (resource == NULL) {
-    m_urlSpace.EndRead();
-    return OnError(NotFound, conInfo.GetURL().AsString(), m_connectInfo);
-  }
-
-  bool retval = resource->OnHEAD(*this, m_connectInfo);
-  m_urlSpace.EndRead();
-  return retval;
+  return OnError(NotFound, conInfo.GetURL().AsString(), m_connectInfo);
 }
 
 
 bool PHTTPServer::OnPOST(const PHTTPConnectionInfo & conInfo)
 {
-  m_urlSpace.StartRead();
-  PHTTPResource * resource = m_urlSpace.FindResource(conInfo.GetURL());
-  if (resource == NULL) {
-    m_urlSpace.EndRead();
-    return OnError(NotFound, conInfo.GetURL().AsString(), m_connectInfo);
-  }
-
-  bool retval = resource->OnPOST(*this, m_connectInfo);
-  m_urlSpace.EndRead();
-  return retval;
+  return OnError(NotFound, conInfo.GetURL().AsString(), m_connectInfo);
 }
 
 
 bool PHTTPServer::OnOPTIONS(const PHTTPConnectionInfo & conInfo)
 {
-  m_urlSpace.StartRead();
-  PHTTPResource * resource = m_urlSpace.FindResource(conInfo.GetURL());
-  if (resource == NULL) {
-    m_urlSpace.EndRead();
-    return OnError(NotFound, conInfo.GetURL().AsString(), m_connectInfo);
-  }
-  
-  bool retval = resource->OnOPTIONS(*this, m_connectInfo);
- 
-  m_urlSpace.EndRead();
-  return retval;
+  return OnError(NotFound, conInfo.GetURL().AsString(), m_connectInfo);
 }
 
 
@@ -1313,6 +1288,7 @@ PHTTPRequest::PHTTPRequest(PHTTPServer & _server,
   , server(_server)
   , m_resource(resource)
   , code(PHTTP::RequestOK)
+  , entityBody(info.GetEntityBody())
   , contentSize(P_MAX_INDEX)
   , origin(0)
   , localAddr(0)
@@ -1967,82 +1943,79 @@ bool PHTTPResource::OnWebSocket(PHTTPServer &, PHTTPConnectionInfo &)
 }
 
 
-bool PHTTPResource::OnGET(PHTTPServer & server, const PHTTPConnectionInfo & connectInfo)
+void PHTTPResource::OnCommand(PHTTPServer   & server, const PHTTPConnectionInfo & connectInfo)
 {
-  return InternalOnCommand(server, connectInfo, PHTTP::GET);
+  std::unique_ptr<PHTTPRequest> request(CreateRequest(server, connectInfo));
+
+  if (!CheckAuthority(server, *request, connectInfo))
+    return;
+
+  server.SetDefaultMIMEInfo(request->outMIME, connectInfo);
+
+  PTime expiryDate(0);
+  if (GetExpirationDate(expiryDate))
+    request->outMIME.Set(PHTTP::ExpiresTag, expiryDate.AsString(PTime::RFC1123, PTime::GMT));
+
+  if (OnCommand(*request))
+    return;
+
+  if (request->code / 100 != 2)
+    server.OnError(request->code, connectInfo.GetURL().AsString(), connectInfo);
+  else
+    server.StartResponse(request->code, request->outMIME, 0);
 }
 
 
-bool PHTTPResource::OnHEAD(PHTTPServer & server, const PHTTPConnectionInfo & connectInfo)
+bool PHTTPResource::OnCommand(PHTTPRequest & request)
 {
-  return InternalOnCommand(server, connectInfo, PHTTP::HEAD);
-}
-
-
-bool PHTTPResource::InternalOnCommand(PHTTPServer & server,
-                        const PHTTPConnectionInfo & connectInfo,
-                                   PHTTP::Commands cmd)
-{
-  if (cmd == PHTTP::GET && connectInfo.GetMIME().Contains(PHTTP::IfModifiedSinceTag()))
-    if (!IsModifiedSince(PTime(connectInfo.GetMIME()[PHTTP::IfModifiedSinceTag()])))
-      return server.OnError(PHTTP::NotModified, connectInfo.GetURL().AsString(), connectInfo);
-
-  PHTTPRequest * request = CreateRequest(server, connectInfo);
-  request->entityBody = connectInfo.GetEntityBody();
-
-  bool retVal = true;
-  if (CheckAuthority(server, *request, connectInfo)) {
-    retVal = false;
-    server.SetDefaultMIMEInfo(request->outMIME, connectInfo);
-
-    PTime expiryDate(0);
-    if (GetExpirationDate(expiryDate))
-      request->outMIME.Set(PHTTP::ExpiresTag, expiryDate.AsString(PTime::RFC1123, PTime::GMT));
-
-    if (cmd == PHTTP::POST) {
-      PStringToString postData;
-      if (PHTTP::FormUrlEncoded() == connectInfo.GetMIME().Get(PHTTP::ContentTypeTag(), PHTTP::FormUrlEncoded()))
-        PURL::SplitQueryVars(connectInfo.GetEntityBody(), postData);
-      retVal = OnPOSTData(*request, postData);
-    }
-    else if (!LoadHeaders(*request)) 
-      retVal = server.OnError(request->code, connectInfo.GetURL().AsString(), connectInfo);
-    else if (cmd != PHTTP::GET)
-      retVal = request->outMIME.Contains(PHTTP::ContentLengthTag());
-    else {
-      m_hitCount++;
-      retVal = OnGETData(*request);
-    }
+  switch (request.GetCommandCode()) {
+  case PHTTP::OPTIONS:
+    return OnOptionsRequest(request);
+  case PHTTP::HEAD:
+    return OnHeadRequest(request);
+  case PHTTP::GET:
+    return OnGetRequest(request);
+  case PHTTP::POST:
+    return OnPostRequest(request);
+  case PHTTP::PUT:
+    return OnPutRequest(request);
+  case PHTTP::PATCH:
+    return OnPatchRequest(request);
+  case PHTTP::DELETE:
+    return OnDeleteRequest(request);
+  default:
+    request.code = PHTTP::MethodNotAllowed;
+    return false;
   }
+}
 
-  delete request;
-  return retVal;
+
+bool PHTTPResource::OnGetRequest(PHTTPRequest& request)
+{
+  if (!LoadHeaders(request))
+    return request.server.OnError(request.code, request.GetURL().AsString(), request);
+  return OnGETData(request);
 }
 
 
 PBoolean PHTTPResource::OnGETData(PHTTPRequest & request)
 {
+  if (request.GetMIME().Contains(PHTTP::IfModifiedSinceTag()))
+    if (!IsModifiedSince(PTime(request.GetMIME()[PHTTP::IfModifiedSinceTag()])))
+      return request.server.OnError(PHTTP::NotModified, request.GetURL().AsString(), request);
+
   SendData(request);
   return request.outMIME.Contains(PHTTP::ContentLengthTag()) ||
          request.outMIME.Contains(PHTTP::TransferEncodingTag());
 }
 
 
-bool PHTTPResource::OnOPTIONS(PHTTPServer & server, const PHTTPConnectionInfo & connectInfo)
+bool PHTTPResource::OnPostRequest(PHTTPRequest& request)
 {
-  if (m_corsHeaders.IsEmpty())
-    return InternalOnCommand(server, connectInfo, PHTTP::OPTIONS);
-
-  PMIMEInfo headers;
-  server.SetDefaultMIMEInfo(headers, connectInfo);
-  headers.Merge(m_corsHeaders, PStringOptions::e_MergeOverwrite);
-  return server.StartResponse(PHTTP::RequestOK, headers, 0);
-}
-
-
-bool PHTTPResource::OnPOST(PHTTPServer & server, const PHTTPConnectionInfo & connectInfo)
-{
-  return InternalOnCommand(server, connectInfo, PHTTP::POST);
+  PStringToString postData;
+  if (PHTTP::FormUrlEncoded() == request.GetMIME().Get(PHTTP::ContentTypeTag(), PHTTP::FormUrlEncoded()))
+    PURL::SplitQueryVars(request.GetEntityBody(), postData);
+  return OnPOSTData(request, postData);
 }
 
 
@@ -2067,6 +2040,42 @@ PBoolean PHTTPResource::OnPOSTData(PHTTPRequest & request, const PStringToString
   request.contentSize = msg.GetLength();
   StartResponse(request);
   return request.server.Write((const char *)msg, request.contentSize) && persist;
+}
+
+
+bool PHTTPResource::OnPutRequest(PHTTPRequest& request)
+{
+  request.code = PHTTP::MethodNotAllowed;
+  return false;
+}
+
+
+bool PHTTPResource::OnPatchRequest(PHTTPRequest& request)
+{
+  request.code = PHTTP::MethodNotAllowed;
+  return false;
+}
+
+
+bool PHTTPResource::OnDeleteRequest(PHTTPRequest& request)
+{
+  request.code = PHTTP::MethodNotAllowed;
+  return false;
+}
+
+
+bool PHTTPResource::OnOptionsRequest(PHTTPRequest& request)
+{
+  return StartResponse(request);
+}
+
+
+bool PHTTPResource::OnHeadRequest(PHTTPRequest& request)
+{
+  if (!LoadHeaders(request))
+    return false;
+  StartResponse(request);
+  return true;
 }
 
 
@@ -2249,7 +2258,8 @@ PBoolean PHTTPResource::Post(PHTTPRequest & request,
 bool PHTTPResource::StartResponse(PHTTPRequest & request)
 {
   request.outMIME.Merge(m_corsHeaders, PStringOptions::e_MergeOverwrite);
-  return request.server.StartResponse(request.code, request.outMIME, request.contentSize);
+  request.server.StartResponse(request.code, request.outMIME, request.contentSize);
+  return true;
 }
 
 

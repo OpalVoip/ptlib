@@ -29,10 +29,27 @@
 #define PTLIB_PJSON_H
 
 #include <ptlib.h>
+#include <ptclib/http.h>
 
-class PJSON : public PObject
+
+class PAbstractJSON : public PObject
 {
-  PCLASSINFO(PJSON, PObject)
+  PCLASSINFO(PAbstractJSON, PObject)
+public:
+  virtual bool FromString(
+    const PString& str
+  ) = 0;
+
+  virtual PString AsString(
+    std::streamsize initialIndent = 0,
+    std::streamsize subsequentIndent = 0
+  ) const = 0;
+};
+
+
+class PJSON : public PAbstractJSON
+{
+  PCLASSINFO(PJSON, PAbstractJSON)
   public:
     enum Types
     {
@@ -235,14 +252,14 @@ class PJSON : public PObject
     virtual void ReadFrom(istream & strm) override;
     virtual void PrintOn(ostream & strm) const override;
 
-    bool FromString(
+    virtual bool FromString(
       const PString & str
-    );
+    ) override;
 
-    PString AsString(
+    virtual PString AsString(
       std::streamsize initialIndent = 0,
       std::streamsize subsequentIndent = 0
-    ) const;
+    ) const override;
 
     bool IsValid() const { return m_valid; }
 
@@ -270,13 +287,31 @@ class PJSON : public PObject
     bool   m_valid;
 };
 
+
+////////////////////////////////////////////////////////////////////////////////////////////
+
+class PDummyJSON : public PAbstractJSON
+{
+  PCLASSINFO(PDummyJSON, PAbstractJSON)
+public:
+  virtual bool FromString(const PString &) override
+  {
+    return true;
+  }
+  virtual PString AsString(std::streamsize, std::streamsize) const override
+  {
+      return PString::Empty();
+  }
+};
+
+
 ////////////////////////////////////////////////////////////////////////////////////////////
 
 class PJSONWrapMember;
 
-class PJSONRecord : public PObject
+class PJSONRecord : public PAbstractJSON
 {
-  PCLASSINFO(PJSONRecord, PObject)
+  PCLASSINFO(PJSONRecord, PAbstractJSON)
   friend class PJSONWrapMember;
 protected:
   std::map<PString, PJSONWrapMember *> m_jsonDataMembers;
@@ -290,14 +325,14 @@ public:
   virtual void ReadFrom(istream & strm) override;
   virtual void PrintOn(ostream & strm) const override;
 
-  bool FromString(
+  virtual bool FromString(
     const PString & str
-  );
+  ) override;
 
-  PString AsString(
+  virtual PString AsString(
     std::streamsize initialIndent = 0,
     std::streamsize subsequentIndent = 0
-  ) const;
+  ) const override;
 
   bool FromJSON(
     const PJSON & json
@@ -562,5 +597,106 @@ class PJWT : public PJSON
 };
 
 #endif // P_SSL
+
+#if P_HTTP
+
+class PRESTClient : public PHTTPClient
+{
+  PCLASSINFO(PRESTClient, PHTTPClient);
+public:
+  PRESTClient(
+    const PString& baseURL = PString::Empty(),
+    const PString& userAgentName = PString::Empty()
+  );
+
+  bool Execute(
+    PHTTP::Commands method,
+    const PString& endpoint,
+    const PStringOptions& parameters,
+    const PAbstractJSON& request,
+    PAbstractJSON& response
+  );
+
+  bool Post(const PString& endpoint, const PAbstractJSON& request, PAbstractJSON& response);
+  bool Get(const PString& endpoint, PAbstractJSON& response);
+  bool Get(const PString& endpoint, const PStringOptions& parameters, PAbstractJSON& response);
+  bool Put(const PString& endpoint, const PAbstractJSON& request);
+  bool Patch(const PString& endpoint, const PAbstractJSON& request);
+  bool Delete(const PString& endpoint, const PStringOptions& parameters = PStringOptions());
+
+protected:
+  PURL m_baseURL;
+};
+
+
+class PRESTRequestBase : public PHTTPRequest
+{
+  PCLASSINFO(PRESTRequestBase, PHTTPRequest);
+public:
+  PRESTRequestBase(PHTTPServer& server, const PHTTPConnectionInfo& connectInfo, PHTTPResource* resource)
+    : PHTTPRequest(server, connectInfo, resource)
+  {
+  }
+
+  virtual PAbstractJSON& GetAbstractRequest() = 0;
+  virtual PAbstractJSON& GetAbstractResponse() = 0;
+};
+
+
+template <typename REQUEST, typename RESPONSE>
+class PRESTRequest : public PRESTRequestBase
+{
+  PCLASSINFO(PRESTRequest, PRESTRequestBase);
+public:
+    PRESTRequest(PHTTPServer& server, const PHTTPConnectionInfo& connectInfo, PHTTPResource* resource)
+      : PRESTRequestBase(server, connectInfo, resource)
+    {
+    }
+
+    PAbstractJSON& GetAbstractRequest() { return m_request; }
+    PAbstractJSON& GetAbstractResponse() { return m_response; }
+
+    REQUEST& GetRequest() { return m_request; }
+    RESPONSE& GetResponse() { return m_response; }
+
+protected:
+  REQUEST m_request;
+  RESPONSE m_response;
+};
+
+
+class PRESTResourceBase : public PHTTPResource
+{
+  PCLASSINFO(PRESTResourceBase, PHTTPResource);
+public:
+  PRESTResourceBase(const PString& endpoint);
+
+  virtual PBoolean LoadHeaders(
+    PHTTPRequest& request    ///<  Information on this request.
+  ) override;
+
+  virtual bool OnCommand(
+    PHTTPRequest& request       ///< request state information
+  ) override;
+};
+
+template <typename REQUEST, typename RESPONSE> 
+class PRESTResource : public PRESTResourceBase
+{
+  PCLASSINFO(PRESTResource, PRESTResourceBase);
+public:
+  PRESTResource(const PString& endpoint)
+    : PRESTResourceBase(endpoint)
+  { }
+
+  typedef PRESTRequest<REQUEST, RESPONSE> RequestType;
+
+  virtual PHTTPRequest* CreateRequest(PHTTPServer& server, const PHTTPConnectionInfo& connectInfo) override
+  {
+    return new RequestType(server, connectInfo, this);
+  }
+};
+
+#endif // P_HTTP
 
 #endif  // PTLIB_PJSON_H
