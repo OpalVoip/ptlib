@@ -353,6 +353,15 @@ class PDirectory : public PFilePathString
       const PString & path   ///< Directory file path.
     );
 
+    /**Delete the directory and all it's files.
+
+       @return
+       true if directory was deleted.
+     */
+    bool RemoveTree(
+      bool force = false      ///< Force delete even if read only
+    );
+
     /**Delete the specified directory and all it's files.
 
        @return

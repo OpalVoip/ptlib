@@ -351,6 +351,9 @@ PINLINE bool PDirectory::Create(int perm, bool recurse) const
 PINLINE bool PDirectory::Remove()
   { Close(); return Remove(*this); }
 
+PINLINE bool PDirectory::RemoveTree(bool force)
+  { Close(); return RemoveTree(*this, force); }
+
 
 ///////////////////////////////////////////////////////////////////////////////
 
