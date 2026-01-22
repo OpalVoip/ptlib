@@ -44,8 +44,13 @@
 
 ////////////////////////////////////////////////////////////////////////////////////
 
-PFACTORY_CREATE(PHTTPClientAuthenticationFactory, PHTTPClientBasicAuthentication, "basic");
-PFACTORY_CREATE(PHTTPClientAuthenticationFactory, PHTTPClientDigestAuthentication, "digest");
+PConstString PHTTPClientBasicAuthentication::SchemeName() { static PConstString s = "basic"; return s; }
+PConstString PHTTPClientDigestAuthentication::SchemeName() { static PConstString s = "digest"; return s; }
+PConstString PHTTPBearerAuthentication::SchemeName() { static PConstString s = "bearer"; return s; }
+
+PFACTORY_CREATE(PHTTPClientAuthenticationFactory, PHTTPClientBasicAuthentication, PHTTPClientBasicAuthentication::SchemeName());
+PFACTORY_CREATE(PHTTPClientAuthenticationFactory, PHTTPClientDigestAuthentication, PHTTPClientDigestAuthentication::SchemeName());
+PFACTORY_CREATE(PHTTPClientAuthenticationFactory, PHTTPBearerAuthentication, PHTTPBearerAuthentication::SchemeName());
 
 static const char * const AlgorithmNames[PHTTPClientDigestAuthentication::NumAlgorithms] = {
   "MD5"
@@ -274,15 +279,8 @@ PHTTPClient::PHTTPClient(const PString & userAgent)
   , m_persist(true)
   , m_maxRedirects(10)
   , m_readBodyOnError(true)
-  , m_authentication(NULL)
   , m_commandUrlFormat(PURL::RelativeOnly)
 {
-}
-
-
-PHTTPClient::~PHTTPClient()
-{
-  delete m_authentication;
 }
 
 
@@ -430,8 +428,7 @@ bool PHTTPClient::HandleAuthorisation(bool isProxy, PMIMEInfo & replyMIME)
   newAuth->SetUsername(m_auth[isProxy].m_userName);
   newAuth->SetPassword(m_auth[isProxy].m_password);
 
-  delete m_authentication;
-  m_authentication = newAuth;
+  m_authentication.reset(newAuth);
   return true;
 }
 
@@ -453,7 +450,7 @@ bool PHTTPClient::WriteCommand(Commands cmd,
 
   PString cmdName = commandNames[cmd];
 
-  if (m_authentication != NULL) {
+  if (m_authentication) {
     PHTTPClientAuthenticator auth(cmdName, url, outMIME, processor);
     m_authentication->Authorise(auth);
   }
@@ -996,10 +993,19 @@ bool PHTTPClient::ConnectURL(const PURL & destURL)
 }
 
 
-void PHTTPClient::SetAuthenticationInfo(const PString & userName,const PString & password)
+void PHTTPClient::SetAuthenticationInfo(const PString & userName,const PString & password, const char * scheme)
 {
   m_auth[false].m_userName = userName;
   m_auth[false].m_password = password;
+  if (!scheme)
+    m_authentication.reset();
+  else {
+      m_authentication.reset(PHTTPClientAuthenticationFactory::CreateInstance(scheme));
+      if (m_authentication) {
+          m_authentication->SetUsername(userName);
+          m_authentication->SetPassword(password);
+      }
+  }
 }
 
 
@@ -1092,10 +1098,7 @@ PBoolean PHTTPClientBasicAuthentication::Authorise(AuthObject & authObject) cons
   digestor.ProcessEncoding(m_username + ":" + m_password);
   PString result = digestor.CompleteEncoding();
 
-  PStringStream auth;
-  auth << "Basic " << result;
-
-  authObject.GetMIME().SetAt(m_isProxy ? "Proxy-Authorization" : "Authorization", auth);
+  authObject.GetMIME().SetAt(m_isProxy ? "Proxy-Authorization" : "Authorization", "Basic " + result);
   return true;
 }
 
@@ -1341,6 +1344,21 @@ PHTTPClientAuthentication * PHTTPClientAuthentication::ParseAuthenticationRequir
   }
 
   return NULL;
+}
+
+////////////////////////////////////////////////////////////////////////////////////
+
+PBoolean PHTTPBearerAuthentication::Parse(const PString&, PBoolean proxy)
+{
+  m_isProxy = proxy;
+  return true;
+}
+
+
+PBoolean PHTTPBearerAuthentication::Authorise(AuthObject& authObject) const
+{
+  authObject.GetMIME().SetAt(m_isProxy ? PHTTP::ProxyAuthorizationTag() : PHTTP::AuthorizationTag(), "Bearer " + m_password);
+  return true;
 }
 
 

@@ -432,7 +432,7 @@ class PHTTPClientAuthentication : public PObject
     ) = 0;
 
     virtual PBoolean Authorise(
-      AuthObject & pdu
+      AuthObject& authObject
     ) const =  0;
 
     virtual PBoolean IsProxy() const               { return m_isProxy; }
@@ -488,6 +488,8 @@ class PHTTPClientBasicAuthentication : public PHTTPClientAuthentication
   public:
     PHTTPClientBasicAuthentication();
 
+    static PConstString SchemeName();
+
     virtual Comparison Compare(
       const PObject & other
     ) const override;
@@ -498,7 +500,7 @@ class PHTTPClientBasicAuthentication : public PHTTPClientAuthentication
     ) override;
 
     virtual PBoolean Authorise(
-      AuthObject & pdu
+      AuthObject & authObject
     ) const override;
 };
 
@@ -509,6 +511,8 @@ class PHTTPClientDigestAuthentication : public PHTTPClientAuthentication
   PCLASSINFO(PHTTPClientDigestAuthentication, PHTTPClientAuthentication);
   public:
     PHTTPClientDigestAuthentication();
+
+    static PConstString SchemeName();
 
     PHTTPClientDigestAuthentication & operator =(
       const PHTTPClientDigestAuthentication & auth
@@ -524,7 +528,7 @@ class PHTTPClientDigestAuthentication : public PHTTPClientAuthentication
     ) override;
 
     virtual PBoolean Authorise(
-      AuthObject & pdu
+      AuthObject & authObject
     ) const override;
 
     virtual PString GetAuthRealm() const override         { return m_authRealm; }
@@ -552,6 +556,24 @@ class PHTTPClientDigestAuthentication : public PHTTPClientAuthentication
     bool    m_stale;
     PString m_cnonce;
     mutable atomic<uint32_t> m_nonceCount;
+};
+
+///////////////////////////////////////////////////////////////////////
+
+class PHTTPBearerAuthentication : public PHTTPClientAuthentication
+{
+    PCLASSINFO(PHTTPBearerAuthentication, PHTTPClientAuthentication);
+  public:
+    static PConstString SchemeName();
+
+    virtual PBoolean Parse(
+        const PString& auth,
+        PBoolean proxy
+    ) override;
+
+    virtual PBoolean Authorise(
+        AuthObject& authObject
+    ) const override;
 };
 
 
@@ -587,7 +609,6 @@ class PHTTPClient : public PHTTP, public PSSLCertificateInfo
     PHTTPClient(
       const PString & userAgentName = PString::Empty()
     );
-    ~PHTTPClient();
 
 
   // New functions for class.
@@ -889,11 +910,20 @@ class PHTTPClient : public PHTTP, public PSSLCertificateInfo
       */
     const PHTTPCookies & GetCookies() const { return m_cookies; }
 
-/** Set authentication parameters to be use for retrieving documents
-    */
+    /** Set authentication parameters to be use for retrieving documents.
+        If the scheme is not specified then it awaits a 401 or 407 response
+        and determines the scheme from that.
+
+        If scheme == "bearer" then the username is unused and the token is
+        contained in the password field.
+
+        If scheme == "aws4" then the username is the awsAccessKeyId and the
+        password is the awsSecretAccessKey.
+      */
     void SetAuthenticationInfo(
       const PString & username,   ///< Authentication user (non-proxy)
-      const PString & password    ///< Authentication password (non-proxy)
+      const PString & password,   ///< Authentication password (non-proxy)
+      const char* scheme = NULL   ///< Initial authentication scheme
     );
 
     /// Set persistent connection mode
@@ -930,7 +960,7 @@ class PHTTPClient : public PHTTP, public PSSLCertificateInfo
       PString  m_userName;
       PString  m_password;
     } m_auth[2];
-    PHTTPClientAuthentication * m_authentication;
+    std::unique_ptr<PHTTPClientAuthentication> m_authentication;
     PURL::UrlFormat m_commandUrlFormat;
 };
 
