@@ -29,10 +29,10 @@
 #ifndef PTLIB_AWS_SDK_H
 #define PTLIB_AWS_SDK_H
 
-#if P_AWS_SDK
-
 #include <ptclib/http.h>
 
+
+#if P_AWS_SDK
 
 /* Note, all the AWS code requires C++11 or better. So, we can use things like
    std::shared_ptr<> in this header too. Some compilers (MSVC) allow use of
@@ -74,17 +74,6 @@ public:
   PHTTP::SelectProxyResult SetProxies(const PHTTP::Proxies & proxies);
 
   bool SetOptions(const PStringOptions & options);
-
-  typedef std::map<PString, PString> HeaderMap; // Note key order important!
-
-  PURL SignURL(
-    const PURL & urlToSign,
-    const PString & service,
-    const HeaderMap & headers,
-    const char * command = "GET",
-    const char * operation = "aws4_request",
-    const char * algorithm = "AWS4-HMAC-SHA256"
-  ) const;
 };
 
 
@@ -114,4 +103,58 @@ public:
 
 
 #endif //P_AWS_SDK
+
+
+/** Class to wrap the signing of AWS requests.
+ */
+class PAwsSigner : public PObject
+{
+  PCLASSINFO(PAwsSigner, PObject);
+public:
+  PString   m_awsAccessKeyId;
+  PString   m_awsSecretAccessKey;
+  PString   m_region;
+  PString   m_service;
+
+  PURL      m_uri;
+  PMIMEInfo m_headers;
+  PString   m_body;
+
+  PString   m_bodyHash;
+  PString   m_headersToSign = PHTTP::HostTag();
+
+  PString   m_command = "GET";
+  PString   m_operation = "aws4_request";
+  PString   m_algorithm = "AWS4-HMAC-SHA256";
+  unsigned  m_expires = 300; // 5 minutes
+
+  static PConstCaselessString AmzDate();
+  static PConstCaselessString AmzAlgorithm();
+  static PConstCaselessString AmzCredential();
+  static PConstCaselessString AmzExpires();
+  static PConstCaselessString AmzSignedHeaders();
+  static PConstCaselessString AmzContentSHA256();
+  static PConstCaselessString AmzSignature();
+  static PConstCaselessString AmzQueryParametersToSign();
+
+  bool Calculate(bool useHeaders);
+};
+
+
+class PHTTPAws4Authentication : public PHTTPClientAuthentication
+{
+  PCLASSINFO(PHTTPAws4Authentication, PHTTPClientAuthentication);
+public:
+  static PConstString SchemeName();
+
+  virtual PBoolean Parse(
+    const PString& auth,
+    PBoolean proxy
+  ) override;
+
+  virtual PBoolean Authorise(
+    AuthObject& authObject
+  ) const override;
+};
+
 #endif // PTLIB_AWS_SDK_H

@@ -26,11 +26,11 @@
 
 #include <ptlib.h>
 
+#include <ptclib/aws_sdk.h>
+
 #if P_AWS_SDK
 
 #include <ptlib/pprocess.h>
-#include <ptclib/aws_sdk.h>
-#include <ptclib/http.h>
 
 P_PUSH_MSVC_WARNINGS(26495)
 #define USE_IMPORT_EXPORT
@@ -261,64 +261,220 @@ bool PAwsClientBase::SetOptions(const PStringOptions & options)
 }
 
 
-static void AddSignedHeader(PURL & url, PStringStream & canonical, const char * key, const PString & value, bool first = false)
+#endif // P_AWS_SDK
+
+
+PConstCaselessString PAwsSigner::AmzDate() { static PConstCaselessString s("X-Amz-Date"); return s; }
+PConstCaselessString PAwsSigner::AmzAlgorithm() { static PConstCaselessString s("X-Amz-Algorithm"); return s; }
+PConstCaselessString PAwsSigner::AmzCredential() { static PConstCaselessString s("X-Amz-Credential"); return s; }
+PConstCaselessString PAwsSigner::AmzExpires() { static PConstCaselessString s("X-Amz-Expires"); return s; }
+PConstCaselessString PAwsSigner::AmzSignedHeaders() { static PConstCaselessString s("X-Amz-SignedHeaders"); return s; }
+PConstCaselessString PAwsSigner::AmzContentSHA256() { static PConstCaselessString s("X-Amz-Content-SHA256"); return s; }
+PConstCaselessString PAwsSigner::AmzSignature() { static PConstCaselessString s("X-Amz-Signature"); return s; }
+PConstCaselessString PAwsSigner::AmzQueryParametersToSign() { static PConstCaselessString s("X-Amz-Algorithm;X-Amz-Credential;X-Amz-Date;X-Amz-Expires;X-Amz-SignedHeaders"); return s; }
+
+static void UriEncode(std::ostream& strm, const PString& str)
 {
-  url.SetQueryVar(key, value);
-  if (!first)
-    canonical << '&';
-  canonical << key << '=' << PURL::TranslateString(value, PURL::QueryTranslation);
+  // This is subtly different to PURL::TranslateString, well done Amazon!
+  PConstString safeChars("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.~");
+  for (size_t i = 0; i < str.length(); ++i) {
+    if (safeChars.Find(str[i]) != P_MAX_INDEX)
+      strm << str[i];
+    else
+      strm << '%' << hex << setw(2) << setfill('0') << (unsigned)(BYTE)(str[i]) << dec;
+  }
 }
 
-
-PURL PAwsClientBase::SignURL(const PURL & urlToSign,
-                             const PString & service,
-                             const HeaderMap & headers,
-                             const char * command,
-                             const char * operation,
-                             const char * algorithm) const
+bool PAwsSigner::Calculate(bool useHeaders)
 {
-  PURL url = urlToSign;
+  if (m_awsAccessKeyId.empty() || m_awsSecretAccessKey.empty()) {
+    PTRACE(1, "AWS4 authentication requires access keys");
+    return false;
+  }
 
-  PString hostname = url.GetHostName();
-  if (hostname.find('.') == std::string::npos)
-    url.SetHostName(PSTRSTRM(hostname << '.' << GetRegion() << ".amazonaws.com"));
+  PString hostname = m_uri.GetHostName();
+  if (hostname.empty())
+    hostname = m_headers.GetString(PHTTP::HostTag);
+
+  PStringArray hostParts = hostname.Tokenise('.');
+  switch (hostParts.size()) {
+    case 0 :
+      hostname += PSTRSTRM(m_service << '.' << m_region << ".amazonaws.com");
+      break;
+    case 1 :
+      hostname += PSTRSTRM('.' << m_region << ".amazonaws.com");
+    case 2 :
+    case 3 :
+      PTRACE(1, "AWS4 authentication requires valid host: " << hostname);
+      return false;
+    default :
+      if (m_region.empty())
+        m_region = hostParts[hostParts.size() - 3];
+      if (m_service.empty())
+        m_service = hostParts[hostParts.size() - 4];
+  }
+
+  if (m_region.empty()) {
+    PTRACE(1, "AWS4 authentication requires a region");
+    return false;
+  }
+
+  if (m_service.empty()) {
+    PTRACE(1, "AWS4 authentication requires a service");
+    return false;
+  }
+
+  if (m_bodyHash.empty())
+    m_bodyHash = PMessageDigestSHA256::Encode(m_body, false);
 
   PString timestamp = PTime().AsString(PTime::ShortISO8601, PTime::UTC);
   PString credentialDatestamp = timestamp.Left(8);
-  PString credentialScope = PSTRSTRM(credentialDatestamp << '/' << GetRegion() << '/' << service << '/' << operation);
+  PString credentialScope = PSTRSTRM(credentialDatestamp << '/' << m_region << '/' << m_service << '/' << m_operation);
+  PString credential = PSTRSTRM(m_awsAccessKeyId << '/' << credentialScope);
 
   PStringStream canonical;
-  canonical << command << '\n' << url.GetPathStr() << '\n';
+  canonical << m_command << '\n';
+  if (m_uri.GetRelativePath())
+    canonical << '/';
+  UriEncode(canonical, m_uri.GetPathStr());
+  canonical << '\n';
 
-  // The following must be in ANSI order
-  AddSignedHeader(url, canonical, "X-Amz-Algorithm", algorithm, true);
-  AddSignedHeader(url, canonical, "X-Amz-Credential", PSTRSTRM(GetAccessKeyId() << '/' << credentialScope));
-  AddSignedHeader(url, canonical, "X-Amz-Date", timestamp);
-  AddSignedHeader(url, canonical, "X-Amz-Expires", "300");
-  AddSignedHeader(url, canonical, "X-Amz-SignedHeaders", "host");
-  for (HeaderMap::const_iterator it = headers.begin(); it != headers.end(); ++it)
-    AddSignedHeader(url, canonical, it->first, it->second);
+  auto& queryVars = m_uri.GetQueryVars();
+  PSortedStringList sortedKeys;
+  for (const auto& it : queryVars)
+    sortedKeys.AppendString(it.first);
 
-  canonical << "\nhost:" << url.GetHostPort() << "\n\nhost\n";
+  if (sortedKeys.find(AmzAlgorithm()) != sortedKeys.end())
+    m_uri.SetQueryVar(AmzAlgorithm(), m_algorithm);
+  if (sortedKeys.find(AmzCredential()) != sortedKeys.end())
+    m_uri.SetQueryVar(AmzCredential(), credential);
+  if (sortedKeys.find(AmzDate()) != sortedKeys.end())
+    m_uri.SetQueryVar(AmzDate(), timestamp);
+  if (sortedKeys.find(AmzExpires()) != sortedKeys.end())
+    m_uri.SetQueryVar(AmzExpires(), m_expires);
+  if (sortedKeys.find(AmzSignedHeaders()) != sortedKeys.end())
+    m_uri.SetQueryVar(AmzSignedHeaders(), m_headersToSign.ToLower());
 
-  PMessageDigest::Result result;
-  PMessageDigestSHA256::Encode("", result);
-  canonical << result.AsHex();
-  PMessageDigestSHA256::Encode(canonical, result);
+  bool outputAmpersand = false;
+  for (const auto& key : sortedKeys) {
+    if (std::exchange(outputAmpersand, true))
+      canonical << '&';
+    UriEncode(canonical, key);
+    canonical << '=';
+    UriEncode(canonical, queryVars.Get(key));
+  }
+  canonical << '\n';
 
-  PString stringToSign = PSTRSTRM(algorithm << '\n' << timestamp << '\n' << credentialScope << '\n' << result.AsHex());
+  if (useHeaders)
+    m_headers.Set(AmzDate(), timestamp);
+
+  sortedKeys.clear();
+  for (const auto& it : m_headers) {
+    PString key = it.first.ToLower();
+    if (key.starts_with("x-amz-"))
+      sortedKeys.AppendString(key);
+  }
+  for (const auto& key : m_headersToSign.Tokenise(';'))
+    sortedKeys.AppendString(key.ToLower());
+  for (const auto& key : sortedKeys)
+    canonical << key << ':' << m_headers.Get(key).Trim() << '\n';
+  canonical << '\n' << setfill(';') << sortedKeys << '\n' << m_bodyHash;
+
+  PString stringToSign = PSTRSTRM(
+      m_algorithm << '\n' <<
+      timestamp << '\n' <<
+      credentialScope << '\n' <<
+      PMessageDigestSHA256::Encode(canonical, false)
+  );
 
   PHMAC_SHA256 signer;
-  signer.SetKey("AWS4" + GetSecretAccessKey()); signer.Process(credentialDatestamp, result);
-  signer.SetKey(result); signer.Process(GetRegion().c_str(), result);
-  signer.SetKey(result); signer.Process(service, result);
-  signer.SetKey(result); signer.Process(operation, result);
+  PHMAC_SHA256::Result result;
+  signer.SetKey("AWS4" + m_awsSecretAccessKey); signer.Process(credentialDatestamp, result);
+  signer.SetKey(result); signer.Process(m_region.c_str(), result);
+  signer.SetKey(result); signer.Process(m_service, result);
+  signer.SetKey(result); signer.Process(m_operation, result);
   signer.SetKey(result); signer.Process(stringToSign, result);
-  url.SetQueryVar("X-Amz-Signature", result.AsHex());
 
-  PTRACE(4, "Signed URL : " << url << "\nCanonical string : \n'" << canonical << "'\nStringToSign:\n'" << stringToSign << '\'');
-  return url;
+  if (useHeaders) {
+    PString auth = PSTRSTRM(
+      "AWS4-HMAC-SHA256"
+      " Credential=" << credential << ","
+      " SignedHeaders=" << setfill(';') << sortedKeys << ","
+      " Signature=" << result.AsHex()
+    );
+    m_headers.Set(AmzContentSHA256(), m_bodyHash);
+    m_headers.Set(PHTTP::AuthorizationTag, auth);
+    PTRACE(4, "AWS Signature:\n"
+           "  Canonical    : " << canonical.ToLiteral() << "\n"
+           "  StringToSign : " << stringToSign.ToLiteral() << "\n"
+           "  Authorization: " << auth.ToLiteral());
+  }
+  else {
+    m_uri.SetQueryVar(AmzSignature(), result.AsHex());
+    PTRACE(4, "AWS Signature:\n"
+           "  Canonical   : " << canonical.ToLiteral() << "\n"
+           "  StringToSign: " << stringToSign.ToLiteral() << "\n"
+           "  Signed URL  : " << m_uri);
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////////
+
+PBoolean PHTTPAws4Authentication::Parse(const PString&, PBoolean proxy)
+{
+  return !proxy;
 }
 
 
-#endif // P_AWS_SDK
+PBoolean PHTTPAws4Authentication::Authorise(AuthObject& authObject) const
+{
+  auto & headers = authObject.GetMIME();
+  if (!headers.Has(PHTTP::ContentLengthTag)) {
+    PTRACE(1, "AWS4 authentication requires Content-Length header");
+    return false;
+  }
+
+  PAwsSigner signer;
+  signer.m_uri = authObject.GetURI();
+  signer.m_command = authObject.GetMethod();
+  signer.m_headers = authObject.GetMIME();
+  signer.m_headersToSign += ';' + PHTTP::ContentLengthTag();
+  if (headers.Has(PHTTP::ContentTypeTag))
+    signer.m_headersToSign += ';' + PHTTP::ContentTypeTag();
+  if (headers.Has(PHTTP::AcceptTag))
+    signer.m_headersToSign += ';' + PHTTP::AcceptTag();
+  signer.m_awsAccessKeyId = m_username;
+  signer.m_awsSecretAccessKey = m_password;
+
+  PHTTPContentProcessor* processor = authObject.GetContentProcessor();
+  if (processor == NULL)
+    signer.m_body = authObject.GetEntityBody();
+  else {
+    PMessageDigestSHA256 digestor;
+    digestor.Start();
+
+    void* data;
+    PINDEX len;
+    processor->Reset();
+    while ((data = processor->GetBuffer(len)) != NULL)
+      digestor.Process(data, len);
+
+    PMessageDigestSHA256::Result bodyHash;
+    digestor.Complete(bodyHash);
+    signer.m_bodyHash = bodyHash.AsHex();
+  }
+
+  if (!signer.Calculate(true))
+    return false;
+
+  headers = signer.m_headers;
+  return true;
+}
+
+PConstString PHTTPAws4Authentication::SchemeName() { static PConstString s = "aws4"; return s; }
+
+PFACTORY_CREATE(PHTTPClientAuthenticationFactory, PHTTPAws4Authentication, PHTTPAws4Authentication::SchemeName());
+
+PURL_LEGACY_SCHEME(s3, false, false, true, false, false, false, false, false, true, false, 0)
