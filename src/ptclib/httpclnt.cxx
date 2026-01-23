@@ -530,8 +530,12 @@ bool PHTTPClient::ReadResponse(PMIMEInfo & replyMIME)
   PString body;
   if (m_readBodyOnError && m_lastResponseCode >= 300) {
     bool readOK;
-    static const long MaxBodyOnError = 1000000; // Protect against malice
-    if (replyMIME.GetInteger(ContentLengthTag, MaxBodyOnError) < MaxBodyOnError)
+    static const long MaxBodyOnError = 1000; // Protect against malice
+    if (!replyMIME.Contains(ContentLengthTag())) {
+      body = ReadString(MaxBodyOnError);
+      readOK = ReadContentBody(replyMIME); // Waste body, if huge
+    }
+    else if (replyMIME.GetInteger(ContentLengthTag) < MaxBodyOnError)
       readOK = ReadContentBody(replyMIME, body);
     else {
       readOK = ReadContentBody(replyMIME); // Waste body, if huge
