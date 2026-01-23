@@ -336,8 +336,7 @@ bool PAwsSigner::Calculate(bool useHeaders)
   canonical << m_command << '\n';
   if (m_uri.GetRelativePath())
     canonical << '/';
-  UriEncode(canonical, m_uri.GetPathStr());
-  canonical << '\n';
+  canonical << m_uri.GetPathStr() << '\n';
 
   auto& queryVars = m_uri.GetQueryVars();
   PSortedStringList sortedKeys;
