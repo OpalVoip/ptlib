@@ -1310,7 +1310,7 @@ bool PRESTClient::Execute(PHTTP::Commands method,
 {
   PURL url = m_baseURL;
   url.AppendPathStr(endpoint);
-  url.SetParamVars(parameters);
+  url.SetQueryVars(parameters);
 
   PMIMEInfo requestHeaders, responseHeaders;
   requestHeaders.SetAt(PHTTP::ContentTypeTag, PMIMEInfo::ApplicationJSON());
@@ -1320,17 +1320,19 @@ bool PRESTClient::Execute(PHTTP::Commands method,
   if (result < 100)
     return false;
 
-  if (responseHeaders.Get(PHTTP::ContentTypeTag) != PMIMEInfo::ApplicationJSON()) {
-    if (result < 300) {
-      m_lastResponseCode = PHTTP::BadResponse;
-      m_lastResponseInfo = "Response not JSON content type";
-    }
-    return false;
-  }
-
   PString responseStr;
   if (!ReadContentBody(responseHeaders, responseStr))
     return false;
+
+  if (responseHeaders.Get(PHTTP::ContentTypeTag) != PMIMEInfo::ApplicationJSON()) {
+    if (result >= 300)
+      m_lastResponseInfo += '\n' + responseStr;
+    else {
+      m_lastResponseCode = PHTTP::BadResponse;
+      m_lastResponseInfo = "Response not JSON content type\n" + responseStr;
+    }
+    return false;
+  }
 
   if (result != PHTTP::NoContent && !response.FromString(responseStr)) {
     m_lastResponseCode = PHTTP::BadResponse;
@@ -1350,13 +1352,13 @@ bool PRESTClient::Post(const PString& endpoint, const PAbstractJSON& request, PA
 
 bool PRESTClient::Get(const PString& endpoint, PAbstractJSON& response)
 {
-  return Execute(PHTTP::GET, endpoint, PStringOptions(), PJSONRecord(), response);
+  return Execute(PHTTP::GET, endpoint, PStringOptions(), PDummyJSON(), response);
 }
 
 
 bool PRESTClient::Get(const PString& endpoint, const PStringOptions& parameters, PAbstractJSON& response)
 {
-  return Execute(PHTTP::GET, endpoint, parameters, PJSONRecord(), response);
+  return Execute(PHTTP::GET, endpoint, parameters, PDummyJSON(), response);
 }
 
 
