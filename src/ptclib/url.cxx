@@ -821,8 +821,10 @@ void PURL::SetPathStr(const PString & pathStr)
 PString PURL::GetPathStr() const
 {
   PStringStream strm;
+  if (!m_relativePath)
+    strm << '/';
   for (PINDEX i = 0; i < m_path.GetSize(); i++) {
-    if (i > 0 || !m_relativePath)
+    if (i > 0)
       strm << '/';
     strm << TranslateString(m_path[i], PathTranslation);
   }
