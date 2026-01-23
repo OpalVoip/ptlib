@@ -403,6 +403,7 @@ public:
   PHTTPChannelProcessor(PChannel & channel, bool reader);
   virtual void * GetBuffer(PINDEX & size) override;
   virtual bool Process(const void * data, PINDEX length) override;
+  virtual void Reset() override;
 };
 
 

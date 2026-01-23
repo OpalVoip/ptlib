@@ -271,6 +271,14 @@ bool PHTTPChannelProcessor::Process(const void * data, PINDEX length)
 }
 
 
+void PHTTPChannelProcessor::Reset()
+{
+  auto* file = dynamic_cast<PFile*>(&m_channel);
+  if (file)
+    file->Open(PFile::ReadOnly);
+}
+
+
 //////////////////////////////////////////////////////////////////////////////
 // PHTTPClient
 
