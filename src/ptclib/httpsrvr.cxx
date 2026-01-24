@@ -1446,7 +1446,7 @@ bool PWebSocket::Connect(const PURL & url, const PStringArray & protocols, PStri
   PBase64::Decode(replyMIME(PHTTP::WebSocketAcceptTag()), theirHash);
   PMessageDigestSHA1::Encode(key + WebSocketGUID, ourHash);
 
-  if (!ourHash.ConstantTimeCompare(theirHash)) {
+  if (ourHash != theirHash) {
     PTRACE(2, "WebSocket reply Accept header is unacceptable: ours=" << ourHash << ", theirs=" << theirHash);
     SetErrorValues(ProtocolFailure, EPROTO);
     return false;

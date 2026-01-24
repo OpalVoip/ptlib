@@ -306,16 +306,13 @@ class PMessageDigest : public PObject
 {
     PCLASSINFO(PMessageDigest, PObject)
   public:
-    /// Create a new message digestor
+    /// Create a new message digester
     PMessageDigest();
 
     /// Result of digest/hash function
     class Result : public PBYTEArray {
       public:
         virtual void PrintOn(ostream & strm) const override;
-
-        bool ConstantTimeCompare(const Result & other) const;
-
         PString AsBase64(PBase64::Options options = PBase64::e_NoLF) const { return PBase64::Encode(*this, options); }
         PString AsHex() const;
     };
