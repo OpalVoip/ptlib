@@ -92,11 +92,13 @@ class PSpeechRecognition_Deepgram : public PSpeechRecognition
 
   PWebSocket m_webSocket;
   PThread  * m_eventThread = nullptr;
+  bool m_openingWebSocket = false;
   std::vector<int16_t> m_buffer;
 
 
   void ReadEvents()
   {
+    PTRACE_CONTEXT_ID_PUSH_THREAD(*this);
     PTRACE(4, "Reading events thread started");
 
     {
@@ -118,6 +120,8 @@ class PSpeechRecognition_Deepgram : public PSpeechRecognition
       PTRACE(3, "Opening " << url);
       if (!m_webSocket.Connect(url))
         PTRACE(2, "Error opening WebSocket: " << m_webSocket.GetErrorText());
+      PTRACE(4, "Opened: " << m_webSocket.GetName());
+      m_openingWebSocket = false;
     }
 
     Transcript transcript;
@@ -340,6 +344,7 @@ public:
 
     m_notifier = notifier;
 
+    m_openingWebSocket = true;
     m_eventThread = new PThreadObj<PSpeechRecognition_Deepgram>(*this,
                                                                 &PSpeechRecognition_Deepgram::ReadEvents,
                                                                 false,
@@ -351,7 +356,7 @@ public:
 
   virtual bool IsOpen() const override
   {
-    return m_notifier != Notifier() && m_webSocket.IsOpen();
+    return m_notifier != Notifier();
   }
 
 
@@ -377,7 +382,7 @@ public:
       return false;
 
     m_buffer.insert(m_buffer.end(), samples, samples+sampleCount);
-    if (m_buffer.size() < m_bufferSize)
+    if (m_buffer.size() < m_bufferSize || m_openingWebSocket)
       return true;
 
     if (!m_webSocket.Write(m_buffer.data(), m_bufferSize*sizeof(int16_t))) {

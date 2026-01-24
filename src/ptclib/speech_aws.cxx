@@ -605,6 +605,7 @@ class PSpeechRecognition_AWS : public PSpeechRecognition, PAwsClient<Aws::Transc
 
   PWebSocket m_webSocket;
   PThread  * m_eventThread = nullptr;
+  bool m_openingWebSocket = false;
   std::vector<int16_t> m_buffer;
 
   #pragma pack(1)
@@ -745,6 +746,7 @@ class PSpeechRecognition_AWS : public PSpeechRecognition, PAwsClient<Aws::Transc
 
   void ReadEvents()
   {
+    PTRACE_CONTEXT_ID_PUSH_THREAD(*this);
     PTRACE(4, "Reading events thread started");
 
     {
@@ -780,6 +782,8 @@ class PSpeechRecognition_AWS : public PSpeechRecognition, PAwsClient<Aws::Transc
       PTRACE(3, "Opening " << url);
       if (!m_webSocket.Connect(url))
         PTRACE(2, "Error opening WebSocket: " << m_webSocket.GetErrorText());
+      PTRACE(4, "Opened: " << m_webSocket.GetName());
+      m_openingWebSocket = false;
     }
 
     Transcript transcript;
@@ -1013,6 +1017,7 @@ public:
 
     m_notifier = notifier;
 
+    m_openingWebSocket = true;
     m_eventThread = new PThreadObj<PSpeechRecognition_AWS>(*this, &PSpeechRecognition_AWS::ReadEvents, false, "AWS-SR");
     PTRACE(3, "Opened speech recognition.");
     return true;
@@ -1021,7 +1026,7 @@ public:
 
   virtual bool IsOpen() const override
   {
-    return m_notifier != Notifier() && m_webSocket.IsOpen();
+    return m_notifier != Notifier();
   }
 
 
@@ -1042,11 +1047,11 @@ public:
   virtual bool Listen(const int16_t * samples, size_t sampleCount) override
   {
     PWaitAndSignal lock(m_mutex);
-    if (!m_webSocket.IsOpen())
+    if (!IsOpen())
       return false;
 
     m_buffer.insert(m_buffer.end(), samples, samples+sampleCount);
-    if (m_buffer.size() < m_bufferSize)
+    if (m_buffer.size() < m_bufferSize || m_openingWebSocket)
       return true;
 
     if (!WriteAudioEvent(m_buffer.data(), m_bufferSize))
