@@ -417,11 +417,11 @@ PBoolean PSafeCollection::DeleteObjectsToBeRemoved()
       else {
 #if PTRACING
         if (it->m_safeRemovalTime.GetElapsed() > g_deleteTakingTooLong) {
-          PTRACE(it->m_safeRemovalLogThrottle, &*it, it->GetClassName() << ' ' << (void *)&*it
+          PTRACE(it->m_safeRemovalLogThrottle, &*it, it->GetClassName() << '@' << &*it
                  << " has been pending deletion for " << setprecision(1) << g_deleteTakingTooLong
                  << " seconds: references = " << it->GetSafeReferenceCount());
         }
-        PTRACE(it->GetTraceLogLevel(), it->GetClassName() << ' ' << (void *)&*it
+        PTRACE(it->GetTraceLogLevel(), &*it, it->GetClassName() << '@' << &*it
                << " awaiting delete: references=" << it->GetSafeReferenceCount());
 #endif // PTRACING
         ++it;
@@ -804,7 +804,7 @@ void PSafePtrBase::DeleteObject(PSafeObject * obj)
   if (obj == NULL)
     return;
 
-  PTRACE(obj->GetTraceLogLevel(), "Deleting object (" << obj << ')');
+  PTRACE(obj->GetTraceLogLevel(), obj, "Deleting object (" << obj << ')');
   obj->GarbageCollection();
   delete obj;
 }
