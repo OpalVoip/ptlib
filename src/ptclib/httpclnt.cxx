@@ -741,7 +741,8 @@ bool PHTTPClient::GetBinaryDocument(const PURL & url,
     return false;
   }
 
-  PTRACE_IF(4, !document.IsEmpty(), "Received " << document.GetSize() << " byte body\n");
+  PTRACE_IF(4, !document.IsEmpty(), "Received " << document.GetSize() << " byte body\n  "
+            << PHexDump(document.GetPointer(), std::min(document.size(), size_t(64)), false));
   return true;
 }
 
