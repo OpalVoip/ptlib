@@ -135,7 +135,6 @@ public:
   static PConstCaselessString AmzSignedHeaders();
   static PConstCaselessString AmzContentSHA256();
   static PConstCaselessString AmzSignature();
-  static PConstCaselessString AmzQueryParametersToSign();
 
   bool Calculate(bool useHeaders);
 };

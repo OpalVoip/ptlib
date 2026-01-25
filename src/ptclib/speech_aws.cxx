@@ -601,6 +601,7 @@ class PSpeechRecognition_AWS : public PSpeechRecognition, PAwsClient<Aws::Transc
   PStringSet m_createdVocabularies;
   PStringSet m_activeVocabularies;
   PStringSet m_activeLanguages;
+  typedef std::map<PString, PString> HeaderMap;
   HeaderMap  m_additionalHeaders;
 
   PWebSocket m_webSocket;
@@ -776,11 +777,22 @@ class PSpeechRecognition_AWS : public PSpeechRecognition, PAwsClient<Aws::Transc
 
       headers.insert(m_additionalHeaders.begin(), m_additionalHeaders.end());
 
+      PAwsSigner signer;
+      signer.m_uri = "wss://transcribestreaming:8443/stream-transcription-websocket";
+      signer.m_service = "transcribe";
+      signer.m_region = GetRegion();
+      signer.m_awsAccessKeyId = GetAccessKeyId();
+      signer.m_awsSecretAccessKey = GetSecretAccessKey();
+      for (const auto & it : headers)
+        signer.m_uri.SetQueryVar(it.first, it.second);
+
+      if (!signer.Calculate(false))
+        return;
+
       m_webSocket.SetBinaryMode();
 
-      PURL url = SignURL("wss://transcribestreaming:8443/stream-transcription-websocket", "transcribe", headers);
-      PTRACE(3, "Opening " << url);
-      if (!m_webSocket.Connect(url))
+      PTRACE(3, "Opening " << signer.m_uri);
+      if (!m_webSocket.Connect(signer.m_uri))
         PTRACE(2, "Error opening WebSocket: " << m_webSocket.GetErrorText());
       PTRACE(4, "Opened: " << m_webSocket.GetName());
       m_openingWebSocket = false;
