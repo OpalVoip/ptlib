@@ -624,6 +624,8 @@ public:
   bool Patch(const PString& endpoint, const PAbstractJSON& request);
   bool Delete(const PString& endpoint, const PStringOptions& parameters = PStringOptions());
 
+  void SetBaseURL(const PURL & baseURL) { m_baseURL = baseURL; }
+
 protected:
   PURL m_baseURL;
 };
