@@ -1324,12 +1324,13 @@ bool PRESTClient::Execute(PHTTP::Commands method,
   if (!ReadContentBody(responseHeaders, responseStr))
     return false;
 
-  if (responseHeaders.Get(PHTTP::ContentTypeTag) != PMIMEInfo::ApplicationJSON()) {
+  PCaselessString contentType = responseHeaders.Get(PHTTP::ContentTypeTag);
+  if (!contentType.starts_with(PMIMEInfo::ApplicationJSON())) {
     if (result >= 300)
       m_lastResponseInfo += '\n' + responseStr;
     else {
       m_lastResponseCode = PHTTP::BadResponse;
-      m_lastResponseInfo = "Response not JSON content type\n" + responseStr;
+      m_lastResponseInfo = PSTRSTRM("Response not JSON content type: " << contentType << '\n' + responseStr);
     }
     return false;
   }
