@@ -45,9 +45,11 @@ P_POP_MSVC_WARNINGS()
 #define PTraceModule() "AWS-SDK"
 
 #ifdef P_AWS_SDK_LIBDIR
-  #pragma comment(lib, P_AWS_SDK_LIBDIR(core))
+#pragma comment(lib, P_AWS_SDK_LIBDIR(core))
 #endif
 
+
+static bool FindAccessKeys(PString & accessKeyId, PString & secretAccessKey, const char * profile);
 
 class PAwsSdkWrap : public PProcessStartup
 {
@@ -180,13 +182,10 @@ bool PAwsClientBase::SetProfile(const PString & profile)
   if (m_clientConfig->profileName.empty())
     return false;
 
-  if (!m_credentials)
-    SetAccessKey(env.GetString("PTLIB_AWS_ACCESS_KEY_ID", env.GetString("AWS_ACCESS_KEY_ID")),
-                 env.GetString("PTLIB_AWS_SECRET_ACCESS_KEY", env.GetString("AWS_SECRET_ACCESS_KEY")));
-
   if (!m_credentials) {
-    PConfig cfg(PProcess::Current().GetHomeDirectory() + ".aws/credentials", m_clientConfig->profileName.c_str());
-    SetAccessKey(cfg.GetString("aws_access_key_id"), cfg.GetString("aws_secret_access_key"));
+    PString awsAccessKeyId, awsSecretAccessKey;
+    if (FindAccessKeys(awsAccessKeyId, awsSecretAccessKey, m_clientConfig->profileName.c_str()))
+      SetAccessKey(awsAccessKeyId, awsSecretAccessKey);
   }
 
   PTRACE(4, "Client config: "
@@ -284,10 +283,29 @@ static void UriEncode(std::ostream& strm, const PString& str)
   }
 }
 
+
+static bool FindAccessKeys(PString & accessKeyId, PString & secretAccessKey, const char * profile)
+{
+  if (!accessKeyId.empty() && !secretAccessKey.empty())
+    return true;
+
+  PConfig env(PConfig::Environment);
+  accessKeyId = env.GetString("PTLIB_AWS_ACCESS_KEY_ID", env.GetString("AWS_ACCESS_KEY_ID"));
+  secretAccessKey = env.GetString("PTLIB_AWS_SECRET_ACCESS_KEY", env.GetString("AWS_SECRET_ACCESS_KEY"));
+  if (!accessKeyId.empty() && !secretAccessKey.empty())
+    return true;
+
+  PConfig cfg(PProcess::Current().GetHomeDirectory() + ".aws/credentials", profile);
+  accessKeyId = cfg.GetString("aws_access_key_id");
+  secretAccessKey = cfg.GetString("aws_secret_access_key");
+  return !accessKeyId.empty() && !secretAccessKey.empty();
+}
+
+
 bool PAwsSigner::Calculate(bool useHeaders)
 {
-  if (m_awsAccessKeyId.empty() || m_awsSecretAccessKey.empty()) {
-    PTRACE(1, "AWS4 authentication requires access keys");
+  if (!FindAccessKeys(m_awsAccessKeyId, m_awsSecretAccessKey, "default")) {
+    PTRACE(2, "AWS4 authentication requires access keys");
     return false;
   }
 
