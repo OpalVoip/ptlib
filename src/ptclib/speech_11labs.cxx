@@ -123,7 +123,7 @@ PTextToSpeech_11Labs::PTextToSpeech_11Labs()
   , m_thread(nullptr)
 {
   PJSON::Object & settings = m_settings.GetObject();
-  settings.SetString("modelId", "eleven_turbo_v2_5");
+  settings.SetString("model_id", "eleven_turbo_v2_5");
   PJSON::Object & voiceSettings = settings.SetObject(VoiceSettings);
   voiceSettings.SetNumber("stability", 0.5);
   voiceSettings.SetNumber("similarity_boost", 0.5);
@@ -160,7 +160,7 @@ bool PTextToSpeech_11Labs::SetOptions(const PStringOptions & options)
   // Backward compatibility
   PString customModel = options.GetString(ModelIdTag);
   if (!customModel.IsEmpty())
-    m_settings.GetObject().SetString("modelId", customModel);
+    m_settings.GetObject().SetString("model_id", customModel);
 
   // Configure custom default voice ID
   PString customDefaultVoice = options.GetString(DefaultVoiceIdTag, m_defaultVoiceId);
