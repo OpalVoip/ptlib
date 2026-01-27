@@ -952,17 +952,17 @@ PJSON::Base * PJSON::Null::DeepClone() const
 
 ///////////////////////////////////////////////////////////////////////////////
 
-static PThreadLocalStorage< std::stack<PJSONRecord*> > s_jsonDataInitialiser;
+static thread_local std::stack<PJSONRecord*> s_jsonDataInitialiser;
 
 PJSONRecord::PJSONRecord()
 {
-  s_jsonDataInitialiser->push(this);
+  s_jsonDataInitialiser.push(this);
 }
 
 
 PJSONRecord::PJSONRecord(const PJSONRecord &)
 {
-  s_jsonDataInitialiser->push(this);
+  s_jsonDataInitialiser.push(this);
 }
 
 
@@ -977,7 +977,7 @@ PJSONWrapMember::PJSONWrapMember(const char * memberName)
   else if (m_memberName.NumCompare("m_") == PObject::EqualTo)
     m_memberName.Delete(0, 2);
 
-  s_jsonDataInitialiser->top()->m_jsonDataMembers[m_memberName] = this;
+  s_jsonDataInitialiser.top()->m_jsonDataMembers[m_memberName] = this;
 }
 
 
@@ -985,7 +985,7 @@ PJSONWrapMember::PJSONWrapMember(const PJSONWrapMember & other)
   : m_memberName(other.m_memberName)
 {
   if (!m_memberName.IsEmpty())
-    s_jsonDataInitialiser->top()->m_jsonDataMembers[m_memberName] = this;
+    s_jsonDataInitialiser.top()->m_jsonDataMembers[m_memberName] = this;
 }
 
 
@@ -999,7 +999,7 @@ PJSONWrapMember & PJSONWrapMember::operator=(const PJSONWrapMember & other)
 void PJSONWrapMember::EndRecordConstruction()
 {
   if (!m_memberName.IsEmpty())
-    s_jsonDataInitialiser->pop();
+    s_jsonDataInitialiser.pop();
 }
 
 

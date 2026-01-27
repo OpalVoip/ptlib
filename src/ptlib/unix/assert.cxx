@@ -343,7 +343,7 @@
     #endif // P_PTHREADS
 
     static PWalkStackInfo s_otherThreadStack;
-    static PThreadLocalStorage<StackAddresses> s_exceptionStack;
+    static thread_local StackAddresses s_exceptionStack;
 
 
     void PPlatformWalkStack(ostream & strm, PThreadIdentifier id, PUniqueThreadIdentifier uid, unsigned framesToSkip, bool noSymbols, bool exception)

@@ -34,8 +34,8 @@
 #pragma interface
 #endif
 
-#include <ptlib/mutex.h>
 #include <ptlib/notifier.h>
+#include <unordered_map>
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -45,7 +45,7 @@ class PChannel;
 
 /* Buffer class used in PChannel stream.
 This class is necessary for implementing the standard C++ iostream interface
-on <code>PChannel</code> classes and its descendents. It is an internal class and
+on <code>PChannel</code> classes and its descendants. It is an internal class and
 should not ever be used by application writers.
 */
 class PChannelStreamBuffer : public streambuf {
@@ -748,7 +748,7 @@ class PChannel : public PObject, public std::iostream
         , m_lastErrorNumber(0)
       { }
     };
-    PThreadLocalStorage<Status> m_status[NumErrorGroups+1];
+    static thread_local std::unordered_map<const PChannel *, Status[NumErrorGroups+1]> s_status;
 
   private:
     // New functions for class

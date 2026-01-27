@@ -478,25 +478,6 @@ class PThread : public PObject, PProfiling::HighWaterMark<PThread>, PNonCopyable
   
     bool IsAutoDelete() const { return m_type == e_IsAutoDelete; }
 
-    /// Thread local storage base class, see PThreadLocalStorage for template.
-    class LocalStorageBase
-    {
-      public:
-        virtual ~LocalStorageBase() { }
-        void ThreadDestroyed(PThread & thread);
-      protected:
-        LocalStorageBase();
-        void DestroyStorage();
-        virtual void * Allocate() const = 0;
-        virtual void Deallocate(void * ptr) const = 0;
-        virtual void * GetStorage() const;
-      private:
-        typedef std::map<PUniqueThreadIdentifier, void *> DataMap;
-        mutable DataMap  m_data;
-        PCriticalSection m_mutex;
-      friend class PThreadLocalStorageData;
-    };
-
   private:
     PThread(bool isProcess);
     // Create a new thread instance as part of a <code>PProcess</code> class.
@@ -921,32 +902,6 @@ class PThreadObj2Arg : public PThread
     Arg1Type  m_arg1;
     Arg2Type  m_arg2;
 };
-
-
-///////////////////////////////////////////////////////////////////////////////
-//
-// PThreadLocalStorage
-//
-
-template <class Storage_T>
-class PThreadLocalStorage : public PThread::LocalStorageBase
-{
-  public:
-    typedef Storage_T * Ptr_T;
-
-    ~PThreadLocalStorage()        { this->DestroyStorage(); }
-    Ptr_T Get() const             { return  (Ptr_T)this->GetStorage(); }
-    operator Ptr_T() const        { return  (Ptr_T)this->GetStorage(); }
-    Ptr_T operator->() const      { return  (Ptr_T)this->GetStorage(); }
-    Storage_T & operator*() const { return *(Ptr_T)this->GetStorage(); }
-
-  protected:
-    virtual void * Allocate() const           { return new Storage_T(); }
-    virtual void Deallocate(void * ptr) const { delete (Ptr_T)ptr; }
-};
-
-
-#define P_HAS_THREADLOCAL_STORAGE 1  // For backward compatbility
 
 
 #endif // PTLIB_THREAD_H

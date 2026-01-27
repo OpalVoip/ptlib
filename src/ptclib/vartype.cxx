@@ -1040,12 +1040,12 @@ void PVarType::OnValueChanged()
 
 ///////////////////////////////////////////////////////////////////////////////
 
-static PThreadLocalStorage<PVarData::Object*> s_varDataInitialiser;
+static thread_local PVarData::Object* s_varDataInitialiser;
 
 PVarData::Object::Object()
 {
   m_memberValues.DisallowDeleteObjects();
-  *s_varDataInitialiser = this;
+  s_varDataInitialiser = this;
 }
 
 
@@ -1056,7 +1056,7 @@ void PVarData::ConstructMember(PString & name, PVarType * member)
   else if (name.NumCompare("m_") == PObject::EqualTo)
     name.Delete(0, 2);
 
-  PVarData::Object & obj = **s_varDataInitialiser;
+  PVarData::Object & obj = *s_varDataInitialiser;
   obj.m_memberNames.AppendString(name);
   obj.m_memberValues.SetAt(name, member);
 }

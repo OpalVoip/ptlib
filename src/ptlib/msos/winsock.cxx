@@ -624,12 +624,13 @@ int PSocket::os_errno() const
 
 PString PSocket::GetErrorText(ErrorGroup group) const
 {
-  int err = m_status[group]->m_lastErrorNumber;
+  auto & status = s_status[this][group];
+  int err = status.m_lastErrorNumber;
   for (PINDEX i = 0; i < PARRAYSIZE(ErrorMap); ++i) {
     if (ErrorMap[i].m_stdlib == err)
-      return PChannel::GetErrorText(m_status[group]->m_lastErrorCode, ErrorMap[i].m_windows|PWIN32ErrorFlag);
+      return PChannel::GetErrorText(status.m_lastErrorCode, ErrorMap[i].m_windows|PWIN32ErrorFlag);
   }
-  return PChannel::GetErrorText(m_status[group]->m_lastErrorCode, err);
+  return PChannel::GetErrorText(status.m_lastErrorCode, err);
 }
 
 

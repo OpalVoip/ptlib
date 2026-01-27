@@ -598,7 +598,8 @@ PString PSoundChannelDirectSound::GetErrorText (Errors lastError, int osError) /
 
 PString PSoundChannelDirectSound::GetErrorText(ErrorGroup group) const // public
 {
-  return GetErrorText(m_status[group]->m_lastErrorCode, m_status[group]->m_lastErrorNumber);
+  const auto & status = s_status[this][group];
+  return GetErrorText(status.m_lastErrorCode, status.m_lastErrorNumber);
 }
 
 
