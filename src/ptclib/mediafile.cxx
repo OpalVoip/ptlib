@@ -142,7 +142,7 @@ PMediaFile::TrackInfo::TrackInfo(const PString & type, const PString & format)
 PMediaFile::TrackInfo::TrackInfo(unsigned rate, unsigned channels)
   : m_type(Audio())
   , m_format(PSOUND_PCM16)
-  , m_size(channels*2)
+  , m_size(channels*sizeof(int16_t))
   , m_frames(-1)
   , m_rate(rate)
   , m_channels(channels)
@@ -788,10 +788,10 @@ public:
       bool                 m_codecOpened;
       AVFrame            * m_frame;
       int64_t              m_audioSamples;
-      PTRACE_THROTTLE(     m_audioThrottle, 3);
+      PTRACE_THROTTLE(     m_audioThrottle, 3, 5000, 5);
 #if P_VIDEO
       PTimeInterval        m_videoTimestamp;
-      PTRACE_THROTTLE(     m_videoThrottle, 3);
+      PTRACE_THROTTLE(     m_videoThrottle, 3, 5000, 5);
 #endif
       std::queue<AVPacket> m_interleaved;
       PTimeInterval        m_writeTimestamp;
@@ -827,28 +827,6 @@ public:
       }
 
 
-      bool CreateCodecContext()
-      {
-        m_codecContext = avcodec_alloc_context3(m_codecInfo);
-        if (m_codecContext == NULL) {
-          PTRACE(2, m_owner, "Could not allocate codec context for " << m_owner->m_filePath);
-          return false;
-        }
-
-        if (CHECK_ERROR_TRK(avcodec_parameters_to_context, (m_codecContext, m_stream->codecpar)))
-          return false;
-
-        m_frame = av_frame_alloc();
-        if (m_frame == NULL) {
-          PTRACE(2, m_owner, "Could not allocate frame for " << m_owner->m_filePath);
-          return false;
-        }
-
-        PTRACE(4, m_owner, "Codec context created");
-        return true;
-      }
-
-
       bool OpenCodec()
       {
         AVDictionary * options = NULL;
@@ -877,14 +855,19 @@ public:
           return false;
         }
 
-        if (!CreateCodecContext())
+        m_codecContext = avcodec_alloc_context3(m_codecInfo);
+        if (m_codecContext == NULL) {
+          PTRACE(2, m_owner, "Could not allocate codec context for " << m_owner->m_filePath);
+          return false;
+        }
+
+        if (CHECK_ERROR_TRK(avcodec_parameters_to_context, (m_codecContext, m_stream->codecpar)))
           return false;
 
         switch (m_codecContext->codec_type) {
         case AVMEDIA_TYPE_AUDIO:
           m_type = Audio();
           m_rate = m_codecContext->sample_rate;
-          m_frames = m_stream->nb_frames;
           m_frames = m_stream->nb_frames;
         #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(60, 0, 0)
           m_channels = m_codecContext->channels;
@@ -958,91 +941,115 @@ public:
 
         m_stream->id = m_index;
 
-        m_stream->codecpar->codec_type = m_codecInfo->type;
-        m_stream->codecpar->codec_id = m_codecInfo->id;
+        if ((m_frame = av_frame_alloc()) == NULL) {
+          PTRACE(2, m_owner, "Could not allocate frame for " << m_owner->m_filePath);
+          return false;
+        }
+
+        m_codecContext = avcodec_alloc_context3(m_codecInfo);
+        if (m_codecContext == NULL) {
+          PTRACE(2, m_owner, "Could not allocate codec context for " << m_owner->m_filePath);
+          return false;
+        }
+
+        m_codecContext->codec_type = m_codecInfo->type;
+        m_codecContext->codec_id = m_codecInfo->id;
         switch (m_codecInfo->type) {
           case AVMEDIA_TYPE_AUDIO:
           {
-            m_stream->codecpar->bit_rate = m_options.GetInteger("BitRate", 128000);
-
-#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(61, 0, 0)
-            const int * supported_samplerates = m_codecInfo->supported_samplerates;
-#else
-            const void * config = NULL;
-            int num_configs = 0;
-            avcodec_get_supported_config(m_codecContext, m_codecInfo, AV_CODEC_CONFIG_SAMPLE_RATE, 0, &config, &num_configs);
-            const int * supported_samplerates = (const int *)config;
-#endif
-            if (supported_samplerates == NULL)
-              m_stream->codecpar->sample_rate = (int)m_rate;
-            else {
-              m_stream->codecpar->sample_rate = supported_samplerates[0];
-              for (int i = 0; supported_samplerates[i]; i++) {
-                if (supported_samplerates[i] == m_rate) {
-                  m_stream->codecpar->sample_rate = (int)m_rate;
-                  break;
-                }
-              }
+            m_codecContext->bit_rate = m_options.GetInteger("BitRate", m_rate <= 16000 ? 32000 : 128000);
+            switch (m_codecContext->codec_id) {
+              case AV_CODEC_ID_MP3:
+                // Workaround for bug where MP3 does not tell us what sample
+                // rates it supports, yet fails if below 32kHz
+                m_codecContext->sample_rate = std::max(32000, (int)m_rate);
+                break;
+              case AV_CODEC_ID_AAC :
+                // AAC has been experimental for a decade ...
+                m_codecContext->strict_std_compliance = FF_COMPLIANCE_EXPERIMENTAL;
+                break;
+              default:
+                // This will get overwritten if codec knows what it supports
+                m_codecContext->sample_rate = (int)m_rate;
             }
 
-#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(60, 0, 0)
-            m_stream->codecpar->channels = m_channels;
-            m_stream->codecpar->channel_layout = av_get_default_channel_layout(m_channels);
-#else
-            av_channel_layout_default(&m_stream->codecpar->ch_layout, m_channels);
-#endif
-            break;
-          }
-
-          case AVMEDIA_TYPE_VIDEO:
-            m_stream->codecpar->bit_rate = m_options.GetInteger("BitRate", 1000000);
-            m_stream->codecpar->width = m_width;
-            m_stream->codecpar->height = m_height;
-            if (m_codecInfo->profiles != NULL)
-              m_stream->codecpar->profile = m_codecInfo->profiles->profile;
-            m_stream->codecpar->profile = m_options.GetInteger("Profile", m_stream->codecpar->profile);
-            m_stream->codecpar->level = m_options.GetInteger("Level", m_stream->codecpar->level);
-            break;
-
-          default:
-            break;
-        }
-
-        if (!CreateCodecContext())
-          return false;
-
-        // some formats want stream headers to be separate
-        if (m_owner->m_formatContext->oformat->flags & AVFMT_GLOBALHEADER)
-          m_codecContext->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
-
-        switch (m_codecContext->codec_type) {
-          case AVMEDIA_TYPE_AUDIO:
-          {
 #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(61, 0, 0)
             const AVSampleFormat * sample_fmts = m_codecInfo->sample_fmts;
+            const int * supported_samplerates = m_codecInfo->supported_samplerates;
+            const AVChannelLayout * ch_layouts = codec->ch_layouts;
 #else
             const void * config = NULL;
             int num_configs = 0;
             avcodec_get_supported_config(m_codecContext, m_codecInfo, AV_CODEC_CONFIG_SAMPLE_FORMAT, 0, &config, &num_configs);
             const AVSampleFormat * sample_fmts = (const AVSampleFormat *)config;
+            avcodec_get_supported_config(m_codecContext, m_codecInfo, AV_CODEC_CONFIG_SAMPLE_RATE, 0, &config, &num_configs);
+            const int * supported_samplerates = (const int *)config;
+            avcodec_get_supported_config(m_codecContext, m_codecInfo, AV_CODEC_CONFIG_CHANNEL_LAYOUT, 0, &config, &num_configs);
+            const AVChannelLayout * ch_layouts = (const AVChannelLayout *)config;
 #endif
-            m_codecContext->sample_fmt = sample_fmts ? sample_fmts[0] : AV_SAMPLE_FMT_FLTP;
-            m_codecContext->time_base = av_make_q(1, m_codecContext->sample_rate);
+            m_frame->format = m_codecContext->sample_fmt = sample_fmts ? sample_fmts[0] : AV_SAMPLE_FMT_S16;
+            m_codecContext->request_sample_fmt = AV_SAMPLE_FMT_S16;
 
-            // AAC has been experimental for a decade ...
-            if (m_codecContext->codec_id == AV_CODEC_ID_AAC)
-              m_codecContext->strict_std_compliance = FF_COMPLIANCE_EXPERIMENTAL;
+            if (supported_samplerates != NULL) {
+              m_codecContext->sample_rate = supported_samplerates[0];
+              for (int i = 0; supported_samplerates[i]; i++) {
+                if (supported_samplerates[i] == m_rate) {
+                  m_codecContext->sample_rate = (int)m_rate;
+                  break;
+                }
+              }
+            }
+            m_codecContext->time_base = av_make_q(1, m_codecContext->sample_rate);
+            m_frame->sample_rate = m_codecContext->sample_rate;
+
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(60, 0, 0)
+            if (ch_layouts) {
+              m_codecContext->channels = ch_layouts[0].nb_channels;
+              m_codecContext->channel_layout = ch_layouts[0];
+              for (int i = 1; ch_layouts; i++) {
+                if (ch_layouts[i].nb_channels == m_channels) {
+                  m_codecContext->channels = ch_layouts[i].nb_channels;
+                  m_codecContext->channel_layout = ch_layouts[i];
+                  break;
+                }
+              }
+            }
+            else {
+              m_codecContext->channels = m_channels;
+              m_codecContext->channel_layout = av_get_default_channel_layout(m_channels);
+            }
+            m_frame->channels = m_codecContext->channels;
+            m_frame->channel_layout = m_codecContext->channel_layout;
+#else
+            if (!ch_layouts)
+              av_channel_layout_default(&m_codecContext->ch_layout, m_channels);
+            else {
+              m_codecContext->ch_layout = ch_layouts[0];
+              for (int i = 1; ch_layouts; i++) {
+                if (ch_layouts[i].nb_channels == (int)m_channels) {
+                  m_codecContext->ch_layout = ch_layouts[i];
+                  break;
+                }
+              }
+            }
+            m_frame->ch_layout = m_codecContext->ch_layout;
+#endif
             break;
           }
 
-#if P_VIDEO
           case AVMEDIA_TYPE_VIDEO:
             m_codecContext->pix_fmt = AV_PIX_FMT_YUV420P;
             m_codecContext->bit_rate_tolerance = (int)(m_codecContext->bit_rate / 2);
             m_codecContext->rc_buffer_size = (int)(m_codecContext->bit_rate * 5);
             m_codecContext->rc_max_rate = m_codecContext->bit_rate + m_codecContext->bit_rate_tolerance;
             m_codecContext->gop_size = m_options.GetInteger("KeyFrameInterval", m_codecContext->gop_size);
-
+            m_codecContext->bit_rate = m_options.GetInteger("BitRate", 1000000);
+            m_codecContext->width = m_width;
+            m_codecContext->height = m_height;
+            if (m_codecInfo->profiles != NULL)
+              m_codecContext->profile = m_codecInfo->profiles->profile;
+            m_codecContext->profile = m_options.GetInteger("Profile", m_codecContext->profile);
+            m_codecContext->level = m_options.GetInteger("Level", m_codecContext->level);
             if ((m_owner->m_formatContext->oformat->flags & AVFMT_VARIABLE_FPS) != 0)
               m_codecContext->time_base = av_make_q(1, 90000);
             else {
@@ -1081,13 +1088,42 @@ public:
                 break;
             }
             break;
-#endif
 
           default:
             PTRACE(2, m_owner, "Cannot create track of that type!");
             return false;
         }
 
+        // some formats want stream headers to be separate
+        if (m_owner->m_formatContext->oformat->flags & AVFMT_GLOBALHEADER)
+          m_codecContext->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+
+        if (!OpenCodec())
+          return false;
+
+        if (CHECK_ERROR_TRK(avcodec_parameters_from_context, (m_stream->codecpar, m_codecContext)))
+          return false;
+
+        if ((m_size = m_codecContext->frame_size) == 0) {
+          switch (m_codecContext->codec_id) {
+            case AV_CODEC_ID_MP3:
+              m_size = (int)(144LL * m_codecContext->bit_rate / m_codecContext->sample_rate);
+              break;
+            default:
+              m_size = 1; // sample by sample
+          }
+        }
+
+        m_frame->nb_samples = m_size;
+        if (CHECK_ERROR_TRK(av_frame_get_buffer, (m_frame, 0)))
+          return false;
+
+        PTRACE(4, m_owner, "Track created: "
+               " name=\"" << m_format << "\""
+               " rate=" << m_codecContext->sample_rate <<
+               " channels=" << m_channels <<
+               " size=" << m_size <<
+               " file=" << m_owner->m_filePath);
         return true;
       }
 
@@ -1095,6 +1131,7 @@ public:
       void Close()
       {
         FlushAudio();
+        EncodeAndWriteFrame(NULL);
 
         avcodec_free_context(&m_codecContext);
         av_frame_free(&m_frame);
@@ -1207,7 +1244,7 @@ public:
         if (!PAssert(channels > 0 && sampleRate > 0, PInvalidParameter))
           return false;
 
-        if (m_codecOpened) {
+        if (m_fifo) {
           PTRACE(2, m_owner, "Cannot configure audio once reading/writing commenced.");
           return false;
         }
@@ -1245,7 +1282,7 @@ public:
             return false;
         }
 
-        int requestedSamples = size/m_pcmChannels/2;
+        int requestedSamples = size/m_pcmChannels/sizeof(int16_t);
 
         if (swr_get_out_samples(m_swrContext, 0) < requestedSamples) {
           if (!ReadAndDecodeFrame())
@@ -1259,15 +1296,15 @@ public:
           return false;
 
         m_audioSamples += convertedSamples;
-        length = convertedSamples*m_pcmChannels*2;
+        length = convertedSamples*m_pcmChannels*sizeof(int16_t);
         PTRACE(m_audioThrottle, m_owner, "Read audio: samples=" << convertedSamples << ", ts=" << m_audioSamples);
         return true;
       }
 
 
-      bool EncodeAndWriteFrame()
+      bool EncodeAndWriteFrame(AVFrame * frame)
       {
-        if (CHECK_ERROR_TRK(avcodec_send_frame, (m_codecContext, m_frame)))
+        if (m_codecContext == NULL || CHECK_ERROR_TRK(avcodec_send_frame, (m_codecContext, frame)))
           return false;
 
         AVPacket packet;
@@ -1281,12 +1318,10 @@ public:
           if (CHECK_ERROR_RESULT_TRK(result, "avcodec_receive_packet"))
             return false;
 
-          if (packet.pts != AV_NOPTS_VALUE)
-            packet.pts =  av_rescale_q(packet.pts, m_codecContext->time_base, m_stream->time_base);
-          if (packet.dts != AV_NOPTS_VALUE)
-            packet.dts = av_rescale_q(packet.dts, m_codecContext->time_base, m_stream->time_base);
+          av_packet_rescale_ts(&packet, m_codecContext->time_base, m_stream->time_base);
           packet.stream_index = m_index;
 
+          PTRACE(5, m_owner, "Writing interleaved audio: " << packet.size);
           if (CHECK_ERROR_TRK(av_interleaved_write_frame, (m_owner->m_formatContext, &packet)))
             return false;
         }
@@ -1295,23 +1330,23 @@ public:
 
       bool FlushAudio()
       {
-        if (m_fifo == NULL)
+        if (m_fifo == NULL || m_frame == NULL)
           return false;
 
-        while (av_audio_fifo_size(m_fifo) >= m_codecContext->frame_size) {
-          if (av_audio_fifo_read(m_fifo, (void **)m_frame->data, m_codecContext->frame_size) != m_codecContext->frame_size) {
+        while (av_audio_fifo_size(m_fifo) >= (int)m_size) {
+          if (av_audio_fifo_read(m_fifo, (void **)m_frame->data, m_size) != (int)m_size) {
             PTRACE(2, m_owner, "Unexpected error reading audio queue!");
             return false;
           }
 
           m_frame->pts = m_audioSamples;
-          m_frame->nb_samples = m_codecContext->frame_size;
-          if (!EncodeAndWriteFrame())
+          m_frame->nb_samples = m_size;
+          if (!EncodeAndWriteFrame(m_frame))
             return false;
-          m_audioSamples += m_codecContext->frame_size;
+          m_audioSamples += m_size;
         }
 
-        return true;
+          return true;
       }
 
 
@@ -1325,74 +1360,68 @@ public:
       #else
         int channels = m_codecContext->ch_layout.nb_channels;
       #endif
+        int inSamples = length/m_pcmChannels/sizeof(int16_t);
 
-        if (!m_codecOpened) {
-          if (m_pcmSampleRate == 0 || m_pcmChannels == 0)
-            ConfigureAudio(2, 48000);
+        if (m_pcmSampleRate == 0 || m_pcmChannels == 0)
+          ConfigureAudio(m_channels, (unsigned)m_rate);
 
-          m_codecContext->request_sample_fmt = AV_SAMPLE_FMT_S16;
-          if (!OpenCodec())
-            return false;
+        if (m_fifo == NULL && (m_fifo = av_audio_fifo_alloc(m_codecContext->sample_fmt, channels, inSamples)) == NULL)
+          return false;
 
-          if (!CreateResampler(AV_SAMPLE_FMT_S16, m_pcmSampleRate, m_pcmChannels,
-                               m_codecContext->sample_fmt, m_codecContext->sample_rate, channels))
-            return false;
-
-          if ((m_fifo = av_audio_fifo_alloc(m_codecContext->sample_fmt, channels, 1)) == NULL)
-            return false;
-
-          if (CHECK_ERROR_TRK(av_audio_fifo_realloc, (m_fifo, m_codecContext->frame_size*channels*3)))
-            return false;
-
-          m_frame->format = m_codecContext->sample_fmt;
-          m_frame->sample_rate = m_codecContext->sample_rate;
-        #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(60, 0, 0)
-          m_frame->channels = channels;
-          m_frame->channel_layout = m_codecContext->channel_layout;
-        #else
-          m_frame->ch_layout = m_codecContext->ch_layout;
-        #endif
-          m_frame->nb_samples = m_codecContext->frame_size*channels;
-          if (CHECK_ERROR_TRK(av_frame_get_buffer, (m_frame, 0)))
-              return false;
-        }
-
-        int suppliedSamples = length/m_pcmChannels/2;
-        int ouputSampleCount = (int)av_rescale_rnd(suppliedSamples, m_codecContext->sample_rate, m_pcmSampleRate, AV_ROUND_UP);
-
-        if (m_swrFrame == NULL || m_swrFrame->nb_samples < ouputSampleCount*channels) {
-          av_frame_free(&m_swrFrame);
-          if ((m_swrFrame = av_frame_alloc()) == NULL) {
-            PTRACE(2, m_owner, "Could not allocate frame for " << m_owner->m_filePath);
+        int outSamples;
+        if (m_codecContext->sample_fmt == AV_SAMPLE_FMT_S16 &&
+            m_codecContext->sample_rate == (int)m_pcmSampleRate &&
+            channels == (int)m_pcmChannels) {
+          if (av_audio_fifo_write(m_fifo, (void **)&pcm, inSamples) != inSamples) {
+            PTRACE(2, m_owner, "Unexpected error writing audio queue!");
             return false;
           }
-          m_swrFrame->format = m_codecContext->sample_fmt;
-          m_swrFrame->sample_rate = m_codecContext->sample_rate;
-        #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(60, 0, 0)
-          m_swrFrame->channels = channels;
-          m_swrFrame->channel_layout = m_codecContext->channel_layout;
-        #else
-          m_swrFrame->ch_layout = m_codecContext->ch_layout;
-        #endif
-          m_swrFrame->nb_samples = ouputSampleCount*channels;
-          if (CHECK_ERROR_TRK(av_frame_get_buffer, (m_swrFrame, 0)))
-              return false;
+          outSamples = inSamples;
         }
+        else {
+          if (m_swrContext == NULL && !CreateResampler(AV_SAMPLE_FMT_S16, m_pcmSampleRate, m_pcmChannels,
+                                                       m_codecContext->sample_fmt, m_codecContext->sample_rate, channels))
+            return false;
 
-        if (CHECK_ERROR_TRK(swr_convert, (m_swrContext, m_swrFrame->data, ouputSampleCount, (const uint8_t **)&pcm, suppliedSamples)))
-          return false;
+          int ouMaxSamples = swr_get_out_samples(m_swrContext, inSamples);
 
-        if (av_audio_fifo_write(m_fifo, (void **)m_swrFrame->data, ouputSampleCount) != ouputSampleCount) {
-          PTRACE(2, m_owner, "Unexpected error writing audio queue!");
-          return false;
+          if (m_swrFrame == NULL || m_swrFrame->nb_samples < ouMaxSamples) {
+            av_frame_free(&m_swrFrame);
+            if ((m_swrFrame = av_frame_alloc()) == NULL) {
+              PTRACE(2, m_owner, "Could not allocate frame for " << m_owner->m_filePath);
+              return false;
+            }
+            m_swrFrame->format = m_codecContext->sample_fmt;
+            m_swrFrame->sample_rate = m_codecContext->sample_rate;
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(60, 0, 0)
+            m_swrFrame->channels = channels;
+            m_swrFrame->channel_layout = m_codecContext->channel_layout;
+#else
+            m_swrFrame->ch_layout = m_codecContext->ch_layout;
+#endif
+            m_swrFrame->nb_samples = ouMaxSamples;
+            if (CHECK_ERROR_TRK(av_frame_get_buffer, (m_swrFrame, 0)))
+              return false;
+          }
+
+          outSamples = swr_convert(m_swrContext,
+                                   m_swrFrame->data, ouMaxSamples,
+                                   (const uint8_t **)&pcm, inSamples);
+          if (CHECK_ERROR_RESULT_TRK(outSamples, "swr_convert"))
+            return false;
+
+          if (av_audio_fifo_write(m_fifo, (void **)m_swrFrame->data, outSamples) != outSamples) {
+            PTRACE(2, m_owner, "Unexpected error writing audio queue!");
+            return false;
+          }
         }
 
         if (!FlushAudio())
           return false;
 
-        written = suppliedSamples*m_pcmChannels*2;
+        written = inSamples*m_pcmChannels*sizeof(int16_t);
 
-        PTRACE(m_audioThrottle, m_owner, "Write audio: in-samp=" << suppliedSamples << ", out-samp=" << m_frame->nb_samples << ", ts=" << m_audioSamples);
+        PTRACE(m_audioThrottle, m_owner, "Queued audio: in-samp=" << inSamples << ", out-samp=" << outSamples << ", ts=" << m_audioSamples);
         return true;
       }
 
@@ -1549,7 +1578,7 @@ public:
           m_frame->pkt_dts = m_frame->pts = av_rescale_q(m_videoTimestamp.GetNanoSeconds(), s_NanosecondScale, m_codecContext->time_base);
         }
 
-        if (!EncodeAndWriteFrame())
+        if (!EncodeAndWriteFrame(m_frame))
           return false;
 
         PTRACE(m_videoThrottle, m_owner, "Write video: ts=" << m_videoTimestamp);
@@ -1701,26 +1730,40 @@ public:
       if (m_formatContext == NULL)
         return false;
 
-      const AVCodec * codec = avcodec_find_encoder(m_formatContext->oformat->audio_codec);
       if (type == Audio()) {
         info = TrackInfo(16000, 1);
+        const AVCodec * codec = avcodec_find_encoder(m_formatContext->oformat->audio_codec);
         if (codec != NULL) {
+          info.m_format = codec->name;
+          switch (codec->id) {
+            case AV_CODEC_ID_MP3:
+              // Workaround for bug where MP3 does not tell us what sample
+              // rates or channel layouts it supports
+              info.m_rate = 48000;
+              info.m_channels = 2;
+              break;
+          }
 #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(61, 0, 0)
           const int * supported_samplerates = codec->supported_samplerates;
+          const AVChannelLayout * ch_layouts = codec->ch_layouts;
 #else
           const void * config = NULL;
           int num_configs = 0;
           avcodec_get_supported_config(NULL, codec, AV_CODEC_CONFIG_SAMPLE_RATE, 0, &config, &num_configs);
           const int * supported_samplerates = (const int *)config;
+          avcodec_get_supported_config(NULL, codec, AV_CODEC_CONFIG_CHANNEL_LAYOUT, 0, &config, &num_configs);
+          const AVChannelLayout * ch_layouts = (const AVChannelLayout *)config;
 #endif
-          info.m_format = codec->name;
-          info.m_channels = 1;
-          info.m_rate = supported_samplerates ? supported_samplerates[0] : 16000;
+          if (supported_samplerates)
+            info.m_rate = supported_samplerates[0];
+          if (ch_layouts)
+            info.m_channels = ch_layouts->nb_channels;
         }
       }
 #if P_VIDEO
       else if (type == Video()) {
         info = TrackInfo(PVideoFrameInfo::CIF4Width, PVideoFrameInfo::CIF4Height, 25);
+        const AVCodec * codec = avcodec_find_encoder(m_formatContext->oformat->video_codec);
         if (codec != NULL) {
 #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(61, 0, 0)
           const AVRational * supported_framerates = codec->supported_framerates;

@@ -36,7 +36,7 @@ class Test : public PProcess
   public:
     virtual void Main() override;
     void DoRead(const PFilePath & filename, bool native);
-    void DoWrite(const PFilePath & filename, const PStringArray & trackInfo, bool variableFPS);
+    void DoWrite(const PFilePath & filename, const PStringArray & trackInfo, bool variableFPS, unsigned sampleRate);
 };
 
 
@@ -49,6 +49,7 @@ void Test::Main()
   PArgList & args = GetArguments();
   if (!args.Parse("w-write: Write track\n"
                   "V-variable-fps. Test with variable frame rate\n"
+                  "S-sample-rate: Audio sample rate when writing file\n"
                   "n-native. Use native format\n"
                   PTRACE_ARGLIST)) {
     args.Usage(cerr, "[ args ] <media-file> ...");
@@ -59,7 +60,10 @@ void Test::Main()
 
   if (args.HasOption('w')) {
     for (PINDEX i = 0; i < args.GetCount(); ++i)
-      DoWrite(args[i], args.GetOptionString('w').Lines(), args.HasOption('V'));
+      DoWrite(args[i],
+              args.GetOptionString('w').Lines(),
+              args.HasOption('V'),
+              args.GetOptionString('S', "8000").AsUnsigned());
   }
   else {
     for (PINDEX i = 0; i < args.GetCount(); ++i)
@@ -166,7 +170,7 @@ void Test::DoRead(const PFilePath & filename, bool native)
 }
 
 
-void Test::DoWrite(const PFilePath & filename, const PStringArray & trackInfo, bool variableFPS)
+void Test::DoWrite(const PFilePath & filename, const PStringArray & trackInfo, bool variableFPS, unsigned sampleRate)
 {
   PSmartPtr<PMediaFile> file = PMediaFile::Create(filename);
   if (file == NULL) {
@@ -184,30 +188,32 @@ void Test::DoWrite(const PFilePath & filename, const PStringArray & trackInfo, b
   PMediaFile::TracksInfo tracks(trackInfo.size());
   for (PINDEX i = 0; i < trackInfo.GetSize(); ++i) {
     PStringArray params = trackInfo[i].Tokenise(',');
-    if (params.size() == 1) {
-      if (!file->GetDefaultTrackInfo(params[0], tracks[i])) {
-        cerr << "Could not set get default " << params[0] << " track info for " << filename << endl;
-        return;
-      }
-      if (tracks[i].m_type == PMediaFile::Audio())
-        audioTrack = i;
-      else if (tracks[i].m_type == PMediaFile::Video())
-        videoTrack = i;
+    if (!file->GetDefaultTrackInfo(params[0], tracks[i])) {
+      cerr << "Could not set get default " << params[0] << " track info for " << filename << endl;
+      return;
     }
-    else {
-      tracks[i].m_type = params[0];
+    if (tracks[i].m_type == PMediaFile::Audio())
+      audioTrack = i;
+    else if (tracks[i].m_type == PMediaFile::Video())
+      videoTrack = i;
+    if (params.size() > 1) {
       if (tracks[i].m_type == PMediaFile::Audio()) {
-        tracks[i].m_format = params[1];
-        tracks[i].m_rate = params[2].AsReal();
-        tracks[i].m_channels = params[3].AsUnsigned();
-        audioTrack = i;
+        if (!params[1].empty())
+          tracks[i].m_format = params[1];
+        if (!params[2].empty())
+          tracks[i].m_rate = params[2].AsReal();
+        if (!params[3].empty())
+          tracks[i].m_channels = params[3].AsUnsigned();
       }
       else if (tracks[i].m_type == PMediaFile::Video()) {
-        tracks[i].m_format = params[1];
-        tracks[i].m_width = params[2].AsUnsigned();
-        tracks[i].m_height = params[3].AsUnsigned();
-        tracks[i].m_rate = params[4].AsReal();
-        videoTrack = i;
+        if (!params[1].empty())
+          tracks[i].m_format = params[1];
+        if (!params[2].empty())
+          tracks[i].m_width = params[2].AsUnsigned();
+        if (!params[3].empty())
+          tracks[i].m_height = params[3].AsUnsigned();
+        if (!params[4].empty())
+          tracks[i].m_rate = params[4].AsReal();
       }
     }
   }
@@ -218,13 +224,14 @@ void Test::DoWrite(const PFilePath & filename, const PStringArray & trackInfo, b
   }
 
   if (audioTrack < tracks.size()) {
-    if (!file->ConfigureAudio(audioTrack, 1, 8000))
+    if (!file->ConfigureAudio(audioTrack, 1, sampleRate))
       return;
 
     #if P_DTMF
       PTones tones("C:0.2/D:0.2/E:0.2/F:0.2/G:0.2/A:0.2/B:0.2/C5:0.2/"
-                   "C5:0.2/B:0.2/A:0.2/G:0.2/F:0.2/E:0.2/D:0.2/C:2.0");
-      unsigned samplesPerBuffer = 320;
+                   "C5:0.2/B:0.2/A:0.2/G:0.2/F:0.2/E:0.2/D:0.2/C:2.0",
+                   100, sampleRate);
+      unsigned samplesPerBuffer = sampleRate*20/1000;
       unsigned totalBuffers = (tones.GetSize()+samplesPerBuffer-1)/samplesPerBuffer;
       for (unsigned i = 0; i < totalBuffers; ++i) {
         PINDEX written;
@@ -232,7 +239,7 @@ void Test::DoWrite(const PFilePath & filename, const PStringArray & trackInfo, b
           return;
       }
     #else
-      PBYTEArray silence(16000); // One second
+      PBYTEArray silence(sampleRate*sizeof(int16_t)); // One second
       PINDEX written;
       file->WriteAudio(0, silence, silence.GetSize(), written);
     #endif
@@ -267,6 +274,8 @@ void Test::DoWrite(const PFilePath & filename, const PStringArray & trackInfo, b
       }
     }
   }
+
+  cout << "Written " << filename << endl;
 }
 
 
