@@ -352,7 +352,7 @@
         return;
 
       if (exception)
-        InternalWalkStack(strm, 1, *s_exceptionStack, noSymbols);
+        InternalWalkStack(strm, 1, s_exceptionStack, noSymbols);
       else if (id != PNullThreadIdentifier && id != PThread::GetCurrentThreadId())
         s_otherThreadStack.WalkOther(strm, id, uid, noSymbols);
       else {
@@ -383,7 +383,7 @@
        #endif
        {
         if (PAssertWalkStackMode != PAssertWalkStackDisabled) {
-          StackAddresses & addresses = *s_exceptionStack;
+          StackAddresses & addresses = s_exceptionStack;
           addresses.resize(InternalMaxStackWalk);
           addresses.resize(backtrace(addresses.data(), addresses.size()));
         }

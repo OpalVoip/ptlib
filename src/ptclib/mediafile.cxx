@@ -976,7 +976,7 @@ public:
 #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(61, 0, 0)
             const AVSampleFormat * sample_fmts = m_codecInfo->sample_fmts;
             const int * supported_samplerates = m_codecInfo->supported_samplerates;
-            const AVChannelLayout * ch_layouts = codec->ch_layouts;
+            const AVChannelLayout * ch_layouts = m_codecInfo->ch_layouts;
 #else
             const void * config = NULL;
             int num_configs = 0;
@@ -1741,6 +1741,8 @@ public:
               // rates or channel layouts it supports
               info.m_rate = 48000;
               info.m_channels = 2;
+              break;
+            default:
               break;
           }
 #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(61, 0, 0)

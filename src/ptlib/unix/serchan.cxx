@@ -199,8 +199,7 @@ PBoolean PSerialChannel::Open(const PString & port,
 
   // attempt to open the device
   PString device_name = PString(DEV_PREFIX) + port;
-  if ((os_handle = ::open((const char *)device_name, O_RDWR|O_NONBLOCK|O_NOCTTY)) < 0) {
-    ConvertOSError(os_handle);
+  if (!ConvertOSError(os_handle = ::open(device_name, O_RDWR|O_NONBLOCK|O_NOCTTY))) {
     Close();
     return false;
   }
