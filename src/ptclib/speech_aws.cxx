@@ -803,7 +803,7 @@ class PSpeechRecognition_AWS : public PSpeechRecognition, PAwsClient<Aws::Transc
           if (type == "TranscriptEvent" &&
               json.IsObject() &&
               json.GetObject().IsObject("Transcript") &&
-              json.GetObject().GetObject("Transcript").IsObject("Results")) {
+              json.GetObject().GetObject("Transcript").IsArray("Results")) {
             PJSON::Array const & results = json.GetObject().GetObject("Transcript").GetArray("Results");
             PTRACE_IF(4, !results.empty(), "Received " << type << ":\n" << json.AsString(4, 2));
             for (size_t idxResult = 0; idxResult < results.size(); ++idxResult) {
