@@ -781,7 +781,7 @@ public:
     struct TrackContext : TrackInfo
     {
       PMediaFile_FFMPEG  * m_owner;
-      int                  m_index;
+      unsigned             m_index;
       AVStream           * m_stream;
       AVCodec      const * m_codecInfo;
       AVCodecContext     * m_codecContext;
@@ -803,7 +803,7 @@ public:
 
       TrackContext()
         : m_owner(NULL)
-        , m_index(-1)
+        , m_index(0)
         , m_stream(NULL)
         , m_codecInfo(NULL)
         , m_codecContext(NULL)
@@ -845,7 +845,7 @@ public:
       bool Open(PMediaFile_FFMPEG * owner, unsigned track)
       {
         m_owner = owner;
-        m_index = (int)track;
+        m_index = track;
         m_stream = m_owner->m_formatContext->streams[track];
 
         AVCodecID codecID = m_stream->codecpar->codec_id;
@@ -919,7 +919,7 @@ public:
       bool Create(PMediaFile_FFMPEG * owner, unsigned track)
       {
         m_owner = owner;
-        m_index = (int)track;
+        m_index = track;
 
         if (m_format.FindSpan("0123456789") == P_MAX_INDEX)
           m_codecInfo = avcodec_find_encoder((AVCodecID)m_format.AsUnsigned());
@@ -934,7 +934,8 @@ public:
           return false;
         }
 
-        if ((m_stream = avformat_new_stream(m_owner->m_formatContext, m_codecInfo)) == NULL) {
+        if (m_index >= m_owner->m_formatContext->nb_streams &&
+            (m_stream = avformat_new_stream(m_owner->m_formatContext, m_codecInfo)) == NULL) {
           PTRACE(2, m_owner, "Cannot allocate FFMPEG stream!");
           return false;
         }
@@ -962,15 +963,18 @@ public:
               case AV_CODEC_ID_MP3:
                 // Workaround for bug where MP3 does not tell us what sample
                 // rates it supports, yet fails if below 32kHz
-                m_codecContext->sample_rate = std::max(32000, (int)m_rate);
+                if (m_rate < 32000)
+                  m_rate = 32000;
+                else if (m_rate > 48000)
+                  m_rate = 48000;
+                m_channels = 2;
                 break;
               case AV_CODEC_ID_AAC :
                 // AAC has been experimental for a decade ...
                 m_codecContext->strict_std_compliance = FF_COMPLIANCE_EXPERIMENTAL;
                 break;
               default:
-                // This will get overwritten if codec knows what it supports
-                m_codecContext->sample_rate = (int)m_rate;
+                break;
             }
 
 #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(61, 0, 0)
@@ -990,11 +994,13 @@ public:
             m_frame->format = m_codecContext->sample_fmt = sample_fmts ? sample_fmts[0] : AV_SAMPLE_FMT_S16;
             m_codecContext->request_sample_fmt = AV_SAMPLE_FMT_S16;
 
-            if (supported_samplerates != NULL) {
+            if (!supported_samplerates)
+              m_codecContext->sample_rate = (int)m_rate;
+            else {
               m_codecContext->sample_rate = supported_samplerates[0];
               for (int i = 0; supported_samplerates[i]; i++) {
                 if (supported_samplerates[i] == m_rate) {
-                  m_codecContext->sample_rate = (int)m_rate;
+                  m_codecContext->sample_rate = supported_samplerates[i];
                   break;
                 }
               }
