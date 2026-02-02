@@ -192,11 +192,11 @@ PTHREAD_MUTEX_RECURSIVE_NP
   {
     Context(unsigned level, const char * fileName, int lineNum, const PObject * instance, const char * module)
       : m_level(level)
+      , m_threadAddress(PThread::Current())
+      , m_threadName(m_threadAddress ? m_threadAddress->GetThreadName() : PString::Empty())
       , m_fileName(fileName)
       , m_lineNum(lineNum)
       , m_objectAddress(instance)
-      , m_threadAddress(PThread::Current())
-      , m_threadName(m_threadAddress ? m_threadAddress->GetThreadName() : PString::Empty())
       , m_contextIdentifier(instance ? instance->GetTraceContextIdentifier() : 0)
       , m_module(module)
       , m_tick(PTimer::Tick())
@@ -209,12 +209,12 @@ PTHREAD_MUTEX_RECURSIVE_NP
     }
 
     unsigned      m_level;
+    PThread     * m_threadAddress;
+    PString       m_threadName;
     PFilePath     m_fileName;
     int           m_lineNum;
     void  const * m_objectAddress;
     PString       m_objectClass;
-    PThread     * m_threadAddress;
-    PString       m_threadName;
     unsigned      m_contextIdentifier;
     PString       m_module;
     PTime         m_dateTime;
