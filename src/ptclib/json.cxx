@@ -1396,33 +1396,61 @@ PBoolean PRESTResourceBase::LoadHeaders(PHTTPRequest&)
 }
 
 
-bool PRESTResourceBase::OnCommand(PHTTPRequest& request)
+bool PRESTResourceBase::OnCommand(PHTTPRequest & request)
 {
-  auto& rest = dynamic_cast<PRESTRequestBase&>(request);
+  auto & restRequest = dynamic_cast<PRESTRequestBase &>(request);
 
   request.outMIME.SetAt(PHTTP::ContentTypeTag, PMIMEInfo::ApplicationJSON());
 
-  if (!rest.GetAbstractRequest().FromString(request.GetEntityBody()))
+  if (!restRequest.GetAbstractRequest().FromString(request.GetEntityBody()))
     request.code = PHTTP::BadRequest;
-  else if (!PHTTPResource::OnCommand(request) || request.code == PHTTP::NoContent)
+  else if (OnCommandFunction(restRequest))
+    return true;
+  else if (restRequest.m_noCommand && PHTTPResource::OnCommand(request))
+    return true;
+  else if (request.code == PHTTP::NoContent)
     return false;
   else if (request.code / 100 == 2)
-    return request.SendResponse(rest.GetAbstractResponse().AsString());
+    return request.SendResponse(restRequest.GetAbstractResponse().AsString());
 
   PJSON json(PJSON::e_Object);
-  PJSON::Object& error = json.GetObject();
-  switch (request.code) {
-    case PHTTP::BadRequest:
-      error.SetString("error", "Invalid request");
-      break;
-    case PHTTP::NotFound:
-      error.SetString("error", "Instance not found");
-      break;
-    default:
-      error.SetString("error", "Code " + PString(request.code));
+  PJSON::Object & error = json.GetObject();
+  if (restRequest.m_errorText.empty()) {
+    switch (request.code) {
+      case PHTTP::BadRequest:
+        restRequest.m_errorText = "Invalid request";
+        break;
+      case PHTTP::NotFound:
+        restRequest.m_errorText = "Not found";
+        break;
+      default:
+        restRequest.m_errorText = "Code " + PString(request.code);
+    }
   }
 
+  error.SetString("error", restRequest.m_errorText);
   return request.SendResponse(json.AsString());
+}
+
+
+bool PRESTResourceBase::OnGetRequest(PHTTPRequest & request)
+{
+  request.code = PHTTP::MethodNotAllowed;
+  return false;
+}
+
+
+bool PRESTResourceBase::OnPostRequest(PHTTPRequest & request)
+{
+  request.code = PHTTP::MethodNotAllowed;
+  return false;
+}
+
+
+bool PRESTResourceBase::OnCommandFunction(PRESTRequestBase& request)
+{
+  request.m_noCommand = true;
+  return false;
 }
 
 

@@ -30,6 +30,7 @@
 
 #include <ptlib.h>
 #include <ptclib/http.h>
+#include <unordered_map>
 
 
 class PAbstractJSON : public PObject
@@ -642,6 +643,9 @@ public:
 
   virtual PAbstractJSON& GetAbstractRequest() = 0;
   virtual PAbstractJSON& GetAbstractResponse() = 0;
+
+  bool    m_noCommand = false;
+  PString m_errorText;
 };
 
 
@@ -673,30 +677,41 @@ class PRESTResourceBase : public PHTTPResource
 public:
   PRESTResourceBase(const PString& endpoint);
 
-  virtual PBoolean LoadHeaders(
-    PHTTPRequest& request    ///<  Information on this request.
-  ) override;
+  virtual PBoolean LoadHeaders(PHTTPRequest& request) override;
+  virtual bool OnCommand(PHTTPRequest& request) override;
+  virtual bool OnGetRequest(PHTTPRequest& request) override;
+  virtual bool OnPostRequest(PHTTPRequest& request) override;
 
-  virtual bool OnCommand(
-    PHTTPRequest& request       ///< request state information
-  ) override;
+  virtual bool OnCommandFunction(PRESTRequestBase& request);
 };
 
-template <typename REQUEST, typename RESPONSE> 
+template <typename REQUEST, typename RESPONSE = PDummyJSON> 
 class PRESTResource : public PRESTResourceBase
 {
   PCLASSINFO(PRESTResource, PRESTResourceBase);
 public:
-  PRESTResource(const PString& endpoint)
-    : PRESTResourceBase(endpoint)
-  { }
-
   typedef PRESTRequest<REQUEST, RESPONSE> RequestType;
+  typedef std::unordered_map<PHTTP::Commands, std::function<bool (RequestType &)>> CommandFunctions;
+  PRESTResource(const PString& endpoint, CommandFunctions commandFunctions = CommandFunctions())
+    : PRESTResourceBase(endpoint)
+      , m_commandFunctions(std::move(commandFunctions))
+  { }
 
   virtual PHTTPRequest* CreateRequest(PHTTPServer& server, const PHTTPConnectionInfo& connectInfo) override
   {
     return new RequestType(server, connectInfo, this);
   }
+
+  virtual bool OnCommandFunction(PRESTRequestBase& request) override
+  {
+    auto it = m_commandFunctions.find(request.GetCommandCode());
+    return it != m_commandFunctions.end()
+                ? it->second(dynamic_cast<RequestType&>(request))
+                : PRESTResourceBase::OnCommandFunction(request);
+  }
+
+protected:
+  CommandFunctions m_commandFunctions;
 };
 
 #endif // P_HTTP
