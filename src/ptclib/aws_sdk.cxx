@@ -27,6 +27,7 @@
 #include <ptlib.h>
 
 #include <ptclib/aws_sdk.h>
+#include <utility>
 
 #if P_AWS_SDK
 
