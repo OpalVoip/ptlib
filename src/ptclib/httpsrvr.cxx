@@ -293,11 +293,20 @@ PBoolean PHTTPServer::ProcessCommand()
   // make sure the form info is reset for each new operation
   m_connectInfo.ResetMultipartFormInfo();
 
-  PTRACE(5, "Transaction: " << m_connectInfo.GetCommandName() << " \"" << args << "\","
-            " url=" << m_connectInfo.GetURL() << ","
-            " persist=" << std::boolalpha << m_connectInfo.IsPersistent() << ","
-            " proxy=" << m_connectInfo.IsProxyConnection() << ","
-            " websocket=" << m_connectInfo.IsWebSocket() << '\n' << m_connectInfo.m_mimeInfo);
+#if PTRACING
+  if (PTrace::CanTrace(4)) {
+    ostream& log = PTRACE_BEGIN(4);
+    log << "Request: " << m_connectInfo.GetCommandName() << " \"" << args << "\","
+           " url=" << m_connectInfo.GetURL();
+    if (PTrace::CanTrace(5))
+      log << ","
+             " persist=" << std::boolalpha << m_connectInfo.IsPersistent() << ","
+             " proxy=" << m_connectInfo.IsProxyConnection() << ","
+             " websocket=" << m_connectInfo.IsWebSocket() << '\n'
+          << m_connectInfo.m_mimeInfo;
+    log << PTrace::End;
+  }
+#endif
 
   if (m_connectInfo.IsWebSocket()) {
     if (!OnWebSocket(m_connectInfo))
@@ -666,7 +675,15 @@ bool PHTTPServer::StartResponse(StatusCode code,
     m_nextTimeout.SetInterval(STRANGE_NETSCAPE_BUG*1000);
 #endif
 
-  PTRACE(5, "HTTP response: " << statusInfo->code << ' ' << statusInfo->text << '\n' << headers);
+#if PTRACING
+  if (PTrace::CanTrace(4)) {
+    ostream& log = PTRACE_BEGIN(4);
+    log << "Response: " << statusInfo->code << ' ' << statusInfo->text;
+    if (PTrace::CanTrace(5))
+      log << '\n' << headers;
+    log << PTrace::End;
+  }
+#endif
   return chunked;
 }
 
@@ -1149,6 +1166,8 @@ void PHTTPListener::Worker::Work()
   while (m_httpServer->ProcessCommand()) {
     PTRACE(5, "Processed" << socketInfo << ", duration=" << m_httpServer->GetLastCommandTime().GetElapsed());
   }
+  PTRACE_IF(3, m_httpServer->GetErrorCode() != PChannel::NoError,
+            "Processing failed" << socketInfo << ", error=" << m_httpServer->GetErrorText());
 
   m_listener.OnHTTPEnded(*m_httpServer);
   PTRACE(5, "Ended" << socketInfo << ", duration=" << m_queuedTime.GetElapsed());
