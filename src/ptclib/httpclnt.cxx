@@ -76,7 +76,7 @@ class PHTTPClient_OutputBody
       PINDEX len = std::min(ob.m_length, PHTTPClient::MaxTraceContentSize);
       const char * ptr = static_cast<const char *>(ob.m_body);
       while (len-- > 0) {
-        if (isspace(*ptr) || isgraph(*ptr))
+        if (isprint(*ptr & 0xff))
           strm << *ptr;
         ++ptr;
       }
