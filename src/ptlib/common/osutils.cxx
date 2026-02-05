@@ -1321,7 +1321,7 @@ bool PDirectory::Create(const PString & p, int perm, bool recurse)
   PAssert(!p.IsEmpty(), "attempt to create dir with empty name");
 
   PDirectory dir = p;
-  
+
 #if defined(WIN32)
   if (_wmkdir(dir.AsWide()) == 0)
 #elif defined(P_VXWORKS)
@@ -1331,7 +1331,14 @@ bool PDirectory::Create(const PString & p, int perm, bool recurse)
 #endif
     return true;
 
-  return recurse && !dir.IsRoot() && dir.GetParent().Create(perm, true) && dir.Create(perm, false);
+  if (!recurse || dir.IsRoot())
+    return false;
+
+  PDirectory parent = dir.GetParent();
+  if (parent.Exists())
+    return false;
+
+  return parent.Create(perm, true) && dir.Create(perm, false);
 }
 
 
