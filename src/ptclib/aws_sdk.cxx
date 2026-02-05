@@ -353,6 +353,16 @@ bool PAwsSigner::Calculate(bool useHeaders)
   PString credentialScope = PSTRSTRM(credentialDatestamp << '/' << m_region << '/' << m_service << '/' << m_operation);
   PString credential = PSTRSTRM(m_awsAccessKeyId << '/' << credentialScope);
 
+  if (useHeaders)
+      m_headers.Set(AmzDate(), timestamp);
+  else {
+      m_uri.SetQueryVar(AmzExpires(), 60);
+      m_uri.SetQueryVar(AmzDate(), timestamp);
+      m_uri.SetQueryVar(AmzCredential(), credential);
+      m_uri.SetQueryVar(AmzSignedHeaders(), "x"); // Overwritten later, added here so get's into sortedQueryKeys
+      m_uri.SetQueryVar(AmzAlgorithm(), "AWS4-HMAC-SHA256");
+  }
+
   auto& queryVars = m_uri.GetQueryVars();
   std::set<PString> sortedQueryKeys;
   for (const auto& it : queryVars)
@@ -368,20 +378,8 @@ bool PAwsSigner::Calculate(bool useHeaders)
     sortedHeaderKeys.AppendString(key.ToLower());
   PString signedHeaders = PSTRSTRM(setfill(';') << sortedHeaderKeys);
 
-  if (useHeaders)
-    m_headers.Set(AmzDate(), timestamp);
-  else {
-    m_uri.SetQueryVar(AmzExpires(), 60);
-    m_uri.SetQueryVar(AmzDate(), timestamp);
-    m_uri.SetQueryVar(AmzCredential(), credential);
+  if (!useHeaders)
     m_uri.SetQueryVar(AmzSignedHeaders(), signedHeaders);
-    m_uri.SetQueryVar(AmzAlgorithm(), "AWS4-HMAC-SHA256");
-    sortedQueryKeys.emplace(AmzDate());
-    sortedQueryKeys.emplace(AmzExpires());
-    sortedQueryKeys.emplace(AmzAlgorithm());
-    sortedQueryKeys.emplace(AmzCredential());
-    sortedQueryKeys.emplace(AmzSignedHeaders());
-  }
 
   PStringStream canonical;
   canonical << m_command << '\n';
