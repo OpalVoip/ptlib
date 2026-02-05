@@ -534,7 +534,7 @@ bool PInternetProtocol::SetLastResponse(int code, const PString & info, ErrorGro
   PString errText = GetErrorText(group);
   int errNum = GetErrorNumber(group);
   if (errText.IsEmpty() && errNum == 0)
-    errText = "Remote shutdown";
+    errText = "remote TCP shutdown";
   else if (errText.IsEmpty())
     errText.sprintf("errno=%i", errNum);
   else

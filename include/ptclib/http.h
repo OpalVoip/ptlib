@@ -677,13 +677,15 @@ class PHTTPClient : public PHTTP, public PSSLCertificateInfo
     /// Read the body of the HTTP command as a string
     bool ReadContentBody(
       PMIMEInfo & replyMIME,        ///< Reply MIME from server
-      PString & body                ///< Received body as a string
+      PString & body,               ///< Received body as a string
+      PINDEX maxSize = P_MAX_INDEX  ///< Maximum size of body to read
     );
 
     /// Read the body of the HTTP command as a binary block
     bool ReadContentBody(
       PMIMEInfo & replyMIME,        ///< Reply MIME from server
-      PBYTEArray & body             ///< Received body as binary data
+      PBYTEArray & body,            ///< Received body as binary data
+      PINDEX maxSize = P_MAX_INDEX  ///< Maximum size of body to read
     );
 
 

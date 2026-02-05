@@ -116,17 +116,26 @@ struct PHTTPClient_DummyProcessor : public PHTTPContentProcessor
 struct PHTTPClient_StringReader : public PHTTPContentProcessor
 {
   PString & m_body;
+  PINDEX    m_maxLength;
+  char      m_overrun[4096];
 
-  PHTTPClient_StringReader(PString & body)
+  PHTTPClient_StringReader(PString & body, PINDEX maxLength)
     : PHTTPContentProcessor(true)
     , m_body(body)
+    , m_maxLength(maxLength)
   {
   }
 
   virtual void * GetBuffer(PINDEX & size)
   {
     PINDEX oldLength = m_body.GetLength();
-    char * ptr = m_body.GetPointerAndSetLength(oldLength + size);
+    if (oldLength >= m_maxLength) {
+      size = sizeof(m_overrun);
+      return m_overrun;
+    }
+    PINDEX newLength = std::min(m_maxLength, oldLength + size);
+    size = newLength - oldLength;
+    char * ptr = m_body.GetPointerAndSetLength(newLength);
     return ptr != NULL ? ptr + oldLength : NULL;
   }
 };
@@ -164,17 +173,26 @@ struct PHTTPClient_StringWriter : public PHTTPContentProcessor
 struct PHTTPClient_BinaryReader : public PHTTPContentProcessor
 {
   PBYTEArray & m_body;
+  PINDEX       m_maxSize;
+  BYTE         m_overrun[4096];
 
-  PHTTPClient_BinaryReader(PBYTEArray & body)
+  PHTTPClient_BinaryReader(PBYTEArray & body, PINDEX maxSize)
     : PHTTPContentProcessor(true)
     , m_body(body)
+    , m_maxSize(maxSize)
   {
   }
 
   virtual void * GetBuffer(PINDEX & size)
   {
     PINDEX oldSize = m_body.GetSize();
-    BYTE * ptr = m_body.GetPointer(oldSize+size);
+    if (oldSize >= m_maxSize) {
+        size = sizeof(m_overrun);
+        return m_overrun;
+    }
+    PINDEX newSize = std::min(m_maxSize, oldSize + size);
+    size = newSize - oldSize;
+    BYTE * ptr = m_body.GetPointer(newSize);
     return ptr != NULL ? ptr+oldSize : NULL;
   }
 };
@@ -354,7 +372,7 @@ PHTTP::StatusCode PHTTPClient::ExecuteCommand(Commands cmd,
       m_cookies.AddCookie(outMIME, adjustableURL);
 
     if (!WriteCommand(cmd, adjustableURL.AsString(m_commandUrlFormat), outMIME, processor))
-      continue;
+      break;
 
     // If not persisting need to shut down write so other end stops reading
     if (!m_persist && !outMIME.Has(ContentLengthTag))
@@ -536,20 +554,8 @@ bool PHTTPClient::ReadResponse(PMIMEInfo & replyMIME)
     return SetLastResponse(TransportReadError, "Response MIME", PChannel::LastReadError);
 
   PString body;
-  if (m_readBodyOnError && m_lastResponseCode >= 300) {
-    bool readOK;
-    static const long MaxBodyOnError = 1000; // Protect against malice
-    if (!replyMIME.Contains(ContentLengthTag())) {
-      body = ReadString(MaxBodyOnError);
-      readOK = ReadContentBody(replyMIME); // Waste body, if huge
-    }
-    else if (replyMIME.GetInteger(ContentLengthTag) < MaxBodyOnError)
-      readOK = ReadContentBody(replyMIME, body);
-    else {
-      readOK = ReadContentBody(replyMIME); // Waste body, if huge
-      body = "Large body ignored";
-    }
-    if (!readOK)
+  if (m_lastResponseCode >= 300) {
+    if (m_readBodyOnError && !ReadContentBody(replyMIME, body, 1000))
       return SetLastResponse(TransportReadError, "Response body", PChannel::LastReadError);
   }
   else if (m_lastResponseCode == NoContent && !replyMIME.Contains(ContentLengthTag))
@@ -568,8 +574,11 @@ bool PHTTPClient::ReadResponse(PMIMEInfo & replyMIME)
   }
 #endif
 
-  if (!body.IsEmpty())
-    m_lastResponseInfo += '\n' + body;
+  if (!body.empty()) {
+    m_lastResponseInfo += '\n' + body.Left(100);
+    if (body.length() > 100)
+      m_lastResponseInfo += "\n...";
+  }
 
   return true;
 }
@@ -582,16 +591,16 @@ bool PHTTPClient::ReadContentBody(PMIMEInfo & replyMIME)
 }
 
 
-bool PHTTPClient::ReadContentBody(PMIMEInfo & replyMIME, PString & body)
+bool PHTTPClient::ReadContentBody(PMIMEInfo & replyMIME, PString & body, PINDEX maxSize)
 {
-  PHTTPClient_StringReader processor(body);
+  PHTTPClient_StringReader processor(body, maxSize);
   return ReadContentBody(replyMIME, processor);
 }
 
 
-bool PHTTPClient::ReadContentBody(PMIMEInfo & replyMIME, PBYTEArray & body)
+bool PHTTPClient::ReadContentBody(PMIMEInfo & replyMIME, PBYTEArray & body, PINDEX maxSize)
 {
-  PHTTPClient_BinaryReader processor(body);
+  PHTTPClient_BinaryReader processor(body, maxSize);
   return ReadContentBody(replyMIME, processor);
 }
 
