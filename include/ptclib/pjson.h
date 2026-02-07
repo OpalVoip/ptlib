@@ -649,7 +649,7 @@ public:
 };
 
 
-template <typename REQUEST, typename RESPONSE>
+template <typename REQUEST = PDummyJSON, typename RESPONSE = PDummyJSON>
 class PRESTRequest : public PRESTRequestBase
 {
   PCLASSINFO(PRESTRequest, PRESTRequestBase);
@@ -685,7 +685,7 @@ public:
   virtual bool OnCommandFunction(PRESTRequestBase& request);
 };
 
-template <typename REQUEST, typename RESPONSE = PDummyJSON> 
+template <typename REQUEST = PDummyJSON, typename RESPONSE = PDummyJSON>
 class PRESTResource : public PRESTResourceBase
 {
   PCLASSINFO(PRESTResource, PRESTResourceBase);
