@@ -1939,15 +1939,17 @@ static void InfoCallback(const SSL * ssl, int location, int ret)
 #define SetInfoCallback(ctx) SSL_CTX_set_info_callback(ctx, InfoCallback);
 
 
-static void TraceVerifyCallback(int ok, X509_STORE_CTX * ctx, PSSLChannel * channel)
+static void TraceVerifyCallback(int preverify_ok, int final_ok, X509_STORE_CTX * ctx, PSSLChannel * channel)
 {
-  const unsigned Level = ok ? 5 : 2;
+  const unsigned Level = preverify_ok && final_ok ? 5 : 2;
   if (PTrace::CanTrace(Level)) {
     ostream & trace = PTRACE_BEGIN(Level);
     trace << "Verify callback: channel=" << (void *)channel;
     if (channel != NULL)
       trace << ' ' << channel->GetClassName();
-    trace << " depth=" << X509_STORE_CTX_get_error_depth(ctx);
+    trace << " pre=" << preverify_ok
+          << " final=" << final_ok
+          << " depth=" << X509_STORE_CTX_get_error_depth(ctx);
 
     int err = X509_STORE_CTX_get_error(ctx);
     if (err != 0)
@@ -1982,17 +1984,19 @@ static void TraceVerifyCallback(int ok, X509_STORE_CTX * ctx, PSSLChannel * chan
   #define TraceVerifyCallback(ok, ctx, channel)
 #endif // PTRACING
 
-static int VerifyCallback(int ok, X509_STORE_CTX * ctx)
+static int VerifyCallback(int preverify_ok, X509_STORE_CTX * ctx)
 {
-  PSSLChannel::VerifyInfo info(ok, X509_STORE_CTX_get_current_cert(ctx), X509_STORE_CTX_get_error(ctx));
-
+  int final_ok = preverify_ok;
   PSSLChannel * channel = NULL;
   SSL * ssl = reinterpret_cast<SSL *>(X509_STORE_CTX_get_ex_data(ctx, SSL_get_ex_data_X509_STORE_CTX_idx()));
-  if (ssl != NULL && (channel = reinterpret_cast<PSSLChannel *>(SSL_get_app_data(ssl))) != NULL)
+  if (ssl != NULL && (channel = reinterpret_cast<PSSLChannel*>(SSL_get_app_data(ssl))) != NULL) {
+    PSSLChannel::VerifyInfo info(preverify_ok, X509_STORE_CTX_get_current_cert(ctx), X509_STORE_CTX_get_error(ctx));
     channel->OnVerify(info);
+    final_ok = info.m_ok ? 1 : 0;
+  }
 
-  TraceVerifyCallback(ok, ctx, channel);
-  return info.m_ok;
+  TraceVerifyCallback(preverify_ok, final_ok, ctx, channel);
+  return final_ok;
 }
 
 
@@ -2014,11 +2018,15 @@ PSSLCertificateInfo::PSSLCertificateInfo(bool withDefaults)
 PSSLCertificateInfo::PSSLCertificateInfo(const PString & ca,
                                          const PString & certificate,
                                          const PString & privateKey,
-                                         bool autoCreate)
+                                         bool autoCreate,
+                                         const char* dn,
+                                         const PSSLVerifyInfo::Notifier & notifier)
   : m_sslCertificateAuthority(ca)
   , m_sslCertificate(certificate)
   , m_sslPrivateKey(privateKey)
   , m_sslAutoCreateCertificate(autoCreate)
+  , m_sslAutoCreateDN(dn)
+  , m_sslVerifyNotifier(notifier)
 {
 }
 
@@ -2094,25 +2102,41 @@ PString PSSLCertificateInfo::GetSSLAutoCreateDN() const
 }
 
 
+void PSSLCertificateInfo::SetSSLVerifyNotifier(const PSSLVerifyInfo::Notifier & notifier)
+{
+    PWaitAndSignal lock(m_sslInfoMutex);
+    m_sslVerifyNotifier = notifier;
+}
+
+
+PSSLVerifyInfo::Notifier PSSLCertificateInfo::GetSSLVerifyNotifier() const
+{
+  PWaitAndSignal lock(m_sslInfoMutex);
+  return m_sslVerifyNotifier;
+}
+
+
 bool PSSLCertificateInfo::SetSSLCredentials(const PString & authority,
                                             const PString & certificate,
                                             const PString & privateKey,
                                             bool autoCreate,
-                                            const char * dn)
+                                            const char * dn,
+                                            const PSSLVerifyInfo::Notifier & notifier)
 {
   PWaitAndSignal lock(m_sslInfoMutex);
   if (m_sslCertificateAuthority == authority &&
       m_sslCertificate == certificate &&
       m_sslPrivateKey == privateKey &&
-      m_sslAutoCreateCertificate == autoCreate)
+      m_sslAutoCreateCertificate == autoCreate &&
+      m_sslVerifyNotifier == notifier)
     return false;
 
   m_sslCertificateAuthority = authority;
   m_sslCertificate = certificate;
   m_sslPrivateKey = privateKey;
   m_sslAutoCreateCertificate = autoCreate;
-  if (dn != NULL)
-    m_sslAutoCreateDN = dn;
+  m_sslAutoCreateDN = dn;
+  m_sslVerifyNotifier = notifier;
   return true;
 }
 
@@ -2120,21 +2144,9 @@ bool PSSLCertificateInfo::SetSSLCredentials(const PString & authority,
 void PSSLCertificateInfo::GetSSLCredentials(PString & authority,
                                             PString & certificate,
                                             PString & privateKey,
-                                            bool & autoCreate) const
-{
-  PWaitAndSignal lock(m_sslInfoMutex);
-  authority = m_sslCertificateAuthority;
-  certificate = m_sslCertificate;
-  privateKey = m_sslPrivateKey;
-  autoCreate = m_sslAutoCreateCertificate;
-}
-
-
-void PSSLCertificateInfo::GetSSLCredentials(PString & authority,
-                                            PString & certificate,
-                                            PString & privateKey,
                                             bool & autoCreate,
-                                            PString & dn) const
+                                            PString & dn,
+                                            PSSLVerifyInfo::Notifier & notifier) const
 {
   PWaitAndSignal lock(m_sslInfoMutex);
   authority = m_sslCertificateAuthority.c_str();
@@ -2142,6 +2154,7 @@ void PSSLCertificateInfo::GetSSLCredentials(PString & authority,
   privateKey = m_sslPrivateKey.c_str();
   autoCreate = m_sslAutoCreateCertificate;
   dn = m_sslAutoCreateDN.c_str();
+  notifier = m_sslVerifyNotifier;
 }
 
 
@@ -2325,6 +2338,7 @@ bool PSSLContext::SetVerifySystemDefault()
       PTRACE(2, "Could not open Windows System Certificate store for context " << m_context);
 #else
     static const char * const caBundles[] = {
+      "/etc/pki/tls/certs/ca-bundle.trust.crt",
       "/etc/pki/tls/certs/ca-bundle.crt",
       "/etc/ssl/certs/ca-bundle.crt"
     };
@@ -2335,7 +2349,7 @@ bool PSSLContext::SetVerifySystemDefault()
       }
     }
 
-    PTRACE(2, "Could not set context " << m_context << " to system certficate store.");
+    PTRACE(2, "Could not set context " << m_context << " to system certificate store.");
 #endif // _WIN32
 
   return SSL_CTX_set_default_verify_paths(m_context);
@@ -2367,7 +2381,7 @@ void PSSLContext::SetVerifyMode(VerifyMode mode, unsigned depth)
   if (PAssertNULL(m_context) == NULL)
     return;
 
-  SSL_CTX_set_verify(m_context, VerifyModeBits[mode], VerifyCallback);
+  SSL_CTX_set_verify(m_context, VerifyModeBits[mode], NULL);
   SSL_CTX_set_verify_depth(m_context, depth);
 }
 
@@ -2383,6 +2397,12 @@ PSSLContext::VerifyMode PSSLContext::GetVerifyMode() const
   if ((v&SSL_VERIFY_FAIL_IF_NO_PEER_CERT) == 0)
     return VerifyPeer;
   return VerifyPeerMandatory;
+}
+
+
+PSSLContext::VerifyNotifier PSSLContext::GetVerifyNotifier() const
+{
+  return m_verifyNotifier;
 }
 
 
@@ -2463,23 +2483,25 @@ bool PSSLContext::SetCipherList(const PString & ciphers)
 }
 
 
-bool PSSLContext::SetCredentials(const PSSLCertificateInfo & info, bool create)
+bool PSSLContext::SetCredentials(const PString& authority,
+                                 const PString& certificate,
+                                 const PString& privateKey,
+                                 bool create,
+                                 const char * dn,
+                                 const VerifyNotifier& verifyNotifier)
 {
-  PString authority, certificate, privateKey, dn;
-  bool autoCreate;
-  info.GetSSLCredentials(authority, certificate, privateKey, autoCreate, dn);
-  return SetCredentials(authority, certificate, privateKey, create && autoCreate, dn);
+  return SetCredentials(PSSLCertificateInfo(authority, certificate, privateKey, create, dn, verifyNotifier));
 }
 
 
-bool PSSLContext::SetCredentials(const PString & authority,
-                                 const PString & certificate,
-                                 const PString & privateKey,
-                                 bool create,
-                                 const PString & dn)
+bool PSSLContext::SetCredentials(const PSSLCertificateInfo & info, bool create)
 {
   if (PAssertNULL(m_context) == NULL)
     return false;
+
+  PString authority, certificate, privateKey, dn;
+  bool autoCreate;
+  info.GetSSLCredentials(authority, certificate, privateKey, autoCreate, dn, m_verifyNotifier);
 
   if (!authority.IsEmpty()) {
     bool ok;
@@ -2499,7 +2521,6 @@ bool PSSLContext::SetCredentials(const PString & authority,
     SetVerifyMode(VerifyPeerMandatory);
   }
 
-  
   if (certificate.IsEmpty() && privateKey.IsEmpty()) {
     PTRACE(4, "No certificate in use.");
     return true;
@@ -2571,7 +2592,7 @@ bool PSSLContext::SetCredentials(const PString & authority,
     return false;
   }
 
-  PTRACE(4, "Using certificate \"" << certificate << "\" and key \"" << privateKey << '"');
+  PTRACE(4, "Context using certificate \"" << certificate << "\" and key \"" << privateKey << '"');
   return true;
 }
 
@@ -2631,6 +2652,7 @@ void PSSLChannel::Construct(PSSLContext * ctx, PBoolean autoDel)
   }
 
   SSL_set_app_data(m_ssl, this);
+  SetVerifyMode(m_context->GetVerifyMode(), m_context->GetVerifyNotifier());
 
   m_bioMethod = BIO_meth_new(BIO_TYPE_SOCKET, "PTLib-PSSLChannel");
   BIO_meth_set_write(m_bioMethod, BioWrite);
@@ -2995,8 +3017,13 @@ void PSSLChannel::SetVerifyMode(VerifyMode mode, const VerifyNotifier & notifier
 {
   m_verifyNotifier = notifier;
 
-  if (PAssertNULL(m_ssl) != NULL)
+  if (PAssertNULL(m_ssl) != NULL) {
+    if (!notifier.IsNULL() && mode == PSSLContext::VerifyNone)
+        mode = PSSLContext::VerifyPeer;
     SSL_set_verify(m_ssl, VerifyModeBits[mode], VerifyCallback);
+    PTRACE(5, "Verify mode for " << m_ssl << " set to " << mode
+           << ", callback=" << (void *)notifier.GetObject());
+  }
 }
 
 
@@ -3018,7 +3045,7 @@ bool PSSLChannel::GetPeerCertificate(PSSLCertificate & certificate, PString * er
   long err = SSL_get_verify_result(m_ssl);
   certificate.Attach(SSL_get_peer_certificate(m_ssl));
 
-  if (err == X509_V_OK && certificate.IsValid())
+  if ((err == X509_V_OK || err == X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT) && certificate.IsValid())
     return true;
 
   if (error != NULL) {

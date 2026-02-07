@@ -40,6 +40,7 @@ static const char * CRLF = "\r\n";
 
 
 #define new PNEW
+#define PTraceModule() "IntProt"
 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -400,6 +401,9 @@ PBoolean PInternetProtocol::ReadCommand(PINDEX & num, PString & args)
   num = commandNames.GetValuesIndex(cmd);
   if (num != P_MAX_INDEX)
     args = args.Mid(endCommand+1);
+  else {
+    PTRACE(3, "Unknown command: " << args.ToLiteral());
+  }
 
   return true;
 }

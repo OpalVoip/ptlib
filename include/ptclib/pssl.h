@@ -704,11 +704,27 @@ class PSHA1Context : public PObject, PNonCopyable
 
 class PSSLContext;
 
-/** Encapsulation of the infromation to handle certificates with SSL.
+struct PSSLVerifyInfo
+{
+  PSSLVerifyInfo(bool ok, const PSSLCertificate & cert, int err)
+    : m_ok(ok), m_peerCertificate(cert), m_errorCode(err) { }
+  bool m_ok;
+  PSSLCertificate m_peerCertificate;
+  int m_errorCode;
+
+  typedef PNotifierTemplate<PSSLVerifyInfo &> Notifier;
+};
+
+
+/** Encapsulation of the information to handle certificates with SSL.
  */
 class PSSLCertificateInfo
 {
 public:
+  #define PDECLARE_SSLVerifyNotifier(cls, fn) PDECLARE_NOTIFIER_EXT(PSSLChannel, , cls, fn, PSSLVerifyInfo &, info)
+  #define PCREATE_SSLVerifyNotifier(fn) PCREATE_NOTIFIER2(fn, PSSLVerifyInfo &)
+
+
   ///  Construction
   PSSLCertificateInfo(
     bool withDefaults = false
@@ -717,7 +733,9 @@ public:
     const PString & authority,    ///< Certificate Authority directory, file or data
     const PString & certificate,  ///< Local certificate filename or data
     const PString & privateKey,   ///< Private key filename or data for above local certificate
-    bool autoCreate = false       ///< If certificate/privateKey are file paths, and do not exist, then create.
+    bool autoCreate = false,      ///< If certificate/privateKey are file paths, and do not exist, then create.
+    const char * dn = NULL,       ///< Distinguished Name to use if creating certificate
+    const PSSLVerifyInfo::Notifier& notifier = PSSLVerifyInfo::Notifier() ///< Notifier for certificate verification
   );
 
   virtual ~PSSLCertificateInfo() { }
@@ -785,6 +803,14 @@ public:
    */
   PString GetSSLAutoCreateDN() const;
 
+  /**Set callback function for verifying certificates.
+   */
+  void SetSSLVerifyNotifier(const PSSLVerifyInfo::Notifier & notifier);
+
+  /**Get callback function for verifying certificates.
+   */
+  PSSLVerifyInfo::Notifier GetSSLVerifyNotifier() const;
+
   /**Set all the certificate info.
      @return true if credentials changed from previous value
    */
@@ -793,36 +819,25 @@ public:
     const PString & certificate,  ///< Local certificate filename or data
     const PString & privateKey,   ///< Private key filename or data for above local certificate
     bool autoCreate = false,      ///< If certificate/privateKey are file paths, and do not exist, then create.
-    const char * dn = NULL        ///< Distinguished Name to use if creating certificate
+    const char * dn = NULL,       ///< Distinguished Name to use if creating certificate
+    const PSSLVerifyInfo::Notifier & notifier = PSSLVerifyInfo::Notifier() ///< Notifier for certificate verification results
   );
   bool SetSSLCredentials(
     const PSSLCertificateInfo & info  ///< Other certificate info to copy from
   );
 
   /**Get all the certificate info. */
-  P_DEPRECATED void GetSSLCredentials(
-    PString & authority,    ///< Certificate Authority directory, file or data
-    PString & certificate,  ///< Local certificate filename or data
-    PString & privateKey,   ///< Private key filename or data for above local certificate
-    bool & autoCreate       ///< If certificate/privateKey are file paths, and do not exist, then create.
-  ) const;
   void GetSSLCredentials(
     PString & authority,    ///< Certificate Authority directory, file or data
     PString & certificate,  ///< Local certificate filename or data
     PString & privateKey,   ///< Private key filename or data for above local certificate
     bool & autoCreate,      ///< If certificate/privateKey are file paths, and do not exist, then create.
-    PString & dn            ///< Distinguished Name to use if creating certificate
+    PString & dn,           ///< Distinguished Name to use if creating certificate
+    PSSLVerifyInfo::Notifier & notifier ///< Notifier for certificate verification results
   ) const;
 
   ///  Indicate if there is certificate info available.
   bool HasSSLCertificates() const;
-
-  P_DEPRECATED PString GetSSLCertificateAuthorityFiles() const { return GetSSLCertificateAuthority(); }
-  P_DEPRECATED void SetSSLCertificateAuthorityFiles(const PString & ca) { SetSSLCertificateAuthority(ca); }
-  P_DEPRECATED PString GetSSLCertificateFile() const { return GetSSLCertificate();  }
-  P_DEPRECATED void SetSSLCertificateFile(const PString & cert) { SetSSLCertificate(cert); }
-  P_DEPRECATED PString GetSSLPrivateKeyFile() const { return GetSSLPrivateKey(); }
-  P_DEPRECATED void SetSSLPrivateKeyFile(const PString & key) { SetSSLPrivateKey(key); }
 
 protected:
   PString m_sslCertificateAuthority;
@@ -830,6 +845,7 @@ protected:
   PString m_sslPrivateKey;
   bool    m_sslAutoCreateCertificate;
   PString m_sslAutoCreateDN;
+  PSSLVerifyInfo::Notifier m_sslVerifyNotifier;
 
 private:
   mutable PCriticalSection m_sslInfoMutex;
@@ -927,9 +943,15 @@ class PSSLContext : public PObject, PNonCopyable
       unsigned depth = 9  ///< Verification depth (max number of certs in chain)
     );
 
-    /**Set certificate verification mode for connection.
+    /**Get certificate verification mode for connection.
       */
     VerifyMode GetVerifyMode() const;
+
+    typedef PSSLVerifyInfo::Notifier VerifyNotifier;
+
+    /**Get certificate verification callback.
+      */
+    VerifyNotifier GetVerifyNotifier() const;
 
     /**Set the CA certificate(s) to send to client from server.
       */
@@ -967,7 +989,7 @@ class PSSLContext : public PObject, PNonCopyable
     /**Set the credentials for the context.
       */
     bool SetCredentials(
-      const PSSLCertificateInfo & info,  ///< Informaation about certificates to use.
+      const PSSLCertificateInfo & info,  ///< Information about certificates to use.
       bool create = false                ///< Create self signed cert/key if required & enabled
     );
     bool SetCredentials(
@@ -975,7 +997,8 @@ class PSSLContext : public PObject, PNonCopyable
       const PString & certificate,  ///< Local certificate file or data
       const PString & privateKey,   ///< Private key file or data for local certificate
       bool create = false,          ///< If certificate/provateKey are file paths and do not exist, then create.
-      const PString & dn = PString::Empty() ///< Distinguished Name to use if creating certificate
+      const char * dn = NULL,       ///< Distinguished Name to use if creating certificate
+      const VerifyNotifier& verifyNotifier = VerifyNotifier() ///< Notifier for certificate verification results
     );
 
     /// Set the notifier for when SSL needs to get a password to unlock a private key.
@@ -996,6 +1019,7 @@ class PSSLContext : public PObject, PNonCopyable
     Method       m_method;
     ssl_ctx_st * m_context;
     PSSLPasswordNotifier m_passwordNotifier;
+    VerifyNotifier m_verifyNotifier;
 };
 
 
@@ -1094,17 +1118,8 @@ class PSSLChannel : public PIndirectChannel
     PString GetCipherList() const;
 
     typedef PSSLContext::VerifyMode VerifyMode;
-
-    struct VerifyInfo
-    {
-      VerifyInfo(bool ok, const PSSLCertificate & cert, int err) : m_ok(ok), m_peerCertificate(cert), m_errorCode(err) { }
-      bool m_ok;
-      PSSLCertificate m_peerCertificate;
-      int m_errorCode;
-    };
-    typedef PNotifierTemplate<VerifyInfo &> VerifyNotifier;
-    #define PDECLARE_SSLVerifyNotifier(cls, fn) PDECLARE_NOTIFIER2(PSSLChannel, cls, fn, PSSLChannel::VerifyInfo &)
-    #define PCREATE_SSLVerifyNotifier(fn) PCREATE_NOTIFIER2(fn, PSSLChannel::VerifyInfo &)
+    typedef PSSLVerifyInfo VerifyInfo;
+    typedef PSSLVerifyInfo::Notifier VerifyNotifier;
 
     /**Set certificate verification mode for connection.
       */

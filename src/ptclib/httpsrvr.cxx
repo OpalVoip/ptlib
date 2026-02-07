@@ -253,7 +253,6 @@ PBoolean PHTTPServer::ProcessCommand()
 
   m_connectInfo.m_commandCode = (Commands)cmd;
   if (cmd >= NumCommands) {
-    PTRACE(4, "Unknown command.");
     OnError(BadRequest, args.ToLiteral(), m_connectInfo);
     return false;
   }
