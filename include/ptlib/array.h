@@ -1066,8 +1066,8 @@ template <class T> class PArray : public PArrayObjects
     const_iterator rbegin() const { return empty() ? end() : const_iterator(this, this->GetSize()-1); }
     const_iterator rend()   const { return const_iterator(NULL, P_MAX_INDEX); }
 
-    value_type & front() const { return this->GetAt(0); }
-    value_type & back() const { return this->GetAt(GetSize()-1); }
+    const value_type & front() const { PAssert(!empty(), PInvalidArrayElement); return *dynamic_cast<const value_type *>(this->GetAt(0)); }
+    const value_type & back() const { PAssert(!empty(), PInvalidArrayElement); return *dynamic_cast<const value_type *>(this->GetAt(GetSize()-1)); }
     void erase(const iterator & it) { this->RemoveAt(it.m_position); }
     void erase(const const_iterator & it) { this->RemoveAt(it.m_position); }
     void push_front(const value_type & value) { this->InsertAt(0, new value_type(value)); }
