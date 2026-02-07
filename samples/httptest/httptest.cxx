@@ -138,58 +138,49 @@ public:
 
   void Server(const PArgList & args)
   {
-    PQueuedThreadPool<HTTPConnection> pool;
-    pool.SetMaxWorkers(args.GetOptionString('T', "10").AsUnsigned());
+    PHTTPListener listener;
+    auto & httpSpace = listener.GetSpace();
+    httpSpace.AddResource(new PHTTPString("index.html", "Hello", "text/plain"));
+    httpSpace.AddResource(new PHTTPString("sub/index.html", "Hello Sub", "text/plain"));
+    httpSpace.AddResource(new PHTTPString("sub/fred.html", "Fred", "text/plain"));
+    httpSpace.AddResource(new PHTTPString("sub/fred/nurk/esquire.html", "Fred Nurk Esquire", "text/plain"));
+    httpSpace.AddResource(new PHTTPString("sub/wildcard/*", "Wildcard", "text/plain"));
+    httpSpace.AddResource(new PHTTPDirectory("files", PDirectory()));
+
+    if (!PAssert(!httpSpace.AddResource(new PHTTPString("index.html", "Hello", "text/plain")), PLogicError))
+      return;
+    if (!PAssert(httpSpace.AddResource(new PHTTPString("index.html", "Hello", "text/plain"), PHTTPSpace::Overwrite), PLogicError))
+      return;
 
 #if P_SSL
-    PSSLContext * sslContext = args.HasOption('s') ? new PSSLContext : NULL;
-    if (sslContext != NULL) {
-      if (!sslContext->SetCredentials(args.GetOptionString("ca", "."),
-                                      args.GetOptionString("certificate", "certificate.pem"),
-                                      args.GetOptionString("private-key", "privatekey.pem"),
-                                      true)) {
-        cerr << "Could not set credentials for SSL" << endl;
-        return;
-      }
+    if (args.HasOption('s')) {
+      listener.SetSSLCredentials(args.GetOptionString("ca", "*"),
+                                 args.GetOptionString("certificate", "certificate.pem"),
+                                 args.GetOptionString("private-key", "privatekey.pem"),
+                                 true);
     }
-
-    PTCPSocket listener(args.GetOptionAs('p', (WORD)(sslContext != NULL ? 443 : 80)));
-#else
-    PTCPSocket listener(args.GetOptionAs('p', 80));
-#endif
-
-    if (!listener.Listen(args.GetOptionString('Q', "100").AsUnsigned())) {
+    if (!listener.ListenForHTTP(args.GetOptionString('i'),
+                                args.GetOptionAs('p', (WORD)(listener.HasSSLCertificates() ? 443 : 80)),
+                                PSocket::CanReuseAddress,
+                                args.GetOptionString('Q', "100").AsUnsigned())) {
       cerr << "Could not listen on port " << listener.GetPort() << endl;
       return;
     }
-
-    PHTTPSpace httpNameSpace;
-    httpNameSpace.AddResource(new PHTTPString("index.html", "Hello", "text/plain"));
-
-    cout << "Listening for "
-#if P_SSL
-      << (sslContext != NULL ? "https" : "http") <<
+    cout << "Listening for " << (listener.HasSSLCertificates() ? "https" : "http")
+         << " on port " << listener.GetPort() << endl;
 #else
-      "http"
-#endif
-      " on port " << listener.GetPort() << endl;
-
-    for (;;) {
-#if P_SSL
-      HTTPConnection * connection = new HTTPConnection(httpNameSpace, sslContext);
-#else
-      HTTPConnection * connection = new HTTPConnection(httpNameSpace);
-#endif
-      if (connection->m_socket.Accept(listener))
-        pool.AddWork(connection);
-      else {
-        delete connection;
-        cerr << "Error in accept: " << listener.GetErrorText() << endl;
-        break;
-      }
+    if (!listener.ListenForHTTP(args.GetOptionString('i'),
+                                args.GetOptionAs('p', 80),
+                                PSocket::CanReuseAddress,
+                                args.GetOptionString('Q', "100").AsUnsigned())) {
+      cerr << "Could not listen on port " << listener.GetPort() << endl;
+      return;
     }
+    cout << "Listening for http on port " << listener.GetPort() << endl;
+#endif
 
-    cout << "Exiting HTTP test" << endl;
+    cout << "\nPress Enter to exit HTTP server test ..." << flush;
+    cin.get();
   }
 
 
@@ -200,6 +191,7 @@ public:
                "O-operation:  do a GET/POST/PUT/DELETE/auth, if absent then acts as server\n"
                "P-pool.       do above operation using client pool"
                "p-port:       port number to listen on (default 80 or 443).\n"
+               "i-interface:  interface to listen on (default is all).\n"
 #if P_SSL
                "s-secure.     SSL/TLS mode for server.\n"
                "-ca:          SSL/TLS client certificate authority file/directory.\n"

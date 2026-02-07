@@ -52,16 +52,14 @@
 class PHTTPResource;
 
 /** This class describes a name space that a Universal Resource Locator operates
-   in. Each section of the hierarchy field of the URL points to a leg in the
-   tree specified by this class.
+   in. The longest path possible is selected.
  */
-class PHTTPSpace : public PContainer
+class PHTTPSpace : public PObject
 {
-  PCONTAINERINFO(PHTTPSpace, PContainer)
+    PCLASSINFO(PHTTPSpace, PObject)
   public:
     /// Constructor for HTTP URL Name Space
-    PHTTPSpace();
-
+    PHTTPSpace() = default;
 
   // New functions for class.
     enum AddOptions {
@@ -81,7 +79,7 @@ class PHTTPSpace : public PContainer
        @return
        true if resource added, false if failed.
      */
-    PBoolean AddResource(
+    bool AddResource(
       PHTTPResource * resource, ///< Resource to add to the name space.
       AddOptions overwrite = ErrorOnExist
         ///< Flag to overwrite an existing resource if it already exists.
@@ -94,7 +92,7 @@ class PHTTPSpace : public PContainer
        @return
        true if resource deleted, false if failed.
      */
-    PBoolean DelResource(
+    bool DelResource(
       const PURL & url          ///< URL to search for in the name space.
     );
 
@@ -107,46 +105,12 @@ class PHTTPSpace : public PContainer
       const PURL & url   ///< URL to search for in the name space.
     );
 
-    /** This function attempts to acquire the mutex for reading.
-     */
-    void StartRead() const
-      { mutex->StartRead(); }
-
-    /** This function attempts to release the mutex for reading.
-     */
-    void EndRead() const
-      { mutex->EndRead(); }
-
-    /** This function attempts to acquire the mutex for writing.
-     */
-    void StartWrite() const
-      { mutex->StartWrite(); }
-
-    /** This function attempts to release the mutex for writing.
-     */
-    void EndWrite() const
-      { mutex->EndWrite(); }
-
+    ///  Indicate there are no resource in the space.
+    bool IsEmpty() const { return m_resources.empty(); }
 
   protected:
-    PReadWriteMutex * mutex;
-
-    class Node;
-    typedef PSortedList<Node> ChildList;
-    class Node : public PString
-    {
-      PCLASSINFO(Node, PString)
-      public:
-        Node(const PString & name, Node * parentNode);
-        ~Node();
-
-        Node          * parent;
-        ChildList       children;
-        PHTTPResource * resource;
-    } * root;
-
-  private:
-    PBoolean SetSize(PINDEX) override { return false; }
+    PHTTPResource * InternalFindResource(PURL url, bool includeWildcards);
+    std::map<PString, std::shared_ptr<PHTTPResource>> m_resources;
 };
 
 #ifdef TRACE
@@ -1634,6 +1598,7 @@ class PHTTPServer : public PHTTP
     PTime               m_serviceStartTime;
     PTime               m_lastCommandTime;
     PHTTPSpace          m_urlSpace;
+    PReadWriteMutex     m_urlSpaceMutex;
     PHTTPConnectionInfo m_connectInfo;
     unsigned            m_transactionCount;
     PTimeInterval       m_nextTimeout;
@@ -2088,10 +2053,6 @@ class PHTTPResource : public PObject
     );
 
   public:
-    virtual ~PHTTPResource();
-    // Destroy the HTTP Resource.
-
-
   // New functions for class.
     /** Get the URL for this resource.
 
@@ -2117,7 +2078,7 @@ class PHTTPResource : public PObject
        Pointer to authority or NULL if unrestricted.
      */
 
-    PHTTPAuthority * GetAuthority() const { return m_authority; }
+    PHTTPAuthority * GetAuthority() const { return m_authority.get(); }
 
     /** Set the current authority for the resource.
      */
@@ -2444,7 +2405,7 @@ class PHTTPResource : public PObject
 
     PURL             m_baseURL;     ///< Base URL for the resource, may accept URLS with a longer hierarchy
     PString          m_contentType; ///< MIME content type for the resource
-    PHTTPAuthority * m_authority;   ///< Authorisation method for the resource
+    std::unique_ptr<PHTTPAuthority> m_authority;   ///< Authorisation method for the resource
     PStringOptions   m_corsHeaders; ///< Cross-Origin Resource Sharing (CORS) headers
     atomic<unsigned> m_hitCount;    ///< Count of number of times resource was accessed. 
 

@@ -406,11 +406,7 @@ void PHTTPServiceProcess::OnHTTPEnded(PHTTPServer & /*server*/)
 
 void PHTTPServiceProcess::EndRestartSystem()
 {
-  m_httpNameSpace.StartWrite();
-  bool initialised = Initialise("Restart\tInitialisation");
-  m_httpNameSpace.EndWrite();
-
-  if (!initialised)
+  if (!Initialise("Restart\tInitialisation"))
     OnStop();
 }
 

@@ -58,118 +58,29 @@ static PTimeInterval ReadHeaderTimeout(0, 3);
 //////////////////////////////////////////////////////////////////////////////
 // PHTTPSpace
 
-PHTTPSpace::PHTTPSpace()
+bool PHTTPSpace::AddResource(PHTTPResource * res, AddOptions overwrite)
 {
-  mutex = new PReadWriteMutex("HTTP Space");
-  root = new Node(PString(), NULL);
-}
+  if (!PAssert(res != NULL, PInvalidParameter))
+    return false;
 
+  const PString path = res->GetURL().GetPathStr();
 
-void PHTTPSpace::DestroyContents()
-{
-  delete mutex;
-  delete root;
-}
+  std::shared_ptr<PHTTPResource> resPtr(res);
+  if (overwrite == ErrorOnExist)
+    return m_resources.emplace(path, std::move(resPtr)).second;
 
-
-void PHTTPSpace::CloneContents(const PHTTPSpace * c)
-{
-  mutex = new PReadWriteMutex("HTTP Space");
-  root = new Node(*c->root);
-}
-
-
-void PHTTPSpace::CopyContents(const PHTTPSpace & c)
-{
-  mutex = c.mutex;
-  root = c.root;
-}
-
-
-PHTTPSpace::Node::Node(const PString & nam, Node * parentNode)
-  : PString(nam)
-{
-  parent = parentNode;
-  resource = NULL;
-}
-
-
-PHTTPSpace::Node::~Node()
-{
-  delete resource;
-}
-
-
-PBoolean PHTTPSpace::AddResource(PHTTPResource * res, AddOptions overwrite)
-{
-  PAssert(res != NULL, PInvalidParameter);
-  const PStringArray & path = res->GetURL().GetPath();
-  Node * node = root;
-  for (PINDEX i = 0; i < path.GetSize(); i++) {
-    if (path[i].IsEmpty())
-      break;
-
-    if (node->resource != NULL) {
-      delete res;
-      return false;   // Already a resource in tree in partial path
-    }
-
-    PINDEX pos = node->children.GetValuesIndex(path[i]);
-    if (pos == P_MAX_INDEX)
-      pos = node->children.Append(new Node(path[i], node));
-
-    node = &node->children[pos];
-  }
-
-  if (!node->children.IsEmpty()) {
-    delete res;
-    return false;   // Already a resource in tree further down path.
-  }
-
-  if (overwrite == ErrorOnExist && node->resource != NULL) {
-    delete res;
-    return false;   // Already a resource in tree at leaf
-  }
-
-  delete node->resource;
-  node->resource = res;
-
+  auto it = m_resources.find(path);
+  if (it == m_resources.end())
+    it->second = std::move(resPtr);
+  else
+    m_resources.emplace(path, std::move(resPtr));
   return true;
 }
 
 
 PBoolean PHTTPSpace::DelResource(const PURL & url)
 {
-  const PStringArray & path = url.GetPath();
-  Node * node = root;
-  for (PINDEX i = 0; i < path.GetSize(); i++) {
-    if (path[i].IsEmpty())
-      break;
-
-    PINDEX pos = node->children.GetValuesIndex(path[i]);
-    if (pos == P_MAX_INDEX)
-      return false;
-
-    node = &node->children[pos];
-
-    // If have resource and not last node, then trying to remove something
-    // further down the tree than a leaf node.
-    if (node->resource != NULL && i < (path.GetSize()-1))
-      return false;
-  }
-
-  if (!node->children.IsEmpty())
-    return false;   // Still a resource in tree further down path.
-
-  if (node->parent != NULL) {
-    do {
-      Node * par = node->parent;
-      par->children.Remove(node);
-      node = par;
-    } while (node->parent != NULL && node->children.IsEmpty());
-  }
-
-  return true;
+  return m_resources.erase(url.GetPathStr()) > 0;
 }
 
 
@@ -180,33 +91,42 @@ static const char * const HTMLIndexFiles[] = {
 
 PHTTPResource * PHTTPSpace::FindResource(const PURL & url)
 {
-  const PStringArray & path = url.GetPath();
+  auto resource = InternalFindResource(url, true);
+  if (resource)
+    return resource;
 
-  Node * node = root;
-  PINDEX i;
-  for (i = 0; i < path.GetSize(); i++) {
-    if (path[i].IsEmpty())
-      break;
-
-    PINDEX pos = node->children.GetValuesIndex(path[i]);
-    if (pos == P_MAX_INDEX)
-      return NULL;
-
-    node = &node->children[pos];
-
-    if (node->resource != NULL)
-      return node->resource;
+  for (size_t i = 0; i < PARRAYSIZE(HTMLIndexFiles); i++) {
+    PURL urlWithIndex = url;
+    urlWithIndex.AppendPath(HTMLIndexFiles[i]);
+    resource = InternalFindResource(urlWithIndex, false);
+    if (resource)
+      return resource;
   }
 
-  for (i = 0; i < PARRAYSIZE(HTMLIndexFiles); i++) {
-    PINDEX pos = node->children.GetValuesIndex(PString(HTMLIndexFiles[i]));
-    if (pos != P_MAX_INDEX)
-      return node->children[pos].resource;
-  }
-
-  return NULL;
+  return nullptr;
 }
 
+
+PHTTPResource * PHTTPSpace::InternalFindResource(PURL url, bool includeWildcards)
+{
+  while (!url.GetPath().empty()) {
+    auto it = m_resources.find(url.GetPathStr());
+    if (it != m_resources.end())
+      return it->second.get();
+
+    if (includeWildcards) {
+     // Check for wildcard resource
+      url.ChangePath("*");
+      it = m_resources.find(url.GetPathStr());
+      if (it != m_resources.end())
+        return it->second.get();
+    }
+
+    // Remove last segment of path and search again
+    url.ChangePath(PString::Empty());
+  }
+  return nullptr;
+}
 
 //////////////////////////////////////////////////////////////////////////////
 // PHTTPServer
@@ -357,14 +277,14 @@ bool PHTTPServer::OnCommand(PINDEX cmd, const PURL &, const PString & args, PHTT
 {
   bool persist = false;
 
-  m_urlSpace.StartRead();
+  m_urlSpaceMutex.StartRead();
   PHTTPResource* resource = m_urlSpace.FindResource(connectInfo.GetURL());
   if (resource != NULL) {
     resource->OnCommand(*this, m_connectInfo);
-    m_urlSpace.EndRead();
+    m_urlSpaceMutex.EndRead();
   }
   else {
-    m_urlSpace.EndRead();
+    m_urlSpaceMutex.EndRead();
 
     // Handle the local request
     switch (cmd) {
@@ -419,41 +339,31 @@ bool PHTTPServer::OnWebSocket(PHTTPConnectionInfo & connectInfo)
     }
   }
 
-  bool persist = false;
- 
-  m_urlSpace.StartRead();
+  PReadWaitAndSignal lock(m_urlSpaceMutex);
 
   PHTTPResource * resource = m_urlSpace.FindResource(connectInfo.GetURL());
   if (resource == NULL) {
     if (!m_urlSpace.IsEmpty() || supportedGlobally.IsEmpty())
-      persist = OnError(NotFound, connectInfo.GetURL().AsString(), connectInfo);
-    else
-      SwitchToWebSocket(supportedGlobally, key);
-  }
-  else if (!supportedGlobally.IsEmpty()) {
+      return OnError(NotFound, connectInfo.GetURL().AsString(), connectInfo);
     SwitchToWebSocket(supportedGlobally, key);
-    persist = resource->OnWebSocket(*this, connectInfo);
+    return false;
   }
-  else {
-    bool found = false;
-    for (PINDEX i = 0; i < protocols.GetSize(); ++i) {
-      PString protocol = protocols[i];
-      if (resource->SupportsWebSocketProtocol(protocol)) {
-        SwitchToWebSocket(protocol, key);
-        persist = resource->OnWebSocket(*this, connectInfo);
-        found = true;
-        break;
-      }
-    }
-    if (!found) {
-      PTRACE(3, "Unsupported WebSocket protocols: " << setfill(',') << protocols);
-      persist = OnError(NotFound, "Unsupported WebSocket protocol", connectInfo);
+
+  if (!supportedGlobally.IsEmpty()) {
+    SwitchToWebSocket(supportedGlobally, key);
+    return resource->OnWebSocket(*this, connectInfo);
+  }
+
+  for (PINDEX i = 0; i < protocols.GetSize(); ++i) {
+    PString protocol = protocols[i];
+    if (resource->SupportsWebSocketProtocol(protocol)) {
+      SwitchToWebSocket(protocol, key);
+      return resource->OnWebSocket(*this, connectInfo);
     }
   }
 
-  m_urlSpace.EndRead();
-
-  return persist;
+  PTRACE(3, "Unsupported WebSocket protocols: " << setfill(',') << protocols);
+  return OnError(NotFound, "Unsupported WebSocket protocol", connectInfo);
 }
 
 
@@ -806,7 +716,7 @@ bool PHTTPListener::ListenForHTTP(WORD port, PSocket::Reusability reuse, unsigne
 
 bool PHTTPListener::ListenForHTTP(const PString & interfaces, WORD port, PSocket::Reusability reuse, unsigned queueSize)
 {
-  if (m_listenerInterfaces == interfaces && m_listenerPort == port)
+  if (m_listenerInterfaces == interfaces && m_listenerPort == port && IsListening())
     return true;
 
   ShutdownListeners();
@@ -1897,7 +1807,6 @@ PBoolean PHTTPConnectionInfo::IsCompatible(int major, int minor) const
 
 PHTTPResource::PHTTPResource(const PURL & url)
   : m_baseURL(url)
-  , m_authority(NULL)
   , m_hitCount(0)
 {
 }
@@ -1914,7 +1823,6 @@ PHTTPResource::PHTTPResource(const PURL & url, const PHTTPAuthority & auth)
 PHTTPResource::PHTTPResource(const PURL & url, const PString & type)
   : m_baseURL(url)
   , m_contentType(type)
-  , m_authority(NULL)
   , m_hitCount(0)
 {
 }
@@ -1940,12 +1848,6 @@ PHTTPResource::PHTTPResource(const PURL & url,
   , m_hitCount(0)
 {
   SetAllowedOrigins(allowedOrigins);
-}
-
-
-PHTTPResource::~PHTTPResource()
-{
-  delete m_authority;
 }
 
 
@@ -2101,7 +2003,7 @@ PBoolean PHTTPResource::CheckAuthority(PHTTPServer & server,
                             const PHTTPRequest & request,
                      const PHTTPConnectionInfo & connectInfo)
 {
-  if (m_authority == NULL)
+  if (!m_authority)
     return true;
 
   return CheckAuthority(*m_authority, server, request, connectInfo);
@@ -2158,15 +2060,13 @@ PBoolean PHTTPResource::CheckAuthority(PHTTPAuthority & authority,
 
 void PHTTPResource::SetAuthority(const PHTTPAuthority & auth)
 {
-  delete m_authority;
-  m_authority = (PHTTPAuthority *)auth.Clone();
+  m_authority.reset(auth.CloneAs<PHTTPAuthority>());
 }
 
 
 void PHTTPResource::ClearAuthority()
 {
-  delete m_authority;
-  m_authority = NULL;
+  m_authority.reset();
 }
 
 
