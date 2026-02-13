@@ -2845,6 +2845,10 @@ PBoolean PVXMLSession::PlayResource(const PString & src, PINDEX repeat, PINDEX d
   PString suffix;
   if (contentType.empty())
     suffix = src.Mid(src.FindLast('.'));
+  else if (contentType == "text/plain")
+    suffix = ".txt";
+  else if (contentType == "application/ssml+xml")
+    suffix = ".ssml";
   else if (contentType == "audio/wav" || contentType == "audio/x-wav")
     suffix = ".wav";
   else if (contentType == "audio/mp3")
@@ -2861,8 +2865,16 @@ PBoolean PVXMLSession::PlayResource(const PString & src, PINDEX repeat, PINDEX d
     suffix = ".weba";
   else if (contentType == "audio/x-ms-wma")
     suffix = ".wma";
-  else
+  else {
+    PTRACE(3, "Unsupported audio file: " << src << " content type=\"" << contentType << '"');
     return false;
+  }
+
+  if (suffix == ".txt")
+    return PlayText(data, m_promptType, repeat, delay);
+
+  if (suffix == ".ssml")
+    return GetVXMLChannel()->QueuePlayable("TTS", PSTRSTRM(PTextToSpeech::FullSSML << '\n' << PString(data)));
 
   PFile tmpFile;
   return tmpFile.Open(PFilePath("VXML", NULL, suffix), PFile::WriteOnly) &&
