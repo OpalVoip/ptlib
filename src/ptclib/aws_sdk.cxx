@@ -313,16 +313,18 @@ bool PAwsSigner::Calculate(bool useHeaders)
   PString hostname = m_uri.GetHostName();
   if (hostname.empty())
     hostname = m_headers.GetString(PHTTP::HostTag);
+  else
+    m_headers.SetString(PHTTP::HostTag, m_uri.GetHostPort(true)); // Must agree
 
   PStringArray hostParts = hostname.Tokenise('.');
   switch (hostParts.size()) {
     case 0 :
       m_uri.SetHostName(hostname += PSTRSTRM(m_service << '.' << m_region << ".amazonaws.com"));
-      m_headers.SetString(PHTTP::HostTag, m_uri.GetHostPort());
+      m_headers.SetString(PHTTP::HostTag, m_uri.GetHostPort(true));
       break;
     case 1 :
       m_uri.SetHostName(hostname += PSTRSTRM('.' << m_region << ".amazonaws.com"));
-      m_headers.SetString(PHTTP::HostTag, m_uri.GetHostPort());
+      m_headers.SetString(PHTTP::HostTag, m_uri.GetHostPort(true));
       break;
     case 2 :
     case 3 :
@@ -346,7 +348,7 @@ bool PAwsSigner::Calculate(bool useHeaders)
   }
 
   if (m_bodyHash.empty())
-    m_bodyHash = PMessageDigestSHA256::Encode(m_body, false);
+    m_bodyHash = useHeaders ? PMessageDigestSHA256::Encode(m_body, false) : PConstString("UNSIGNED-PAYLOAD");
 
   PString timestamp = PTime().AsString(PTime::ShortISO8601, PTime::UTC);
   PString credentialDatestamp = timestamp.Left(8);
@@ -356,11 +358,12 @@ bool PAwsSigner::Calculate(bool useHeaders)
   if (useHeaders)
       m_headers.Set(AmzDate(), timestamp);
   else {
-      m_uri.SetQueryVar(AmzExpires(), 60);
+      m_uri.SetQueryVar(AmzExpires(), m_expires);
       m_uri.SetQueryVar(AmzDate(), timestamp);
       m_uri.SetQueryVar(AmzCredential(), credential);
       m_uri.SetQueryVar(AmzSignedHeaders(), "x"); // Overwritten later, added here so get's into sortedQueryKeys
       m_uri.SetQueryVar(AmzAlgorithm(), "AWS4-HMAC-SHA256");
+      m_uri.SetQueryVar(AmzContentSHA256(), m_bodyHash);
   }
 
   auto& queryVars = m_uri.GetQueryVars();
