@@ -909,10 +909,6 @@ class PHTTPClient : public PHTTP, public PSSLCertificateInfo
     /// Get max redirects on operation
     unsigned GetMaxRedirects() const { return m_maxRedirects; }
 
-#if PTRACING
-    static PINDEX MaxTraceContentSize;
-#endif
-
     virtual SelectProxyResult SelectProxy(const PURL & url, PURL & proxy);
     virtual bool HandleAuthorisation(bool isProxy, PMIMEInfo & replyMIME);
 

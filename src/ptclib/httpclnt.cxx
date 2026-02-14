@@ -62,8 +62,6 @@ static const char * const AlgorithmNames[PHTTPClientDigestAuthentication::NumAlg
 static __inline bool IsOK(int response) { return (response/100) == 2; }
 
 #if PTRACING
-PINDEX PHTTPClient::MaxTraceContentSize = 1000;
-
 class PHTTPClient_OutputBody
 {
   private:
@@ -73,14 +71,28 @@ class PHTTPClient_OutputBody
     PHTTPClient_OutputBody(const void * body, PINDEX len) : m_body(body), m_length(len) { }
     friend ostream & operator<<(ostream & strm, const PHTTPClient_OutputBody & ob)
     {
-      PINDEX len = std::min(ob.m_length, PHTTPClient::MaxTraceContentSize);
+      PINDEX maxLength = PTrace::GetMaxLength();
+      PINDEX length = std::min(ob.m_length, maxLength);
       const char * ptr = static_cast<const char *>(ob.m_body);
-      while (len-- > 0) {
-        if (isprint(*ptr & 0xff))
-          strm << *ptr;
-        ++ptr;
+      // If more than 25% of the characters are non-printable, then output as hex.
+      unsigned unprintable = 0;
+      for (PINDEX count = 0; count < length; ++count) {
+        int c = ptr[count] & 0xFF;
+        if (!isprint(c) && !isspace(c))
+          ++unprintable;
       }
-      if (ob.m_length > PHTTPClient::MaxTraceContentSize)
+      if (unprintable*4 < length) {
+        maxLength /= 3;
+        strm << PHexDump(ptr, std::min(ob.m_length, maxLength), false);
+      }
+      else {
+        for (PINDEX count = 0; count < length; ++count) {
+          int c = ptr[count] & 0xFF;
+          if (isprint(c) || isspace(c))
+            strm << (char)c;
+        }
+      }
+      if (ob.m_length > maxLength)
         strm << "\n...";
       return strm;
     }
@@ -495,7 +507,7 @@ bool PHTTPClient::WriteCommand(Commands cmd,
       strm << url;
     if (PTrace::CanTrace(4)) {
       strm << " HTTP/1.1\n" << outMIME;
-      if (outMIME.GetVar(ContentLengthTag(), numeric_limits<int64_t>::max()) <= (int64_t)MaxTraceContentSize)
+      if (outMIME.GetVar(ContentLengthTag(), numeric_limits<int64_t>::max()) <= (int64_t)PTrace::GetMaxLength())
         trace = &strm;
     }
     if (trace == NULL)
@@ -555,7 +567,7 @@ bool PHTTPClient::ReadResponse(PMIMEInfo & replyMIME)
 
   PString body;
   if (m_lastResponseCode >= 300) {
-    if (m_readBodyOnError && !ReadContentBody(replyMIME, body, 1000))
+    if (m_readBodyOnError && !ReadContentBody(replyMIME, body, PTrace::GetMaxLength()))
       return SetLastResponse(TransportReadError, "Response body", PChannel::LastReadError);
   }
   else if (m_lastResponseCode == NoContent && !replyMIME.Contains(ContentLengthTag))
@@ -656,13 +668,16 @@ bool PHTTPClient::ReadContentBody(PMIMEInfo & replyMIME, ContentProcessor & proc
     if (chunkLength == 0)
       break;
 
-    PINDEX size = chunkLength;
-    void * ptr = processor.GetBuffer(size);
-    if (ptr == NULL)
-      return SetLastResponse(ContentProcessorError, "No buffer from HTTP content processor");
+    while (chunkLength > 0) {
+      PINDEX size = chunkLength;
+      void * ptr = processor.GetBuffer(size);
+      if (ptr == NULL)
+        return SetLastResponse(ContentProcessorError, "No buffer from HTTP content processor");
 
-    // Read the chunk
-    while (chunkLength > 0 && ReadBlock(ptr, PMIN(chunkLength, size))) {
+      // Read the chunk
+      if (!ReadBlock(ptr, PMIN(chunkLength, size)))
+        return false;
+
       PINDEX count = GetLastReadCount();
       if (!processor.Process(ptr, count))
         return SetLastResponse(ContentProcessorError, "Content processing error");
