@@ -1341,7 +1341,11 @@ bool PRESTClient::Execute(PHTTP::Commands method,
     return false;
   }
 
-  return result < 300;
+  if (result < 300)
+    return true;
+
+  m_lastResponseInfo += ' ' + response.AsString();
+  return false;
 }
 
 
