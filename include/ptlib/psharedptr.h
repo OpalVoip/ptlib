@@ -37,7 +37,71 @@
 
 // For backward compatibility
 template <typename T> using PSharedPtr = std::shared_ptr<T>;
-template <typename T> using PAtomicSharedPtr = std::atomic<std::shared_ptr<T>>;
+
+#if defined(__GNUC__) && __GNUC__ < 12
+  /* Despite GNU C++ version 10 claims of supporting C++20, it does not
+     support std::atomic<std::shared_ptr<T>> as indicated by the standard,
+     so we need to implement our own wrapper for it. */
+  template <typename T> struct PAtomicSharedPtr
+  {
+    using ptr_type = std::shared_ptr<T>;
+    PAtomicSharedPtr() = default;
+    PAtomicSharedPtr(const PAtomicSharedPtr &) = delete;
+    PAtomicSharedPtr & operator=(PAtomicSharedPtr &) = delete;
+
+    explicit PAtomicSharedPtr(ptr_type ptr)
+    {
+      store(std::move(ptr));
+    }
+
+    PAtomicSharedPtr & operator=(ptr_type ptr)
+    {
+      store(std::move(ptr));
+      return *this;
+    }
+
+    operator ptr_type() const
+    {
+      return load();
+    }
+
+    ptr_type load(std::memory_order order = std::memory_order_seq_cst) const
+    {
+      return std::atomic_load_explicit(&m_ptr, order);
+    }
+
+    void store(const ptr_type & ptr, std::memory_order order = std::memory_order_seq_cst)
+    {
+      std::atomic_store_explicit(&m_ptr, std::move(ptr), order);
+    }
+
+    ptr_type exchange(ptr_type ptr, std::memory_order order = std::memory_order_seq_cst)
+    {
+      return std::atomic_exchange_explicit(&m_ptr, std::move(ptr), order);
+    }
+
+    bool compare_exchange_strong(ptr_type & expected,
+                                 ptr_type desired,
+                                 std::memory_order success = std::memory_order_seq_cst,
+                                 std::memory_order failure = std::memory_order_seq_cst)
+    {
+      return std::atomic_compare_exchange_strong_explicit(&m_ptr, &expected, std::move(desired), success, failure);
+    }
+
+    bool compare_exchange_weak(ptr_type & expected,
+                               ptr_type desired,
+                               std::memory_order success = std::memory_order_seq_cst,
+                               std::memory_order failure = std::memory_order_seq_cst)
+    {
+      return std::atomic_compare_exchange_weak_explicit(&m_ptr, &expected, std::move(desired), success, failure);
+    }
+
+  private:
+    ptr_type m_ptr;
+  };
+#else
+  template <typename T> using PAtomicSharedPtr = std::atomic<std::shared_ptr<T>>;
+#endif
 
 #endif // PTLIB_SHAREDPTR_H
 
