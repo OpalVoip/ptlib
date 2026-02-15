@@ -383,6 +383,13 @@ public:
   }
   virtual void AsJSON(PJSON::Base & field) const { dynamic_cast<PJSON::String &>(field) = PSTRSTRM(m_value); }
 
+  TYPE & operator*() { return m_value; }
+  TYPE * operator->() { return &m_value; }
+  const TYPE & operator*() const { return m_value; }
+  const TYPE * operator->() const { return &m_value; }
+
+  friend ostream & operator<<(ostream & strm, const PJSONMember & member) { return strm << member.m_value; }
+
 protected:
   TYPE m_value;
 };
@@ -401,6 +408,7 @@ public:
   virtual PJSON::Types GetType() const { return PJSON::e_String; }
   virtual bool FromJSON(const PJSON::Base & field) { m_value = dynamic_cast<const PJSON::String &>(field); return true; }
   virtual void AsJSON(PJSON::Base & field) const { dynamic_cast<PJSON::String &>(field) = m_value; }
+  friend ostream & operator<<(ostream & strm, const PJSONMember & member) { return strm << member.m_value; }
 protected:
   PString m_value;
 };
