@@ -658,7 +658,7 @@ template <class T> class PSyncQueue : public PObject, PNonCopyable
             break;  
           }
           m_state = e_Closed;
-          // Do closed case
+          [[fallthrough]];
 
         case e_Closed :
           m_closed.Signal();

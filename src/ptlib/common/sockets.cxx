@@ -1485,7 +1485,7 @@ PIPSocket::Address & PIPSocket::Address::AssignIPV6(const in6_addr & addr, int s
 }
 
 
-bool PIPSocket::Address::operator*=(const PIPSocket::Address & addr) const
+bool PIPSocket::Address::operator*=(const Address & addr) const
 {
   if (m_version == addr.m_version)
     return operator==(addr);
