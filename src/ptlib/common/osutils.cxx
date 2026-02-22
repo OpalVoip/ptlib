@@ -200,7 +200,6 @@ PTHREAD_MUTEX_RECURSIVE_NP
       , m_contextIdentifier(instance ? instance->GetTraceContextIdentifier() : 0)
       , m_module(module)
       , m_tick(PTimer::Tick())
-      , m_blockIndentLevel(0)
     {
       if (m_contextIdentifier == 0 && m_threadAddress != NULL)
         m_contextIdentifier = m_threadAddress->GetTraceContextIdentifier();
@@ -219,7 +218,6 @@ PTHREAD_MUTEX_RECURSIVE_NP
     PString       m_module;
     PTime         m_dateTime;
     PTimeInterval m_tick;
-    unsigned      m_blockIndentLevel;
     PStringStream m_stream;
   };
   typedef std::stack<Context> ContextStack;
@@ -1019,43 +1017,36 @@ ostream & PTraceInfo::InternalEnd(ostream & paramStream)
 }
 
 
+thread_local unsigned PTrace::Block::s_indentLevel;
+
 PTrace::Block::Block(const char * fileName, int lineNum, const char * traceName)
-  : file(fileName)
-  , line(lineNum)
-  , name(traceName)
+  : m_file(fileName)
+  , m_line(lineNum)
+  , m_name(traceName)
 {
   if (PTraceInfo::Instance().HasOption(Blocks)) {
-    unsigned indent = (PTraceInfo::s_contexts.top().m_blockIndentLevel += 2);
+    unsigned indent = (s_indentLevel += 2);
 
-    ostream & s = PTrace::Begin(1, file, line);
-    s << "B-Entry\t";
+    ostream & s = PTrace::Begin(0, m_file, m_line);
+    s << "Block ";
     for (unsigned i = 0; i < indent; i++)
       s << '=';
-    s << "> " << name << PTrace::End;
+    s << "> " << m_name << PTrace::End;
   }
-}
-
-
-PTrace::Block::Block(const Block & obj)
-  : file(obj.file)
-  , line(obj.line)
-  , name(obj.name)
-{
 }
 
 
 PTrace::Block::~Block()
 {
   if (PTraceInfo::Instance().HasOption(Blocks)) {
-    PTraceInfo::Context & context = PTraceInfo::s_contexts.top();
-    unsigned indent = context.m_blockIndentLevel;
-    context.m_blockIndentLevel -= 2;
+    unsigned indent = s_indentLevel;
+    s_indentLevel -= 2;
 
-    ostream & s = PTrace::Begin(1, file, line);
-    s << "B-Exit\t<";
+    ostream & s = PTrace::Begin(0, m_file, m_line);
+    s << "Block <";
     for (unsigned i = 0; i < indent; i++)
       s << '=';
-    s << ' ' << name << PTrace::End;
+    s << ' ' << m_name << PTrace::End;
   }
 }
 

@@ -440,17 +440,17 @@ public:
         int lineNum,           ///< Line number of source file being traced.
         const char * traceName ///< String to be output with trace, typically it is the function name.
       );
-      Block(const Block & obj);
+      Block(const Block &) = delete;
+      Block & operator=(const Block &) = delete;
 
       /// Output exit trace message.
       ~Block();
 
     protected:
-      Block & operator=(const Block &)
-      { return *this; }
-      const char * file;
-      int          line;
-      const char * name;
+      const char * m_file;
+      int          m_line;
+      const char * m_name;
+      static thread_local unsigned s_indentLevel;
   };
 
   /** Class to reduce noise level for some logging.
@@ -554,7 +554,7 @@ blocks. It creates an instance of the PTraceBlock class that will output a
 trace message at the line <code>PTRACE_BLOCK()</code> is called and then on exit from the
 scope it is defined in.
 */
-#define PTRACE_BLOCK(name) PTrace::Block __trace_block_instance(__FILE__, __LINE__, name)
+#define PTRACE_BLOCK(name) PTrace::Block __trace_block_instance##__LINE__(__FILE__, __LINE__, name)
 
 /** Trace the execution of a line.
 This macro outputs a trace of a source file line execution.
