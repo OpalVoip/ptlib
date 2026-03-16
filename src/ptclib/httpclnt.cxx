@@ -74,15 +74,15 @@ class PHTTPClient_OutputBody
       PINDEX maxLength = PTrace::GetMaxLength();
       PINDEX length = std::min(ob.m_length, maxLength);
       const char * ptr = static_cast<const char *>(ob.m_body);
-      // If more than 25% of the characters are non-printable, then output as hex.
+      // If more than 10% of the characters are non-printable, then output as hex.
       unsigned unprintable = 0;
       for (PINDEX count = 0; count < length; ++count) {
         int c = ptr[count] & 0xFF;
         if (!isprint(c) && !isspace(c))
           ++unprintable;
       }
-      if (unprintable*4 < length) {
-        maxLength /= 3;
+      if (unprintable*10 > length) {
+        maxLength /= 5;
         strm << PHexDump(ptr, std::min(ob.m_length, maxLength), false);
       }
       else {
@@ -90,6 +90,8 @@ class PHTTPClient_OutputBody
           int c = ptr[count] & 0xFF;
           if (isprint(c) || isspace(c))
             strm << (char)c;
+          else
+            strm << '%' << hex << setfill('0') << setw(2) << c << dec;
         }
       }
       if (ob.m_length > maxLength)
