@@ -314,17 +314,17 @@ bool PAwsSigner::Calculate(bool useHeaders)
   if (hostname.empty())
     hostname = m_headers.GetString(PHTTP::HostTag);
   else
-    m_headers.SetString(PHTTP::HostTag, m_uri.GetHostPort(true)); // Must agree
+    m_headers.SetString(PHTTP::HostTag, m_uri.GetHostPort()); // Must agree
 
   PStringArray hostParts = hostname.Tokenise('.');
   switch (hostParts.size()) {
     case 0 :
       m_uri.SetHostName(hostname += PSTRSTRM(m_service << '.' << m_region << ".amazonaws.com"));
-      m_headers.SetString(PHTTP::HostTag, m_uri.GetHostPort(true));
+      m_headers.SetString(PHTTP::HostTag, m_uri.GetHostPort());
       break;
     case 1 :
       m_uri.SetHostName(hostname += PSTRSTRM('.' << m_region << ".amazonaws.com"));
-      m_headers.SetString(PHTTP::HostTag, m_uri.GetHostPort(true));
+      m_headers.SetString(PHTTP::HostTag, m_uri.GetHostPort());
       break;
     case 2 :
     case 3 :
