@@ -893,7 +893,7 @@ struct PMessageDigestSHA::Context
   bool Final(PBYTEArray & digest)
   {
     unsigned int dummy;
-    return EVP_DigestFinal(m_ctx, digest.GetPointer(EVP_MD_CTX_get_size(m_ctx)), &dummy) != 0;
+    return EVP_DigestFinal(m_ctx, digest.GetPointer(EVP_MD_get_size(m_type)), &dummy) != 0;
   }
 };
 

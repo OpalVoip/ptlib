@@ -144,7 +144,6 @@ bool PTextToSpeech_11Labs::SetOptions(const PStringOptions & options)
 
 // Configure API key
   m_apiKey = options.GetString(ApiKeyTag, m_apiKey);
-  //m_apiKey = "sk_b7765728d1d1c596e9b3aef83132d40bae221f796cced826";
 
   // Configure custom model
   PJSON json(options.GetString(SettingsTag));

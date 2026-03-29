@@ -2827,13 +2827,31 @@ PBoolean PVXMLSession::PlayResource(const PString & src, PINDEX repeat, PINDEX d
   PURL url(src, "file");
 
   // files on the local file system get loaded locally
-  if (url.GetScheme() == "file" && url.GetHostName().IsEmpty())
-    return PlayFile(url.AsFilePath(), repeat, delay);
+  if (url.GetScheme() == "file" && url.GetHostName().IsEmpty()) {
+    PFilePath filePath = url.AsFilePath();
+    PString fileType = filePath.GetType();
+    PTextToSpeech::TextType ttsType;
+    if (fileType == ".txt")
+      ttsType = m_promptType;
+    else if (fileType != ".ssml")
+      ttsType = PTextToSpeech::FullSSML;
+    else
+      return PlayFile(url.AsFilePath(), repeat, delay);
+
+    PString text = PFile(filePath, PFile::ReadOnly).ReadString(P_MAX_INDEX);
+    if (element != NULL && text.empty())
+      return ThrowError(*element, "empty-audio", "Audio file is empty: " + src);
+
+    return PlayText(text, ttsType, repeat, delay, true);
+  }
 
   PBYTEArray data;
   PString contentType;
   if (!LoadCachedResource(url, element, AudioMaxAgeProperty, AudioMaxStaleProperty, data, contentType))
     return false;
+
+  if (element != NULL && data.empty())
+    return ThrowError(*element, "empty-audio", "Audio resource is empty: " + src);
 
   if (contentType == "audio/pcm")
     return PlayData(data, repeat, delay);
@@ -2841,6 +2859,10 @@ PBoolean PVXMLSession::PlayResource(const PString & src, PINDEX repeat, PINDEX d
   PString suffix;
   if (contentType.empty())
     suffix = src.Mid(src.FindLast('.'));
+  else if (contentType == "text/plain")
+    suffix = ".txt";
+  else if (contentType == "application/ssml+xml")
+    suffix = ".ssml";
   else if (contentType == "audio/wav" || contentType == "audio/x-wav")
     suffix = ".wav";
   else if (contentType == "audio/mp3")
@@ -2857,8 +2879,16 @@ PBoolean PVXMLSession::PlayResource(const PString & src, PINDEX repeat, PINDEX d
     suffix = ".weba";
   else if (contentType == "audio/x-ms-wma")
     suffix = ".wma";
-  else
+  else {
+    PTRACE(3, "Unsupported audio file: " << src << " content type=\"" << contentType << '"');
     return false;
+  }
+
+  if (suffix == ".txt")
+    return PlayText(data, m_promptType, repeat, delay, true);
+
+  if (suffix == ".ssml")
+    return PlayText(data, PTextToSpeech::FullSSML, repeat, delay, true);
 
   PFile tmpFile;
   return tmpFile.Open(PFilePath("VXML", NULL, suffix), PFile::WriteOnly) &&
@@ -2973,7 +3003,8 @@ bool PVXMLSession::IsGrammarRunning() const
 PBoolean PVXMLSession::PlayText(const PString & textToPlay,
                                 PTextToSpeech::TextType type,
                                 PINDEX repeat,
-                                PINDEX delay)
+                                PINDEX delay,
+                                bool noCache)
 {
   if (!IsOpen() || textToPlay.IsEmpty() || m_bargingIn || m_textToSpeech == NULL)
     return false;
@@ -2985,7 +3016,7 @@ PBoolean PVXMLSession::PlayText(const PString & textToPlay,
   cacheParams.m_maxAge = GetTimeProperty(AudioMaxAgeProperty);
 
   PVXMLChannel & channel = *GetVXMLChannel();
-  if ((cache == NULL || cacheParams.m_maxAge <= 0) &&
+  if ((noCache || (cache == NULL || cacheParams.m_maxAge <= 0)) &&
         channel.QueuePlayable("TTS", PSTRSTRM(type << '\n' << textToPlay), repeat, delay))
     return true;
 

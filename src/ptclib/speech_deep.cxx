@@ -42,6 +42,8 @@ static const PConstCaselessString DeepgramFluxPrefix("DeepgramFlux-");
 static const PConstCaselessString EndpointTag("Endpoint");
 static const PConstCaselessString ApiKeyTag("API-Key");
 static const PConstCaselessString BufferDurationTag("Buffer-Duration");
+static const PConstCaselessString ShortInputMaxLenTag("shortinput-maxlen");
+static const PConstCaselessString ShortInputTimeoutTag("shortinput-timeout");
 static const PConstCaselessString FinalHeuristicTag("Deepgram-IsFinal-Heuristic");
 
 static const PConstCaselessString SampleRateHeader("sample_rate");
@@ -59,6 +61,8 @@ static PStringSet MakeSkipParameters()
   set += DeepgramPrefix + ChannelsHeader;
   set += DeepgramPrefix + LanguageHeader;
   set += DeepgramPrefix + EncodingHeader;
+  set += DeepgramPrefix + ShortInputMaxLenTag;
+  set += DeepgramPrefix + ShortInputTimeoutTag;
   set += DeepgramFluxPrefix + EndpointTag;
   set += DeepgramFluxPrefix + ApiKeyTag;
   set += DeepgramFluxPrefix + BufferDurationTag;
@@ -66,6 +70,8 @@ static PStringSet MakeSkipParameters()
   set += DeepgramFluxPrefix + ChannelsHeader;
   set += DeepgramFluxPrefix + LanguageHeader;
   set += DeepgramFluxPrefix + EncodingHeader;
+  set += DeepgramFluxPrefix + ShortInputMaxLenTag;
+  set += DeepgramFluxPrefix + ShortInputTimeoutTag;
   set += FinalHeuristicTag;
   return set;
 };
@@ -85,6 +91,8 @@ class PSpeechRecognition_Deepgram : public PSpeechRecognition
   PString m_language;
   PString m_endpoint;
   PString m_apiKey;
+  unsigned m_shortInputMaxLen;
+  PTimeInterval m_shortInputTimeout;
   bool m_isFinalHeuristic;
   PHTTP::Proxies m_httpProxies;
   PStringToString m_options;
@@ -176,7 +184,10 @@ class PSpeechRecognition_Deepgram : public PSpeechRecognition
             if (isFinal)
               transcript.m_content &= partial;
             transcript.m_when = PTimeInterval::Seconds((double)result.GetNumber("start"));
-            transcript.m_final = m_isFinalHeuristic ? isFinal : result.GetBoolean("speech_final");
+            if (transcript.m_content.length() > m_shortInputMaxLen || transcript.m_when > m_shortInputTimeout)
+              transcript.m_final = m_isFinalHeuristic ? isFinal : result.GetBoolean("speech_final");
+            else
+              PTRACE_IF(4, m_shortInputMaxLen > 0, "Ignoring short partial result for " << m_shortInputTimeout << 's');
 
             auto confidence = (float)alternative.GetNumber("confidence");
             if (confidence > 0 && transcript.m_confidence > confidence)
@@ -230,6 +241,7 @@ protected:
     , m_prefix(flux ? DeepgramFluxPrefix : DeepgramPrefix)
     , m_sampleRate(8000)
     , m_channels(1)
+    , m_shortInputMaxLen(0) // No short input heuristic by default
     , m_language("en-US")
     , m_isFinalHeuristic(false)
   {
@@ -264,6 +276,8 @@ public:
 
     m_endpoint = options.GetString(m_prefix + EndpointTag, m_endpoint);
     m_apiKey = options.GetString(m_prefix + ApiKeyTag, m_apiKey);
+    m_shortInputMaxLen = options.GetVar(m_prefix + ShortInputMaxLenTag, m_shortInputMaxLen);
+    m_shortInputTimeout = options.GetVar(m_prefix + ShortInputTimeoutTag, m_shortInputTimeout);
     m_isFinalHeuristic = options.GetBoolean(FinalHeuristicTag, m_isFinalHeuristic);
     m_httpProxies.FromOptions(options);
 

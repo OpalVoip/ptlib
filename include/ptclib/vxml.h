@@ -414,7 +414,12 @@ class PVXMLSession : public PIndirectChannel, public PSSLCertificateInfo
     void UnLockVXMLChannel() { m_sessionMutex.Signal(); }
     PMutex & GetSessionMutex() { return m_sessionMutex; }
 
-    virtual PBoolean PlayText(const PString & text, PTextToSpeech::TextType type = PTextToSpeech::Default, PINDEX repeat = 1, PINDEX delay = 0);
+    virtual PBoolean PlayText(
+      const PString & text,
+      PTextToSpeech::TextType type = PTextToSpeech::Default,
+      PINDEX repeat = 1,
+      PINDEX delay = 0,
+      bool noCache = false);
 
     virtual PBoolean PlayFile(const PString & fn, PINDEX repeat = 1, PINDEX delay = 0, PBoolean autoDelete = false);
     virtual PBoolean PlayData(const PBYTEArray & data, PINDEX repeat = 1, PINDEX delay = 0);
