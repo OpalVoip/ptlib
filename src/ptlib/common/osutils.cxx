@@ -815,7 +815,8 @@ unsigned PTrace::GetOptions()
 
 void PTrace::SetLevel(unsigned level)
 {
-  if (PTraceInfo::Instance().m_thresholdLevel.exchange(level) != level) {
+  unsigned previousLevel = PTraceInfo::Instance().m_thresholdLevel.exchange(level);
+  if (previousLevel > 0 && previousLevel != level) {
     PTRACE(1, "Trace threshold set to " << level);
   }
 }
