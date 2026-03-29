@@ -59,6 +59,7 @@ void VxmlTest::Main()
                   "T-tts: Text to speech method\n"
                   "-tts-option: Text to speech options (key=value)\n"
                   "S-sr: Speech recognition method\n"
+                  "-sr-option: Speech recognition options (key=value)\n"
                   "c-cache: Text to speech cache directory\n"
                   "-clear-cache. Clear the cache on execution\n"
                   "-exit-on-completion. Exit the application on completion of the script\n"
@@ -418,7 +419,7 @@ bool TestInstance::Initialise(unsigned instance, const PArgList & args)
   }
   cout << "Instance " << m_instance << " using text to speech:\n" << GetTextToSpeech()->GetVoiceList()[0] << endl;
 
-  if (!SetSpeechRecognition(args.GetOptionString("sr"))) {
+  if (!SetSpeechRecognition(args.GetOptionString("sr"), PStringToString(args.GetOptionString("sr-option")))) {
     PFactory<PTextToSpeech>::KeyList_T engines = PFactory<PSpeechRecognition>::GetKeyList();
     if (!engines.empty()) {
       cerr << "Instance " << m_instance << " error: cannot select speech recognition engine, use one of:\n";
