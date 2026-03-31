@@ -1841,13 +1841,13 @@ PHTTPResource::PHTTPResource(const PURL & url,
 PHTTPResource::PHTTPResource(const PURL & url,
                              const PString & type,
                              const PHTTPAuthority & auth,
-							 const PString & allowedOrigins)   
+							 const PString & allowedOrigin)   
   : m_baseURL(url)
   , m_contentType(type)
   , m_authority(auth.CloneAs<PHTTPAuthority>())
   , m_hitCount(0)
 {
-  SetAllowedOrigins(allowedOrigins);
+  SetAllowedOrigin(allowedOrigin);
 }
 
 
@@ -2181,18 +2181,18 @@ bool PHTTPResource::StartResponse(PHTTPRequest & request)
 }
 
 
-void PHTTPResource::SetAllowedOrigins(const PString & allowedOrigins)
+void PHTTPResource::SetAllowedOrigin(const PString & allowedOrigin)
 {
-  SetCORS(CORS(allowedOrigins));
+  SetCORS(CORS(allowedOrigin));
 }
 
 
 void PHTTPResource::SetCORS(const CORS & cors)
 {
-  if (cors.m_allowedOrigins.IsEmpty())
+  if (cors.m_allowedOrigin.IsEmpty())
     m_corsHeaders.RemoveAll();
   else {
-    m_corsHeaders.Set(PHTTP::AllowOriginTag, PSTRSTRM(setfill(',') << cors.m_allowedOrigins));
+    m_corsHeaders.Set(PHTTP::AllowOriginTag, cors.m_allowedOrigin);
 
     if (!cors.m_allowedHeaders.empty())
       m_corsHeaders.Set(PHTTP::AllowHeadersTag, PSTRSTRM(setfill(',') << cors.m_allowedHeaders));

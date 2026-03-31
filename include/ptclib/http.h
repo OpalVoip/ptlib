@@ -2045,7 +2045,7 @@ class PHTTPResource : public PObject
       const PURL & url,              ///< Name of the resource in URL space.
       const PString & contentType,   ///< MIME content type for the resource.
       const PHTTPAuthority & auth,   ///< Authorisation for the resource.
-	  const PString & allowedOrigins ///< Allow origins for Cross-Origin Resource Sharing (CORS)
+	  const PString & allowedOrigin  ///< Allow origin for Cross-Origin Resource Sharing (CORS)
     );
 
   public:
@@ -2348,28 +2348,29 @@ class PHTTPResource : public PObject
 
     /** Get the Allowed Origins for Cross-Origin Resource Sharing (CORS)
      */
-    PString GetAllowedOrigins() const { return m_corsHeaders.Get(PHTTP::AllowOriginTag); }
+    PString GetAllowedOrigin() const { return m_corsHeaders.Get(PHTTP::AllowOriginTag); }
 
     /** Set the Allowed Origins for Cross-Origin Resource Sharing (CORS).
         If not already set, other CORS headers will be set by this function
         with default values.
 
-        If allowedOrigins is an empty string then all CORS headers are removed.
+        If allowedOrigin is an empty string then all CORS headers are removed.
      */
-    void SetAllowedOrigins(
-      const PString & allowedOrigins  ///< Allowed origins for CORS
+    void SetAllowedOrigin(
+      const PString & allowedOrigin  ///< Allowed origin for CORS
     );
 
     struct CORS
     {
-      PStringArray  m_allowedOrigins;
-      PStringArray  m_allowedHeaders;
-      PStringArray  m_exposeHeaders;
-      PStringArray  m_allowedMethods;
+      PString       m_allowedOrigin;
+      PStringSet    m_allowedHeaders;
+      PStringSet    m_exposeHeaders;
+      PStringSet    m_allowedMethods;
       PTimeInterval m_maxAge;
       bool          m_allowCredentials;
+
       CORS() : m_allowCredentials(false) { }
-      CORS(const PString & allowedOrigins) : m_allowedOrigins(allowedOrigins), m_allowCredentials(false) { }
+      CORS(const PString & allowedOrigin) : m_allowedOrigin(allowedOrigin), m_allowCredentials(false) { }
     };
     /** Set the Cross-Origin Resource Sharing (CORS) parameters.
         If m_allowedOrigins is an empty string then all CORS headers are removed.
