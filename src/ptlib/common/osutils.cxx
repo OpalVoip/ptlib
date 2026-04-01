@@ -192,8 +192,7 @@ PTHREAD_MUTEX_RECURSIVE_NP
   {
     Context(unsigned level, const char * fileName, int lineNum, const PObject * instance, const char * module)
       : m_level(level)
-      , m_threadAddress(PThread::Current())
-      , m_threadName(m_threadAddress ? m_threadAddress->GetThreadName() : PString::Empty())
+      , m_threadAddress(nullptr)
       , m_fileName(fileName)
       , m_lineNum(lineNum)
       , m_objectAddress(instance)
@@ -201,8 +200,6 @@ PTHREAD_MUTEX_RECURSIVE_NP
       , m_module(module)
       , m_tick(PTimer::Tick())
     {
-      if (m_contextIdentifier == 0 && m_threadAddress != NULL)
-        m_contextIdentifier = m_threadAddress->GetTraceContextIdentifier();
       if (instance)
         m_objectClass = instance->GetClassName();
     }
@@ -845,7 +842,16 @@ ostream & PTraceInfo::InternalBegin(unsigned level, const char * fileName, int l
   if (!PProcess::IsInitialised())
     return *GetStream();
 
-  s_contexts.emplace(level, fileName, lineNum, instance, module);
+  auto & context = s_contexts.emplace(level, fileName, lineNum, instance, module);
+
+  // Do not call PThread::Current() in the Context ctor as it blows up the stack
+  // push above due to a recursive PTRACE in the creation of a PExternalThread object.
+  context.m_threadAddress = PThread::Current();
+  if (context.m_threadAddress) {
+    context.m_threadName = context.m_threadAddress->GetThreadName().c_str();
+    if (context.m_contextIdentifier == 0)
+      context.m_contextIdentifier = context.m_threadAddress->GetTraceContextIdentifier();
+  }
 
   Lock();
 
