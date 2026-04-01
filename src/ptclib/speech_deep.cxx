@@ -241,8 +241,8 @@ protected:
     , m_prefix(flux ? DeepgramFluxPrefix : DeepgramPrefix)
     , m_sampleRate(8000)
     , m_channels(1)
-    , m_shortInputMaxLen(0) // No short input heuristic by default
     , m_language("en-US")
+    , m_shortInputMaxLen(0) // No short input heuristic by default
     , m_isFinalHeuristic(false)
   {
     PConfig env(PConfig::Environment);
