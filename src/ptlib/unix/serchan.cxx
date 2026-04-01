@@ -142,19 +142,6 @@ PBoolean PSerialChannel::Open(const PString & port,
   if (IsOpen())
     Close();
 
-//  // check prefix of name
-//  if (port.Left(PORT_PREFIX_LEN) != PORT_PREFIX) {
-//    lastError = BadParameter;
-//    return false;
-//  }
-
-//  // check suffix
-//  int portnum = (port.Right(port.GetLength()-PORT_PREFIX_LEN)).AsInteger();
-//  if ((portnum < PORT_START) || (portnum >= (PORT_START + PORT_COUNT))) {
-//    lastError = BadParameter;
-//    return false;
-//  }
-
   // save the port name
   m_portName = port;
 
@@ -199,8 +186,8 @@ PBoolean PSerialChannel::Open(const PString & port,
 
   // attempt to open the device
   PString device_name = PString(DEV_PREFIX) + port;
-  if ((os_handle = ::open((const char *)device_name, O_RDWR|O_NONBLOCK|O_NOCTTY)) < 0) {
-    ConvertOSError(os_handle);
+  os_handle = ::open((const char *)device_name, O_RDWR|O_NONBLOCK|O_NOCTTY);
+  if (!ConvertOSError(os_handle)) {
     Close();
     return false;
   }
