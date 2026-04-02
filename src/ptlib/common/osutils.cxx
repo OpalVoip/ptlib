@@ -2677,35 +2677,12 @@ bool PProcess::SignalTimerChange()
 
 void PProcess::HouseKeeping()
 {
-  PSimpleTimer cleanExternalThreads;
-  static PTimeInterval const CleanExternalThreadsTime(0, 10);
-
   while (m_keepingHouse) {
 #if P_TIMERS
-    PTimeInterval delay = m_timerList->Process();
-    if (delay > CleanExternalThreadsTime)
-      delay = CleanExternalThreadsTime;
-
-    m_signalHouseKeeper.Wait(delay);
+    m_signalHouseKeeper.Wait(m_timerList->Process());
 #else
     m_signalHouseKeeper.Wait(CleanExternalThreadsTime);
 #endif
-
-    if (cleanExternalThreads.HasExpired()) {
-      cleanExternalThreads = CleanExternalThreadsTime;
-      // Delete old threads as this vector pops off the stack, outside of the mutex lock
-      std::vector< std::shared_ptr<PExternalThread> > oldThreads;
-      PWaitAndSignal mutex(m_threadMutex);
-      for (ThreadList::iterator it = m_externalThreads.begin(); it != m_externalThreads.end();) {
-        if ((*it)->IsTerminated()) {
-          oldThreads.push_back(*it);
-          it = m_externalThreads.erase(it);
-        }
-        else
-          ++it;
-      }
-      PTRACE_IF(5, !oldThreads.empty(), "Deleting " << oldThreads.size() << " external threads.");
-    }
 
     // m_autoDeleteThreads is inherently thread safe
     PThread * thread = NULL;
@@ -2764,7 +2741,6 @@ PProcess::~PProcess()
 
   Sleep(100);  // Give threads time to die a natural death
 
-  ThreadList externalThreads;
   unsigned remainingThreads = 0;
   unsigned terminatedThreads = 0;
   std::vector<PThread*> threadsToTerminate;
@@ -2788,10 +2764,6 @@ PProcess::~PProcess()
       }
     }
     m_activeThreads.clear();
-    
-    // Would rather use std::move, but that's part of C++11
-    externalThreads = m_externalThreads;
-    m_externalThreads.clear();
   }
 
   PTRACE(4, "Cleaning up " << remainingThreads << " remaining threads: "
@@ -2805,13 +2777,10 @@ PProcess::~PProcess()
   }
   
   PTRACE(4, "Terminated all threads, destroying "
-         << m_autoDeleteThreads.size() << " remaining auto-delete threads, and "
-         << externalThreads.size() << " remaining external threads.");
+         << m_autoDeleteThreads.size() << " remaining auto-delete threads.");
   PThread * thread;
   while (m_autoDeleteThreads.Dequeue(thread, 0))
     delete thread;
-
-  externalThreads.clear();
 
   OnThreadEnded(*this);
 
@@ -3480,12 +3449,11 @@ PThread * PThread::Current()
   if (process.m_shuttingDown)
     return NULL;
 
-  // Construct PExternalThread outside of the mutex to avoid deadlock potential
-  std::shared_ptr<PExternalThread> thread(new PExternalThread());
-
-  PWaitAndSignal mutex(process.m_threadMutex);
-  process.m_externalThreads.push_back(thread);
-  return thread.get();
+  // Create our temporary object while the thread exists.
+  static thread_local std::unique_ptr<PThread> s_current;
+  if (!s_current)
+    s_current = std::make_unique<PExternalThread>();
+  return s_current.get();
 }
 
 

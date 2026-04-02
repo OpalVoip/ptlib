@@ -691,8 +691,6 @@ class PProcess : public PThread
     void InternalThreadStarted(PThread * thread);
     void InternalThreadEnded(PThread * thread);
     
-    typedef std::list< std::shared_ptr<PExternalThread> > ThreadList;
-    ThreadList m_externalThreads;
     PSyncQueue<PThread*> m_autoDeleteThreads;
 
     atomic<bool>   m_keepingHouse;
