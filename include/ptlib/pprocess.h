@@ -691,8 +691,6 @@ class PProcess : public PThread
     void InternalThreadStarted(PThread * thread);
     void InternalThreadEnded(PThread * thread);
     
-    PSyncQueue<PThread*> m_autoDeleteThreads;
-
     atomic<bool>   m_keepingHouse;
     PThread      * m_houseKeeper; // Thread for doing timers, thread clean up etc.
     PSyncPoint     m_signalHouseKeeper;

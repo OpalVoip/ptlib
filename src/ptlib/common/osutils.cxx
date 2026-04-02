@@ -2681,14 +2681,8 @@ void PProcess::HouseKeeping()
 #if P_TIMERS
     m_signalHouseKeeper.Wait(m_timerList->Process());
 #else
-    m_signalHouseKeeper.Wait(CleanExternalThreadsTime);
+    m_signalHouseKeeper.Wait();
 #endif
-
-    // m_autoDeleteThreads is inherently thread safe
-    PThread * thread = NULL;
-    PTRACE_IF(5, !m_autoDeleteThreads.empty(), "Deleting " << m_autoDeleteThreads.size() << " auto-delete threads.");
-    while (m_autoDeleteThreads.Dequeue(thread, 0))
-      delete thread;
 
     m_RunTimeSignalsQueueMutex.Wait();
     PTRACE_IF(5, !m_RunTimeSignalsQueue.empty(), "Handling " << m_RunTimeSignalsQueue.size() << " runtime signals.");
@@ -2775,12 +2769,6 @@ PProcess::~PProcess()
     PTRACE(3, "Terminating thread " << thread);
     thread->Terminate();  // With extreme prejudice
   }
-  
-  PTRACE(4, "Terminated all threads, destroying "
-         << m_autoDeleteThreads.size() << " remaining auto-delete threads.");
-  PThread * thread;
-  while (m_autoDeleteThreads.Dequeue(thread, 0))
-    delete thread;
 
   OnThreadEnded(*this);
 
@@ -3352,27 +3340,11 @@ void PProcess::InternalThreadEnded(PThread * thread)
   if (PAssertNULL(thread) == NULL)
     return;
 
-  // Do the log before mutex and thread being removed from m_activeThreads
-  PTRACE_IF(5, thread->IsAutoDelete(), thread, "Queuing auto-delete of thread " << *thread);
-
   PWaitAndSignal mutex(m_threadMutex);
 
   ThreadMap::iterator it = m_activeThreads.find(thread->GetThreadId());
   if (it != m_activeThreads.end() && it->second == thread)
     m_activeThreads.erase(it); // Not already gone, or re-used the thread ID for new thread.
-
-  // All of this is carefully constructed to avoid race condition deleting "thread"
-  if (thread->IsAutoDelete()) {
-    thread->SetNoAutoDelete();
-#ifdef P_PTHREADS
-    thread->PX_state = PThread::PX_finished;
-#endif
-    m_autoDeleteThreads.Enqueue(thread);
-  }
-#ifdef P_PTHREADS
-  else
-    thread->PX_state = PThread::PX_finished;
-#endif
 }
 
 
@@ -3403,6 +3375,10 @@ bool PProcess::HostSystemURLHandlerInfo::RegisterTypes(const PString & _types, b
 void PThread::InternalThreadMain()
 {
   InternalPreMain();
+
+  if (m_type == e_IsAutoDelete) {
+    static thread_local std::unique_ptr<PThread> s_autoDelete(this);
+  }
 
   PProcess & process = PProcess::Current();
 
@@ -3692,32 +3668,6 @@ void PThread::SetThreadName(const PString & name)
 }
  
 
-void PThread::SetAutoDelete(AutoDeleteFlag deletion)
-{
-  switch (m_type) {
-    case e_IsAutoDelete :
-      if (deletion == AutoDeleteThread)
-        return;
-      break;
-
-    case e_IsManualDelete :
-      if (deletion != AutoDeleteThread)
-        return;
-      break;
-
-    case e_IsProcess :
-      PAssert(deletion != AutoDeleteThread, PInvalidParameter);
-      return;
-
-    case e_IsExternal :
-      PAssert(deletion == AutoDeleteThread, PInvalidParameter);
-      return;
-  }
-
-  m_type = deletion == AutoDeleteThread ? e_IsAutoDelete : e_IsManualDelete;
-}
-
-
 PThread * PThread::Create(const PNotifier & notifier,
                           INT parameter,
                           AutoDeleteFlag deletion,
@@ -3757,7 +3707,10 @@ bool PThread::WaitAndDelete(PThread * & threadToDelete, const PTimeInterval & ma
 
   if (PThread::Current() == thread) {
     // Is me!
-    thread->SetAutoDelete();
+    if (thread->m_type != e_IsAutoDelete) {
+      static thread_local std::unique_ptr<PThread> s_autoDelete(threadToDelete);
+      PTRACE(4, thread, "Self destructing thread " << *thread << " on exit.");
+    }
     return false;
   }
 

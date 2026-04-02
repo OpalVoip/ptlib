@@ -266,18 +266,6 @@ class PThread : public PObject, PProfiling::HighWaterMark<PThread>, PNonCopyable
      */
     virtual Priority GetPriority() const;
 
-    /** Set the flag indicating thread object is to be automatically deleted
-        when the thread ends.
-     */
-    virtual void SetAutoDelete(
-      AutoDeleteFlag deletion = AutoDeleteThread  ///< New auto delete setting.
-    );
-
-    /** Reet the flag indicating thread object is to be automatically deleted
-        when the thread ends.
-     */
-    void SetNoAutoDelete() { SetAutoDelete(NoAutoDeleteThread); }
-
     /** Get the name of the thread. Thread names are a optional debugging aid.
 
        @return
@@ -476,8 +464,6 @@ class PThread : public PObject, PProfiling::HighWaterMark<PThread>, PNonCopyable
     ) { return Create(notifier, 0, NoAutoDeleteThread, NormalPriority, threadName); }
   //@}
   
-    bool IsAutoDelete() const { return m_type == e_IsAutoDelete; }
-
   private:
     PThread(bool isProcess);
     // Create a new thread instance as part of a <code>PProcess</code> class.
