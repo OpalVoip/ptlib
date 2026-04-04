@@ -381,8 +381,6 @@ class PTextToSpeech_SAPI : public PTextToSpeech, protected PSpStreamFormat
 
     bool OpenFile(const PFilePath & fn)
     {
-      PThread::Current()->CoInitialise();
-
       Close();
 
       if (PCOM_FAILED(m_cpVoice.CoCreateInstance,(CLSID_SpVoice)))
@@ -480,7 +478,6 @@ class PSpeechRecognition_SAPI : public PSpeechRecognition, protected PSpStreamFo
     PSpeechRecognition_SAPI()
       : m_opened(false)
     {
-      PThread::Current()->CoInitialise();
       PTRACE(4, "Constructed " << this);
     }
 
@@ -560,8 +557,6 @@ class PSpeechRecognition_SAPI : public PSpeechRecognition, protected PSpStreamFo
     virtual bool Open(const Notifier & notifier)
     {
       m_notifier = notifier;
-
-      PThread::Current()->CoInitialise();
 
       PCOM_RETURN_ON_FAILED(m_cpRecognizer.CoCreateInstance,(CLSID_SpInprocRecognizer));
 

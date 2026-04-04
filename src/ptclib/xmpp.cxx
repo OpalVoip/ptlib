@@ -268,7 +268,7 @@ void XMPP::Stream::Reset()
 ///////////////////////////////////////////////////////
 
 XMPP::BaseStreamHandler::BaseStreamHandler()
-  : PThread(0x1000, NoAutoDeleteThread, NormalPriority, "XMPP"),
+  : PThread(NoAutoDeleteThread, NormalPriority, "XMPP"),
     m_Stream(NULL),
     m_AutoReconnect(true),
     m_ReconnectTimeout(1000)
@@ -296,10 +296,7 @@ PBoolean XMPP::BaseStreamHandler::Start(XMPP::Transport * transport)
 
   if (m_Stream->Open(transport))
   {
-    if (IsSuspended())
-      Resume();
-    else
-      Restart();
+    Start();
     return true;
   }
 

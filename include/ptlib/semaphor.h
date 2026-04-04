@@ -36,7 +36,8 @@
 
 #include <ptlib/psync.h>
 #include <limits.h>
-#include <ptlib/atomic.h>
+#include <semaphore>
+
 
 /**This class defines a thread synchronisation object. This is in the form of a
    integer semaphore. The semaphore has a count and a maximum value. The
@@ -71,8 +72,9 @@
     thread will block on that function until the first calls the
     Signal() function, releasing the second thread.
  */
-class PSemaphore : public PSync
+class PSemaphore : public PSync, std::counting_semaphore<std::numeric_limits<unsigned>::max()>
 {
+  using semaphore = std::counting_semaphore<std::numeric_limits<unsigned>::max()>;
   PCLASSINFO(PSemaphore, PSync);
 
   public:
@@ -83,31 +85,12 @@ class PSemaphore : public PSync
        the maximum value.
      */
     PSemaphore(
-      unsigned initial = 0,         ///< Initial value for semaphore count.
-      unsigned maximum = UINT_MAX   ///< Maximum value for semaphore count.
-    ) { Reset(initial, maximum); }
-
-    /**Create a new system global semaphore with maximum count and initial value specified.
-       If the initial value is larger than the maximum value then is is set to
-       the maximum value.
-     */
-    PSemaphore(
-      const PString & name,
-      unsigned initial = 0,         ///< Initial value for semaphore count.
-      unsigned maximum = UINT_MAX   ///< Maximum value for semaphore count.
-    ) : m_name(name) { Reset(initial, maximum); }
+      unsigned initial = 0         ///< Initial value for semaphore count.
+    ) : semaphore(initial) { }
 
     /** Create a new semaphore with the same initial and maximum values as the original.
      */
-    PSemaphore(const PSemaphore & sem)
-      : PSync()
-      , m_name(sem.m_name)
-    { Reset(sem.m_initial, sem.m_maximum); }
-
-    /**Destroy the semaphore. This will assert if there are still waiting
-       threads on the semaphore.
-     */
-    ~PSemaphore();
+    PSemaphore(const PSemaphore &) : semaphore(0) { }
   //@}
 
   /**@name Operations */
@@ -138,32 +121,29 @@ class PSemaphore : public PSync
         semaphire when this is called.
       */
     virtual void Reset(
-      unsigned initial = 0,         ///< Initial value for semaphore count.
-      unsigned maximum = UINT_MAX   ///< Maximum value for semaphore count.
+      unsigned initial = 0         ///< Initial value for semaphore count.
     );
-
-    /** Get the initial value semaphore was creted with.
-      */
-    unsigned GetInitial() const  { return m_initial; }
-
-    /** Get the initial value semaphore was creted with.
-      */
-    unsigned GetMaximum() const { return m_maximum; }
   //@}
+};
 
-
+/** This class defines a named semaphore.
+    A named semaphore is a semaphore that can be shared between processes.
+  */
+class PNamedSemaphore : public PSync
+{
+  PCLASSINFO(PNamedSemaphore, PSync);
+  public:
+    PNamedSemaphore(const PString & name, unsigned initial = 0);
+    ~PNamedSemaphore();
+    virtual void Wait() override;
+    virtual PBoolean Wait(const PTimeInterval & timeout) override;
+    virtual void Signal() override;
   protected:
-    PString  m_name;
-    unsigned m_maximum;
-    unsigned m_initial;
-
-
-// Include platform dependent part of class
 #ifdef _WIN32
-#include "msos/ptlib/semaphor.h"
-#else
-#include "unix/ptlib/semaphor.h"
-#endif
+    PWin32Handle m_handle;
+#elif defined(P_HAS_NAMED_SEMAPHORES)
+    sem_t * m_sem;
+#endif // _WIN32
 };
 
 

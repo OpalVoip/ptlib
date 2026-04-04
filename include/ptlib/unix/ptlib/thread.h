@@ -50,8 +50,6 @@
   protected:
     void PX_StartThread();
     void PX_Suspended();
-    static void * PX_ThreadMain(void *);
-    static void PX_ThreadEnd(void *);
 
 #if P_STD_ATOMIC
     atomic<Priority> PX_priority;
@@ -63,8 +61,6 @@
     PTimeInterval     PX_startTick;
     PTimeInterval     PX_endTick;
 #endif
-    mutable pthread_mutex_t   PX_suspendMutex;
-    int               PX_suspendCount;
     enum PX_states {
       PX_firstResume,
       PX_starting,

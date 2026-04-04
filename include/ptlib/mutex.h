@@ -34,8 +34,9 @@
 #pragma interface
 #endif
 
-#include <ptlib/atomic.h>
 #include <ptlib/semaphor.h>
+#include <atomic>
+#include <mutex>
 
 
 class PMutexExcessiveLockInfo
@@ -98,7 +99,10 @@ class PMutexExcessiveLockInfo
     <code>Signal()</code> function, releasing the second thread.
  */
 
-class PTimedMutex : public PSync, public PMutexExcessiveLockInfo, PProfiling::HighWaterMark<PTimedMutex>
+class PTimedMutex : public PSync,
+                    public PMutexExcessiveLockInfo,
+                    protected std::recursive_timed_mutex,
+                    PProfiling::HighWaterMark<PTimedMutex>
 {
     PCLASSINFO(PTimedMutex, PSync)
   public:
@@ -108,7 +112,7 @@ class PTimedMutex : public PSync, public PMutexExcessiveLockInfo, PProfiling::Hi
 
        The name/line parameters are used for deadlock detection debugging.
      */
-    explicit PTimedMutex();
+    PTimedMutex();
     explicit PTimedMutex(
       const PDebugLocation & location, ///< Source file/line of mutex definition
       unsigned timeout = 0             ///< Timeout in ms, before declaring a possible deadlock. Zero uses default.
@@ -117,7 +121,7 @@ class PTimedMutex : public PSync, public PMutexExcessiveLockInfo, PProfiling::Hi
     /**Copy constructor is allowed but does not copy, allocating a new mutex.
        Two copies of the same mutex information would be very bad.
       */
-    PTimedMutex(const PTimedMutex & mutex);
+    PTimedMutex(const PTimedMutex &) : PTimedMutex() { }
 
     /**Assignment operator is allowed but does nothing.
        Overwriting the old mutex information would be very bad.
@@ -144,8 +148,8 @@ class PTimedMutex : public PSync, public PMutexExcessiveLockInfo, PProfiling::Hi
      */
     virtual void Signal() override;
 
-    /** Try to enter the critical section for exlusive access. Does not wait.
-        @return true if cirical section entered, leave/Signal must be called.
+    /** Try to enter the critical section for exclusive access. Does not wait.
+        @return true if critical section entered, leave/Signal must be called.
       */
     PINLINE bool Try() { return Wait(0); }
 
@@ -165,25 +169,14 @@ class PTimedMutex : public PSync, public PMutexExcessiveLockInfo, PProfiling::Hi
 #endif
 
   protected:
-    PThreadIdentifier       m_lockerId;
-    PThreadIdentifier       m_lastLockerId;
-    PUniqueThreadIdentifier m_lastUniqueId;
-    unsigned                m_lockCount;
+    PThreadIdentifier       m_lockerId = PNullThreadIdentifier;
+    PThreadIdentifier       m_lastLockerId = PNullThreadIdentifier;
+    PUniqueThreadIdentifier m_lastUniqueId = 0;
+    unsigned                m_lockCount = 0;
 
-    void Construct();
-    void PlatformConstruct();
-    bool PlatformWait(const PTimeInterval & timeout);
-    void PlatformSignal(const PDebugLocation * location);
     void InternalWait(const PDebugLocation * location);
     void InternalWaitComplete(uint64_t startWaitCycle, const PDebugLocation * location);
-    bool InternalSignal(const PDebugLocation * location);
-
-// Include platform dependent part of class
-#ifdef _WIN32
-#include "msos/ptlib/mutex.h"
-#else
-#include "unix/ptlib/mutex.h"
-#endif
+    void InternalSignal(const PDebugLocation * location);
 };
 
 typedef PTimedMutex PMutex;
@@ -235,7 +228,7 @@ typedef PTimedMutex PMutex;
       void SetHeldMaxHistory(unsigned maxHistory) { m_timeHeldContext.SetMaxHistory(maxHistory); }
 
       virtual bool InstrumentedWait(const PTimeInterval & timeout, const PDebugLocation & location);
-      virtual void InstrumentedSignal(const PDebugLocation & location) { PlatformSignal(&location); }
+      virtual void InstrumentedSignal(const PDebugLocation & location) { InternalSignal(&location); }
 
     protected:
       virtual void AcquiredLock(uint64_t startWaitCycle, bool readOnly, const PDebugLocation & location);
@@ -259,40 +252,18 @@ typedef PTimedMutex PMutex;
 #endif
 
 
-/** This class implements critical section mutexes using the most efficient
-    mechanism available on the host platform.
-    For example in Windows, a CRITICAL_SECTION is used.
+/** This class implements critical section mutexes.
+    These are the simplest and fastest form of mutex.
 
     Note: There is no deadlock detection available on this version of a mutex,
     so it should only be used where a deadlock is clearly impossible, that is,
-    there are never mopre than one mutex in the region being locked.
+    there are never more than one mutex in the region being locked.
   */
-class PCriticalSection : public PSync
+class PCriticalSection : public PSync, public std::mutex
 {
   PCLASSINFO(PCriticalSection, PSync);
 
   public:
-  /**@name Construction */
-  //@{
-    /**Create a new critical section object .
-     */
-    PCriticalSection();
-
-    /**Allow copy constructor, but it actually does not copy the critical section,
-       it creates a brand new one as they cannot be shared in that way.
-     */
-    PCriticalSection(const PCriticalSection &);
-
-    /**Destroy the critical section object
-     */
-    ~PCriticalSection();
-
-    /**Assignment operator is allowed but does nothing. Overwriting the old critical
-       section information would be very bad.
-      */
-    PCriticalSection & operator=(const PCriticalSection &) { return *this; }
-  //@}
-
   /**@name Operations */
   //@{
     /** Create a new PCriticalSection
@@ -304,7 +275,7 @@ class PCriticalSection : public PSync
 
     /** Enter the critical section by waiting for exclusive access.
      */
-    virtual void Wait() override;
+    virtual void Wait() override { lock(); }
     inline void Enter() { Wait(); }
 
     /**Block, for a time, until the synchronisation object is available.
@@ -312,26 +283,18 @@ class PCriticalSection : public PSync
        @return
        true if lock is acquired, false if timed out
      */
-    virtual PBoolean Wait(
-      const PTimeInterval & timeout // Amount of time to wait.
-    ) override;
+    virtual PBoolean Wait(const PTimeInterval &) override { PAssertAlways(PUnimplementedFunction); return false; }
 
     /** Leave the critical section by unlocking the mutex
      */
-    virtual void Signal() override;
+    virtual void Signal() override { unlock(); }
     inline void Leave() { Signal(); }
 
-    /** Try to enter the critical section for exlusive access. Does not wait.
-        @return true if cirical section entered, leave/Signal must be called.
+    /** Try to enter the critical section for exclusive access. Does not wait.
+        @return true if critical section entered, leave/Signal must be called.
       */
-    bool Try();
+    bool Try() { return try_lock(); }
   //@}
-
-#if _WIN32
-    mutable CRITICAL_SECTION criticalSection;
-#elif defined(P_PTHREADS)
-    mutable pthread_mutex_t m_mutex;
-#endif
 };
 
 

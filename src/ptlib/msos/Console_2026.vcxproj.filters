@@ -567,9 +567,6 @@
     <ClInclude Include="..\..\..\Include\PtLib\Pdirect.h">
       <Filter>Header Files\Common</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\mutex.h">
-      <Filter>Header Files\MSOS</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\Include\PtLib\mutex.h">
       <Filter>Header Files\Common</Filter>
     </ClInclude>
@@ -708,9 +705,6 @@
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\remconn.h">
       <Filter>Header Files\MSOS</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\semaphor.h">
-      <Filter>Header Files\MSOS</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\socket.h">
       <Filter>Header Files\MSOS</Filter>
     </ClInclude>
@@ -718,9 +712,6 @@
       <Filter>Header Files\MSOS</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\svcproc.h">
-      <Filter>Header Files\MSOS</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\syncpoint.h">
       <Filter>Header Files\MSOS</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\textfile.h">
@@ -852,9 +843,6 @@
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\resampler.h">
       <Filter>Header Files\Android</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\semaphor.h">
-      <Filter>Header Files\Android</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\serchan.h">
       <Filter>Header Files\Android</Filter>
     </ClInclude>
@@ -862,9 +850,6 @@
       <Filter>Header Files\Android</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\svcproc.h">
-      <Filter>Header Files\Android</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\syncpoint.h">
       <Filter>Header Files\Android</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\tcpsock.h">
@@ -916,9 +901,6 @@
       <Filter>Header Files\Android</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\mail.h">
-      <Filter>Header Files\Android</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\mutex.h">
       <Filter>Header Files\Android</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\pdirect.h">

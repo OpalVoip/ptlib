@@ -736,16 +736,25 @@ void PWin32Overlapped::Reset()
 ///////////////////////////////////////////////////////////////////////////////
 // Threads
 
-UINT __stdcall PThread::MainFunction(void * threadPtr)
-{
-  reinterpret_cast<PThread *>(PAssertNULL(threadPtr))->InternalThreadMain();
-  return 0;
-}
-
-
 void PThread::InternalPreMain()
 {
-  SetThreadName(GetThreadName());
+#ifdef P_WIN_COM
+  HRESULT result = ::CoInitializeEx(NULL, COINIT_MULTITHREADED);
+  PTRACE_IF(1, FAILED(result) && result != RPC_E_CHANGED_MODE, "PTLib", "Could not initialise COM: error=0x" << hex << result);
+
+  static HRESULT security = ::CoInitializeSecurity(
+    NULL,
+    -1,                          // COM authentication
+    NULL,                        // Authentication services
+    NULL,                        // Reserved
+    RPC_C_AUTHN_LEVEL_DEFAULT,   // Default authentication 
+    RPC_C_IMP_LEVEL_IMPERSONATE, // Default Impersonation  
+    NULL,                        // Authentication info
+    EOAC_NONE,                   // Additional capabilities 
+    NULL                         // Reserved
+  );
+  PTRACE_IF(2, FAILED(security), "PTLib", "Could not initialise COM security: error=0x" << hex << security);
+#endif
 }
 
 
@@ -755,91 +764,7 @@ void PThread::InternalPostMain()
 }
 
 
-void PThread::Win32AttachThreadInput()
-{
-  PProcess & process = PProcess::Current();
-  ::AttachThreadInput(m_threadId, ((PThread&)process).m_threadId, true);
-  ::AttachThreadInput(((PThread&)process).m_threadId, m_threadId, true);
-}
-
-
-PThread::PThread(bool isProcess)
-  : m_type(isProcess ? e_IsProcess : e_IsExternal)
-  , m_originalStackSize(0)
-  , m_threadId(GetCurrentThreadId())
-  , m_uniqueId(m_threadId)
-#if defined(P_WIN_COM)
-  , m_comInitialised(false)
-#endif
-{
-  if (isProcess) {
-    m_threadHandle = GetCurrentThread();
-    return;
-  }
-
-  m_threadHandle.Duplicate(GetCurrentThread());
-
-  PProcess::Current().InternalThreadStarted(this);
-}
-
-
-PThread::PThread(PINDEX stackSize,
-                 AutoDeleteFlag deletion,
-                 Priority priorityLevel,
-                 const PString & name)
-  : m_type(deletion == AutoDeleteThread ? e_IsAutoDelete : e_IsManualDelete)
-  , m_originalStackSize(std::max(stackSize, (PINDEX)65535))
-  , m_threadName(name)
-#if defined(P_WIN_COM)
-  , m_comInitialised(false)
-#endif
-{
-  PAssert(m_originalStackSize > 0, PInvalidParameter);
-
-  m_threadHandle = (HANDLE)_beginthreadex(NULL, m_originalStackSize, MainFunction, this, CREATE_SUSPENDED, &m_threadId);
-  m_uniqueId = m_threadId;
-
-  PAssertOS(m_threadHandle.IsValid());
-
-  SetPriority(priorityLevel);
-
-  PProcess::Current().InternalThreadStarted(this);
-}
-
-
 #ifdef P_WIN_COM
-static atomic<bool> s_securityInitialised(false);
-
-bool PThread::CoInitialise()
-{
-  if (m_comInitialised)
-    return true;
-
-  HRESULT result = ::CoInitializeEx(NULL, COINIT_MULTITHREADED);
-  if (FAILED(result)) {
-    PTRACE_IF(1, result != RPC_E_CHANGED_MODE, "PTLib", "Could not initialise COM: error=0x" << hex << result);
-    return false;
-  }
-
-  if (!s_securityInitialised.exchange(true)) {
-    result = ::CoInitializeSecurity(NULL, 
-                                    -1,                          // COM authentication
-                                    NULL,                        // Authentication services
-                                    NULL,                        // Reserved
-                                    RPC_C_AUTHN_LEVEL_DEFAULT,   // Default authentication 
-                                    RPC_C_IMP_LEVEL_IMPERSONATE, // Default Impersonation  
-                                    NULL,                        // Authentication info
-                                    EOAC_NONE,                   // Additional capabilities 
-                                    NULL                         // Reserved
-                                    );
-    PTRACE_IF(2, result, "PTLib", "Could not initialise COM security: error=0x" << hex << result);
-  }
-
-  m_comInitialised = true;
-  return true;
-}
-
-
 std::ostream & operator<<(std::ostream & strm, const PComResult & result)
 {
   TCHAR msg[MAX_ERROR_TEXT_LEN+1];
@@ -971,23 +896,8 @@ void PThread::InternalDestroy()
     m_threadHandle.Close();
 
 #if defined(P_WIN_COM)
-  if (m_comInitialised)
-    ::CoUninitialize();
+  ::CoUninitialize();
 #endif
-}
-
-
-void PThread::Restart()
-{
-  if (!PAssert(m_originalStackSize != 0, "Cannot restart process/external thread") ||
-      !PAssert(IsTerminated(), "Cannot restart running thread"))
-    return;
-
-  InternalDestroy();
-
-  m_threadHandle = (HANDLE)_beginthreadex(NULL, m_originalStackSize, MainFunction, this, 0, &m_threadId);
-  m_uniqueId = m_threadId;
-  PAssertOS(m_threadHandle.IsValid());
 }
 
 
@@ -1025,33 +935,6 @@ PBoolean PThread::WaitForTermination(const PTimeInterval & maxWait) const
   }
 
   return m_threadHandle.Wait(maxWait.GetInterval());
-}
-
-
-void PThread::Suspend(PBoolean susp)
-{
-  PAssert(!IsTerminated(), "Operation on terminated thread");
-  if (susp)
-    SuspendThread(m_threadHandle);
-  else
-    Resume();
-}
-
-
-void PThread::Resume()
-{
-  PAssert(!IsTerminated(), "Operation on terminated thread");
-  ResumeThread(m_threadHandle);
-}
-
-
-PBoolean PThread::IsSuspended() const
-{
-  if (GetThreadId() == GetCurrentThreadId())
-    return false;
-
-  SuspendThread(m_threadHandle);
-  return ResumeThread(m_threadHandle) > 1;
 }
 
 
@@ -1594,106 +1477,38 @@ bool PProcess::HostSystemURLHandlerInfo::Register()
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// PSemaphore
+// PNamedSemaphore
 
-void PSemaphore::Reset(unsigned initial, unsigned maximum)
+PNamedSemaphore::PNamedSemaphore(const PString & name, unsigned initial)
 {
-  m_maximum = std::min(maximum, (unsigned)INT_MAX);
-  m_initial = std::min(initial, m_maximum);
-
+  PAssert(!name.empty(), PInvalidParameter);
   m_handle.Close();
-  m_handle = CreateSemaphore(NULL, m_initial, m_maximum, m_name.IsEmpty() ? NULL : m_name.GetPointer());
+  m_handle = CreateSemaphore(NULL, initial, INT_MAX, name.GetPointer());
   PAssertOS(m_handle.IsValid());
 }
 
 
-PSemaphore::~PSemaphore()
+PNamedSemaphore::~PNamedSemaphore()
 {
 }
 
 
-void PSemaphore::Wait()
+void PNamedSemaphore::Wait()
 {
   m_handle.Wait(INFINITE);
 }
 
 
-PBoolean PSemaphore::Wait(const PTimeInterval & timeout)
+PBoolean PNamedSemaphore::Wait(const PTimeInterval & timeout)
 {
   return m_handle.Wait(timeout.GetInterval());
 }
 
 
-void PSemaphore::Signal()
+void PNamedSemaphore::Signal()
 {
   if (PAssertOS(ReleaseSemaphore(m_handle, 1, NULL) || ::GetLastError() == ERROR_INVALID_HANDLE))
     SetLastError(ERROR_SUCCESS);
-}
-
-
-///////////////////////////////////////////////////////////////////////////////
-// PTimedMutex
-
-PTimedMutex::~PTimedMutex()
-{
-  PMUTEX_DESTROYED();
-}
-
-
-void PTimedMutex::PrintOn(ostream &strm) const
-{
-  strm << "timed mutex " << this << '[' << GetHandle() << ']';
-  PMutexExcessiveLockInfo::PrintOn(strm);
-}
-
-
-void PTimedMutex::PlatformConstruct()
-{
-  m_handle = ::CreateMutex(NULL, FALSE, NULL);
-}
-
-
-PBoolean PTimedMutex::PlatformWait(const PTimeInterval & timeout)
-{
-  return m_handle.Wait(timeout.GetInterval());
-}
-
-
-void PTimedMutex::PlatformSignal(const PDebugLocation * location)
-{
-  InternalSignal(location);
-  PAssertOS(::ReleaseMutex(m_handle));
-}
-
-
-/////////////////////////////////////////////////////////////////////////////
-// PSyncPoint
-
-PSyncPoint::PSyncPoint()
-  : m_handle(::CreateEvent(NULL, FALSE, FALSE, NULL))
-{
-}
-
-PSyncPoint::PSyncPoint(const PSyncPoint &)
-  : m_handle(::CreateEvent(NULL, FALSE, FALSE, NULL))
-{
-}
-
-void PSyncPoint::Wait()
-{
-  m_handle.Wait(INFINITE);
-}
-
-
-PBoolean PSyncPoint::Wait(const PTimeInterval & timeout)
-{
-  return m_handle.Wait(timeout.GetInterval());
-}
-
-
-void PSyncPoint::Signal()
-{
-  PAssertOS(::SetEvent(m_handle));
 }
 
 
@@ -1706,6 +1521,8 @@ void PWin32Handle::Close()
   }
 }
 
+
+///////////////////////////////////////////////////////////////////////////////
 
 HANDLE PWin32Handle::Detach()
 {

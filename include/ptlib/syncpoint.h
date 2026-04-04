@@ -35,6 +35,7 @@
 #endif
 
 #include <ptlib/semaphor.h>
+#include <semaphore>
 
 
 /** This class defines a thread synchronisation object.
@@ -60,15 +61,25 @@
   are waiting on the event, only one thread will be released. As you cannot know
   which thread will be released this mode of use is not recommended.
  */
-class PSyncPoint : public PSync
+class PSyncPoint : public PSync, protected std::binary_semaphore
 {
   PCLASSINFO(PSyncPoint, PSync);
 
   public:
     /** Create a new sync point.
      */
-    PSyncPoint();
-    PSyncPoint(const PSyncPoint &);
+    PSyncPoint() : std::binary_semaphore(0) { };
+
+    /**Copy constructor is allowed but does not copy, allocating a new mutex.
+       Two copies of the same semaphore information would be very bad.
+      */
+    PSyncPoint(const PSyncPoint &) : std::binary_semaphore(0) { }
+
+    /**Assignment operator is allowed but does nothing.
+       Overwriting the old semaphore information would be very bad.
+      */
+    PSyncPoint & operator=(const PSyncPoint &) { return *this; }
+
 
     /**Block until the synchronisation object is available.
      */
@@ -86,14 +97,6 @@ class PSyncPoint : public PSync
     /**Signal that the synchronisation object is available.
      */
     virtual void Signal() override;
-
-
-// Include platform dependent part of class
-#ifdef _WIN32
-#include "msos/ptlib/syncpoint.h"
-#else
-#include "unix/ptlib/syncpoint.h"
-#endif
 };
 
 

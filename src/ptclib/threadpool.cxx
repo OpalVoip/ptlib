@@ -126,7 +126,7 @@ PThreadPoolBase::WorkerThreadBase * PThreadPoolBase::AllocateWorker()
     PTRACE(2, PThreadPoolTraceModule, "Could not create worker in thread pool \"" << m_threadName << '"');
   else {
     m_workers.push_back(worker);
-    worker->Resume();
+    worker->Start();
   }
   return worker;
 }
@@ -195,7 +195,7 @@ bool PThreadPoolBase::OnWorkerStarted(WorkerThreadBase & PTRACE_PARAM(thread))
 
 
 PThreadPoolBase::WorkerThreadBase::WorkerThreadBase(PThreadPoolBase & pool, Priority priority, const char * threadName)
-  : PThread(100, NoAutoDeleteThread, priority, threadName)
+  : PThread(NoAutoDeleteThread, priority, threadName)
   , m_pool(pool)
   , m_shutdown(false)
 {

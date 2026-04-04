@@ -37,7 +37,6 @@
 #pragma implementation "thread.h"
 #pragma implementation "semaphor.h"
 #pragma implementation "mutex.h"
-#pragma implementation "critsec.h"
 #pragma implementation "psync.h"
 #pragma implementation "syncpoint.h"
 #pragma implementation "syncthrd.h"
@@ -880,27 +879,6 @@ void PThread::PXAbortBlock() const
 }
 
 
-void PThread::Restart()
-{
-}
-
-
-void PThread::Suspend(PBoolean susp)
-{
-}
-
-
-void PThread::Resume()
-{
-}
-
-
-PBoolean PThread::IsSuspended() const
-{
-  return true;
-}
-
-
 void PThread::SetPriority(Priority priorityLevel)
 {
 }
@@ -964,79 +942,27 @@ int PThread::PXBlockOnIO(int handle, int type, const PTimeInterval & timeout)
 }
 
 
-PSemaphore::~PSemaphore()
+PNamedSemaphore::PNamedSemaphore(const PString &, unsigned)
+{ }
+
+
+PNamedSemaphore::~PNamedSemaphore()
 {
 }
 
 
-void PSemaphore::Reset(unsigned initial, unsigned maximum)
+void PNamedSemaphore::Wait()
 {
 }
 
 
-void PSemaphore::Wait()
-{
-}
-
-
-PBoolean PSemaphore::Wait(const PTimeInterval & waitTime)
-{
-  return false;
-}
-
-
-void PSemaphore::Signal()
-{
-}
-
-
-///////////////////////////////////////////////////////////////////////////////
-
-PTimedMutex::PTimedMutex(const char *, unsigned)
-{
-}
-
-PTimedMutex::PTimedMutex(const PTimedMutex &)
-{
-}
-
-
-void PTimedMutex::Wait()
-{
-}
-
-
-PBoolean PTimedMutex::Wait(const PTimeInterval & waitTime)
-{
-  return true;
-}
-
-
-void PTimedMutex::Signal()
-{
-}
-
-
-PSyncPoint::PSyncPoint()
-{
-}
-
-PSyncPoint::PSyncPoint(const PSyncPoint &)
-{
-}
-
-void PSyncPoint::Wait()
-{
-}
-
-
-PBoolean PSyncPoint::Wait(const PTimeInterval & waitTime)
+PBoolean PNamedSemaphore::Wait(const PTimeInterval & waitTime)
 {
   return false;
 }
 
 
-void PSyncPoint::Signal()
+void PNamedSemaphore::Signal()
 {
 }
 

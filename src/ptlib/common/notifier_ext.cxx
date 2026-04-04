@@ -80,8 +80,7 @@ class PAsyncNotifierQueue : std::queue<PAsyncNotifierCallback *>
 
 public:
   PAsyncNotifierQueue(PAsyncNotifierTarget * target)
-    : m_count(0, INT_MAX)
-    , m_target(target)
+    : m_target(target)
   {
   }
 

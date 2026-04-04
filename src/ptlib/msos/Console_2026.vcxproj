@@ -128,8 +128,6 @@
     <ClCompile Include="..\..\ptclib\jscript.cxx">
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(V8_DIR)/v8/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(V8_DIR)/v8/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <LanguageStandard Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">stdcpp17</LanguageStandard>
-      <LanguageStandard Condition="'$(Configuration)|$(Platform)'=='Release|x64'">stdcpp17</LanguageStandard>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
       </PrecompiledHeaderFile>
@@ -504,7 +502,6 @@ if errorlevel 1 copy "%(FullPath)"+nul "%(RootDir)%(Directory)%(FileName)"</Comm
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\ipdsock.h" />
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\ipsock.h" />
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\mail.h" />
-    <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\mutex.h" />
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\pdirect.h" />
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\pipechan.h" />
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\platform.h" />
@@ -512,11 +509,9 @@ if errorlevel 1 copy "%(FullPath)"+nul "%(RootDir)%(Directory)%(FileName)"</Comm
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\ptime.h" />
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\remconn.h" />
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\resampler.h" />
-    <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\semaphor.h" />
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\serchan.h" />
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\socket.h" />
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\svcproc.h" />
-    <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\syncpoint.h" />
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\tcpsock.h" />
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\textfile.h" />
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\thread.h" />
@@ -595,20 +590,17 @@ if errorlevel 1 copy "%(FullPath)"+nul "%(RootDir)%(Directory)%(FileName)"</Comm
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\ipsock.h" />
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\ipxsock.h" />
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\mail.h" />
-    <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\mutex.h" />
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\pdirect.h" />
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\pipechan.h" />
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\pprocess.h" />
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\ptime.h" />
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\remconn.h" />
-    <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\semaphor.h" />
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\serchan.h" />
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\sfile.h" />
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\socket.h" />
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\directsound.h" />
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\spxsock.h" />
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\svcproc.h" />
-    <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\syncpoint.h" />
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\tcpsock.h" />
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\textfile.h" />
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\thread.h" />

@@ -37,14 +37,15 @@
 #include <ptlib/mutex.h>
 #include <ptlib/semaphor.h>
 #include <ptlib/syncpoint.h>
-#include <map>
+#include <unordered_map>
 #include <queue>
+#include <shared_mutex>
 
 
 /** This class defines a thread synchronisation object.
 
-   This may be used to send signals to a thread and await an acknowldegement
-   that the signal was processed. This can be be used to initiate an action in
+   This may be used to send signals to a thread and await an acknowledgement
+   that the signal was processed. This can be used to initiate an action in
    another thread and wait for the action to be completed.
 <pre><code>
     ... thread one
@@ -76,7 +77,7 @@ class PSyncPointAck : public PSyncPoint
        execution and called the Acknowledge() function.
 
        The <code>waitTime</code> parameter is used as a maximum amount of time
-       to wait for the achnowledgement to be returned from the other thread.
+       to wait for the acknowledgement to be returned from the other thread.
      */
     virtual void Signal() override;
     void Signal(const PTimeInterval & waitTime);
@@ -96,7 +97,7 @@ class PSyncPointAck : public PSyncPoint
 /**This class defines a thread synchronisation object.
 
    This is a special type of mutual exclusion, where a thread wishes to get
-   exlusive use of a resource but only if a certain other condition is met.
+   exclusive use of a resource but only if a certain other condition is met.
  */
 class PCondMutex : public PMutex
 {
@@ -253,7 +254,10 @@ class PIntCondMutex : public PCondMutex
    http://arxiv.org/ftp/arxiv/papers/1309/1309.4507.pdf to improve efficiency.
  */
 
-class PReadWriteMutex : public PObject, public PMutexExcessiveLockInfo, PProfiling::HighWaterMark<PReadWriteMutex>, PNonCopyable
+class PReadWriteMutex : public PObject,
+                        public PMutexExcessiveLockInfo,
+                        protected std::shared_timed_mutex,
+                        PProfiling::HighWaterMark<PReadWriteMutex>, PNonCopyable
 {
   PCLASSINFO(PReadWriteMutex, PObject);
   public:
@@ -293,7 +297,7 @@ class PReadWriteMutex : public PObject, public PMutexExcessiveLockInfo, PProfili
         It should also be noted that a consequence of this is that another
         thread may acquire the write lock before the thread that previously
         had the read lock. Thus it is impossibly to go straight from a read
-        lock to write lock without the possiblility of the object being
+        lock to write lock without the possibility of the object being
         changed and application logic should take this into account.
      */
     __inline void StartWrite() { InternalStartWrite(NULL); }
@@ -307,7 +311,7 @@ class PReadWriteMutex : public PObject, public PMutexExcessiveLockInfo, PProfili
         It should also be noted that a consequence of this is that another
         thread may acquire the write lock before the thread that regains the
         read lock. Thus it is impossibly to go straight from a write lock to
-        read lock without the possiblility of the object being changed and
+        read lock without the possibility of the object being changed and
         application logic should take this into account.
      */
     void EndWrite() { InternalEndWrite(NULL); }
@@ -322,23 +326,6 @@ class PReadWriteMutex : public PObject, public PMutexExcessiveLockInfo, PProfili
     void InternalStartWrite(const PDebugLocation * location);
     void InternalEndWrite(const PDebugLocation * location);
 
-#if P_READ_WRITE_ALGO2
-    PSemaphore  m_inSemaphore;
-    unsigned    m_inCount;
-    PSemaphore  m_outSemaphore;
-    unsigned    m_outCount;
-    PSemaphore  m_writeSemaphore;
-    bool        m_wait;
-#else
-    PSemaphore  m_readerSemaphore;
-    PTimedMutex m_readerMutex;
-    unsigned    m_readerCount;
-    PTimedMutex m_starvationPreventer;
-
-    PSemaphore  m_writerSemaphore;
-    PTimedMutex m_writerMutex;
-    unsigned    m_writerCount;
-#endif
     struct Nest
     {
       atomic<unsigned> m_readerCount;
@@ -351,18 +338,14 @@ class PReadWriteMutex : public PObject, public PMutexExcessiveLockInfo, PProfili
       Nest(const Nest & other);
       Nest & operator=(const Nest & other);
     };
-    typedef std::map<PThreadIdentifier, Nest> NestMap;
+    typedef std::unordered_map<PThreadIdentifier, Nest> NestMap;
     NestMap          m_nestedThreads;
     PCriticalSection m_nestingMutex;
 
     Nest * GetNest();
     Nest & StartNest();
     void EndNest();
-    void InternalStartReadWithNest(Nest & nest, const PDebugLocation & location);
-    void InternalEndReadWithNest(Nest & nest, const PDebugLocation & location);
-    void InternalStartWriteWithNest(Nest & nest, const PDebugLocation & location);
-    void InternalEndWriteWithNest(Nest & nest, const PDebugLocation & location);
-    void InternalWait(Nest & nest, PSync & sync, const PDebugLocation & location) const;
+    void InternalWait(Nest & nest, bool shared, const PDebugLocation & location);
 
   friend class PSafeObject;
   friend class PReadWaitAndSignal;
@@ -589,7 +572,6 @@ template <class T> class PSyncQueue : public PObject, PNonCopyable
     /// Construct synchronous queue
     PSyncQueue()
       : m_state(e_Open)
-      , m_available(0, INT_MAX)
     {
     }
 

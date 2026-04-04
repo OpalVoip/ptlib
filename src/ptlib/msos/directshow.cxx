@@ -321,8 +321,6 @@ PVideoInputDevice_DirectShow::PVideoInputDevice_DirectShow()
   , m_fixedSizeFrames(true)
 {
   PTRACE(5, "Constructed " << this);
-
-  PThread::Current()->CoInitialise();
 }
 
 

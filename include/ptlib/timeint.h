@@ -35,6 +35,9 @@
 #endif
 
 
+#include <chrono>
+
+
 ///////////////////////////////////////////////////////////////////////////////
 // Difference between two system times
 
@@ -477,6 +480,8 @@ class PTimeInterval : public PObject
       long msecs    ///< Time interval as integer milliseconds to compare.
     ) const;
   //@}
+
+    std::chrono::nanoseconds AsChrono() const { return std::chrono::nanoseconds(GetNanoSeconds()); }
 
     static int64_t const MicroToNano = 1000;
     static int64_t const MilliToNano = MicroToNano*1000;
