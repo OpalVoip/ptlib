@@ -712,8 +712,7 @@ class PProcess : public PThread
     static POrdinalToString::Initialiser const InternalSigNames[];
 
     std::vector<PRunTimeSignalHandler> m_previousRunTimeSignalHandlers;
-    std::vector<RunTimeSignalInfo> m_RunTimeSignalsQueueBuffer;
-    size_t m_RunTimeSignalsQueueIn, m_RunTimeSignalsQueueOut;
+    std::queue<RunTimeSignalInfo> m_RunTimeSignalsQueue;
     PCriticalSection m_RunTimeSignalsQueueMutex;
     void InternalPostRunTimeSignal(int signal, PProcessIdentifier source);
     void InternalHandleRunTimeSignal(const RunTimeSignalInfo & signalInfo);

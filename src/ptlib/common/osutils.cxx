@@ -2542,9 +2542,6 @@ PProcess::PProcess(const char * manuf, const char * name,
 #endif
   , m_processID(GetCurrentProcessID())
   , m_previousRunTimeSignalHandlers(SIGRTMAX)
-  , m_RunTimeSignalsQueueBuffer(10)
-  , m_RunTimeSignalsQueueIn(0)
-  , m_RunTimeSignalsQueueOut(0)
 #if PTRACING
   , m_profileProcessTimer(NULL)
 #endif
@@ -2715,9 +2712,9 @@ void PProcess::HouseKeeping()
       delete thread;
 
     m_RunTimeSignalsQueueMutex.Wait();
-    while (m_RunTimeSignalsQueueIn != m_RunTimeSignalsQueueOut) {
-      RunTimeSignalInfo info = m_RunTimeSignalsQueueBuffer[m_RunTimeSignalsQueueOut];
-      m_RunTimeSignalsQueueOut = (m_RunTimeSignalsQueueOut + 1) % m_RunTimeSignalsQueueBuffer.size();
+    while (!m_RunTimeSignalsQueue.empty()) {
+      RunTimeSignalInfo info = m_RunTimeSignalsQueue.front();
+      m_RunTimeSignalsQueue.pop();
       m_RunTimeSignalsQueueMutex.Signal();
       InternalHandleRunTimeSignal(info);
       m_RunTimeSignalsQueueMutex.Wait();
@@ -3083,9 +3080,7 @@ void PProcess::AsynchronousRunTimeSignal(int signal, PProcessIdentifier source)
 void PProcess::InternalPostRunTimeSignal(int signal, PProcessIdentifier source)
 {
   m_RunTimeSignalsQueueMutex.Wait();
-  m_RunTimeSignalsQueueBuffer[m_RunTimeSignalsQueueIn].m_signal = signal;
-  m_RunTimeSignalsQueueBuffer[m_RunTimeSignalsQueueIn].m_source = source;
-  m_RunTimeSignalsQueueIn = (m_RunTimeSignalsQueueIn + 1) % m_RunTimeSignalsQueueBuffer.size();
+  m_RunTimeSignalsQueue.emplace(signal, source);
   m_RunTimeSignalsQueueMutex.Signal();
 
   SignalTimerChange(); // Inform house keeping thread we have a signal to be processed
