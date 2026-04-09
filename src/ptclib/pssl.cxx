@@ -151,6 +151,9 @@ static PString PSSLError(unsigned long err = ERR_peek_error())
 
 #define PSSLAssert(prefix) PAssertAlways(prefix + PSSLError())
 
+// I/O during TLS handshake should be very quick.
+static const PTimeInterval HandshakeReadTimeout(0, 5);
+static const PTimeInterval HandshakeWriteTimeout(0, 2);
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -2687,6 +2690,9 @@ int PSSLChannel::BioRead(char * buf, int len)
     case PChannel::Interrupted :
     case PChannel::Unavailable :
       BIO_set_retry_read(m_bio); // Non fatal, keep trying
+      break;
+    case PChannel::Timeout :
+      PTRACE(3, "BIO read timeout");
     default :
         break;
   }
@@ -2755,6 +2761,9 @@ int PSSLChannel::BioWrite(const char * buf, int len)
     case PChannel::Interrupted :
     case PChannel::Unavailable :
       BIO_set_retry_write(m_bio); // Non fatal, keep trying
+      break;
+    case PChannel::Timeout:
+      PTRACE(3, "BIO write timeout");
     default :
         break;
   }
@@ -2872,7 +2881,17 @@ PBoolean PSSLChannel::Accept(PChannel * channel, PBoolean autoDelete)
 
 bool PSSLChannel::InternalAccept()
 {
-  return PAssertNULL(m_ssl) != NULL && ConvertOSError(SSL_accept(m_ssl));
+  if (!PAssertNULL(m_ssl))
+    return false;
+
+  PTimeInterval oldReadTimeout = GetReadTimeout();
+  PTimeInterval oldWriteTimeout = GetWriteTimeout();
+  SetReadTimeout(HandshakeReadTimeout);
+  SetWriteTimeout(HandshakeWriteTimeout);
+  bool result = ConvertOSError(SSL_accept(m_ssl));
+  SetReadTimeout(oldReadTimeout);
+  SetWriteTimeout(oldWriteTimeout);
+  return result;
 }
 
 
@@ -2896,7 +2915,17 @@ PBoolean PSSLChannel::Connect(PChannel * channel, PBoolean autoDelete)
 
 bool PSSLChannel::InternalConnect()
 {
-  return PAssertNULL(m_ssl) != NULL && ConvertOSError(SSL_connect(m_ssl));
+  if (!PAssertNULL(m_ssl))
+    return false;
+
+  PTimeInterval oldReadTimeout = GetReadTimeout();
+  PTimeInterval oldWriteTimeout = GetWriteTimeout();
+  SetReadTimeout(HandshakeReadTimeout);
+  SetWriteTimeout(HandshakeWriteTimeout);
+  bool result = ConvertOSError(SSL_connect(m_ssl));
+  SetReadTimeout(oldReadTimeout);
+  SetWriteTimeout(oldWriteTimeout);
+  return result;
 }
 
 
