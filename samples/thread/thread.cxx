@@ -26,6 +26,8 @@
 
 #include <ptlib.h>
 #include <ptlib/pprocess.h>
+#include <thread>
+
 
 class MyNoAutoDeleteThread : public PThread
 {
@@ -72,7 +74,7 @@ class MyAutoDeleteThread : public PThread
     virtual void Main() override
     {
       for (int i = 1; i <= 20; ++i) {
-        std::cout << std::left << std::setw(3) << i << std::flush;
+        std::cout << i << ' ' << std::flush;
         Sleep(100);
       }
     }
@@ -80,6 +82,16 @@ class MyAutoDeleteThread : public PThread
     protected:
       std::atomic<bool> & m_exitedFlag;
 };
+
+
+void External()
+{
+  PAssert(PThread::Current() != NULL, "Failed!");
+  for (int i = 0; i < 25; ++i) {
+    std::cout << "E " << std::flush;
+    Sleep(100);
+  }
+}
 
 
 void LockAthenB(PMutex & a, PMutex & b)
@@ -119,12 +131,13 @@ void ThreadTest::Main()
 {
   cout << "Thread Test Program" << endl;
 
+  PTRACE_INITIALISE(5, "debugstream");
+
   PArgList & args = GetArguments();
   args.Parse("d-deadlock. Test deadlock detection");
 
   if (args.HasOption('d')) {
     cout << "Testing deadlock detection." << endl;
-    PTRACE_INITIALISE(3, "stderr");
     PTimedMutex a, b;
     PThread * th1 = new PThread2Arg<PMutex &, PMutex &>(a, b, LockAthenB);
     PThread * th2 = new PThread2Arg<PMutex &, PMutex &>(a, b, LockBthenA);
@@ -135,6 +148,8 @@ void ThreadTest::Main()
   }
 
   // Create the threads
+  std::thread external(External);
+
   auto * thread1 = new MyNoAutoDeleteThread();
   std::atomic<bool> exitedFlag(false);
   MyAutoDeleteThread * thread2 = new MyAutoDeleteThread(exitedFlag);
@@ -148,9 +163,10 @@ void ThreadTest::Main()
   delete thread1;
 
   // Display roughly number 11 to 20
-  while (!exitedFlag) {
+  while (!exitedFlag)
     PThread::Sleep(100);
-  }
-std::cout << "\nThread 2 has exited and auto deleted." << std::endl;
+
+  std::cout << "\nThread 2 has exited and auto deleted." << std::endl;
+  external.join();
 }
 
