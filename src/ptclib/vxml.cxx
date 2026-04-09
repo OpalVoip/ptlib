@@ -2833,7 +2833,7 @@ PBoolean PVXMLSession::PlayResource(const PString & src, PINDEX repeat, PINDEX d
     PTextToSpeech::TextType ttsType;
     if (fileType == ".txt")
       ttsType = m_promptType;
-    else if (fileType != ".ssml")
+    else if (fileType == ".ssml")
       ttsType = PTextToSpeech::FullSSML;
     else
       return PlayFile(url.AsFilePath(), repeat, delay);
