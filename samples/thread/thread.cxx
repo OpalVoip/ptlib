@@ -21,40 +21,26 @@
  *
  * The Initial Developer of the Original Code is Roger Hardiman
  *
- */
-
-/*
- * This sample program tests threads is PWLib. It creates two threads,
- * one which display the number '1' and one which displays the number '2'.
- * It also demonstrates starting a thread with Resume(), using
- * Suspend() and Resume() to suspend a running thread and two different
- * ways to make a thread terminate.
+ * Contributor(s): Robert Jongbloed (robertj@voxlucida.com.au).
  */
 
 #include <ptlib.h>
 #include <ptlib/pprocess.h>
 
-/*
- * Thread #1 displays the number 1 every 10ms.
- * When it is created, Main() starts executing immediatly.
- * The thread is terminated by calling Stop() which uses a PSyncPoint with a
- * 10ms timeout.
- */
-class MyThread1 : public PThread
+class MyNoAutoDeleteThread : public PThread
 {
-  PCLASSINFO(MyThread1, PThread);
+  PCLASSINFO(MyNoAutoDeleteThread, PThread);
   public:
-    MyThread1() : PThread(1000,NoAutoDeleteThread)
+    MyNoAutoDeleteThread()
+      : PThread(0, NoAutoDeleteThread)
     {
-      Resume(); // start running this thread when it is created.
+      Resume();
     }
 
-    virtual void Main() override {
-      while (!shutdown.Wait(10)) { // 10ms delay
-        printf("1 ");
-        fflush(stdout);
-	Sleep(10);
-      }
+    virtual void Main() override
+    {
+      while (!shutdown.Wait(100))
+        std::cout << "N " << std::flush;
     }
 
     void Stop() {
@@ -68,47 +54,31 @@ class MyThread1 : public PThread
 };
 
 
-/*
- * Thread #2 displays the number 2 every 10 ms.
- * This thread will not start automatically. We must call
- * Resume() after creating the thread.
- * The thread is terminated by calling Stop() which sets a local variable.
- */
-class MyThread2 : public PThread
+class MyAutoDeleteThread : public PThread
 {
-  PCLASSINFO(MyThread2, PThread);
+  PCLASSINFO(MyAutoDeleteThread, PThread);
   public:
-    MyThread2() : PThread(1000,NoAutoDeleteThread) {
-      exitFlag = false;
+    MyAutoDeleteThread(std::atomic<bool> & exitedFlag)
+      : PThread(0, AutoDeleteThread)
+      , m_exitedFlag(exitedFlag)
+    {
     }
 
-    virtual void Main() override {
-      while (1) {
-        // Check if we need to exit
-        exitMutex.Wait();
-        if (exitFlag == true) {
-          exitMutex.Signal();
-          break;
-        }
-        exitMutex.Signal();
+    ~MyAutoDeleteThread()
+    {
+      m_exitedFlag = true;
+    }
 
-        // Display the number 2, then sleep for a short time
-        printf("2 "); fflush(stdout);
-	    Sleep(10); // sleep 10ms
+    virtual void Main() override
+    {
+      for (int i = 1; i <= 20; ++i) {
+        std::cout << std::left << std::setw(3) << i << std::flush;
+        Sleep(100);
       }
     }
 
-    void Stop() {
-      // set the exit flag. On the next iteration, the thread's
-      // Main() function will exit cleanly.
-      exitMutex.Wait();
-      exitFlag = true;
-      exitMutex.Signal();
-    }
-
     protected:
-      PMutex exitMutex;
-      PBoolean exitFlag;
+      std::atomic<bool> & m_exitedFlag;
 };
 
 
@@ -164,60 +134,23 @@ void ThreadTest::Main()
     return;
   }
 
-  cout << "This program will display the following:" << endl;
-  cout << "             2 seconds of 1 1 1 1 1..." << endl;
-  cout << " followed by 2 seconds of 1 2 1 2 1 2 1 2 1 2..." << endl;
-  cout << " followed by 2 seconds of 2 2 2 2 2..." << endl;
-  cout << " followed by 2 seconds of 1 2 1 2 1 2 1 2 1 2..." << endl;
-  cout << endl;
-  cout << "It tests thread creation, suspend and resume functions." << endl;
-  cout << endl;
-
   // Create the threads
-  MyThread1 * mythread1 = new MyThread1();
-  MyThread2 * mythread2 = new MyThread2();
+  auto * thread1 = new MyNoAutoDeleteThread();
+  std::atomic<bool> exitedFlag(false);
+  MyAutoDeleteThread * thread2 = new MyAutoDeleteThread(exitedFlag);
+  // Display about 10 N's
+  PThread::Sleep(1000);
+  thread2->Resume();
+  // Display about 10 more N's and number 1 to 10
+  PThread::Sleep(1000);
+  thread1->Stop();
+  thread1->WaitForTermination();
+  delete thread1;
 
-  // Thread 1 should now be running, as there is a Resume() function
-  // in the thread constructor.
-  // Thread 2 should be suspended.
-  // Sleep for three seconds. Only thread 1 will be running.
-  // Display will show "1 1 1 1 1 1 1..."
-  PThread::Sleep(3000);
-
-
-  // Start the second thread.
-  // Both threads should be running
-  // Sleep for 3 seconds, allowing the threads to run.
-  // Display will show "1 2 1 2 1 2 1 2 1 2..."
-  mythread2->Resume();
-  PThread::Sleep(3000);
-
-
-  // Suspend thread 1.
-  // Sleep for 3 seconds. Only thread 2 should be running.
-  // Display will show "2 2 2 2 2 2 2..."
-  mythread1->Suspend();
-  PThread::Sleep(3000);
-
-
-  // Resume thread 1.
-  // Sleep for 3 seconds. Both threads should be running.
-  // Display will show "1 2 1 2 1 2 1 2 1 2..."
-  mythread1->Resume();
-  PThread::Sleep(3000);
-
-
-  // Clean up
-  mythread1->Stop();
-  mythread1->WaitForTermination();
-  cout << "Thread 1 terminated" << endl;
-
-  mythread2->Stop();
-  mythread2->WaitForTermination();
-  cout << "Thread 2 terminated" << endl;
-
-  delete mythread1;
-  delete mythread2;
-
+  // Display roughly number 11 to 20
+  while (!exitedFlag) {
+    PThread::Sleep(100);
+  }
+std::cout << "\nThread 2 has exited and auto deleted." << std::endl;
 }
 
