@@ -82,6 +82,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "wxInstaller", "samples\wx\w
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Speech", "samples\speech\speech_2026.vcxproj", "{A34C0514-6A58-421D-B6B6-412F0053ACCE}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Thread Test", "samples\thread\thread_2026.vcxproj", "{6443B169-195C-CF5F-B7A9-87569873267A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -220,6 +222,10 @@ Global
 		{A34C0514-6A58-421D-B6B6-412F0053ACCE}.Debug|x64.Build.0 = Debug|x64
 		{A34C0514-6A58-421D-B6B6-412F0053ACCE}.Release|x64.ActiveCfg = Release|x64
 		{A34C0514-6A58-421D-B6B6-412F0053ACCE}.Release|x64.Build.0 = Release|x64
+		{6443B169-195C-CF5F-B7A9-87569873267A}.Debug|x64.ActiveCfg = Debug|x64
+		{6443B169-195C-CF5F-B7A9-87569873267A}.Debug|x64.Build.0 = Debug|x64
+		{6443B169-195C-CF5F-B7A9-87569873267A}.Release|x64.ActiveCfg = Release|x64
+		{6443B169-195C-CF5F-B7A9-87569873267A}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -257,6 +263,7 @@ Global
 		{56E04FF6-6AEB-4917-B8FC-6C0C1F5831F1} = {87858A37-400D-4A99-B67F-A1C1C0C65E73}
 		{AE1C39FC-A03D-4947-9127-ABE9FE7EDF3A} = {87858A37-400D-4A99-B67F-A1C1C0C65E73}
 		{A34C0514-6A58-421D-B6B6-412F0053ACCE} = {E7B47471-5383-46FE-B59E-80B4C52A7B04}
+		{6443B169-195C-CF5F-B7A9-87569873267A} = {C04795FA-6BF6-4B37-9C3D-EDAF24F9D6BA}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {921E1FEE-F9EE-48D8-82AB-5A3CE70715AF}

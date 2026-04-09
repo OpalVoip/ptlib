@@ -182,7 +182,7 @@ void ThreadTest::Main()
   // Thread 2 should be suspended.
   // Sleep for three seconds. Only thread 1 will be running.
   // Display will show "1 1 1 1 1 1 1..."
-  sleep(2);
+  PThread::Sleep(3000);
 
 
   // Start the second thread.
@@ -190,21 +190,21 @@ void ThreadTest::Main()
   // Sleep for 3 seconds, allowing the threads to run.
   // Display will show "1 2 1 2 1 2 1 2 1 2..."
   mythread2->Resume();
-  sleep(2);
+  PThread::Sleep(3000);
 
 
   // Suspend thread 1.
   // Sleep for 3 seconds. Only thread 2 should be running.
   // Display will show "2 2 2 2 2 2 2..."
   mythread1->Suspend();
-  sleep(2);
+  PThread::Sleep(3000);
 
 
   // Resume thread 1.
   // Sleep for 3 seconds. Both threads should be running.
   // Display will show "1 2 1 2 1 2 1 2 1 2..."
   mythread1->Resume();
-  sleep(2);
+  PThread::Sleep(3000);
 
 
   // Clean up
