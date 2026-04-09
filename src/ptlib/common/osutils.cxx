@@ -2704,14 +2704,17 @@ void PProcess::HouseKeeping()
         else
           ++it;
       }
+      PTRACE_IF(5, !oldThreads.empty(), "Deleting " << oldThreads.size() << " external threads.");
     }
 
     // m_autoDeleteThreads is inherently thread safe
     PThread * thread = NULL;
+    PTRACE_IF(5, !m_autoDeleteThreads.empty(), "Deleting " << m_autoDeleteThreads.size() << " auto-delete threads.");
     while (m_autoDeleteThreads.Dequeue(thread, 0))
       delete thread;
 
     m_RunTimeSignalsQueueMutex.Wait();
+    PTRACE_IF(5, !m_RunTimeSignalsQueue.empty(), "Handling " << m_RunTimeSignalsQueue.size() << " runtime signals.");
     while (!m_RunTimeSignalsQueue.empty()) {
       RunTimeSignalInfo info = m_RunTimeSignalsQueue.front();
       m_RunTimeSignalsQueue.pop();
