@@ -71,13 +71,6 @@ class PExternalThread : public PThread
                 " unique-id=" << GetCurrentUniqueIdentifier());
     }
 
-    ~PExternalThread()
-    {
-      PTRACE(5, "Destroyed external thread " << this << ","
-                " thread-id=" << GetThreadId() << ","
-                " unique-id=" << GetUniqueIdentifier());
-    }
-
     virtual void Main() override
     {
     }
@@ -3361,10 +3354,14 @@ PThread::PThread(bool isProcess)
 PThread::PThread(AutoDeleteFlag deletion, Priority priorityLevel, const PString & name)
   : m_type(deletion == AutoDeleteThread ? e_IsAutoDelete : e_IsManualDelete)
   , m_threadName(name)
-  , m_thread(&PThread::InternalThreadMain, this)
 {
   SetPriority(priorityLevel);
 
+  std::thread thread(&PThread::InternalThreadMain, this);
+#ifdef _WIN32
+  m_threadHandle.Duplicate(thread.native_handle());
+#endif
+  thread.detach();
   PProcess::Current().InternalThreadStarted(this);
 }
 
@@ -3372,7 +3369,7 @@ PThread::PThread(AutoDeleteFlag deletion, Priority priorityLevel, const PString 
 void PThread::InternalThreadMain()
 {
   m_threadId = GetCurrentThreadId();
-  m_threadHandle = GetCurrentThread();
+  m_uniqueId = GetUniqueIdentifier();
   SetThreadName(GetThreadName());
 
   InternalPreMain();
@@ -3742,12 +3739,16 @@ bool PThread::WaitAndDelete(PThread * & threadToDelete, const PTimeInterval & ma
 
 PThread::~PThread()
 {
-  if (m_type != e_IsProcess && m_type != e_IsExternal && !WaitForTermination(1000)) {
-    Terminate();
-    WaitForTermination(1000);
-  }
+  if (m_type == e_IsManualDelete) {
+    if (!WaitForTermination(1000)) {
+      Terminate();
+      WaitForTermination(1000);
+    }
 
-  PTRACE(5, "Destroying thread " << this << ' ' << m_threadName << ", id=" << m_threadId);
+    // Do not do this log if auto-delete or external thread as the thread_local
+    // it uses in PThread::Current() has become invalid.
+    PTRACE(5, "Destroying thread " << this << ' ' << m_threadName << ", id=" << m_threadId);
+  }
 
   InternalDestroy();
 

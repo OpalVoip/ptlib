@@ -53,7 +53,7 @@ PSNMPServer::PSNMPServer(PIPSocket::Address binding, WORD localPort, PINDEX time
   }
   else {
     Open(m_baseSocket);
-    m_thread.Resume();
+    m_thread.Start();
   }
 }
 

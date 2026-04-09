@@ -880,7 +880,7 @@ bool PThread::GetTimes(Times & times)
   times.m_uniqueId = times.m_threadId = m_threadId;
 
   PWindowsTimes wt;
-  if (!wt.FromThread(GetHandle()))
+  if (!wt.FromThread(m_threadHandle))
     return false;
 
   wt.ToTimes(times);

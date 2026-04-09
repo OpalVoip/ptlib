@@ -34,9 +34,9 @@ class MyNoAutoDeleteThread : public PThread
   PCLASSINFO(MyNoAutoDeleteThread, PThread);
   public:
     MyNoAutoDeleteThread()
-      : PThread(0, NoAutoDeleteThread)
+      : PThread(NoAutoDeleteThread)
     {
-      Resume();
+      Start();
     }
 
     virtual void Main() override
@@ -61,7 +61,7 @@ class MyAutoDeleteThread : public PThread
   PCLASSINFO(MyAutoDeleteThread, PThread);
   public:
     MyAutoDeleteThread(std::atomic<bool> & exitedFlag)
-      : PThread(0, AutoDeleteThread)
+      : PThread(AutoDeleteThread)
       , m_exitedFlag(exitedFlag)
     {
     }
@@ -155,7 +155,7 @@ void ThreadTest::Main()
   MyAutoDeleteThread * thread2 = new MyAutoDeleteThread(exitedFlag);
   // Display about 10 N's
   PThread::Sleep(1000);
-  thread2->Resume();
+  thread2->Start();
   // Display about 10 more N's and number 1 to 10
   PThread::Sleep(1000);
   thread1->Stop();

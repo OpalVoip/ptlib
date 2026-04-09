@@ -723,9 +723,6 @@
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\timer.h">
       <Filter>Header Files\MSOS</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\thread.h">
-      <Filter>Header Files\MSOS</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\timeint.h">
       <Filter>Header Files\MSOS</Filter>
     </ClInclude>

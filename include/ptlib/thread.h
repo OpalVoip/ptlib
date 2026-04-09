@@ -449,14 +449,13 @@ class PThread : public PObject, PProfiling::HighWaterMark<PThread>, PNonCopyable
     PString m_threadName; // Give the thread a name for debugging purposes.
     PCriticalSection m_threadNameMutex;
 
-    std::thread             m_thread;
     PSyncPoint              m_waitForStart;
-    PThreadIdentifier       m_threadId;
-    PUniqueThreadIdentifier m_uniqueId;
+    PThreadIdentifier       m_threadId = PNullThreadIdentifier;
+    PUniqueThreadIdentifier m_uniqueId = 0;
 
 // Include platform dependent part of class
 #ifdef _WIN32
-#include "msos/ptlib/thread.h"
+    PWin32Handle m_threadHandle;
 #else
 #include "unix/ptlib/thread.h"
 #endif

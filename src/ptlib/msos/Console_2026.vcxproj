@@ -603,7 +603,6 @@ if errorlevel 1 copy "%(FullPath)"+nul "%(RootDir)%(Directory)%(FileName)"</Comm
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\svcproc.h" />
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\tcpsock.h" />
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\textfile.h" />
-    <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\thread.h" />
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\timeint.h" />
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\timer.h" />
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\udpsock.h" />
