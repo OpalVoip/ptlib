@@ -736,6 +736,36 @@ void PWin32Overlapped::Reset()
 ///////////////////////////////////////////////////////////////////////////////
 // Threads
 
+PThread::PThread(bool isProcess)
+  : m_type(isProcess ? e_IsProcess : e_IsExternal)
+  , m_threadId(GetCurrentThreadId())
+  , m_uniqueId(GetUniqueIdentifier())
+{
+  if (isProcess) {
+    m_threadHandle = GetCurrentThread();
+    return;
+  }
+
+  m_threadHandle.Duplicate(GetCurrentThread());
+
+  PProcess::Current().InternalThreadStarted(this);
+}
+
+
+PThread::PThread(AutoDeleteFlag deletion, Priority priorityLevel, const PString & name)
+  : m_type(deletion == AutoDeleteThread ? e_IsAutoDelete : e_IsManualDelete)
+  , m_threadName(name)
+{
+  std::thread thread(&PThread::InternalThreadMain, this);
+#ifdef _WIN32
+  m_threadHandle.Duplicate(thread.native_handle());
+#endif
+  thread.detach();
+  SetPriority(priorityLevel);
+  PProcess::Current().InternalThreadStarted(this);
+}
+
+
 void PThread::InternalPreMain()
 {
 #ifdef P_WIN_COM

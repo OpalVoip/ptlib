@@ -72,25 +72,18 @@
     thread will block on that function until the first calls the
     Signal() function, releasing the second thread.
  */
-class PSemaphore : public PSync, std::counting_semaphore<std::numeric_limits<unsigned>::max()>
+class PSemaphore : public PSync, std::counting_semaphore<>
 {
-  using semaphore = std::counting_semaphore<std::numeric_limits<unsigned>::max()>;
   PCLASSINFO(PSemaphore, PSync);
 
   public:
   /**@name Construction */
   //@{
-    /**Create a new semaphore with maximum count and initial value specified.
-       If the initial value is larger than the maximum value then is is set to
-       the maximum value.
+    /**Create a new semaphore with an initial value.
      */
     PSemaphore(
-      unsigned initial = 0         ///< Initial value for semaphore count.
-    ) : semaphore(initial) { }
-
-    /** Create a new semaphore with the same initial and maximum values as the original.
-     */
-    PSemaphore(const PSemaphore &) : semaphore(0) { }
+      std::ptrdiff_t initial = 0         ///< Initial value for semaphore count.
+    ) : std::counting_semaphore<>(initial) { }
   //@}
 
   /**@name Operations */
@@ -116,9 +109,9 @@ class PSemaphore : public PSync, std::counting_semaphore<std::numeric_limits<uns
      */
     virtual void Signal() override;
 
-    /** Reset the semaphore to the specified inital and maximum values.
+    /** Reset the semaphore to the specified initial and maximum values.
         Note that the behaviour is undetermined if something is waiting on the
-        semaphire when this is called.
+        semaphore when this is called.
       */
     virtual void Reset(
       unsigned initial = 0         ///< Initial value for semaphore count.

@@ -120,7 +120,7 @@ class UserInterfaceThread : public PThread
 
 public:
   UserInterfaceThread()
-    : PThread(10000, NoAutoDeleteThread)
+    : PThread(NoAutoDeleteThread)
   {
   }
 
@@ -140,7 +140,7 @@ class LauncherThread : public PThread
 
 public:
   LauncherThread()
-    : PThread(10000, NoAutoDeleteThread)
+    : PThread(AutoDeleteThread, NormalPriority, psprintf("LauncherThread"))
   {
     iteration = 0; keepGoing = true;
   }
@@ -321,7 +321,7 @@ void PTimerTest::Main()
        << " milliseconds " << endl;
 
   UserInterfaceThread ui;
-  ui.Resume();
+  ui.Start();
   ui.WaitForTermination();
 }
 
@@ -649,7 +649,7 @@ public:
   static std::vector<TimerPair> s_timers;
 public:
   TimerTestThread(PInt64 aIterations)
-    : PThread(10000, AutoDeleteThread)
+    : PThread(AutoDeleteThread)
     , m_iteration(aIterations)
   {
   }
@@ -704,7 +704,7 @@ void PTimerTest::StressTest()
   for (int i = 0; i < 1000; ++i)
   {
     TimerTestThread* t = new TimerTestThread(500);
-    t->Resume();
+    t->Start();
     threads.push_back(t);
   }
 
@@ -816,7 +816,7 @@ class SlowThread
   PSyncPoint& m_sync;
 public:
   SlowThread(PSyncPoint& _sync)
-    : PThread(10000, AutoDeleteThread)
+    : PThread(AutoDeleteThread)
     , m_sync(_sync)
   {
   }
@@ -847,7 +847,7 @@ void PTimerTest::LongOnTimeoutTest()
   cout << "Create timer and delete it when OnTimeout in progress..." << endl;
   PSyncPoint sync;
   SlowThread* t = new SlowThread(sync);
-  t->Resume();
+  t->Start();
   sync.Wait();
 }
 
@@ -1014,7 +1014,7 @@ void MyTimer::StartRunning(PSyncPoint * _exitFlag, PINDEX delayMs)
   startTime = PTime();
 
   PThread * startIt = new TimerOnThread(*this);
-  startIt->Resume();
+  startIt->Start();
 }
 
 void MyTimer::OnTimeout()
@@ -1033,7 +1033,7 @@ void MyTimer::OnTimeout()
 /////////////////////////////////////////////////////////////////////////////
 
 DelayThread::DelayThread(PINDEX _delay, PBoolean _checkTimer)
-  : PThread(10000, AutoDeleteThread), delay(_delay), checkTimer(_checkTimer)
+  : PThread(AutoDeleteThread), delay(_delay), checkTimer(_checkTimer)
 {
   PTRACE(5, "Constructor for a auto deleted PTimer test thread");
 }    
@@ -1061,7 +1061,7 @@ void DelayThread::Main()
 
 /////////////////////////////////////////////////////////////////////////////
 TimerOnThread::TimerOnThread(PTimer & _timer)
-  : PThread(10000, AutoDeleteThread), timer(_timer)
+  : PThread(AutoDeleteThread), timer(_timer)
 {
   PTRACE(5, "Constructor for a auto deleted Ptimer On thread.");
 }    
@@ -1082,7 +1082,7 @@ void LauncherThread::Main()
 
   while (keepGoing) {
     PThread * thread = new DelayThread(delay, checkTimer);
-    thread->Resume();
+    thread->Start();
     PThread::Sleep(interval);
     iteration++;
   }
@@ -1111,7 +1111,7 @@ void UserInterfaceThread::Main()
   cout << endl << help;
 
   LauncherThread launch;
-  launch.Resume();
+  launch.Start();
 
   console.SetReadTimeout(P_MAX_INDEX);
   for (;;) {

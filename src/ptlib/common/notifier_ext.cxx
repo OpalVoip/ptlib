@@ -85,6 +85,10 @@ public:
   }
 
 
+  PAsyncNotifierQueue(const PAsyncNotifierQueue & other)
+    : m_target(other.m_target) // Don't copy the semaphore, just the target
+  { }
+
   ~PAsyncNotifierQueue()
   {
     m_target = NULL;

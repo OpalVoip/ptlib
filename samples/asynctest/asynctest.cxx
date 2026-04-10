@@ -83,7 +83,7 @@ class SenderThread : public PThread
 
   public:
     SenderThread(AsyncTest & app, int index)
-      : PThread(65536, NoAutoDeleteThread, NormalPriority, "Sender")
+      : PThread(NoAutoDeleteThread, NormalPriority, "Sender")
       , m_app(app)
       , m_index(index)
     {
@@ -208,7 +208,7 @@ void AsyncTest::Main()
   }
 
   for (PList<SenderThread>::iterator it = senderThreads.begin(); it != senderThreads.end(); ++it)
-    it->Resume();
+    it->Start();
 
   PTime start;
   cout << "Testing ..." << endl;

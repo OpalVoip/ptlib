@@ -3335,37 +3335,6 @@ bool PProcess::HostSystemURLHandlerInfo::RegisterTypes(const PString & _types, b
 ///////////////////////////////////////////////////////////////////////////////
 // PThread
 
-PThread::PThread(bool isProcess)
-  : m_type(isProcess ? e_IsProcess : e_IsExternal)
-  , m_threadId(GetCurrentThreadId())
-  , m_uniqueId(GetUniqueIdentifier())
-{
-  if (isProcess) {
-    m_threadHandle = GetCurrentThread();
-    return;
-  }
-
-  m_threadHandle.Duplicate(GetCurrentThread());
-
-  PProcess::Current().InternalThreadStarted(this);
-}
-
-
-PThread::PThread(AutoDeleteFlag deletion, Priority priorityLevel, const PString & name)
-  : m_type(deletion == AutoDeleteThread ? e_IsAutoDelete : e_IsManualDelete)
-  , m_threadName(name)
-{
-  SetPriority(priorityLevel);
-
-  std::thread thread(&PThread::InternalThreadMain, this);
-#ifdef _WIN32
-  m_threadHandle.Duplicate(thread.native_handle());
-#endif
-  thread.detach();
-  PProcess::Current().InternalThreadStarted(this);
-}
-
-
 void PThread::InternalThreadMain()
 {
   m_threadId = GetCurrentThreadId();

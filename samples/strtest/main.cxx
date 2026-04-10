@@ -209,11 +209,11 @@ public:
     PCLASSINFO(TestThread, PThread);
   public:
     TestThread(StringHolder & holder, PTimer & timer)
-      : PThread(1000, NoAutoDeleteThread)
+      : PThread(NoAutoDeleteThread)
       , m_holder(holder)
       , m_timer(timer)
     {
-      Resume();
+      Start();
     }
 
     void Main() override

@@ -125,7 +125,7 @@ void MyProcess::Main()
 
 
 TestThread::TestThread(PINDEX idx, PArgList & args)
-  : PThread(0, NoAutoDeleteThread, NormalPriority, "Sniffer")
+  : PThread(NoAutoDeleteThread, NormalPriority, "Sniffer")
   , m_index(idx)
   , m_binary(args.HasOption('b'))
   , m_running(true)
@@ -155,7 +155,7 @@ TestThread::TestThread(PINDEX idx, PArgList & args)
     m_socket.Close();
   }
 
-  Resume();
+  Start();
 }
 
 
