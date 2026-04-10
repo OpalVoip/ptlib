@@ -57,9 +57,6 @@
 #endif
 
 
-static PINDEX const PThreadMinimumStack = 16*PTHREAD_STACK_MIN; // Set a decent stack size that won't eat all virtual memory, or crash
-
-
 int PX_NewHandle(const char *, int);
 
 
@@ -196,7 +193,6 @@ static pthread_mutex_t MutexInitialiser = PTHREAD_MUTEX_INITIALIZER;
 
 PThread::PThread(bool isProcess)
   : m_type(isProcess ? e_IsProcess : e_IsExternal)
-  , m_originalStackSize(0)
   , m_threadId(pthread_self())
   , m_uniqueId(GetCurrentUniqueIdentifier())
   , PX_priority(NormalPriority)
@@ -224,12 +220,8 @@ PThread::PThread(bool isProcess)
 //  This is always called in the context of some other thread, and
 //  the PThread is always created in the paused state
 //
-PThread::PThread(PINDEX stackSize,
-                 AutoDeleteFlag deletion,
-                 Priority priorityLevel,
-                 const PString & name)
+PThread::PThread(AutoDeleteFlag deletion, Priority priorityLevel, const PString & name)
   : m_type(deletion == AutoDeleteThread ? e_IsAutoDelete : e_IsManualDelete)
-  , m_originalStackSize(std::max(stackSize, PThreadMinimumStack))
   , m_threadName(name)
   , m_threadId(PNullThreadIdentifier)  // indicates thread has not started
   , m_uniqueId(0)
@@ -247,7 +239,7 @@ PThread::PThread(PINDEX stackSize,
   if (m_type == e_IsAutoDelete)
     PProcess::Current().SignalTimerChange();
 
-  PTRACE(5, "PTLib\tCreated thread " << this << ' ' << m_threadName << " stack=" << m_originalStackSize);
+  PTRACE(5, "PTLib\tCreated thread " << this << ' ' << m_threadName);
 }
 
 //
@@ -323,76 +315,6 @@ void PThread::InternalPostMain()
 }
 
 
-void * PThread::PX_ThreadMain(void * arg)
-{
-#if P_USE_THREAD_CANCEL
-  // make sure the cleanup routine is called when the thread cancelled
-  pthread_cleanup_push(&PThread::PX_ThreadEnd, arg);
-  // Allow cancel to happen any time
-  pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-  pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
-#endif
-
-  reinterpret_cast<PThread *>(PAssertNULL(arg))->InternalThreadMain();
-
-#if P_USE_THREAD_CANCEL
-  pthread_cleanup_pop(0);
-#endif
-
-  return NULL;
-}
-
-
-void PThread::PX_ThreadEnd(void * arg)
-{
-  reinterpret_cast<PThread *>(PAssertNULL(arg))->InternalPostMain();
-}
-
-
-void PThread::Restart()
-{
-  if (!IsTerminated())
-    return;
-
-  PTRACE(2, "PTlib\tRestarting thread " << this << " \"" << GetThreadName() << '"');
-  PX_StartThread();
-}
-
-
-void PThread::PX_StartThread()
-{
-  // This should be executed inside the PX_suspendMutex to avoid races
-  // with the thread starting.
-  PX_state = PX_starting;
-
-  pthread_attr_t threadAttr;
-  pthread_attr_init(&threadAttr);
-  PAssertWithRetry(pthread_attr_setdetachstate, &threadAttr, PTHREAD_CREATE_DETACHED);
-
-  PAssertWithRetry(pthread_attr_setstacksize, &threadAttr, m_originalStackSize);
-
-#if defined(P_LINUX)
-  struct sched_param sched_params;
-  PAssertWithRetry(pthread_attr_setschedpolicy, &threadAttr, GetSchedParam((Priority)PX_priority.load(), sched_params));
-  PAssertWithRetry(pthread_attr_setschedparam,  &threadAttr, &sched_params);
-#endif
-
-  PProcess & process = PProcess::Current();
-
-  size_t checkSize = 0;
-  PAssertWithRetry(pthread_attr_getstacksize, &threadAttr, &checkSize);
-  PAssert(checkSize == (size_t)m_originalStackSize, "Stack size not set correctly");
-
-  // create the thread
-  PAssertWithRetry(pthread_create, &m_threadId, &threadAttr, &PThread::PX_ThreadMain, this);
-
-  // put the thread into the thread list
-  process.InternalThreadStarted(this);
-
-  pthread_attr_destroy(&threadAttr);
-}
-
-
 bool PThread::PX_kill(PThreadIdentifier tid, PUniqueThreadIdentifier uid, int sig)
 {
   if (!PProcess::IsInitialised())
@@ -434,32 +356,9 @@ bool PThread::PX_kill(PThreadIdentifier tid, PUniqueThreadIdentifier uid, int si
 }
 
 
-void PThread::PX_Suspended()
-{
-  while (PX_suspendCount > 0) {
-    BYTE ch;
-    if (::read(unblockPipe[0], &ch, 1) == 1 || errno != EINTR)
-    return;
-
-#if P_USE_THREAD_CANCEL
-    pthread_testcancel();
-#endif
-  }
-}
-
-
-void PX_SuspendSignalHandler(int)
-{
-  PThread * thread = PThread::Current();
-  if (thread != NULL)
-    thread->PX_Suspended();
-}
-
-
 #ifdef P_MACOSX
 // obtain thread priority of the main thread
-static unsigned long
-GetThreadBasePriority ()
+static unsigned long GetThreadBasePriority()
 {
     thread_basic_info_data_t threadInfo;
     policy_info_data_t       thePolicyInfo;
@@ -681,7 +580,7 @@ void PThread::Yield()
 void PThread::Terminate()
 {
   // if thread was not created by PTLib, then don't terminate it
-  if (m_originalStackSize <= 0)
+  if (m_type == e_IsExternal)
     return;
 
   // if the thread is already terminated, then nothing to do
@@ -926,9 +825,11 @@ void PThread::PXAbortBlock() const
 
 PNamedSemaphore::~PNamedSemaphore()
 {
+#if defined(P_HAS_NAMED_SEMAPHORES)
   if (m_sem != NULL) {
     PAssertWithRetry(sem_close, m_sem);
-  }
+   }
+#endif
 }
 
 
@@ -962,8 +863,8 @@ PNamedSemaphore::PNamedSemaphore(const PString & name, unsigned initial)
 
 void PNamedSemaphore::Wait()
 {
-#if defined(P_HAS_SEMAPHORES)
-  PAssertWithRetry(sem_wait, GetSemPtr());
+#if defined(P_HAS_NAMED_SEMAPHORES)
+  PAssertWithRetry(sem_wait, m_sem);
 #endif
 }
 
@@ -979,7 +880,7 @@ PBoolean PNamedSemaphore::Wait(const PTimeInterval & waitTime)
   PTime finishTime;
   finishTime += waitTime;
 
-#ifdef P_HAS_SEMAPHORES_XPG6
+#if defined(P_HAS_NAMED_SEMAPHORES)
   // use proper timed spinlocks if supported.
   // http://www.opengroup.org/onlinepubs/007904975/functions/sem_timedwait.html
 
@@ -1005,94 +906,8 @@ PBoolean PNamedSemaphore::Wait(const PTimeInterval & waitTime)
 
 void PNamedSemaphore::Signal()
 {
-#if defined(P_HAS_SEMAPHORES)
-  PAssertWithRetry(sem_post, GetSemPtr());
-#else
-  PAssertWithRetry(pthread_mutex_lock, &mutex);
-
-  if (currentCount < m_maximum)
-    currentCount++;
-
-  if (queuedLocks > 0) 
-    PAssertWithRetry(pthread_cond_signal, &condVar);
-
-  PAssertWithRetry(pthread_mutex_unlock, &mutex);
+#if defined(P_HAS_NAMED_SEMAPHORES)
+  PAssertWithRetry(sem_post, m_sem);
 #endif
 }
 
-
-///////////////////////////////////////////////////////////////////////////////
-
-PSyncPoint::PSyncPoint()
-{
-  PAssertWithRetry(pthread_mutex_init, &mutex, NULL);
-  PAssertWithRetry(pthread_cond_init, &condVar, NULL);
-  signalled = false;
-}
-
-PSyncPoint::PSyncPoint(const PSyncPoint &)
-{
-  PAssertWithRetry(pthread_mutex_init, &mutex, NULL);
-  PAssertWithRetry(pthread_cond_init, &condVar, NULL);
-  signalled = false;
-}
-
-PSyncPoint::~PSyncPoint()
-{
-  PAssertWithRetry(pthread_mutex_destroy, &mutex);
-  PAssertWithRetry(pthread_cond_destroy, &condVar);
-}
-
-void PSyncPoint::Wait()
-{
-  PPROFILE_PRE_SYSTEM();
-  PAssertWithRetry(pthread_mutex_lock, &mutex);
-  while (!signalled)
-    pthread_cond_wait(&condVar, &mutex);
-  signalled = false;
-  PAssertWithRetry(pthread_mutex_unlock, &mutex);
-  PPROFILE_POST_SYSTEM();
-}
-
-
-PBoolean PSyncPoint::Wait(const PTimeInterval & waitTime)
-{
-  PPROFILE_PRE_SYSTEM();
-
-  PAssertWithRetry(pthread_mutex_lock, &mutex);
-
-  PTime finishTime;
-  finishTime += waitTime;
-  struct timespec absTime;
-  absTime.tv_sec  = finishTime.GetTimeInSeconds();
-  absTime.tv_nsec = finishTime.GetMicrosecond() * 1000;
-
-  int err = 0;
-  while (!signalled) {
-    err = pthread_cond_timedwait(&condVar, &mutex, &absTime);
-    if (err == 0 || err == ETIMEDOUT)
-      break;
-
-    /* PAssertOS reports errno, so set it before */
-    errno = err;
-    PAssertOS(err == EINTR);
-  }
-
-  if (err == 0)
-    signalled = false;
-
-  PAssertWithRetry(pthread_mutex_unlock, &mutex);
-
-  PPROFILE_POST_SYSTEM();
-
-  return err == 0;
-}
-
-
-void PSyncPoint::Signal()
-{
-  PAssertWithRetry(pthread_mutex_lock, &mutex);
-  signalled = true;
-  PAssertWithRetry(pthread_cond_signal, &condVar);
-  PAssertWithRetry(pthread_mutex_unlock, &mutex);
-}
