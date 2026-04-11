@@ -71,7 +71,6 @@
       virtual void Main() override; \
   };
 
-class PExternalThread;
 
 ///////////////////////////////////////////////////////////////////////////////
 // PProcess
@@ -722,6 +721,7 @@ class PProcess : public PThread
 #endif // PTRACING
 
   friend class PThread;
+  friend class PExternalThread;
 
 
 // Include platform dependent part of class

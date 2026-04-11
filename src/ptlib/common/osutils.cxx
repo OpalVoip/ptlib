@@ -63,9 +63,12 @@ class PExternalThread : public PThread
   PCLASSINFO(PExternalThread, PThread);
   public:
     PExternalThread()
-      : PThread(false)
+      : PThread(e_IsExternal)
     {
+      m_threadId = GetCurrentThreadId();
+      m_uniqueId = GetUniqueIdentifier();
       SetThreadName(ExternalThreadName);
+      PProcess::Current().InternalThreadStarted(this);
       PTRACE(5, "Created external thread " << this << ","
                 " thread-id=" << GetCurrentThreadId() << ","
                 " unique-id=" << GetCurrentUniqueIdentifier());
@@ -2491,7 +2494,7 @@ void PProcess::PreInitialise(int c, char ** v)
 PProcess::PProcess(const char * manuf, const char * name,
                    unsigned major, unsigned minor, CodeStatus stat, unsigned patch,
                    bool library, bool suppressStartup, unsigned oemVersion)
-  : PThread(true)
+  : PThread(e_IsProcess)
   , m_library(library)
   , m_terminationValue(0)
   , m_manufacturer(manuf)
@@ -2517,7 +2520,9 @@ PProcess::PProcess(const char * manuf, const char * name,
   m_version.m_svn = 0;
   m_version.m_git = NULL;
 
-  m_activeThreads[GetThreadId()] = this;
+  m_threadId = GetCurrentThreadId();
+  m_uniqueId = GetUniqueIdentifier();
+  m_activeThreads[m_threadId] = this;
 
 #if PTRACING
   // Do this before PProcessInstance is set to avoid a recursive loop with PTimedMutex
@@ -3334,6 +3339,22 @@ bool PProcess::HostSystemURLHandlerInfo::RegisterTypes(const PString & _types, b
 
 ///////////////////////////////////////////////////////////////////////////////
 // PThread
+
+PThread::PThread(AutoDeleteFlag deletion, Priority priorityLevel, const PString & name)
+  : PThread(deletion == AutoDeleteThread ? e_IsAutoDelete : e_IsManualDelete)
+{
+  m_threadName = name;
+
+  std::thread thread(&PThread::InternalThreadMain, this);
+#ifdef _WIN32
+  m_threadHandle.Duplicate(thread.native_handle());
+#endif
+  thread.detach();
+
+  SetPriority(priorityLevel);
+  PProcess::Current().InternalThreadStarted(this);
+}
+
 
 void PThread::InternalThreadMain()
 {

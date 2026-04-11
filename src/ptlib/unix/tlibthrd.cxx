@@ -45,9 +45,7 @@
 #include <jni.h>
 #endif
 
-#ifndef P_ANDROID
-  #define P_USE_THREAD_CANCEL 1
-#else
+#ifdef P_ANDROID
   static JavaVM * AndroidJavaVM;
   JNIEXPORT jint JNI_OnLoad(JavaVM* vm, void* reserved)
   {
@@ -172,10 +170,6 @@ static int GetSchedParam(PThread::Priority priority, sched_param & param)
 }
 #endif
 
-
-static pthread_mutex_t MutexInitialiser = PTHREAD_MUTEX_INITIALIZER;
-
-
 #define new PNEW
 
 
@@ -191,55 +185,14 @@ static pthread_mutex_t MutexInitialiser = PTHREAD_MUTEX_INITIALIZER;
 //  is not paused
 //
 
-PThread::PThread(bool isProcess)
-  : m_type(isProcess ? e_IsProcess : e_IsExternal)
-  , m_threadId(pthread_self())
-  , m_uniqueId(GetCurrentUniqueIdentifier())
-  , PX_priority(NormalPriority)
+PThread::PThread(Type type)
+  : m_type(type)
 #if defined(P_LINUX)
   , PX_startTick(PTimer::Tick())
 #endif
   , PX_state(PX_running)
-#ifndef P_HAS_SEMAPHORES
-  , PX_waitingSemaphore(NULL)
-  , PX_WaitSemMutex(MutexInitialiser)
-#endif
 {
   PAssertOS(::pipe(unblockPipe) == 0);
-
-  if (isProcess)
-    return;
-
-  PProcess::Current().InternalThreadStarted(this);
-}
-
-
-//
-//  Called to construct a PThread for a normal PTLib thread.
-//
-//  This is always called in the context of some other thread, and
-//  the PThread is always created in the paused state
-//
-PThread::PThread(AutoDeleteFlag deletion, Priority priorityLevel, const PString & name)
-  : m_type(deletion == AutoDeleteThread ? e_IsAutoDelete : e_IsManualDelete)
-  , m_threadName(name)
-  , m_threadId(PNullThreadIdentifier)  // indicates thread has not started
-  , m_uniqueId(0)
-  , PX_priority(priorityLevel)
-  , PX_state(PX_firstResume) // new thread is actually started the first time Resume() is called.
-#ifndef P_HAS_SEMAPHORES
-  , PX_waitingSemaphore(NULL)
-  , PX_WaitSemMutex(MutexInitialiser)
-#endif
-{
-  PAssertOS(::pipe(unblockPipe) == 0);
-  PX_NewHandle("Thread unblock pipe", PMAX(unblockPipe[0], unblockPipe[1]));
-
-  // If need to be deleted automatically, make sure thread that does it runs.
-  if (m_type == e_IsAutoDelete)
-    PProcess::Current().SignalTimerChange();
-
-  PTRACE(5, "PTLib\tCreated thread " << this << ' ' << m_threadName);
 }
 
 //
@@ -251,18 +204,9 @@ PThread::PThread(AutoDeleteFlag deletion, Priority priorityLevel, const PString 
 
 void PThread::InternalDestroy()
 {
-  /* If manual delete, wait for thread to really end before
-     proceeding with destruction */
-  if (PX_synchroniseThreadFinish.get() != NULL)
-    PX_synchroniseThreadFinish->Wait();
-
   // close I/O unblock pipes
   ::close(unblockPipe[0]);
   ::close(unblockPipe[1]);
-
-#ifndef P_HAS_SEMAPHORES
-  pthread_mutex_destroy(&PX_WaitSemMutex);
-#endif
 }
 
 
@@ -271,23 +215,12 @@ void PThread::InternalPreMain()
   PAssert(PX_state == PX_starting, PLogicError);
   PX_state = PX_running;
 
-  m_uniqueId = GetCurrentUniqueIdentifier();
 #if defined(P_LINUX)
   PX_startTick = PTimer::Tick();
 #endif
 
-  SetThreadName(GetThreadName());
-
-  PX_Suspended();
-
   if (PX_priority != NormalPriority)
     SetPriority((Priority)PX_priority.load());
-
-  /* If manual delete thread, there is a race on the thread actually ending
-     and the PThread object being deleted. This flag is used to synchronise
-     those actions. */
-  if (m_type != e_IsAutoDelete)
-    PX_synchroniseThreadFinish.reset(new PSyncPoint());
 }
 
 
@@ -306,12 +239,6 @@ void PThread::InternalPostMain()
   /* If auto delete, "this" may have be deleted any nanosecond after
      this function, as it is asynchronously done by the housekeeping thread. */
   PProcess::Current().InternalThreadEnded(this);
-
-  /* We know the thread is not auto delete and the destructor is either
-     not run yet, or is waiting on this signal, so "this" is still safe
-     to use. */
-  if (PX_synchroniseThreadFinish.get() != NULL)
-    PX_synchroniseThreadFinish->Signal();
 }
 
 
@@ -537,16 +464,6 @@ PThread::Priority PThread::GetPriority() const
 }
 
 
-#ifndef P_HAS_SEMAPHORES
-void PThread::PXSetWaitingSemaphore(PSemaphore * sem)
-{
-  PAssertWithRetry(pthread_mutex_lock, &PX_WaitSemMutex);
-  PX_waitingSemaphore = sem;
-  PAssertWithRetry(pthread_mutex_unlock, &PX_WaitSemMutex);
-}
-#endif
-
-
 // Normal Posix threads version
 void PThread::Sleep(const PTimeInterval & timeout)
 {
@@ -557,9 +474,6 @@ void PThread::Sleep(const PTimeInterval & timeout)
   PPROFILE_PRE_SYSTEM();
 
   while (nanosleep(&ts, &ts) < 0 && PAssert(errno == EINTR || errno == EAGAIN, POperatingSystemError)) {
-#if P_USE_THREAD_CANCEL
-    pthread_testcancel();
-#endif
   }
 
   PPROFILE_POST_SYSTEM();
@@ -602,23 +516,8 @@ void PThread::Terminate()
   if (WaitForTermination(100))
     return;
 
-#ifndef P_HAS_SEMAPHORES
-  PAssertWithRetry(pthread_mutex_lock, &PX_WaitSemMutex);
-  if (PX_waitingSemaphore != NULL) {
-    PAssertWithRetry(pthread_mutex_lock, &PX_waitingSemaphore->mutex);
-    PX_waitingSemaphore->queuedLocks--;
-    PAssertWithRetry(pthread_mutex_unlock, &PX_waitingSemaphore->mutex);
-    PX_waitingSemaphore = NULL;
-  }
-  PAssertWithRetry(pthread_mutex_unlock, &PX_WaitSemMutex);
-#endif
-
   if (m_threadId != PNullThreadIdentifier) {
-#if P_USE_THREAD_CANCEL
-    pthread_cancel(m_threadId);
-#else
     pthread_kill(m_threadId, SIGKILL);
-#endif
     WaitForTermination(100);
   }
 }

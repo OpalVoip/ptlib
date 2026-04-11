@@ -32,30 +32,13 @@
 
   public:
     int PXBlockOnChildTerminate(int pid, const PTimeInterval & timeout);
-
-    int PXBlockOnIO(
-      int handle,
-      int type,
-      const PTimeInterval & timeout
-    );
-
+    int PXBlockOnIO(int handle, int type, const PTimeInterval & timeout);
     void PXAbortBlock() const;
 
-  public:
-#ifndef P_HAS_SEMAPHORES
-    void PXSetWaitingSemaphore(PSemaphore * sem);
-#endif
     static bool PX_kill(PThreadIdentifier tid, PUniqueThreadIdentifier uid, int sig);
 
   protected:
-    void PX_StartThread();
-    void PX_Suspended();
-
-#if P_STD_ATOMIC
     atomic<Priority> PX_priority;
-#else
-    atomic<int>      PX_priority;
-#endif
     
 #if defined(P_LINUX)
     PTimeInterval     PX_startTick;
@@ -68,22 +51,10 @@
       PX_finishing,
       PX_finished
     };
-#if P_STD_ATOMIC
     atomic<PX_states> PX_state;
-#else
-    atomic<int> PX_state;
-#endif
-
-    PAutoPtr<PSyncPoint> PX_synchroniseThreadFinish;
-
-#ifndef P_HAS_SEMAPHORES
-    PSemaphore      * PX_waitingSemaphore;
-    pthread_mutex_t   PX_WaitSemMutex;
-#endif
 
     int unblockPipe[2];
     friend class PSocket;
-    friend void PX_SuspendSignalHandler(int);
 
 
     // End Of File ////////////////////////////////////////////////////////////////

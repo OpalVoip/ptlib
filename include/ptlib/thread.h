@@ -430,19 +430,6 @@ class PThread : public PObject, PProfiling::HighWaterMark<PThread>, PNonCopyable
     ) { return Create(notifier, 0, NoAutoDeleteThread, NormalPriority, threadName); }
   //@}
   
-  private:
-    PThread(bool isProcess);
-    // Create a new thread instance as part of a <code>PProcess</code> class.
-
-    void InternalThreadMain();
-    void InternalPreMain();
-    void InternalPostMain();
-    void InternalDestroy();
-
-    friend class PProcess;
-    friend class PExternalThread;
-    // So a PProcess can get at PThread() constructor but nothing else.
-
   protected:
     enum Type { e_IsAutoDelete, e_IsManualDelete, e_IsProcess, e_IsExternal } m_type;
 
@@ -459,11 +446,21 @@ class PThread : public PObject, PProfiling::HighWaterMark<PThread>, PNonCopyable
 #else
 #include "unix/ptlib/thread.h"
 #endif
+
+  private:
+    PThread(Type type);
+    void InternalThreadMain();
+    void InternalPreMain();
+    void InternalPostMain();
+    void InternalDestroy();
+
+  friend class PProcess;
+  friend class PExternalThread;
 };
 
 
 /** Define some templates to simplify the declaration
-  * of simple <code>PThread</code> descendants with one or two paramaters 
+  * of simple <code>PThread</code> descendants with one or two parameters 
   */
 
 /*
