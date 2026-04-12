@@ -108,6 +108,14 @@ class PThread : public PObject, PProfiling::HighWaterMark<PThread>, PNonCopyable
       Priority priorityLevel = NormalPriority,  ///< Initial priority of thread.
       const PString & threadName = PString::Empty() ///< The name of the thread (for Debug/Trace)
     );
+    P_DEPRECATED PThread(
+      unsigned,
+      AutoDeleteFlag deletion = AutoDeleteThread,
+        ///< Automatically delete PThread instance on termination of thread.
+      Priority priorityLevel = NormalPriority,  ///< Initial priority of thread.
+      const PString & threadName = PString::Empty() ///< The name of the thread (for Debug/Trace)
+    ) : PThread(deletion, priorityLevel, threadName)
+    { }
 
     /** Destroy the thread, this simply calls the <code>Terminate()</code> function
        with all its restrictions and penalties. See that function for more
