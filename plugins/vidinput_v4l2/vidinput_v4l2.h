@@ -47,7 +47,7 @@ class PVideoInputDevice_V4L2: public PVideoInputDevice
 
   PCLASSINFO(PVideoInputDevice_V4L2, PVideoInputDevice);
 private:
-  PVideoInputDevice_V4L2(const PVideoInputDevice_V4L2& ):readyToReadMutex(0,1) {};
+  PVideoInputDevice_V4L2(const PVideoInputDevice_V4L2& ) {};
   PVideoInputDevice_V4L2& operator=(const PVideoInputDevice_V4L2& ){ return *this; };
 public:
   PVideoInputDevice_V4L2();

@@ -414,14 +414,14 @@ class PThread : public PObject, PProfiling::HighWaterMark<PThread>, PNonCopyable
   protected:
     enum Type { e_IsAutoDelete, e_IsManualDelete, e_IsProcess, e_IsExternal } m_type;
 
-    PString m_threadName; // Give the thread a name for debugging purposes.
-    PCriticalSection m_threadNameMutex;
-
+    std::atomic<Priority> m_priority;
     PTime m_threadStartTime{ 0 };
     PTime m_threadEndTime{ 0 };
 
+    PString m_threadName; // Give the thread a name for debugging purposes.
+    PCriticalSection m_threadNameMutex;
+
     PSyncPoint              m_waitForStart;
-    std::atomic<Priority>   m_priority{ NormalPriority };
     PThreadIdentifier       m_threadId = PNullThreadIdentifier;
     PUniqueThreadIdentifier m_uniqueId = 0;
 
@@ -437,7 +437,7 @@ class PThread : public PObject, PProfiling::HighWaterMark<PThread>, PNonCopyable
 #else
     struct PipeHandles : std::array<int, 2>
     {
-      PipeHandles() :std::array<int, 2>(-1) { PAssertOS(::pipe(data()) == 0); }
+      PipeHandles() :std::array<int, 2>{-1,-1} { PAssertOS(::pipe(data()) == 0); }
       ~PipeHandles() { for (auto h : *this) ::close(h); }
     } m_unblockPipeHandles;
     friend class PSocket;

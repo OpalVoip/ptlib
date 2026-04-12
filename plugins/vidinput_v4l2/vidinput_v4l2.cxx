@@ -220,8 +220,7 @@ PString V4L2Names::BuildUserFriendly(PString devname)
 ///////////////////////////////////////////////////////////////////////////////
 // PVideoInputDevice_V4L2
 
-PVideoInputDevice_V4L2::PVideoInputDevice_V4L2():
-readyToReadMutex(0,1)		// Initially creating mutex blocked. Will unlock it in a Start() function.
+PVideoInputDevice_V4L2::PVideoInputDevice_V4L2()
 {
   Reset();
   areBuffersQueued = false;

@@ -1083,7 +1083,7 @@ static unsigned long GetThreadBasePriority()
 void PThread::SetPriority(Priority priorityLevel)
 {
   PTRACE(4, "PTLib", "Setting thread priority to " << priorityLevel);
-  PX_priority.store(priorityLevel);
+  m_priority.store(priorityLevel);
 
   if (IsTerminated())
     return;
