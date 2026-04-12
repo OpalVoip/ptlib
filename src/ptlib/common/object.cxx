@@ -502,18 +502,9 @@ PMemoryHeap::PMemoryHeap()
   memset(&GuardedPtr, '\xFD', sizeof(GuardedPtr));
 
 #if defined(_WIN32)
-  InitializeCriticalSection(&m_mutex);
   static PDebugStream debug;
   m_leakDumpStream = &debug;
 #else
-#if defined(P_PTHREADS)
-#ifdef PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP
-  pthread_mutex_t recursiveMutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
-  m_mutex = recursiveMutex;
-#else
- pthread_mutex_init(&m_mutex, NULL);
-#endif
-#endif
   m_leakDumpStream = &cerr;
 #endif
 }
@@ -530,30 +521,7 @@ PMemoryHeap::~PMemoryHeap()
   }
 
 #if defined(_WIN32)
-  DeleteCriticalSection(&m_mutex);
   PProcess::Current().WaitOnExitConsoleWindow();
-#elif defined(P_PTHREADS)
-  pthread_mutex_destroy(&m_mutex);
-#endif
-}
-
-
-void PMemoryHeap::Lock()
-{
-#if defined(_WIN32)
-  EnterCriticalSection(&m_mutex);
-#elif defined(P_PTHREADS)
-  pthread_mutex_lock(&m_mutex);
-#endif
-}
-
-
-void PMemoryHeap::Unlock()
-{
-#if defined(_WIN32)
-  LeaveCriticalSection(&m_mutex);
-#elif defined(P_PTHREADS)
-  pthread_mutex_unlock(&m_mutex);
 #endif
 }
 
@@ -2127,10 +2095,10 @@ namespace PProfiling
     PDebugLocation m_location;
     PTimeInterval  m_thresholdTime;
     PTimeInterval  m_throttleTime;
-    unsigned       m_throttledLogLevel;
-    unsigned       m_unthrottledLogLevel;
-    unsigned       m_thresholdPercent;
-    unsigned       m_maxHistory;
+    std::atomic<unsigned> m_throttledLogLevel;
+    std::atomic<unsigned> m_unthrottledLogLevel;
+    std::atomic<unsigned> m_thresholdPercent;
+    std::atomic<unsigned> m_maxHistory;
 
     PMinMaxAvg<PTimeInterval> m_mma;
     unsigned                  m_countTimesOverThreshold;
@@ -2149,7 +2117,7 @@ namespace PProfiling
 
     std::list<History> m_history;
 
-    PCriticalSection m_mutex;
+    std::mutex m_mutex;
 
     Implementation(const PDebugLocation & location,
                    unsigned thresholdTime,
@@ -2173,7 +2141,7 @@ namespace PProfiling
 
     void EndMeasurement(const void * ptr, const PObject * object, const PDebugLocation * location, const PNanoSeconds & duration)
     {
-      PWaitAndSignal lock(m_mutex);
+      std::lock_guard<std::mutex> lock(m_mutex);
 
       m_lastDuration = duration;
       m_mma.Accumulate(duration);
@@ -2262,32 +2230,27 @@ namespace PProfiling
 
   void TimeScope::SetThrottleTime(unsigned throttleTime)
   {
-    PWaitAndSignal lock(m_implementation->m_mutex);
     m_implementation->m_throttleTime = throttleTime;
   }
 
   void TimeScope::SetThrottledLogLevel(unsigned throttledLogLevel)
   {
-    PWaitAndSignal lock(m_implementation->m_mutex);
     m_implementation->m_throttledLogLevel = throttledLogLevel;
   }
 
   void TimeScope::SetUnthrottledLogLevel(unsigned unthrottledLogLevel)
   {
-      PWaitAndSignal lock(m_implementation->m_mutex);
-      m_implementation->m_unthrottledLogLevel = unthrottledLogLevel;
+    m_implementation->m_unthrottledLogLevel = unthrottledLogLevel;
   }
 
   void TimeScope::SetThresholdPercent(unsigned thresholdPercent)
   {
-      PWaitAndSignal lock(m_implementation->m_mutex);
-      m_implementation->m_thresholdPercent = thresholdPercent;
+    m_implementation->m_thresholdPercent = thresholdPercent;
   }
 
   void TimeScope::SetMaxHistory(unsigned maxHistory)
   {
-      PWaitAndSignal lock(m_implementation->m_mutex);
-      m_implementation->m_maxHistory = maxHistory;
+     m_implementation->m_maxHistory = maxHistory;
   }
 
   void TimeScope::EndMeasurement(const void * context, const PObject * object, const PDebugLocation * location, uint64_t startCycle)

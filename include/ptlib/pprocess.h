@@ -58,7 +58,7 @@
 
 /*$MACRO PDECLARE_PROCESS(cls,ancestor,manuf,name,major,minor,status,build)
    This macro is used to declare the components necessary for a user PWLib
-   process. This will declare the PProcess descendent class, eg PApplication,
+   process. This will declare the PProcess descendent class, eg PMyApp,
    and create an instance of the class. See the <code>PCREATE_PROCESS</code> macro
    for more details.
  */
@@ -79,7 +79,7 @@
    "programme" in the  context of the operating system. Note that there can
    only be one instance of a PProcess class in a given programme.
    
-   The instance of a PProcess or its GUI descendent <code>PApplication</code> is
+   The instance of a PProcess or its GUI descendent <code>MyPApp</code> is
    usually a static variable created by the application writer. This is the
    initial "anchor" point for all data structures in an application. As the
    application writer never needs to access the standard system
@@ -115,6 +115,10 @@ class PProcess : public PThread
       bool suppressStartup = false,    ///< Do not execute Startup()
       unsigned oemVersion = 0          ///< OEM version number of the product
     );
+
+    /** Destroy the process instance.
+      */
+    ~PProcess();
   //@}
 
   /**@name Overrides from class PObject */
@@ -722,13 +726,19 @@ class PProcess : public PThread
 
   friend class PThread;
   friend class PExternalThread;
+  friend class PServiceProcess;
 
-
-// Include platform dependent part of class
 #ifdef _WIN32
-#include "msos/ptlib/pprocess.h"
-#else
-#include "unix/ptlib/pprocess.h"
+  public:
+    virtual PBoolean IsGUIProcess() const;
+    void WaitOnExitConsoleWindow();
+    void SetWaitOnExitConsoleWindow(bool b) { m_waitOnExitConsoleWindow = b; }
+  private:
+    bool m_waitOnExitConsoleWindow;
+#elif defined(P_HAS_BACKTRACE) && defined(PTRACING)
+  public:
+    enum { WalkStackSignal = SIGTRAP };
+    void InternalWalkStackSignaled();
 #endif
 };
 

@@ -501,7 +501,6 @@ if errorlevel 1 copy "%(FullPath)"+nul "%(RootDir)%(Directory)%(FileName)"</Comm
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\pdirect.h" />
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\pipechan.h" />
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\platform.h" />
-    <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\pprocess.h" />
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\ptime.h" />
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\remconn.h" />
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\resampler.h" />
@@ -588,7 +587,6 @@ if errorlevel 1 copy "%(FullPath)"+nul "%(RootDir)%(Directory)%(FileName)"</Comm
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\mail.h" />
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\pdirect.h" />
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\pipechan.h" />
-    <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\pprocess.h" />
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\ptime.h" />
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\remconn.h" />
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\serchan.h" />

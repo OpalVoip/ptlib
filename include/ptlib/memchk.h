@@ -294,14 +294,9 @@ class PMemoryHeap {
 
     ostream * m_leakDumpStream;
 
-    void Lock();
-    void Unlock();
-#if defined(_WIN32)
-    CRITICAL_SECTION m_mutex;
-#elif defined(P_PTHREADS)
-    pthread_mutex_t m_mutex;
-#endif
-
+    std::mutex m_mutex;
+    void Lock() { m_mutex.lock(); }
+    void Unlock() { m_mutex.unlock(); }
 #else
 
     static void CreateInstance();
