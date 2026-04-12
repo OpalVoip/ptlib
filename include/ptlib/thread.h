@@ -1,7 +1,7 @@
 /*
  * thread.h
  *
- * Executable thread encapsulation class (pre-emptive if OS allows).
+ * Executable thread encapsulation class
  *
  * Portable Tools Library
  *
@@ -81,7 +81,7 @@ class PThread : public PObject, PProfiling::HighWaterMark<PThread>, PNonCopyable
       HighestPriority  ///< Corresponds to Win32 THREAD_PRIORITY_HIGHEST and posix SCHED_RR with sched_priority at max.
     );
 
-    /// Codes for thread autodelete flag
+    /// Codes for thread auto-delete flag
     enum AutoDeleteFlag {
       /// Automatically delete thread object on termination.
       AutoDeleteThread,   
@@ -90,18 +90,12 @@ class PThread : public PObject, PProfiling::HighWaterMark<PThread>, PNonCopyable
       NoAutoDeleteThread  
     };
 
-    /** Create a new thread instance. Unless the <code>startSuspended</code>
-       parameter is <code>true</code>, the threads <code>Main()</code> function is called to
-       execute the code for the thread.
+    /** Create a new thread instance.
        
-       Note that the exact timing of the execution of code in threads can
-       never be predicted. Thus you you can get a race condition on
-       intialising a descendent class. To avoid this problem a thread is
-       always started suspended. You must call the <code>Resume()</code> function after
-       your descendent class construction is complete.
-
-       If synchronisation is required between threads then the use of
-       semaphores is essential.
+       Note that while the thread is started in this constructor it is
+       immediately paused to avoid race conditions on initialising a
+       descendent class. To Main() function is called for proceeding with
+       thread once Start() is executed.
 
        If the <code>deletion</code> is set to <code>AutoDeleteThread</code>
        then the <code>PThread</code> is assumed to be allocated with the new operator and
@@ -192,24 +186,11 @@ class PThread : public PObject, PProfiling::HighWaterMark<PThread>, PNonCopyable
       bool lock = true                       ///< Mutex should be locked.
     );
 
-    /** Resume thread execution, this is identical to
-       <code>Suspend(false)</code>.
-
-      The Resume() method may be called from within the constructor of a
-      PThread descendant.  However, the <code>Resume()</code> should be in the
-      constructor of the most descendant class. So, if you have a
-      class B (which is descended of PThread), and a class C (which is
-      descended of B), placing the call to <code>Resume()</code> in the constructor of B is
-      unwise.
-
-      If you do place a call to <code>Resume()</code> in the constructor, it
-      should be at the end of the constructor, after all the other
-      initialisation in the constructor.
-
-      The reason the call to <code>Resume()</code> should be at the end of the
-      construction process is simple - you want the thread to start
-      when all the variables in the class have been correctly
-      initialised.
+    /** Start thread execution.
+      * In practice, the thread is actually started in the constructor, but it
+      * is suspended until this function is called. This allows the descendent
+      * class to complete its initialisation before the thread begins
+      * executing the Main() function.
      */
     void Start() { m_waitForStart.Signal(); }
     P_DEPRECATED void Resume() { Start(); }
@@ -436,23 +417,41 @@ class PThread : public PObject, PProfiling::HighWaterMark<PThread>, PNonCopyable
     PString m_threadName; // Give the thread a name for debugging purposes.
     PCriticalSection m_threadNameMutex;
 
+    PTime m_threadStartTime{ 0 };
+    PTime m_threadEndTime{ 0 };
+
     PSyncPoint              m_waitForStart;
+    std::atomic<Priority>   m_priority{ NormalPriority };
     PThreadIdentifier       m_threadId = PNullThreadIdentifier;
     PUniqueThreadIdentifier m_uniqueId = 0;
 
 // Include platform dependent part of class
 #ifdef _WIN32
     PWin32Handle m_threadHandle;
+#ifdef P_WIN_COM
+    struct WinComInit {
+      WinComInit();
+      ~WinComInit();
+    };
+#endif
 #else
-#include "unix/ptlib/thread.h"
+    struct PipeHandles : std::array<int, 2>
+    {
+      PipeHandles() :std::array<int, 2>(-1) { PAssertOS(::pipe(data()) == 0); }
+      ~PipeHandles() { for (auto h : *this) ::close(h); }
+    } m_unblockPipeHandles;
+    friend class PSocket;
+  public:
+    int PXBlockOnChildTerminate(int pid, const PTimeInterval & timeout);
+    int PXBlockOnIO(int handle, int type, const PTimeInterval & timeout);
+    void PXAbortBlock() const;
+    static bool PX_kill(PThreadIdentifier tid, PUniqueThreadIdentifier uid, int sig);
 #endif
 
   private:
-    PThread(Type type);
+    PThread(Type type, Priority priority, const PString & name);
     void InternalThreadMain();
-    void InternalPreMain();
-    void InternalPostMain();
-    void InternalDestroy();
+    void InternalThreadStarted();
 
   friend class PProcess;
   friend class PExternalThread;

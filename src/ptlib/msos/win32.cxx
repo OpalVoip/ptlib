@@ -736,48 +736,6 @@ void PWin32Overlapped::Reset()
 ///////////////////////////////////////////////////////////////////////////////
 // Threads
 
-PThread::PThread(Type type)
-  : m_type(type)
-{
-  switch (type) {
-    case e_IsProcess:
-      m_threadHandle = GetCurrentThread();
-      break;
-    case e_IsExternal:
-      m_threadHandle.Duplicate(GetCurrentThread());
-      break;
-  }
-}
-
-
-void PThread::InternalPreMain()
-{
-#ifdef P_WIN_COM
-  HRESULT result = ::CoInitializeEx(NULL, COINIT_MULTITHREADED);
-  PTRACE_IF(1, FAILED(result) && result != RPC_E_CHANGED_MODE, "PTLib", "Could not initialise COM: error=0x" << hex << result);
-
-  static HRESULT security = ::CoInitializeSecurity(
-    NULL,
-    -1,                          // COM authentication
-    NULL,                        // Authentication services
-    NULL,                        // Reserved
-    RPC_C_AUTHN_LEVEL_DEFAULT,   // Default authentication 
-    RPC_C_IMP_LEVEL_IMPERSONATE, // Default Impersonation  
-    NULL,                        // Authentication info
-    EOAC_NONE,                   // Additional capabilities 
-    NULL                         // Reserved
-  );
-  PTRACE_IF(2, FAILED(security), "PTLib", "Could not initialise COM security: error=0x" << hex << security);
-#endif
-}
-
-
-void PThread::InternalPostMain()
-{
-  PProcess::Current().InternalThreadEnded(this);
-}
-
-
 #ifdef P_WIN_COM
 std::ostream & operator<<(std::ostream & strm, const PComResult & result)
 {
@@ -846,6 +804,30 @@ std::ostream & operator<<(std::ostream & strm, const PComVariant & var)
   return strm;
 }
 
+PThread::WinComInit::WinComInit()
+{
+  HRESULT result = ::CoInitializeEx(NULL, COINIT_MULTITHREADED);
+  PTRACE_IF(1, FAILED(result) && result != RPC_E_CHANGED_MODE, "PTLib", "Could not initialise COM: error=0x" << hex << result);
+
+  static HRESULT security = ::CoInitializeSecurity(
+    NULL,
+    -1,                          // COM authentication
+    NULL,                        // Authentication services
+    NULL,                        // Reserved
+    RPC_C_AUTHN_LEVEL_DEFAULT,   // Default authentication 
+    RPC_C_IMP_LEVEL_IMPERSONATE, // Default Impersonation  
+    NULL,                        // Authentication info
+    EOAC_NONE,                   // Additional capabilities 
+    NULL                         // Reserved
+  );
+  PTRACE_IF(2, FAILED(security), "PTLib", "Could not initialise COM security: error=0x" << hex << security);
+}
+
+PThread::WinComInit::~WinComInit()
+{
+  ::CoUninitialize();
+}
+
 #endif // P_WIN_COM
 
 
@@ -899,19 +881,6 @@ bool PThread::GetTimes(Times & times)
 
   wt.ToTimes(times);
   return true;
-}
-
-
-void PThread::InternalDestroy()
-{
-  if (m_type == e_IsProcess)
-    m_threadHandle.Detach();
-  else
-    m_threadHandle.Close();
-
-#if defined(P_WIN_COM)
-  ::CoUninitialize();
-#endif
 }
 
 

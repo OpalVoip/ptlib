@@ -63,12 +63,9 @@ class PExternalThread : public PThread
   PCLASSINFO(PExternalThread, PThread);
   public:
     PExternalThread()
-      : PThread(e_IsExternal)
+      : PThread(e_IsExternal, NormalPriority, ExternalThreadName)
     {
-      m_threadId = GetCurrentThreadId();
-      m_uniqueId = GetUniqueIdentifier();
-      SetThreadName(ExternalThreadName);
-      PProcess::Current().InternalThreadStarted(this);
+      InternalThreadStarted();
       PTRACE(5, "Created external thread " << this << ","
                 " thread-id=" << GetCurrentThreadId() << ","
                 " unique-id=" << GetCurrentUniqueIdentifier());
@@ -2494,7 +2491,7 @@ void PProcess::PreInitialise(int c, char ** v)
 PProcess::PProcess(const char * manuf, const char * name,
                    unsigned major, unsigned minor, CodeStatus stat, unsigned patch,
                    bool library, bool suppressStartup, unsigned oemVersion)
-  : PThread(e_IsProcess)
+  : PThread(e_IsProcess, NormalPriority, name)
   , m_library(library)
   , m_terminationValue(0)
   , m_manufacturer(manuf)
@@ -2537,8 +2534,10 @@ PProcess::PProcess(const char * manuf, const char * name,
 #endif
 
   /* Try to get the real image path for this process using platform dependent
-     code, if this fails, then use the value urigivally set via argv[0] */
+     code, if this fails, then use the value originally set via argv[0] */
 #if defined(_WIN32)
+  m_threadHandle = GetCurrentThread();
+
   TCHAR shortName[_MAX_PATH];
   if (GetModuleFileName(GetModuleHandle(NULL), shortName, sizeof(shortName)) > 0) {
     TCHAR longName[32768]; // Space for long image path
@@ -2671,6 +2670,10 @@ PProcess::~PProcess()
   PTRACE(4, "Starting process destruction.");
 
   m_shuttingDown = true;
+
+#ifdef _WIN32
+  m_threadHandle.Detach();
+#endif
 
 #if PTRACING
   if (m_profileProcessTimer) {
@@ -3340,29 +3343,42 @@ bool PProcess::HostSystemURLHandlerInfo::RegisterTypes(const PString & _types, b
 ///////////////////////////////////////////////////////////////////////////////
 // PThread
 
-PThread::PThread(AutoDeleteFlag deletion, Priority priorityLevel, const PString & name)
-  : PThread(deletion == AutoDeleteThread ? e_IsAutoDelete : e_IsManualDelete)
+PThread::PThread(Type type, Priority priority, const PString & name)
+  : m_type(type)
+  , m_priority(priority)
+  , m_threadName(name)
 {
-  m_threadName = name;
+}
 
+
+PThread::PThread(AutoDeleteFlag deletion, Priority priority, const PString & name)
+  : PThread(deletion == AutoDeleteThread ? e_IsAutoDelete : e_IsManualDelete, priority, name)
+{
   std::thread thread(&PThread::InternalThreadMain, this);
-#ifdef _WIN32
-  m_threadHandle.Duplicate(thread.native_handle());
-#endif
   thread.detach();
+}
 
-  SetPriority(priorityLevel);
+
+void PThread::InternalThreadStarted()
+{
+  m_threadStartTime.SetCurrentTime();
+  m_threadId = GetCurrentThreadId();
+  m_uniqueId = GetUniqueIdentifier();
+#ifdef _WIN32
+  m_threadHandle.Duplicate(GetCurrentThread());
+#endif
+  SetThreadName(GetThreadName());
   PProcess::Current().InternalThreadStarted(this);
 }
 
 
 void PThread::InternalThreadMain()
 {
-  m_threadId = GetCurrentThreadId();
-  m_uniqueId = GetUniqueIdentifier();
-  SetThreadName(GetThreadName());
-
-  InternalPreMain();
+  InternalThreadStarted();
+  SetPriority(m_priority);
+#ifdef P_WIN_COM
+  WinComInit wci;
+#endif
 
   // Added this to guarantee that the PThread derived object has been fully
   // constructed before Main() is executed.
@@ -3396,7 +3412,8 @@ void PThread::InternalThreadMain()
   process.OnThreadEnded(*this);
 #endif
 
-  InternalPostMain();
+  PProcess::Current().InternalThreadEnded(this);
+  m_threadEndTime.SetCurrentTime();
 }
 
 
@@ -3739,8 +3756,6 @@ PThread::~PThread()
     // it uses in PThread::Current() has become invalid.
     PTRACE(5, "Destroying thread " << this << ' ' << m_threadName << ", id=" << m_threadId);
   }
-
-  InternalDestroy();
 
   if (m_type != e_IsProcess)
     PProcess::Current().InternalThreadEnded(this);

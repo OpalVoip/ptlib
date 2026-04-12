@@ -142,9 +142,6 @@
     <ClCompile Include="..\unix\tlib.cxx">
       <Filter>Source Files\Android</Filter>
     </ClCompile>
-    <ClCompile Include="..\unix\tlibthrd.cxx">
-      <Filter>Source Files\Android</Filter>
-    </ClCompile>
     <ClCompile Include="mail.cxx">
       <Filter>Source Files\MSOS</Filter>
     </ClCompile>
