@@ -2518,7 +2518,7 @@ PProcess::PProcess(const char * manuf, const char * name,
   m_version.m_git = NULL;
 
   m_threadId = GetCurrentThreadId();
-  m_uniqueId = GetUniqueIdentifier();
+  m_uniqueId = GetCurrentUniqueIdentifier();
   m_activeThreads[m_threadId] = this;
 
 #if PTRACING
@@ -3363,11 +3363,12 @@ void PThread::InternalThreadStarted()
 {
   m_threadStartTime.SetCurrentTime();
   m_threadId = GetCurrentThreadId();
-  m_uniqueId = GetUniqueIdentifier();
+  m_uniqueId = GetCurrentUniqueIdentifier();
 #ifdef _WIN32
   m_threadHandle.Duplicate(GetCurrentThread());
 #endif
-  SetThreadName(GetThreadName());
+  auto threadName = GetThreadName();
+  SetThreadName(threadName.empty() ? PString(GetClassName()) : threadName);
   PProcess::Current().InternalThreadStarted(this);
 }
 
