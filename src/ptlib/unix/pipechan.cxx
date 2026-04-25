@@ -41,7 +41,7 @@
 #include <signal.h>
 
 #if defined(P_LINUX)
-#include <termio.h>
+#include <termios.h>
 #endif
 
 #include "../common/pipechan.cxx"
