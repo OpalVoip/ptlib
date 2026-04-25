@@ -2852,17 +2852,13 @@ void PProcess::OnThreadEnded(PThread &
 #if PTRACING
   const int LogLevel = 3;
   if (PTrace::CanTrace(LogLevel)) {
-#if !P_PROFILING
+    ostream & trace = PTRACE_BEGIN(LogLevel, "PTLib");
+    trace << "Thread ended: name=\"" << thread.GetThreadName() << "\", "
+             "id=" << GetIdentifiersAsString(thread.GetThreadId(), thread.GetUniqueIdentifier());
     PThread::Times times;
     if (thread.GetTimes(times))
-#endif // P_PROFILING
-    {
-      ostream & trace = PTRACE_BEGIN(LogLevel, "PTLib");
-      trace << "Thread ended: name=\"" << thread.GetThreadName() << "\", ";
-      if (thread.GetThreadId() != (PThreadIdentifier)thread.GetUniqueIdentifier())
-          trace << "id=" << thread.GetUniqueIdentifier() << ", ";
-      trace << times << PTrace::End;
-    }
+      trace << ", " << times;
+    trace << PTrace::End;
   }
 #endif //PTRACING
 }
@@ -2984,8 +2980,8 @@ void PProcess::AsynchronousRunTimeSignal(int signal, PProcessIdentifier source)
          to also crash, and we never see this info. */
       char buffer[1000];
       int length = snprintf(buffer, sizeof(buffer),
-                            "\nCaught %s (%s), in thread " P_THREAD_ID_FMT " (" P_UNIQUE_THREAD_ID_FMT ")\n",
-                            sigmsg, GetRunTimeSignalName(signal), tid, uid);
+                            "\nCaught %s (%s), in thread %p (" P_UNIQUE_THREAD_ID_FMT ")\n",
+                            sigmsg, GetRunTimeSignalName(signal), &tid, uid);
       if (length > 0 && fwrite(buffer, 1, length, stderr) >= (size_t)length)
         couldNotWrite = "";
     }
@@ -3355,6 +3351,7 @@ PThread::PThread(AutoDeleteFlag deletion, Priority priority, const PString & nam
   : PThread(deletion == AutoDeleteThread ? e_IsAutoDelete : e_IsManualDelete, priority, name)
 {
   std::thread thread(&PThread::InternalThreadMain, this);
+  PTRACE(4, "Created thread: id=" << thread.get_id() << ", native=" << thread.native_handle());
   thread.detach();
 }
 
@@ -3491,24 +3488,19 @@ PString PThread::GetThreadName(PThreadIdentifier id)
 }
 
 
-#ifdef P_UNIQUE_THREAD_ID_FMT
-PString PThread::GetIdentifiersAsString(PThreadIdentifier tid, PUniqueThreadIdentifier uid)
+std::string PThread::GetIdentifiersAsString(PThreadIdentifier tid, PUniqueThreadIdentifier uid)
 {
+  std::ostringstream strm;
   if (tid == PNullThreadIdentifier)
-    return "(null)";
-  if (uid == 0)
-    return psprintf(P_THREAD_ID_FMT, tid);
-  return PString(PString::Printf, P_THREAD_ID_FMT " (" P_UNIQUE_THREAD_ID_FMT ")", tid, uid);
-}
-#else
-PString PThread::GetIdentifiersAsString(PThreadIdentifier tid, PUniqueThreadIdentifier)
-{
-  if (tid == PNullThreadIdentifier)
-    return "(null)";
-
-  return psprintf(P_THREAD_ID_FMT, tid);
-}
+    strm << "(null)";
+#ifndef _WIN32
+  else if (uid != 0)
+    strm << tid << '(' << uid << ')';
+  else
 #endif
+    strm << tid;
+  return strm.str();
+}
 
 
 PINDEX PThread::GetTotalCount()
@@ -3705,7 +3697,7 @@ void PThread::SetThreadName(const PString & name)
   }
 
   if (&PProcess::Current() != this && name != ExternalThreadName)
-    SetOperatingSystemThreadName(GetThreadId(), m_threadName);
+    SetOperatingSystemThreadName(GetUniqueIdentifier(), m_threadName);
 }
  
 

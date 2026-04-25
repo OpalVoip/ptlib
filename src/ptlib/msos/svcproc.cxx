@@ -448,7 +448,8 @@ int PServiceProcess::InternalMain(void * arg)
   // Set thread ID for the process back to this thread, mostly for destruction logging
   m_threadMutex.Wait();
   m_activeThreads.erase(m_threadId);
-  m_uniqueId = m_threadId = GetCurrentThreadId();
+  m_threadId = std::this_thread::get_id();
+  m_uniqueId = ::GetCurrentThreadId();
   m_threadHandle.Detach();
   m_threadHandle = GetCurrentThread();
   m_activeThreads[m_threadId] = this;
@@ -1023,7 +1024,8 @@ void PServiceProcess::StaticThreadEntry(void * arg)
 void PServiceProcess::ThreadEntry()
 {
   m_threadMutex.Wait();
-  m_uniqueId = m_threadId = ::GetCurrentThreadId();
+  m_threadId = std::this_thread::get_id();
+  m_uniqueId = ::GetCurrentThreadId();
   m_activeThreads[m_threadId] = this;
   m_threadMutex.Signal();
 

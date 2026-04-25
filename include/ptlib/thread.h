@@ -240,7 +240,7 @@ class PThread : public PObject, PProfiling::HighWaterMark<PThread>, PNonCopyable
        For platforms where unique thread id is different from the "normal" thread id,
        then the output will append it to the thread id string, e.g. "0x12345678 (54321)".
       */
-    static PString GetIdentifiersAsString(PThreadIdentifier tid, PUniqueThreadIdentifier uid);
+    static std::string GetIdentifiersAsString(PThreadIdentifier tid, PUniqueThreadIdentifier uid);
 
     /** Change the name of the thread. Thread names are a optional debugging aid.
 
@@ -263,7 +263,7 @@ class PThread : public PObject, PProfiling::HighWaterMark<PThread>, PNonCopyable
     PPROFILE_EXCLUDE(
     /** Get operating system specific thread identifier for the current thread.
       */
-      static PThreadIdentifier GetCurrentThreadId()
+      static PThreadIdentifier GetCurrentThreadId() { return std::this_thread::get_id(); }
     );
 
     PPROFILE_EXCLUDE(

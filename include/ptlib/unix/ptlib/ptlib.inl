@@ -83,13 +83,4 @@ PINLINE bool PFile::Remove(const PFilePath & name, bool)
 PINLINE bool PFile::Remove(const PString & name, bool)
   { return unlink((char *)(const char *)name) == 0; }
 
-///////////////////////////////////////////////////////////////////////////////
-
-#if defined(P_PTHREADS)
-PINLINE PThreadIdentifier PThread::GetCurrentThreadId() { return ::pthread_self(); }
-#else
-PINLINE PThreadIdentifier PThread::GetCurrentThreadId() { return 0; }
-#endif
-
-
 // End Of File ///////////////////////////////////////////////////////////////

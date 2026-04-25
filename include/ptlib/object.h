@@ -63,6 +63,7 @@
 #include <limits>
 #include <typeinfo>
 #include <memory>
+#include <thread>
 
 #include "atomic.h"
 
@@ -97,6 +98,9 @@ using std::cin, std::cout, std::cerr,
 #else
   #define PASSERTINDEX(idx)
 #endif
+
+#define PNullThreadIdentifier std::thread::id()
+typedef std::thread::id PThreadIdentifier;
 
 #ifndef PTRACING
 #define PTRACING 2

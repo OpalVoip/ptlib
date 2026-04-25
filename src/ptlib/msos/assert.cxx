@@ -269,7 +269,7 @@
           strm << " - symbol lookup error=" << error;
       }
 
-      void WalkStack(ostream & strm, PThreadIdentifier id, unsigned framesToSkip)
+      void WalkStack(ostream & strm, DWORD id, unsigned framesToSkip)
       {
         // The thread information.
         HANDLE hThread;
@@ -279,7 +279,7 @@
         memset(&threadContext, 0, sizeof(threadContext));
         threadContext.ContextFlags = CONTEXT_FULL;
 
-        if (id == PNullThreadIdentifier || id == GetCurrentThreadId()) {
+        if (id == 0 || id == ::GetCurrentThreadId()) {
           hThread = GetCurrentThread();
           RtlCaptureContext(&threadContext);
 #if P_64BIT
@@ -371,7 +371,7 @@
   };
 
 
-  void PPlatformWalkStack(ostream & strm, PThreadIdentifier id, PUniqueThreadIdentifier, unsigned framesToSkip, bool, bool)
+  void PPlatformWalkStack(ostream & strm, PThreadIdentifier, PUniqueThreadIdentifier id, unsigned framesToSkip, bool, bool)
   {
     PDebugDLL debughelp;
     if (debughelp.Initialise(strm))
