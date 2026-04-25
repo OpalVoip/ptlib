@@ -161,16 +161,12 @@ class PThread : public PObject, PProfiling::HighWaterMark<PThread>, PNonCopyable
     virtual PBoolean IsTerminated() const;
 
     /** Block and wait for the thread to terminate.
-     */
-    void WaitForTermination() const;
-
-    /** Block and wait for the thread to terminate.
 
        @return
        <code>false</code> if the thread has not terminated and the timeout has expired, <code>true</code> otherwise.
      */
     PBoolean WaitForTermination(
-      const PTimeInterval & maxWait  ///< Maximum time to wait for termination.
+      const PTimeInterval & maxWait = PMaxTimeInterval  ///< Maximum time to wait for termination.
     ) const;
 
     /**Wait for thread termination and delete object.
@@ -429,9 +425,10 @@ class PThread : public PObject, PProfiling::HighWaterMark<PThread>, PNonCopyable
     PString m_threadName; // Give the thread a name for debugging purposes.
     PCriticalSection m_threadNameMutex;
 
-    PSyncPoint              m_waitForStart;
-    PThreadIdentifier       m_threadId = PNullThreadIdentifier;
-    PUniqueThreadIdentifier m_uniqueId = 0;
+    PSyncPoint               m_waitForStart;
+    mutable std::timed_mutex m_runningFlag; // Not really a mutex, but used to indicate if thread is running or not.
+    PThreadIdentifier        m_threadId = PNullThreadIdentifier;
+    PUniqueThreadIdentifier  m_uniqueId = 0;
 
 // Include platform dependent part of class
 #ifdef _WIN32

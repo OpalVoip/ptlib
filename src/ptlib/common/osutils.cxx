@@ -3375,6 +3375,8 @@ void PThread::InternalThreadStarted()
 
 void PThread::InternalThreadMain()
 {
+  std::lock_guard<std::timed_mutex> lock(m_runningFlag);
+
   InternalThreadStarted();
   SetPriority(m_priority);
 #ifdef P_WIN_COM
@@ -3440,6 +3442,35 @@ PThread * PThread::Current()
   if (!s_current)
     s_current = std::make_unique<PExternalThread>();
   return s_current.get();
+}
+
+
+PBoolean PThread::IsTerminated() const
+{
+  if (m_type != e_IsManualDelete)
+    return false; // For all but manual delete, if the object exists the thread is running
+
+  if (!m_runningFlag.try_lock())
+    return false;
+  m_runningFlag.unlock();
+  return true;
+}
+
+
+PBoolean PThread::WaitForTermination(const PTimeInterval & maxWait) const
+{
+  if (m_type != e_IsManualDelete)
+    return false; // For all but manual delete, if the object exists the thread is running
+
+  if (GetThreadId() == GetCurrentThreadId()) {
+    PTRACE(3, "PTLib\tWaitForTermination short circuited");
+    return true;
+  }
+
+  if (!m_runningFlag.try_lock_for(maxWait.AsChrono()))
+    return false;
+  m_runningFlag.unlock();
+  return true;
 }
 
 

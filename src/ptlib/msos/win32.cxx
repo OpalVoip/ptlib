@@ -895,32 +895,6 @@ void PThread::Terminate()
 }
 
 
-PBoolean PThread::IsTerminated() const
-{
-  return m_threadHandle.Wait(0);
-}
-
-
-void PThread::WaitForTermination() const
-{
-  WaitForTermination(PMaxTimeInterval);
-}
-
-
-PBoolean PThread::WaitForTermination(const PTimeInterval & maxWait) const
-{
-  if (!m_threadHandle.IsValid())
-    return true;
-
-  if (GetThreadId() == GetCurrentThreadId()) {
-    PTRACE(3, "PTLib\tWaitForTermination short circuited");
-    return true;
-  }
-
-  return m_threadHandle.Wait(maxWait.GetInterval());
-}
-
-
 void PThread::SetPriority(Priority priorityLevel)
 {
   PAssert(!IsTerminated(), "Operation on terminated thread");
