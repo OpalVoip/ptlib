@@ -221,7 +221,6 @@
   #undef HAVE_NETINET_IF_ETHER_H
 
   #undef P_PTHREADS
-  #undef P_NO_PTHREAD_KILL
   #undef P_HAS_SEMAPHORES
   #undef P_STD_ATOMIC
   #undef P_ATOMICITY_BUILTIN
