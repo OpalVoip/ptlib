@@ -2518,6 +2518,11 @@ PProcess::PProcess(const char * manuf, const char * name,
   m_version.m_git = NULL;
 
   m_threadId = GetCurrentThreadId();
+#if defined(_WIN32)
+  m_nativeHandle = ::GetCurrentThread();
+#else
+  m_nativeHandle = pthread_self();
+#endif
   m_uniqueId = GetCurrentUniqueIdentifier();
   m_activeThreads[m_threadId] = this;
 
@@ -2536,7 +2541,7 @@ PProcess::PProcess(const char * manuf, const char * name,
   /* Try to get the real image path for this process using platform dependent
      code, if this fails, then use the value originally set via argv[0] */
 #if defined(_WIN32)
-  m_threadHandle = GetCurrentThread();
+  m_nativeHandle = ::GetCurrentThread();
 
   TCHAR shortName[_MAX_PATH];
   if (GetModuleFileName(GetModuleHandle(NULL), shortName, sizeof(shortName)) > 0) {
@@ -2670,10 +2675,6 @@ PProcess::~PProcess()
   PTRACE(4, "Starting process destruction.");
 
   m_shuttingDown = true;
-
-#ifdef _WIN32
-  m_threadHandle.Detach();
-#endif
 
 #if PTRACING
   if (m_profileProcessTimer) {
@@ -3351,7 +3352,7 @@ PThread::PThread(AutoDeleteFlag deletion, Priority priority, const PString & nam
   : PThread(deletion == AutoDeleteThread ? e_IsAutoDelete : e_IsManualDelete, priority, name)
 {
   std::thread thread(&PThread::InternalThreadMain, this);
-  PTRACE(4, "Created thread: id=" << thread.get_id() << ", native=" << thread.native_handle());
+  m_nativeHandle = thread.native_handle();
   thread.detach();
 }
 
@@ -3361,9 +3362,6 @@ void PThread::InternalThreadStarted()
   m_threadStartTime.SetCurrentTime();
   m_threadId = GetCurrentThreadId();
   m_uniqueId = GetCurrentUniqueIdentifier();
-#ifdef _WIN32
-  m_threadHandle.Duplicate(GetCurrentThread());
-#endif
   auto threadName = GetThreadName();
   SetThreadName(threadName.empty() ? PString(GetClassName()) : threadName);
   PProcess::Current().InternalThreadStarted(this);
@@ -3488,20 +3486,21 @@ PString PThread::GetThreadName(PThreadIdentifier id)
 }
 
 
+#ifdef _WIN32
+std::string PThread::GetIdentifiersAsString(PThreadIdentifier tid, PUniqueThreadIdentifier)
+{
+  std::ostringstream strm;
+  strm << tid;
+  return strm.str();
+}
+#else
 std::string PThread::GetIdentifiersAsString(PThreadIdentifier tid, PUniqueThreadIdentifier uid)
 {
   std::ostringstream strm;
-  if (tid == PNullThreadIdentifier)
-    strm << "(null)";
-#ifndef _WIN32
-  else if (uid != 0)
-    strm << tid << '(' << uid << ')';
-  else
-#endif
-    strm << tid;
+  strm << tid << '(' << uid << ')';
   return strm.str();
 }
-
+#endif
 
 PINDEX PThread::GetTotalCount()
 {

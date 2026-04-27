@@ -877,7 +877,7 @@ bool PThread::GetTimes(Times & times)
   times.m_uniqueId = m_uniqueId;
 
   PWindowsTimes wt;
-  if (!wt.FromThread(m_threadHandle))
+  if (!wt.FromThread(m_nativeHandle))
     return false;
 
   wt.ToTimes(times);
@@ -887,11 +887,9 @@ bool PThread::GetTimes(Times & times)
 
 void PThread::Terminate()
 {
-  if (PAssert(m_type != e_IsProcess, "Cannot terminate the process!") &&
-       m_threadHandle.IsValid() &&
-      !m_threadHandle.Wait(0)) {
+  if (PAssert(m_type != e_IsProcess, "Cannot terminate the process!") && m_nativeHandle != NULL) {
     PTRACE(2, "PTLib\tTerminating thread " << *this);
-    TerminateThread(m_threadHandle, 1);
+    TerminateThread(m_nativeHandle, 1);
   }
 }
 
@@ -907,7 +905,7 @@ void PThread::SetPriority(Priority priorityLevel)
     THREAD_PRIORITY_ABOVE_NORMAL,
     THREAD_PRIORITY_HIGHEST
   };
-  SetThreadPriority(m_threadHandle, priorities[priorityLevel]);
+  SetThreadPriority(m_nativeHandle, priorities[priorityLevel]);
 }
 
 
@@ -915,7 +913,7 @@ PThread::Priority PThread::GetPriority() const
 {
   PAssert(!IsTerminated(), "Operation on terminated thread");
 
-  switch (GetThreadPriority(m_threadHandle)) {
+  switch (GetThreadPriority(m_nativeHandle)) {
     case THREAD_PRIORITY_LOWEST :
       return LowestPriority;
     case THREAD_PRIORITY_BELOW_NORMAL :

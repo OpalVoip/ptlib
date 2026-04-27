@@ -1042,7 +1042,7 @@ static unsigned long GetThreadBasePriority()
   thread_basic_info_data_t threadInfo;
   policy_info_data_t       thePolicyInfo;
   unsigned int             count;
-  pthread_t baseThread = PProcess::Current().GetThreadId();
+  pthread_t baseThread = PProcess::Current().m_nativeHandle;
 
   // get basic info
   count = THREAD_BASIC_INFO_COUNT;
@@ -1090,7 +1090,7 @@ void PThread::SetPriority(Priority priorityLevel)
 
 #if defined(P_LINUX)
   struct sched_param params;
-  PAssertWithRetry(pthread_setschedparam, m_threadId, GetSchedParam(priorityLevel, params), &params);
+  PAssertWithRetry(pthread_setschedparam, m_nativeHandle, GetSchedParam(priorityLevel, params), &params);
 
 #elif defined(P_ANDROID)
   if (Current() != this) {
@@ -1154,7 +1154,7 @@ void PThread::SetPriority(Priority priorityLevel)
       long                            relativePriority;
 
       theFixedPolicy.timeshare = false; // set to true for a non-fixed thread
-      result = thread_policy_set(pthread_mach_thread_np(m_threadId),
+      result = thread_policy_set(pthread_mach_thread_np(m_nativeHandle),
                                  THREAD_EXTENDED_POLICY,
                                  (thread_policy_t)&theFixedPolicy,
                                  THREAD_EXTENDED_POLICY_COUNT);
@@ -1171,7 +1171,7 @@ void PThread::SetPriority(Priority priorityLevel)
       PTRACE(3, "relativePriority is " << relativePriority << " base priority is " << GetThreadBasePriority());
 
       thePrecedencePolicy.importance = relativePriority;
-      result = thread_policy_set(pthread_mach_thread_np(m_threadId),
+      result = thread_policy_set(pthread_mach_thread_np(m_nativeHandle),
                                  THREAD_PRECEDENCE_POLICY,
                                  (thread_policy_t)&thePrecedencePolicy,
                                  THREAD_PRECEDENCE_POLICY_COUNT);
@@ -1190,7 +1190,7 @@ PThread::Priority PThread::GetPriority() const
   int policy;
   struct sched_param params;
 
-  PAssertWithRetry(pthread_getschedparam, m_threadId, &policy, &params);
+  PAssertWithRetry(pthread_getschedparam, m_nativeHandle, &policy, &params);
 
   switch (policy) {
     case SCHED_OTHER:
@@ -1255,7 +1255,7 @@ void PThread::Terminate()
   // if thread calls Terminate on itself, then do it
   // don't use PThread::Current, as the thread may already not be in the
   // active threads list
-  if (m_threadId == pthread_self()) {
+  if (m_nativeHandle == pthread_self()) {
     pthread_exit(0);
     return;   // keeps compiler happy
   }
@@ -1268,7 +1268,7 @@ void PThread::Terminate()
     return;
 
   if (m_threadId != PNullThreadIdentifier) {
-    pthread_kill(m_threadId, SIGKILL);
+    pthread_kill(m_nativeHandle, SIGKILL);
     WaitForTermination(100);
   }
 }

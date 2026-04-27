@@ -427,12 +427,12 @@ class PThread : public PObject, PProfiling::HighWaterMark<PThread>, PNonCopyable
 
     PSyncPoint               m_waitForStart;
     mutable std::timed_mutex m_runningFlag; // Not really a mutex, but used to indicate if thread is running or not.
-    PThreadIdentifier        m_threadId = PNullThreadIdentifier;
+    std::thread::id          m_threadId;
+    std::thread::native_handle_type m_nativeHandle;
     PUniqueThreadIdentifier  m_uniqueId = 0;
 
 // Include platform dependent part of class
 #ifdef _WIN32
-    PWin32Handle m_threadHandle;
 #ifdef P_WIN_COM
     struct WinComInit {
       WinComInit();

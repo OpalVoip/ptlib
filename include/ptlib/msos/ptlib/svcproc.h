@@ -66,12 +66,6 @@
        thread will signal at its termination.
     */
 
-    static void StaticThreadEntry(void *);
-    /* Internal function called to begin the work of the service process. This
-       essentially just calls the <A>Main()</A> function on the
-       PServiceProcess instance.
-    */
-
     void ThreadEntry();
     /* Internal function function that starts the worker thread for the
        service.
