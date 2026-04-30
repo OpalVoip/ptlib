@@ -376,7 +376,7 @@ void PHTTPServer::SwitchToWebSocket(const PString & protocol, const PString & ke
   reply.SetAt(WebSocketProtocolTag(), protocol);
   reply.SetAt(WebSocketAcceptTag(), PMessageDigestSHA1::Encode(key + WebSocketGUID));
 
-  StartResponse(SwitchingProtocols, reply, -1);
+  StartResponse(SwitchingProtocols, reply, -2); // Means don't put in Content-Length or Transfer-Encoding headers
   flush();
 }
 #else
@@ -569,7 +569,7 @@ bool PHTTPServer::StartResponse(StatusCode code,
       chunked = (PINDEX)bodySize == P_MAX_INDEX;
       if (chunked)
         headers.SetAt(TransferEncodingTag(), ChunkedTag());
-      else if ((bodySize >= 0) && ((PINDEX)bodySize < P_MAX_INDEX))
+      else if (bodySize >= 0 && bodySize < std::numeric_limits<long>::max())
         headers.SetAt(ContentLengthTag(), bodySize);
     }
   }
