@@ -271,7 +271,7 @@
           m_addresses.resize(InternalMaxStackWalk+OtherThreadSkip);
           m_signalSentTime.SetCurrentTime();
 
-          int err = pthread_kill(m_idSet.m_nativeHandle, sig);
+          int err = pthread_kill(m_idSet.m_nativeHandle, PProcess::WalkStackSignal);
           if (err != 0) {
             strm << "pthread_kill failed for thread " << idSet << ", errno " << err << ' ' << strerror(err) << endl;
             pthread_mutex_unlock(&m_mainMutex);
