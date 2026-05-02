@@ -70,6 +70,7 @@ An application could change this pointer to a <i>std::ofstream</i> variable of
 
 class PObject;
 class PArgList;
+class PThreadIdSet;
 
 /**Class to encapsulate tracing functions.
    This class does not require any instances and is only being used as a
@@ -531,8 +532,15 @@ public:
   static bool CanTrace(const ThrottleBase & throttle) { return const_cast<ThrottleBase &>(throttle).CanTrace(); }
 
   static void WalkStack(
+    ostream & strm
+  );
+  static void WalkStack(
     ostream & strm,
-    std::thread::native_handle_type handle = std::thread::native_handle_type(),
+    bool noSymbols
+  );
+  static void WalkStack(
+    ostream & strm,
+    const PThreadIdSet & idSet,
     bool noSymbols = false
   );
 

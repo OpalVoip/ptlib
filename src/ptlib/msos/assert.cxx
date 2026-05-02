@@ -36,341 +36,323 @@
 ///////////////////////////////////////////////////////////////////////////////
 // PProcess
 
-#ifdef __MINGW32__
+static BOOL CALLBACK EnumWindowsProc(HWND hWnd, LPARAM thisProcess)
+{
+  char wndClassName[100];
+  GetClassName(hWnd, wndClassName, sizeof(wndClassName));
+  if (strcmp(wndClassName, "ConsoleWindowClass") != 0)
+    return true;
 
-  void PProcess::WaitOnExitConsoleWindow()
-  {
-  }
+  DWORD wndProcess;
+  GetWindowThreadProcessId(hWnd, &wndProcess);
+  if (wndProcess != (DWORD)thisProcess)
+    return true;
 
-  #define InternalStackWalk(strm, id)
+  PTRACE(2, "PTLib", "Awaiting key press on exit.");
+  cerr << "\nPress a key to exit . . .";
+  cerr.flush();
 
-  #if PTRACING
-    void PTrace::WalkStack(ostream &, std::thread::native_handle_type)
+  HANDLE in = GetStdHandle(STD_INPUT_HANDLE);
+  SetConsoleMode(in, ENABLE_PROCESSED_INPUT);
+  FlushConsoleInputBuffer(in);
+  char dummy;
+  DWORD readBytes;
+  ReadConsole(in, &dummy, 1, &readBytes, NULL);
+  return false;
+}
+
+
+void PProcess::WaitOnExitConsoleWindow()
+{
+  if (m_waitOnExitConsoleWindow && !m_library)
+    EnumWindows(EnumWindowsProc, GetCurrentProcessId());
+}
+
+#pragma warning(disable:4091)
+#include <DbgHelp.h>
+#include <Psapi.h>
+#pragma warning(default:4091)
+
+#if PTRACING
+  #define InternalMaxStackWalk PTrace::MaxStackWalk
+#else
+  #define InternalMaxStackWalk 20
+#endif // PTRACING
+
+class PDebugDLL : public PDynaLink
+{
+  PCLASSINFO(PDebugDLL, PDynaLink)
+  public:
+    BOOL (__stdcall *m_SymInitialize)(
+      __in HANDLE hProcess,
+      __in_opt PCSTR UserSearchPath,
+      __in BOOL fInvadeProcess
+    );
+    BOOL (__stdcall *m_SymCleanup)(
+      __in HANDLE hProcess
+    );
+    DWORD (__stdcall *m_SymGetOptions)(
+      VOID
+    );
+    DWORD (__stdcall *m_SymSetOptions)(
+      __in DWORD   SymOptions
+    );
+    BOOL (__stdcall *m_StackWalk64)(
+      __in DWORD MachineType,
+      __in HANDLE hProcess,
+      __in HANDLE hThread,
+      __inout LPSTACKFRAME64 StackFrame,
+      __inout PVOID ContextRecord,
+      __in_opt PREAD_PROCESS_MEMORY_ROUTINE64 ReadMemoryRoutine,
+      __in_opt PFUNCTION_TABLE_ACCESS_ROUTINE64 FunctionTableAccessRoutine,
+      __in_opt PGET_MODULE_BASE_ROUTINE64 GetModuleBaseRoutine,
+      __in_opt PTRANSLATE_ADDRESS_ROUTINE64 TranslateAddress
+    );
+    BOOL (__stdcall *m_SymGetSymFromAddr64)(
+      __in HANDLE hProcess,
+      __in DWORD64 qwAddr,
+      __out_opt PDWORD64 pdwDisplacement,
+      __inout PIMAGEHLP_SYMBOL64  Symbol
+    );
+    BOOL (__stdcall *m_SymGetLineFromAddr64)(
+      _In_  HANDLE           hProcess,
+      _In_  DWORD64          dwAddr,
+      _Out_ PDWORD           pdwDisplacement,
+      _Out_ PIMAGEHLP_LINE64 Line
+    );
+
+    PFUNCTION_TABLE_ACCESS_ROUTINE64 m_SymFunctionTableAccess64;
+    PGET_MODULE_BASE_ROUTINE64       m_SymGetModuleBase64;
+
+    HANDLE m_hProcess;
+
+
+    PDebugDLL()
+      : PDynaLink("DBGHELP.DLL")
+      , m_hProcess(GetCurrentProcess())
     {
     }
-  #endif // PTRACING
 
-#else
+    ~PDebugDLL()
+    {
+      if (IsLoaded())
+        m_SymCleanup(GetCurrentProcess());
+    }
 
-  static BOOL CALLBACK EnumWindowsProc(HWND hWnd, LPARAM thisProcess)
-  {
-    char wndClassName[100];
-    GetClassName(hWnd, wndClassName, sizeof(wndClassName));
-    if (strcmp(wndClassName, "ConsoleWindowClass") != 0)
+    bool Initialise(ostream & strm)
+    {
+      if (!IsLoaded() ||
+          !GetFunction("SymInitialize", (Function &)m_SymInitialize) ||
+          !GetFunction("SymCleanup", (Function &)m_SymCleanup) ||
+          !GetFunction("SymGetOptions", (Function &)m_SymGetOptions) ||
+          !GetFunction("SymSetOptions", (Function &)m_SymSetOptions) ||
+          !GetFunction("StackWalk64", (Function &)m_StackWalk64) ||
+          !GetFunction("SymGetSymFromAddr64", (Function &)m_SymGetSymFromAddr64) ||
+          !GetFunction("SymFunctionTableAccess64", (Function &)m_SymFunctionTableAccess64) ||
+          !GetFunction("SymGetModuleBase64", (Function &)m_SymGetModuleBase64)) {
+        strm << "\n    Invalid stack walk DLL: " << GetName() << " not all functions present.";
+        return false;
+      }
+
+      if (!GetFunction("SymGetLineFromAddr64", (Function &)m_SymGetLineFromAddr64))
+        m_SymGetLineFromAddr64 = NULL;
+
+      // Get the directory the .exe file is in
+      char filename[_MAX_PATH];
+      if (GetModuleFileNameEx(m_hProcess, NULL, filename, sizeof(filename)) == 0) {
+        DWORD err = ::GetLastError();
+        strm << "\n    GetModuleFileNameEx failed, error=" << err;
+        return false;
+      }
+
+      ostringstream path;
+
+      // Always look in same place as the .exe file for .pdb file
+      char * ptr = strrchr(filename, '\\');
+      if (ptr == NULL)
+        path << filename;
+      else {
+        *ptr = '\0';
+        path << filename;
+        *ptr = '\\';
+      }
+
+      /* Add in the environment variables as per default, but do not add in
+          current directory (as default does), as if that is C:\, it searches
+          the entire disk. Slooooow. */
+      const char * env;
+      if ((env = getenv("_NT_SYMBOL_PATH")) != NULL)
+        path << ';' << env;
+      if ((env = getenv("_NT_ALTERNATE_SYMBOL_PATH")) != NULL)
+        path << ';' << env;
+
+      // Initialise the symbols with path for PDB files.
+      if (!m_SymInitialize(m_hProcess, path.str().c_str(), TRUE)) {
+        DWORD err = ::GetLastError();
+        strm << "\n    SymInitialize failed, error=" << err;
+        return false;
+      }
+
+      strm << "\n    Stack walk symbols initialised, path=\"" << path.str() << '"';
+
+      // See if PDB file exists
+      ptr = strrchr(filename, '.');
+      if (ptr == NULL)
+        strcat(filename, ".pdb");
+      else
+        strcpy(ptr, ".pdb");
+
+      if (_access(filename, 4) != 0)
+        strm << "\n    Stack walk could not find symbols file \"" << filename << '"';
+
+      m_SymSetOptions(m_SymGetOptions()|SYMOPT_LOAD_LINES|SYMOPT_FAIL_CRITICAL_ERRORS|SYMOPT_NO_PROMPTS);
       return true;
+    }
 
-    DWORD wndProcess;
-    GetWindowThreadProcessId(hWnd, &wndProcess);
-    if (wndProcess != (DWORD)thisProcess)
-      return true;
+    void OutputSymbol(ostream & strm, DWORD64 addrPC, DWORD64 * params = NULL)
+    {
+      strm << "\n    " << hex << setfill('0');
 
-    PTRACE(2, "PTLib", "Awaiting key press on exit.");
-    cerr << "\nPress a key to exit . . .";
-    cerr.flush();
-
-    HANDLE in = GetStdHandle(STD_INPUT_HANDLE);
-    SetConsoleMode(in, ENABLE_PROCESSED_INPUT);
-    FlushConsoleInputBuffer(in);
-    char dummy;
-    DWORD readBytes;
-    ReadConsole(in, &dummy, 1, &readBytes, NULL);
-    return false;
-  }
-
-
-  void PProcess::WaitOnExitConsoleWindow()
-  {
-    if (m_waitOnExitConsoleWindow && !m_library)
-      EnumWindows(EnumWindowsProc, GetCurrentProcessId());
-  }
-
-  #pragma warning(disable:4091)
-  #include <DbgHelp.h>
-  #include <Psapi.h>
-  #pragma warning(default:4091)
-
-  #if PTRACING
-    #define InternalMaxStackWalk PTrace::MaxStackWalk
-  #else
-    #define InternalMaxStackWalk 20
-  #endif // PTRACING
-
-  class PDebugDLL : public PDynaLink
-  {
-    PCLASSINFO(PDebugDLL, PDynaLink)
-    public:
-      BOOL (__stdcall *m_SymInitialize)(
-        __in HANDLE hProcess,
-        __in_opt PCSTR UserSearchPath,
-        __in BOOL fInvadeProcess
-      );
-      BOOL (__stdcall *m_SymCleanup)(
-        __in HANDLE hProcess
-      );
-      DWORD (__stdcall *m_SymGetOptions)(
-        VOID
-      );
-      DWORD (__stdcall *m_SymSetOptions)(
-        __in DWORD   SymOptions
-      );
-      BOOL (__stdcall *m_StackWalk64)(
-        __in DWORD MachineType,
-        __in HANDLE hProcess,
-        __in HANDLE hThread,
-        __inout LPSTACKFRAME64 StackFrame,
-        __inout PVOID ContextRecord,
-        __in_opt PREAD_PROCESS_MEMORY_ROUTINE64 ReadMemoryRoutine,
-        __in_opt PFUNCTION_TABLE_ACCESS_ROUTINE64 FunctionTableAccessRoutine,
-        __in_opt PGET_MODULE_BASE_ROUTINE64 GetModuleBaseRoutine,
-        __in_opt PTRANSLATE_ADDRESS_ROUTINE64 TranslateAddress
-      );
-      BOOL (__stdcall *m_SymGetSymFromAddr64)(
-        __in HANDLE hProcess,
-        __in DWORD64 qwAddr,
-        __out_opt PDWORD64 pdwDisplacement,
-        __inout PIMAGEHLP_SYMBOL64  Symbol
-      );
-      BOOL (__stdcall *m_SymGetLineFromAddr64)(
-        _In_  HANDLE           hProcess,
-        _In_  DWORD64          dwAddr,
-        _Out_ PDWORD           pdwDisplacement,
-        _Out_ PIMAGEHLP_LINE64 Line
-      );
-
-      PFUNCTION_TABLE_ACCESS_ROUTINE64 m_SymFunctionTableAccess64;
-      PGET_MODULE_BASE_ROUTINE64       m_SymGetModuleBase64;
-
-      HANDLE m_hProcess;
-
-
-      PDebugDLL()
-        : PDynaLink("DBGHELP.DLL")
-        , m_hProcess(GetCurrentProcess())
-      {
+      char buffer[sizeof(IMAGEHLP_SYMBOL64) + 200];
+      PIMAGEHLP_SYMBOL64 symbol = (PIMAGEHLP_SYMBOL64)buffer;
+      symbol->SizeOfStruct = sizeof(IMAGEHLP_SYMBOL64);
+      symbol->MaxNameLength = sizeof(buffer) - sizeof(IMAGEHLP_SYMBOL64);
+      DWORD64 displacement = 0;
+      DWORD error = 0;
+      if (m_SymGetSymFromAddr64(m_hProcess, addrPC, &displacement, symbol))
+        strm << symbol->Name;
+      else {
+        error = ::GetLastError();
+        strm << setw(8) << addrPC;
       }
 
-      ~PDebugDLL()
-      {
-        if (IsLoaded())
-          m_SymCleanup(GetCurrentProcess());
+      if (params) {
+        strm << '(';
+        for (PINDEX i = 0; i < 4; i++) {
+          if (i > 0)
+            strm << ", ";
+          if (params[i] != 0)
+            strm << "0x";
+          strm << params[i];
+        }
+        strm << setfill(' ') << ')';
       }
 
-      bool Initialise(ostream & strm)
-      {
-        if (!IsLoaded() ||
-            !GetFunction("SymInitialize", (Function &)m_SymInitialize) ||
-            !GetFunction("SymCleanup", (Function &)m_SymCleanup) ||
-            !GetFunction("SymGetOptions", (Function &)m_SymGetOptions) ||
-            !GetFunction("SymSetOptions", (Function &)m_SymSetOptions) ||
-            !GetFunction("StackWalk64", (Function &)m_StackWalk64) ||
-            !GetFunction("SymGetSymFromAddr64", (Function &)m_SymGetSymFromAddr64) ||
-            !GetFunction("SymFunctionTableAccess64", (Function &)m_SymFunctionTableAccess64) ||
-            !GetFunction("SymGetModuleBase64", (Function &)m_SymGetModuleBase64)) {
-          strm << "\n    Invalid stack walk DLL: " << GetName() << " not all functions present.";
-          return false;
-        }
+      if (displacement != 0)
+        strm << " + 0x" << displacement;
 
-        if (!GetFunction("SymGetLineFromAddr64", (Function &)m_SymGetLineFromAddr64))
-          m_SymGetLineFromAddr64 = NULL;
+      strm << dec << setfill(' ');
 
-        // Get the directory the .exe file is in
-        char filename[_MAX_PATH];
-        if (GetModuleFileNameEx(m_hProcess, NULL, filename, sizeof(filename)) == 0) {
-          DWORD err = ::GetLastError();
-          strm << "\n    GetModuleFileNameEx failed, error=" << err;
-          return false;
-        }
+      IMAGEHLP_LINE64 line;
+      line.SizeOfStruct = sizeof(line);
+      DWORD dwDisplacement;
+      if (m_SymGetLineFromAddr64 != NULL && m_SymGetLineFromAddr64(m_hProcess, addrPC, &dwDisplacement, &line))
+        strm << ' ' << line.FileName << '(' << line.LineNumber << ')';
 
-        ostringstream path;
+      if (error != 0)
+        strm << " - symbol lookup error=" << error;
+    }
 
-        // Always look in same place as the .exe file for .pdb file
-        char * ptr = strrchr(filename, '\\');
-        if (ptr == NULL)
-          path << filename;
-        else {
-          *ptr = '\0';
-          path << filename;
-          *ptr = '\\';
-        }
+    void WalkStack(ostream & strm, HANDLE hThread, unsigned framesToSkip)
+    {
+      // The thread information.
+      int resumeCount = -1;
 
-        /* Add in the environment variables as per default, but do not add in
-           current directory (as default does), as if that is C:\, it searches
-           the entire disk. Slooooow. */
-        const char * env;
-        if ((env = getenv("_NT_SYMBOL_PATH")) != NULL)
-          path << ';' << env;
-        if ((env = getenv("_NT_ALTERNATE_SYMBOL_PATH")) != NULL)
-          path << ';' << env;
+      CONTEXT threadContext;
+      memset(&threadContext, 0, sizeof(threadContext));
+      threadContext.ContextFlags = CONTEXT_FULL;
 
-        // Initialise the symbols with path for PDB files.
-        if (!m_SymInitialize(m_hProcess, path.str().c_str(), TRUE)) {
-          DWORD err = ::GetLastError();
-          strm << "\n    SymInitialize failed, error=" << err;
-          return false;
-        }
-
-        strm << "\n    Stack walk symbols initialised, path=\"" << path.str() << '"';
-
-        // See if PDB file exists
-        ptr = strrchr(filename, '.');
-        if (ptr == NULL)
-          strcat(filename, ".pdb");
-        else
-          strcpy(ptr, ".pdb");
-
-        if (_access(filename, 4) != 0)
-          strm << "\n    Stack walk could not find symbols file \"" << filename << '"';
-
-        m_SymSetOptions(m_SymGetOptions()|SYMOPT_LOAD_LINES|SYMOPT_FAIL_CRITICAL_ERRORS|SYMOPT_NO_PROMPTS);
-        return true;
-      }
-
-      void OutputSymbol(ostream & strm, DWORD64 addrPC, DWORD64 * params = NULL)
-      {
-        strm << "\n    " << hex << setfill('0');
-
-        char buffer[sizeof(IMAGEHLP_SYMBOL64) + 200];
-        PIMAGEHLP_SYMBOL64 symbol = (PIMAGEHLP_SYMBOL64)buffer;
-        symbol->SizeOfStruct = sizeof(IMAGEHLP_SYMBOL64);
-        symbol->MaxNameLength = sizeof(buffer) - sizeof(IMAGEHLP_SYMBOL64);
-        DWORD64 displacement = 0;
-        DWORD error = 0;
-        if (m_SymGetSymFromAddr64(m_hProcess, addrPC, &displacement, symbol))
-          strm << symbol->Name;
-        else {
-          error = ::GetLastError();
-          strm << setw(8) << addrPC;
-        }
-
-        if (params) {
-          strm << '(';
-          for (PINDEX i = 0; i < 4; i++) {
-            if (i > 0)
-              strm << ", ";
-            if (params[i] != 0)
-              strm << "0x";
-            strm << params[i];
-          }
-          strm << setfill(' ') << ')';
-        }
-
-        if (displacement != 0)
-          strm << " + 0x" << displacement;
-
-        strm << dec << setfill(' ');
-
-        IMAGEHLP_LINE64 line;
-        line.SizeOfStruct = sizeof(line);
-        DWORD dwDisplacement;
-        if (m_SymGetLineFromAddr64 != NULL && m_SymGetLineFromAddr64(m_hProcess, addrPC, &dwDisplacement, &line))
-          strm << ' ' << line.FileName << '(' << line.LineNumber << ')';
-
-        if (error != 0)
-          strm << " - symbol lookup error=" << error;
-      }
-
-      void WalkStack(ostream & strm, HANDLE hThread, unsigned framesToSkip)
-      {
-        // The thread information.
-        int resumeCount = -1;
-
-        CONTEXT threadContext;
-        memset(&threadContext, 0, sizeof(threadContext));
-        threadContext.ContextFlags = CONTEXT_FULL;
-
-        if (hThread == 0 || hThread == ::GetCurrentThread()) {
-          RtlCaptureContext(&threadContext);
+      if (hThread == 0 || hThread == ::GetCurrentThread()) {
+        RtlCaptureContext(&threadContext);
 #if P_64BIT
-          framesToSkip += 2;
+        framesToSkip += 2;
 #else
-          ++framesToSkip;
+        ++framesToSkip;
 #endif
+      }
+      else {
+        resumeCount = SuspendThread(hThread);
+        if (!GetThreadContext(hThread, &threadContext)) {
+          DWORD err = ::GetLastError();
+          if (resumeCount >= 0)
+            ResumeThread(hThread);
+          strm << "\n    No context for thread: h=" << hThread << ", error=" << err;
+          return;
         }
-        else {
-          resumeCount = SuspendThread(hThread);
-          if (!GetThreadContext(hThread, &threadContext)) {
-            DWORD err = ::GetLastError();
-            if (resumeCount >= 0)
-              ResumeThread(hThread);
-            strm << "\n    No context for thread: h=" << hThread << ", error=" << err;
-            return;
-          }
-        }
-
-        WalkStack(strm, hThread, threadContext, framesToSkip);
-
-        if (resumeCount >= 0)
-          ResumeThread(hThread);
       }
 
-      void WalkStack(ostream & strm, HANDLE hThread, CONTEXT & threadContext, unsigned framesToSkip)
-      {
-        STACKFRAME64 frame;
-        memset(&frame, 0, sizeof(frame));
-        frame.AddrPC.Mode    = AddrModeFlat;
-        frame.AddrStack.Mode = AddrModeFlat;
-        frame.AddrFrame.Mode = AddrModeFlat;
-        #ifdef _M_IX86
-          // normally, call ImageNtHeader() and use machine info from PE header
-          DWORD imageType = IMAGE_FILE_MACHINE_I386;
-          frame.AddrPC.Offset = threadContext.Eip;
-          frame.AddrFrame.Offset = frame.AddrStack.Offset = threadContext.Esp;
-        #elif _M_X64
-          DWORD imageType = IMAGE_FILE_MACHINE_AMD64;
-          frame.AddrPC.Offset = threadContext.Rip;
-          frame.AddrFrame.Offset = frame.AddrStack.Offset = threadContext.Rsp;
-        #elif _M_IA64
-          DWORD imageType = IMAGE_FILE_MACHINE_IA64;
-          frame.AddrPC.Offset = threadContext.StIIP;
-          frame.AddrFrame.Offset = threadContext.IntSp;
-          frame.AddrBStore.Offset = threadContext.RsBSP;
-          frame.AddrBStore.Mode = AddrModeFlat;
-          frame.AddrStack.Offset = threadContext.IntSp;
-        #else
-          #error "Platform not supported!"
-        #endif
+      WalkStack(strm, hThread, threadContext, framesToSkip);
 
-        unsigned frameCount = 0;
-        while (frameCount++ < InternalMaxStackWalk) {
-          if (!m_StackWalk64(imageType,
-                             m_hProcess,
-                             hThread,
-                             &frame,
-                             &threadContext,
-                             NULL,
-                             m_SymFunctionTableAccess64,
-                             m_SymGetModuleBase64,
-                             NULL)) {
-            DWORD err = ::GetLastError();
-            strm << "\n    StackWalk64 failed: error=" << err;
-            break;
-          }
+      if (resumeCount >= 0)
+        ResumeThread(hThread);
+    }
 
-          if (frame.AddrPC.Offset == frame.AddrReturn.Offset) {
-            strm << "\n    StackWalk64 returned recursive stack! PC=0x" << hex << frame.AddrPC.Offset << dec;
-            break;
-          }
+    void WalkStack(ostream & strm, HANDLE hThread, CONTEXT & threadContext, unsigned framesToSkip)
+    {
+      STACKFRAME64 frame;
+      memset(&frame, 0, sizeof(frame));
+      frame.AddrPC.Mode    = AddrModeFlat;
+      frame.AddrStack.Mode = AddrModeFlat;
+      frame.AddrFrame.Mode = AddrModeFlat;
+      #ifdef _M_IX86
+        // normally, call ImageNtHeader() and use machine info from PE header
+        DWORD imageType = IMAGE_FILE_MACHINE_I386;
+        frame.AddrPC.Offset = threadContext.Eip;
+        frame.AddrFrame.Offset = frame.AddrStack.Offset = threadContext.Esp;
+      #elif _M_X64
+        DWORD imageType = IMAGE_FILE_MACHINE_AMD64;
+        frame.AddrPC.Offset = threadContext.Rip;
+        frame.AddrFrame.Offset = frame.AddrStack.Offset = threadContext.Rsp;
+      #elif _M_IA64
+        DWORD imageType = IMAGE_FILE_MACHINE_IA64;
+        frame.AddrPC.Offset = threadContext.StIIP;
+        frame.AddrFrame.Offset = threadContext.IntSp;
+        frame.AddrBStore.Offset = threadContext.RsBSP;
+        frame.AddrBStore.Mode = AddrModeFlat;
+        frame.AddrStack.Offset = threadContext.IntSp;
+      #else
+        #error "Platform not supported!"
+      #endif
 
-          if (frameCount <= framesToSkip || frame.AddrPC.Offset == 0)
-            continue;
-
-          OutputSymbol(strm, frame.AddrReturn.Offset, frame.Params);
-
-          if (frame.AddrReturn.Offset == 0)
-            break;
+      unsigned frameCount = 0;
+      while (frameCount++ < InternalMaxStackWalk) {
+        if (!m_StackWalk64(imageType,
+                            m_hProcess,
+                            hThread,
+                            &frame,
+                            &threadContext,
+                            NULL,
+                            m_SymFunctionTableAccess64,
+                            m_SymGetModuleBase64,
+                            NULL)) {
+          DWORD err = ::GetLastError();
+          strm << "\n    StackWalk64 failed: error=" << err;
+          break;
         }
+
+        if (frame.AddrPC.Offset == frame.AddrReturn.Offset) {
+          strm << "\n    StackWalk64 returned recursive stack! PC=0x" << hex << frame.AddrPC.Offset << dec;
+          break;
+        }
+
+        if (frameCount <= framesToSkip || frame.AddrPC.Offset == 0)
+          continue;
+
+        OutputSymbol(strm, frame.AddrReturn.Offset, frame.Params);
+
+        if (frame.AddrReturn.Offset == 0)
+          break;
       }
-  };
+    }
+};
 
 
-  void PPlatformWalkStack(ostream & strm, std::thread::native_handle_type handle, unsigned framesToSkip, bool, bool)
-  {
-    PDebugDLL debughelp;
-    if (debughelp.Initialise(strm))
-      debughelp.WalkStack(strm, handle, framesToSkip);
-  }
-
-#endif // __MINGW32__
+void PPlatformWalkStack(ostream & strm, const PThreadIdSet & idSet, unsigned framesToSkip, bool, bool)
+{
+  PDebugDLL debughelp;
+  if (debughelp.Initialise(strm))
+    debughelp.WalkStack(strm, idSet.m_nativeHandle, framesToSkip);
+}
 
 
   static const char ActionMessage[] = "<A>bort, <B>reak, "

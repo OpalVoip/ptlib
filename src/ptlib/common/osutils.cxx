@@ -2854,8 +2854,7 @@ void PProcess::OnThreadEnded(PThread &
   const int LogLevel = 3;
   if (PTrace::CanTrace(LogLevel)) {
     ostream & trace = PTRACE_BEGIN(LogLevel, "PTLib");
-    trace << "Thread ended: name=\"" << thread.GetThreadName() << "\", "
-             "id=" << GetIdentifiersAsString(thread.GetThreadId(), thread.GetUniqueIdentifier());
+    trace << "Thread ended: name=\"" << thread.GetThreadName() << "\", id=" << thread.GetThreadIdSet();
     PThread::Times times;
     if (thread.GetTimes(times))
       trace << ", " << times;
@@ -2971,8 +2970,7 @@ void PProcess::AsynchronousRunTimeSignal(int signal, PProcessIdentifier source)
   RemoveRunTimeSignalHandlers();
 
   if (!InSignalHandler.exchange(true)) {
-    PThreadIdentifier tid = GetCurrentThreadId();
-    PUniqueThreadIdentifier uid = PThread::GetCurrentUniqueIdentifier();
+    PThreadIdSet idSet(1);
 
     const char * couldNotWrite = ", stderr write failed";
     {
@@ -2989,8 +2987,8 @@ void PProcess::AsynchronousRunTimeSignal(int signal, PProcessIdentifier source)
 
     PSystemLog log(PSystemLog::Fatal);
     log << "Caught " << sigmsg << " (" << GetRunTimeSignalName(signal) << "),"
-      " thread-id=" << PThread::GetIdentifiersAsString(tid, uid) << ","
-      " name=\"" << PThread::GetThreadName(tid) << '"' << couldNotWrite;
+      " thread-id=" << id << ","
+      " name=\"" << PThread::GetThreadName(id.m_threadId) << '"' << couldNotWrite;
 
 #if PTRACING
     log << ", stack:";
@@ -3339,11 +3337,16 @@ bool PProcess::HostSystemURLHandlerInfo::RegisterTypes(const PString & _types, b
 
 ///////////////////////////////////////////////////////////////////////////////
 
-void PThreadIdSet::SetCurrent()
+PThreadIdSet::PThreadIdSet(int)
+  : m_threadId(PThread::GetCurrentThreadId())
+  , m_nativeHandle(PThread::GetCurrentNativeHandle())
+  , m_uniqueId(PThread::GetCurrentUniqueIdentifier())
 {
-  m_threadId = PThread::GetCurrentThreadId();
-  m_nativeHandle = PThread::GetCurrentNativeHandle();
-  m_uniqueId = PThread::GetCurrentUniqueIdentifier();
+}
+
+std::ostream & operator<<(std::ostream & strm, const PThreadIdSet & idSet)
+{
+  strm << idSet.m_threadId << '/' << idSet.m_nativeHandle << '/' << idSet.m_uniqueId;
 }
 
 
@@ -3492,25 +3495,9 @@ PString PThread::GetThreadName(PThreadIdentifier id)
       return it->second->GetThreadName();
   }
 
-  return "Unknown thread, id=" + GetIdentifiersAsString(id, 0);
+  return PSTRSTRM("Unknown thread, id=" << id);
 }
 
-
-#ifdef _WIN32
-std::string PThread::GetIdentifiersAsString(PThreadIdentifier tid, PUniqueThreadIdentifier)
-{
-  std::ostringstream strm;
-  strm << tid;
-  return strm.str();
-}
-#else
-std::string PThread::GetIdentifiersAsString(PThreadIdentifier tid, PUniqueThreadIdentifier uid)
-{
-  std::ostringstream strm;
-  strm << tid << '(' << uid << ')';
-  return strm.str();
-}
-#endif
 
 PINDEX PThread::GetTotalCount()
 {
@@ -3765,7 +3752,7 @@ bool PThread::WaitAndDelete(PThread * & threadToDelete, const PTimeInterval & ma
   strm << "Thread \"" << *thread << "\" failed to terminate"
 #if PTRACING
           " at stack location:";
-  PTrace::WalkStack(strm, thread);
+  PTrace::WalkStack(strm, thread->GetThreadIdSet());
   strm << "\n   "
 #endif
           " in " << maxWait << " seconds";
@@ -3836,13 +3823,12 @@ PTimedMutex::DeadlockStackWalkModes PTimedMutex::DeadlockStackWalkMode = Initial
 
 unsigned PTimedMutex::CtorDtorLogLevel = UINT_MAX;
 
-static void OutputThreadInfo(ostream & strm, PThreadIdSet & idSet, bool noSymbols)
+static void OutputThreadInfo(ostream & strm, const PThreadIdSet & idSet, bool noSymbols)
 {
-  strm << " id=" << PThread::GetIdentifiersAsString(idSet.m_threadId, idSet.m_uniqueId)
-       << ", name=\"" << PThread::GetThreadName(idSet.m_threadId) << '"';
+  strm << " id=" << idSet << ", name=\"" << PThread::GetThreadName(idSet.m_threadId) << '"';
   if (noSymbols)
     strm << ", stack=";
-  PTrace::WalkStack(strm, idSet.m_nativeHandle, noSymbols);
+  PTrace::WalkStack(strm, idSet, noSymbols);
 }
 
 #endif // PTRACING
@@ -3962,7 +3948,7 @@ void PMutexExcessiveLockInfo::ReleasedLock(const PObject & mutex,
       break;
     case PTimedMutex::DeadlockStackWalkNoSymbols :
       trace << " stack: ";
-      PTrace::WalkStack(trace, PThread::Current(), true);
+      PTrace::WalkStack(trace, PThreadIdSet(1), true);
       break;
     default :
       break;
@@ -4523,11 +4509,11 @@ void PReadWriteMutex::InternalWait(Nest & nest, bool shared, const PDebugLocatio
         trace << ", LOCKER";
       switch (PTimedMutex::DeadlockStackWalkMode) {
       case PTimedMutex::DeadlockStackWalkEnabled:
-        PTrace::WalkStack(trace, it->second.m_nativeHandle);
+        PTrace::WalkStack(trace, it->second);
         break;
       case PTimedMutex::DeadlockStackWalkNoSymbols:
         trace << ", stack: ";
-        PTrace::WalkStack(trace, it->second.m_nativeHandle, true);
+        PTrace::WalkStack(trace, it->second, true);
         break;
       default:
         break;

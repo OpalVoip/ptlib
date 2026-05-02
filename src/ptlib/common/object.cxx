@@ -143,13 +143,23 @@ PFactoryBase & PFactoryBase::InternalGetFactory(const std::string & className, P
 
 static PCriticalSection & GetAssertMutex() { static PCriticalSection cs; return cs; }
 extern void PPlatformAssertFunc(const PDebugLocation & location, const char * msg, char defaultAction);
-extern void PPlatformWalkStack(ostream & strm, std::thread::native_handle_type handle, unsigned framesToSkip, bool noSymbols, bool exception);
+extern void PPlatformWalkStack(ostream & strm, const PThreadIdSet & idSet, unsigned framesToSkip, bool noSymbols, bool exception);
 
 #if PTRACING
-  void PTrace::WalkStack(ostream & strm, std::thread::native_handle_type handle, bool noSymbols)
+void PTrace::WalkStack(ostream & strm)
+{
+  PWaitAndSignal lock(GetAssertMutex());
+  PPlatformWalkStack(strm, PThreadIdSet(1), 1, false, false); // 1 means skip reporting PTrace::WalkStack
+}
+void PTrace::WalkStack(ostream & strm, bool noSymbols)
+{
+  PWaitAndSignal lock(GetAssertMutex());
+  PPlatformWalkStack(strm, PThreadIdSet(1), 1, noSymbols, false); // 1 means skip reporting PTrace::WalkStack
+}
+void PTrace::WalkStack(ostream & strm, const PThreadIdSet & idSet, bool noSymbols)
   {
     PWaitAndSignal lock(GetAssertMutex());
-    PPlatformWalkStack(strm, handle, 1, noSymbols, false); // 1 means skip reporting PTrace::WalkStack
+    PPlatformWalkStack(strm, idSet, 1, noSymbols, false); // 1 means skip reporting PTrace::WalkStack
   }
 #endif // PTRACING
 
@@ -202,7 +212,7 @@ static void InternalAssertFunc(const PDebugLocation & location, const char * msg
     if (PAssertWalkStackMode == PAssertWalkStackDisabled)
       strm << ", stack walk disabled";
     else
-      PPlatformWalkStack(strm, std::thread::native_handle_type(), 2, // 2 means skip reporting InternalAssertFunc & PAssertFunc
+      PPlatformWalkStack(strm, nullptr, 2, // 2 means skip reporting InternalAssertFunc & PAssertFunc
                          PAssertWalkStackMode == PAssertWalkStackNoSymbols,
                          &location == &s_ExceptionLocation); 
     strm << ends;

@@ -56,9 +56,10 @@ struct PThreadIdSet
   std::thread::id                 m_threadId;
   std::thread::native_handle_type m_nativeHandle;
   PUniqueThreadIdentifier         m_uniqueId;
-  PThreadIdSet() = default;
-  void SetCurrent();
+  PThreadIdSet() : m_threadId(), m_nativeHandle(0), m_uniqueId(0) { }
+  PThreadIdSet(int);
 };
+std::ostream & operator<<(std::ostream & strm, const PThreadIdSet & idSet);
 
 #include <ptlib/mutex.h>  // Must be after PThreadIdSet
 #include <ptlib/syncpoint.h>
@@ -258,12 +259,6 @@ class PThread : public PObject, protected PThreadIdSet, PProfiling::HighWaterMar
       */
     static PString GetCurrentThreadName() { return GetThreadName(GetCurrentThreadId()); }
 
-    /**Convert to thread identifiers as a string.
-       For platforms where unique thread id is different from the "normal" thread id,
-       then the output will append it to the thread id string, e.g. "0x12345678 (54321)".
-      */
-    static std::string GetIdentifiersAsString(PThreadIdentifier tid, PUniqueThreadIdentifier uid);
-
     /** Change the name of the thread. Thread names are a optional debugging aid.
 
        @return
@@ -278,7 +273,7 @@ class PThread : public PObject, protected PThreadIdSet, PProfiling::HighWaterMar
   //@{
     /** Get all the different thread identifiers for this thread.
     */
-    void GetThreadIdSet(PThreadIdSet & idSet) const { idSet = *this; }
+    PThreadIdSet GetThreadIdSet() const { return *this; }
 
     /** Get C++ thread identifier for this thread.
     */
