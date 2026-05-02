@@ -401,9 +401,14 @@ int PServiceProcess::InternalMain(void * arg)
   PAssertOS(m_terminationEvent != NULL);
 
   std::thread thread(&PServiceProcess::ThreadEntry, this);
-  m_threadId = thread.get_id();
-  m_nativeHandle = thread.native_handle();
+  m_idSet.m_threadId = thread.get_id();
+  m_idSet.m_nativeHandle = thread.native_handle();
+  m_idSet.m_uniqueId = *(PUniqueThreadIdentifier *)&m_idSet.m_threadId;
   thread.detach();
+
+  m_threadMutex.Wait();
+  m_activeThreads[GetThreadId()] = this;
+  m_threadMutex.Signal();
 
   SetTerminationValue(0);
 
@@ -447,11 +452,9 @@ int PServiceProcess::InternalMain(void * arg)
 
   // Set thread ID for the process back to this thread, mostly for destruction logging
   m_threadMutex.Wait();
-  m_activeThreads.erase(m_threadId);
-  m_threadId = std::this_thread::get_id();
-  m_nativeHandle = ::GetCurrentThread();
-  m_uniqueId = ::GetCurrentThreadId();
-  m_activeThreads[m_threadId] = this;
+  m_activeThreads.erase(GetThreadId());
+  m_idSet = PThreadIdSet(1);
+  m_activeThreads[GetThreadId()] = this;
   m_threadMutex.Signal();
 
   m_controlWindow = NULL; // This stops the logging direct to Window, but not to file
@@ -998,8 +1001,8 @@ void PServiceProcess::MainEntry(DWORD argc, LPTSTR * argv)
 
   // start the thread that performs the work of the service.
   std::thread thread(&PServiceProcess::ThreadEntry, this);
-  m_threadId = thread.get_id();
-  m_nativeHandle = thread.native_handle();
+  m_idSet.m_threadId = thread.get_id();
+  m_idSet.m_nativeHandle = thread.native_handle();
   thread.detach();
 
   while (WaitForSingleObject(m_startedEvent, 10000) == WAIT_TIMEOUT) {
@@ -1017,10 +1020,7 @@ void PServiceProcess::MainEntry(DWORD argc, LPTSTR * argv)
 
 void PServiceProcess::ThreadEntry()
 {
-  m_threadMutex.Wait();
-  m_uniqueId = ::GetCurrentThreadId();
-  m_activeThreads[m_threadId] = this;
-  m_threadMutex.Signal();
+  m_idSet.m_uniqueId = ::GetCurrentThreadId();
 
   Startup();
 
@@ -1132,14 +1132,14 @@ void PServiceProcess::OnStop()
 
 PBoolean PServiceProcess::OnPause()
 {
-  SuspendThread(m_nativeHandle);
+  SuspendThread(GetNativeHandle());
   return true;
 }
 
 
 void PServiceProcess::OnContinue()
 {
-  ResumeThread(m_nativeHandle);
+  ResumeThread(GetNativeHandle());
 }
 
 

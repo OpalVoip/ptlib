@@ -2517,14 +2517,8 @@ PProcess::PProcess(const char * manuf, const char * name,
   m_version.m_svn = 0;
   m_version.m_git = NULL;
 
-  m_threadId = GetCurrentThreadId();
-#if defined(_WIN32)
-  m_nativeHandle = ::GetCurrentThread();
-#else
-  m_nativeHandle = pthread_self();
-#endif
-  m_uniqueId = GetCurrentUniqueIdentifier();
-  m_activeThreads[m_threadId] = this;
+  m_idSet = PThreadIdSet(1);
+  m_activeThreads[GetThreadId()] = this;
 
 #if PTRACING
   // Do this before PProcessInstance is set to avoid a recursive loop with PTimedMutex
@@ -2541,8 +2535,6 @@ PProcess::PProcess(const char * manuf, const char * name,
   /* Try to get the real image path for this process using platform dependent
      code, if this fails, then use the value originally set via argv[0] */
 #if defined(_WIN32)
-  m_nativeHandle = ::GetCurrentThread();
-
   TCHAR shortName[_MAX_PATH];
   if (GetModuleFileName(GetModuleHandle(NULL), shortName, sizeof(shortName)) > 0) {
     TCHAR longName[32768]; // Space for long image path
@@ -2980,15 +2972,15 @@ void PProcess::AsynchronousRunTimeSignal(int signal, PProcessIdentifier source)
       char buffer[1000];
       int length = snprintf(buffer, sizeof(buffer),
                             "\nCaught %s (%s), in thread %p (" P_UNIQUE_THREAD_ID_FMT ")\n",
-                            sigmsg, GetRunTimeSignalName(signal), &tid, uid);
+                            sigmsg, GetRunTimeSignalName(signal), idSet.m_nativeHandle, idSet.m_uniqueId);
       if (length > 0 && fwrite(buffer, 1, length, stderr) >= (size_t)length)
         couldNotWrite = "";
     }
 
     PSystemLog log(PSystemLog::Fatal);
     log << "Caught " << sigmsg << " (" << GetRunTimeSignalName(signal) << "),"
-      " thread-id=" << id << ","
-      " name=\"" << PThread::GetThreadName(id.m_threadId) << '"' << couldNotWrite;
+      " thread-id=" << idSet << ","
+      " name=\"" << PThread::GetThreadName(idSet.m_threadId) << '"' << couldNotWrite;
 
 #if PTRACING
     log << ", stack:";
@@ -3346,7 +3338,11 @@ PThreadIdSet::PThreadIdSet(int)
 
 std::ostream & operator<<(std::ostream & strm, const PThreadIdSet & idSet)
 {
-  strm << idSet.m_threadId << '/' << idSet.m_nativeHandle << '/' << idSet.m_uniqueId;
+#ifdef _WIN32
+  return strm << idSet.m_threadId;
+#else
+  return strm << idSet.m_threadId << '/' << idSet.m_nativeHandle << '/' << idSet.m_uniqueId;
+#endif
 }
 
 
@@ -3365,7 +3361,8 @@ PThread::PThread(AutoDeleteFlag deletion, Priority priority, const PString & nam
   : PThread(deletion == AutoDeleteThread ? e_IsAutoDelete : e_IsManualDelete, priority, name)
 {
   std::thread thread(&PThread::InternalThreadMain, this);
-  m_nativeHandle = thread.native_handle();
+  m_idSet.m_threadId = thread.get_id();
+  m_idSet.m_nativeHandle = thread.native_handle();
   thread.detach();
 }
 
@@ -3373,8 +3370,7 @@ PThread::PThread(AutoDeleteFlag deletion, Priority priority, const PString & nam
 void PThread::InternalThreadStarted()
 {
   m_threadStartTime.SetCurrentTime();
-  m_threadId = GetCurrentThreadId();
-  m_uniqueId = GetCurrentUniqueIdentifier();
+  m_idSet = PThreadIdSet(1);
   auto threadName = GetThreadName();
   SetThreadName(threadName.empty() ? PString(GetClassName()) : threadName);
   PProcess::Current().InternalThreadStarted(this);
@@ -3594,9 +3590,7 @@ int PThread::GetPercentageCPU(Times & previousTimes, const PTimeInterval & perio
 
 
 PThread::Times::Times()
-  : m_threadId(PNullThreadIdentifier)
-  , m_uniqueId(0)
-  , m_sample(0)
+  : m_sample(0)
 {
 }
 
@@ -3774,7 +3768,7 @@ PThread::~PThread()
 
     // Do not do this log if auto-delete or external thread as the thread_local
     // it uses in PThread::Current() has become invalid.
-    PTRACE(5, "Destroying thread " << this << ' ' << m_threadName << ", id=" << m_threadId);
+    PTRACE(5, "Destroying thread " << this << ' ' << m_threadName << ", id=" << m_idSet);
   }
 
   if (m_type != e_IsProcess)
@@ -4104,7 +4098,7 @@ void PTimedMutex::InternalWaitComplete(uint64_t startWaitCycle, const PDebugLoca
   if (m_lockCount++ == 0) {
     AcquiredLock(startWaitCycle, false, location);
     m_startHeldSamplePoint = PProfiling::GetCycles();
-    m_locker.SetCurrent();
+    m_locker = PThreadIdSet(1);
     m_lastLocker = m_locker;
   }
 }

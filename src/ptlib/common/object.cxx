@@ -212,7 +212,7 @@ static void InternalAssertFunc(const PDebugLocation & location, const char * msg
     if (PAssertWalkStackMode == PAssertWalkStackDisabled)
       strm << ", stack walk disabled";
     else
-      PPlatformWalkStack(strm, nullptr, 2, // 2 means skip reporting InternalAssertFunc & PAssertFunc
+      PPlatformWalkStack(strm, PThreadIdSet(1), 2, // 2 means skip reporting InternalAssertFunc & PAssertFunc
                          PAssertWalkStackMode == PAssertWalkStackNoSymbols,
                          &location == &s_ExceptionLocation); 
     strm << ends;

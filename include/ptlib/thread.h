@@ -88,7 +88,7 @@ class PSyncPoint;
    Previous versions of PTLib/PWLib have some support for co-operative
    threads, but this has been removed.
  */
-class PThread : public PObject, protected PThreadIdSet, PProfiling::HighWaterMark<PThread>, PNonCopyable
+class PThread : public PObject, PProfiling::HighWaterMark<PThread>, PNonCopyable
 {
   PCLASSINFO(PThread, PObject);
 
@@ -273,21 +273,21 @@ class PThread : public PObject, protected PThreadIdSet, PProfiling::HighWaterMar
   //@{
     /** Get all the different thread identifiers for this thread.
     */
-    PThreadIdSet GetThreadIdSet() const { return *this; }
+    PThreadIdSet GetThreadIdSet() const { return m_idSet; }
 
     /** Get C++ thread identifier for this thread.
     */
-    PThreadIdentifier GetThreadId() const { return m_threadId; }
+    PThreadIdentifier GetThreadId() const { return m_idSet.m_threadId; }
 
     /** This operating system specific thread handle for the thread.
       */
-    std::thread::native_handle_type GetThreadHandle() const { return m_nativeHandle; }
+    std::thread::native_handle_type GetNativeHandle() const { return m_idSet.m_nativeHandle; }
 
     /** This returns a unique number for the thread.
         This identifier is the one useful in debugging as it corresponds to
         that shown in the operating system and debugger thread lists.
       */
-    PUniqueThreadIdentifier GetUniqueIdentifier() const { return m_uniqueId; }
+    PUniqueThreadIdentifier GetUniqueIdentifier() const { return m_idSet.m_uniqueId; }
 
     PPROFILE_EXCLUDE(
     /** Get C++ thread identifier for the current thread.
@@ -332,16 +332,15 @@ class PThread : public PObject, protected PThreadIdSet, PProfiling::HighWaterMar
         Times & operator-=(const Times & rhs)
       );
       PPROFILE_EXCLUDE(
-        bool operator<(const Times & rhs) const { return m_uniqueId < rhs.m_uniqueId; }
+        bool operator<(const Times & rhs) const { return m_idSet.m_uniqueId < rhs.m_idSet.m_uniqueId; }
       );
 
-      PString                 m_name;     ///< Name of thread
-      PThreadIdentifier       m_threadId; ///< Operating system thread ID
-      PUniqueThreadIdentifier m_uniqueId; ///< Unique thread identifier
-      PTimeInterval           m_real;     ///< Total real time since thread start in milliseconds.
-      PTimeInterval           m_kernel;   ///< Total kernel CPU time in milliseconds.
-      PTimeInterval           m_user;     ///< Total user CPU time in milliseconds.
-      PTime                   m_sample;   ///< Time of sample
+      PString       m_name;     ///< Name of thread
+      PThreadIdSet  m_idSet; ///< Thread identifiers
+      PTimeInterval m_real;     ///< Total real time since thread start in milliseconds.
+      PTimeInterval m_kernel;   ///< Total kernel CPU time in milliseconds.
+      PTimeInterval m_user;     ///< Total user CPU time in milliseconds.
+      PTime         m_sample;   ///< Time of sample
     };
 
     PPROFILE_EXCLUDE(
@@ -443,6 +442,8 @@ class PThread : public PObject, protected PThreadIdSet, PProfiling::HighWaterMar
 
   protected:
     enum Type { e_IsAutoDelete, e_IsManualDelete, e_IsProcess, e_IsExternal } m_type;
+
+    PThreadIdSet m_idSet;
 
     std::atomic<Priority> m_priority;
     PTime m_threadStartTime{ 0 };

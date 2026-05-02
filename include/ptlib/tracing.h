@@ -70,7 +70,7 @@ An application could change this pointer to a <i>std::ofstream</i> variable of
 
 class PObject;
 class PArgList;
-class PThreadIdSet;
+struct PThreadIdSet;
 
 /**Class to encapsulate tracing functions.
    This class does not require any instances and is only being used as a
