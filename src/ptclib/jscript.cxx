@@ -303,7 +303,8 @@ public:
     : m_owner(owner)
     , m_isolate(NULL)
   {
-    if (!PSafeSingleton<Intialisation>()->m_initialised) {
+    static Intialisation s_initialisation;
+    if (!s_initialisation.m_initialised) {
       PTRACE(1, "Could not intitalise V8.");
       return;
     }

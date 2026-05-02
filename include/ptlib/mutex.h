@@ -169,10 +169,9 @@ class PTimedMutex : public PSync,
 #endif
 
   protected:
-    PThreadIdentifier       m_lockerId = PNullThreadIdentifier;
-    PThreadIdentifier       m_lastLockerId = PNullThreadIdentifier;
-    PUniqueThreadIdentifier m_lastUniqueId = 0;
-    unsigned                m_lockCount = 0;
+    PThreadIdSet m_locker;
+    PThreadIdSet m_lastLocker;
+    unsigned     m_lockCount = 0;
 
     void InternalWait(const PDebugLocation * location);
     void InternalWaitComplete(uint64_t startWaitCycle, const PDebugLocation * location);

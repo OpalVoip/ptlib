@@ -99,9 +99,6 @@ using std::cin, std::cout, std::cerr,
   #define PASSERTINDEX(idx)
 #endif
 
-#define PNullThreadIdentifier std::thread::id()
-typedef std::thread::id PThreadIdentifier;
-
 #ifndef PTRACING
 #define PTRACING 2
 #endif
@@ -1034,69 +1031,6 @@ struct std::hash<PObject>
 
 
 ///////////////////////////////////////////////////////////////////////////////
-
-void PThreadYield();
-
-template<class Type> Type * PSingletonCreatorDefault()
-{
-  return new Type();
-}
-
-/** Template class for a simple singleton object.
-     Usage is typically like:
-<pre><code>
-        typedef PSingleton<MyClass> MySingleton;
-        MySingleton()->DoSomething();
-</code></pre>
-     Default is not thread safe, however the following is:
-<pre><code>
-        typedef PSingleton<MyClass, atomic<uint32_t> > MySafeSingleton;
-        MySafeSingleton()->DoSomething();
-</code></pre>
-     If the singleton class requires parameters on construction, then a creator
-     function may be included in the template parameters:
- <pre><code>
-        MyClass * CreateMyClass() { return new MyClass("fred"); }
-        typedef PSingleton<MyClass, atomic<uint32_t>, CreateMyClass> MySafeSingleton;
-        MySafeSingleton()->DoSomething();
-</code></pre>
-*/
-template <class Type, typename GuardType = unsigned, Type * (*Creator)() = PSingletonCreatorDefault<Type> >
-class PSingleton
-{
-protected:
-  Type * m_instance;
-public:
-  PSingleton()
-  {
-    static PAutoPtr<Type> s_pointer;
-    static GuardType s_guard(0);
-    if (s_guard++ != 0) {
-      s_guard = 1;
-      while ((m_instance = s_pointer.get()) == NULL)
-        PThreadYield();
-    }
-    else {
-#if PMEMORY_HEAP
-        // Do this to make sure debugging is initialised as early as possible
-      PMemoryHeap::Validate(NULL, NULL, NULL);
-#endif
-      s_pointer.reset(Creator());
-      m_instance = s_pointer.get();
-    }
-  }
-
-  Type * operator->() const { return  m_instance; }
-  Type & operator* () const { return *m_instance; }
-};
-
-
-// Template class for thread safe singleton
-template <class Type, Type * (*Creator)() = PSingletonCreatorDefault<Type> >
-class PSafeSingleton : public PSingleton<Type, atomic<unsigned>, Creator>
-{ };
-
-
 
 #include "tracing.h"
 #include "memchk.h"

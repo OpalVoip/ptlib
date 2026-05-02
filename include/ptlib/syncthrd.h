@@ -326,13 +326,12 @@ class PReadWriteMutex : public PObject,
     void InternalStartWrite(const PDebugLocation * location);
     void InternalEndWrite(const PDebugLocation * location);
 
-    struct Nest
+    struct Nest : PThreadIdSet
     {
       atomic<unsigned> m_readerCount;
       atomic<unsigned> m_writerCount;
       atomic<bool>     m_waiting;
       atomic<uint64_t> m_startHeldCycle;
-      atomic<PUniqueThreadIdentifier> m_uniqueId;
 
       Nest();
       Nest(const Nest & other);

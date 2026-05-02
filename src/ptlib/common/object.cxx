@@ -143,13 +143,13 @@ PFactoryBase & PFactoryBase::InternalGetFactory(const std::string & className, P
 
 static PCriticalSection & GetAssertMutex() { static PCriticalSection cs; return cs; }
 extern void PPlatformAssertFunc(const PDebugLocation & location, const char * msg, char defaultAction);
-extern void PPlatformWalkStack(ostream & strm, PThreadIdentifier id, PUniqueThreadIdentifier uid, unsigned framesToSkip, bool noSymbols, bool exception);
+extern void PPlatformWalkStack(ostream & strm, std::thread::native_handle_type handle, unsigned framesToSkip, bool noSymbols, bool exception);
 
 #if PTRACING
-  void PTrace::WalkStack(ostream & strm, PThreadIdentifier id, PUniqueThreadIdentifier uid, bool noSymbols)
+  void PTrace::WalkStack(ostream & strm, std::thread::native_handle_type handle, bool noSymbols)
   {
     PWaitAndSignal lock(GetAssertMutex());
-    PPlatformWalkStack(strm, id, uid, 1, noSymbols, false); // 1 means skip reporting PTrace::WalkStack
+    PPlatformWalkStack(strm, handle, 1, noSymbols, false); // 1 means skip reporting PTrace::WalkStack
   }
 #endif // PTRACING
 
@@ -202,7 +202,7 @@ static void InternalAssertFunc(const PDebugLocation & location, const char * msg
     if (PAssertWalkStackMode == PAssertWalkStackDisabled)
       strm << ", stack walk disabled";
     else
-      PPlatformWalkStack(strm, PNullThreadIdentifier, 0, 2, // 2 means skip reporting InternalAssertFunc & PAssertFunc
+      PPlatformWalkStack(strm, std::thread::native_handle_type(), 2, // 2 means skip reporting InternalAssertFunc & PAssertFunc
                          PAssertWalkStackMode == PAssertWalkStackNoSymbols,
                          &location == &s_ExceptionLocation); 
     strm << ends;

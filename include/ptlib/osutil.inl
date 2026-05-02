@@ -560,16 +560,6 @@ PINLINE PArgList & PArgList::operator>>(int sh)
 
 
 ///////////////////////////////////////////////////////////////////////////////
-// PThread
-
-PINLINE PThreadIdentifier PThread::GetThreadId() const
-  { return m_threadId; }
-
-PINLINE PUniqueThreadIdentifier PThread::GetUniqueIdentifier() const
-  { return m_uniqueId; }
-
-
-///////////////////////////////////////////////////////////////////////////////
 // PProcess
 
 PINLINE PArgList & PProcess::GetArguments()
@@ -592,9 +582,6 @@ PINLINE void PProcess::SetTerminationValue(int value)
 
 PINLINE int PProcess::GetTerminationValue() const
   { return m_terminationValue; }
-
-PINLINE void PThreadYield()
-  { PThread::Yield(); }
 
 
 // End Of File ///////////////////////////////////////////////////////////////

@@ -3338,6 +3338,16 @@ bool PProcess::HostSystemURLHandlerInfo::RegisterTypes(const PString & _types, b
 
 
 ///////////////////////////////////////////////////////////////////////////////
+
+void PThreadIdSet::SetCurrent()
+{
+  m_threadId = PThread::GetCurrentThreadId();
+  m_nativeHandle = PThread::GetCurrentNativeHandle();
+  m_uniqueId = PThread::GetCurrentUniqueIdentifier();
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
 // PThread
 
 PThread::PThread(Type type, Priority priority, const PString & name)
@@ -3755,7 +3765,7 @@ bool PThread::WaitAndDelete(PThread * & threadToDelete, const PTimeInterval & ma
   strm << "Thread \"" << *thread << "\" failed to terminate"
 #if PTRACING
           " at stack location:";
-  PTrace::WalkStack(strm, thread->GetThreadId(), thread->GetUniqueIdentifier());
+  PTrace::WalkStack(strm, thread);
   strm << "\n   "
 #endif
           " in " << maxWait << " seconds";
@@ -3826,12 +3836,13 @@ PTimedMutex::DeadlockStackWalkModes PTimedMutex::DeadlockStackWalkMode = Initial
 
 unsigned PTimedMutex::CtorDtorLogLevel = UINT_MAX;
 
-static void OutputThreadInfo(ostream & strm, PThreadIdentifier tid, PUniqueThreadIdentifier uid, bool noSymbols)
+static void OutputThreadInfo(ostream & strm, PThreadIdSet & idSet, bool noSymbols)
 {
-  strm << " id=" << PThread::GetIdentifiersAsString(tid, uid) << ", name=\"" << PThread::GetThreadName(tid) << '"';
+  strm << " id=" << PThread::GetIdentifiersAsString(idSet.m_threadId, idSet.m_uniqueId)
+       << ", name=\"" << PThread::GetThreadName(idSet.m_threadId) << '"';
   if (noSymbols)
     strm << ", stack=";
-  PTrace::WalkStack(strm, tid, uid, noSymbols);
+  PTrace::WalkStack(strm, idSet.m_nativeHandle, noSymbols);
 }
 
 #endif // PTRACING
@@ -3951,7 +3962,7 @@ void PMutexExcessiveLockInfo::ReleasedLock(const PObject & mutex,
       break;
     case PTimedMutex::DeadlockStackWalkNoSymbols :
       trace << " stack: ";
-      PTrace::WalkStack(trace, PThread::GetCurrentThreadId(), PThread::GetCurrentUniqueIdentifier(), true);
+      PTrace::WalkStack(trace, PThread::Current(), true);
       break;
     default :
       break;
@@ -4045,9 +4056,8 @@ void PTimedMutex::InternalWait(const PDebugLocation * location)
     m_excessiveLockActive = true;
 
 #if PTRACING
-    PThreadIdentifier lockerId = m_lockerId;
-    PThreadIdentifier lastLockerId = m_lastLockerId;
-    PUniqueThreadIdentifier lastUniqueId = m_lastUniqueId;
+    PThreadIdSet locker = m_locker;
+    PThreadIdSet lastLocker = m_lastLocker;
 
     ostream & trace = PTRACE_BEGIN(0, "PTLib");
     trace << "Assertion fail: Possible deadlock in " << *this;
@@ -4055,31 +4065,31 @@ void PTimedMutex::InternalWait(const PDebugLocation * location)
     switch (DeadlockStackWalkMode) {
     case DeadlockStackWalkEnabled :
       trace << "\n  Blocked Thread";
-      OutputThreadInfo(trace, PThread::GetCurrentThreadId(), PThread::GetCurrentUniqueIdentifier(), false);
+      OutputThreadInfo(trace, locker, false);
       trace << "\n  ";
       break;
     case DeadlockStackWalkNoSymbols :
       trace << ", Blocked Thread:";
-      OutputThreadInfo(trace, PThread::GetCurrentThreadId(), PThread::GetCurrentUniqueIdentifier(), true);
+      OutputThreadInfo(trace, locker, true);
       // do next case
     default :
       trace << ", ";
     }
 
-    if (lockerId != PNullThreadIdentifier)
+    if (locker.m_threadId != PNullThreadIdentifier)
       trace << "Owner Thread:";
     else {
       trace << "Owner no longer has lock, last owner:";
-      lockerId = lastLockerId;
+      locker = lastLocker;
     }
 
     switch (DeadlockStackWalkMode) {
     case DeadlockStackWalkEnabled :
       trace << '\n';
-      OutputThreadInfo(trace, lockerId, lastUniqueId, false);
+      OutputThreadInfo(trace, lastLocker, false);
       break;
     case DeadlockStackWalkNoSymbols :
-      OutputThreadInfo(trace, lockerId, lastUniqueId, true);
+      OutputThreadInfo(trace, lastLocker, true);
       break;
     default :
       break;
@@ -4108,8 +4118,8 @@ void PTimedMutex::InternalWaitComplete(uint64_t startWaitCycle, const PDebugLoca
   if (m_lockCount++ == 0) {
     AcquiredLock(startWaitCycle, false, location);
     m_startHeldSamplePoint = PProfiling::GetCycles();
-    m_lastLockerId = m_lockerId = PThread::GetCurrentThreadId();
-    m_lastUniqueId = PThread::GetCurrentUniqueIdentifier();
+    m_locker.SetCurrent();
+    m_lastLocker = m_locker;
   }
 }
 
@@ -4118,7 +4128,7 @@ void PTimedMutex::InternalSignal(const PDebugLocation * location)
 {
   if (--m_lockCount == 0) {
     ReleasedLock(*this, m_startHeldSamplePoint, false, location);
-    m_lockerId = PNullThreadIdentifier;
+    m_locker = PThreadIdSet();
   }
   unlock();
 }
@@ -4408,28 +4418,28 @@ PReadWriteMutex::Nest::Nest()
   , m_writerCount(0)
   , m_waiting(false)
   , m_startHeldCycle(0)
-  , m_uniqueId(PThread::GetCurrentUniqueIdentifier())
 {
+
 }
 
 
 PReadWriteMutex::Nest::Nest(const Nest & other)
-  : m_readerCount(other.m_readerCount.load())
+  : PThreadIdSet(other)
+  , m_readerCount(other.m_readerCount.load())
   , m_writerCount(other.m_writerCount.load())
   , m_waiting(other.m_waiting.load())
   , m_startHeldCycle(other.m_startHeldCycle.load())
-  , m_uniqueId(other.m_uniqueId.load())
 {
 }
 
 
 PReadWriteMutex::Nest & PReadWriteMutex::Nest::operator=(const Nest & other)
 {
+  PThreadIdSet::operator=(other);
   m_readerCount = other.m_readerCount.load();
   m_writerCount = other.m_writerCount.load();
   m_waiting = other.m_waiting.load();
   m_startHeldCycle = other.m_startHeldCycle.load();
-  m_uniqueId = other.m_uniqueId.load();
   return *this;
 }
 
@@ -4513,11 +4523,11 @@ void PReadWriteMutex::InternalWait(Nest & nest, bool shared, const PDebugLocatio
         trace << ", LOCKER";
       switch (PTimedMutex::DeadlockStackWalkMode) {
       case PTimedMutex::DeadlockStackWalkEnabled:
-        PTrace::WalkStack(trace, it->first, it->second.m_uniqueId);
+        PTrace::WalkStack(trace, it->second.m_nativeHandle);
         break;
       case PTimedMutex::DeadlockStackWalkNoSymbols:
         trace << ", stack: ";
-        PTrace::WalkStack(trace, it->first, it->second.m_uniqueId, true);
+        PTrace::WalkStack(trace, it->second.m_nativeHandle, true);
         break;
       default:
         break;

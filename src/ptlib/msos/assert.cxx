@@ -45,7 +45,7 @@
   #define InternalStackWalk(strm, id)
 
   #if PTRACING
-    void PTrace::WalkStack(ostream &, PThreadIdentifier)
+    void PTrace::WalkStack(ostream &, std::thread::native_handle_type)
     {
     }
   #endif // PTRACING
@@ -269,18 +269,16 @@
           strm << " - symbol lookup error=" << error;
       }
 
-      void WalkStack(ostream & strm, DWORD id, unsigned framesToSkip)
+      void WalkStack(ostream & strm, HANDLE hThread, unsigned framesToSkip)
       {
         // The thread information.
-        HANDLE hThread;
         int resumeCount = -1;
 
         CONTEXT threadContext;
         memset(&threadContext, 0, sizeof(threadContext));
         threadContext.ContextFlags = CONTEXT_FULL;
 
-        if (id == 0 || id == ::GetCurrentThreadId()) {
-          hThread = GetCurrentThread();
+        if (hThread == 0 || hThread == ::GetCurrentThread()) {
           RtlCaptureContext(&threadContext);
 #if P_64BIT
           framesToSkip += 2;
@@ -289,18 +287,12 @@
 #endif
         }
         else {
-          hThread = OpenThread(THREAD_QUERY_INFORMATION|THREAD_GET_CONTEXT|THREAD_SUSPEND_RESUME, FALSE, id);
-          if (hThread == NULL) {
-            DWORD err = ::GetLastError();
-            strm << "\n    No thread: id=" << id << " (0x" << std::hex << id << std::dec << "), error=" << err;
-            return;
-          }
           resumeCount = SuspendThread(hThread);
           if (!GetThreadContext(hThread, &threadContext)) {
+            DWORD err = ::GetLastError();
             if (resumeCount >= 0)
               ResumeThread(hThread);
-            DWORD err = ::GetLastError();
-            strm << "\n    No context for thread: id=" << id << " (0x" << std::hex << id << std::dec << "), error=" << err;
+            strm << "\n    No context for thread: h=" << hThread << ", error=" << err;
             return;
           }
         }
@@ -371,11 +363,11 @@
   };
 
 
-  void PPlatformWalkStack(ostream & strm, PThreadIdentifier, PUniqueThreadIdentifier id, unsigned framesToSkip, bool, bool)
+  void PPlatformWalkStack(ostream & strm, std::thread::native_handle_type handle, unsigned framesToSkip, bool, bool)
   {
     PDebugDLL debughelp;
     if (debughelp.Initialise(strm))
-      debughelp.WalkStack(strm, id, framesToSkip);
+      debughelp.WalkStack(strm, handle, framesToSkip);
   }
 
 #endif // __MINGW32__
@@ -483,7 +475,7 @@ LONG WINAPI PExceptionHandler(PEXCEPTION_POINTERS info)
   if (info->ContextRecord) {
     PDebugDLL debughelp;
     if (debughelp.Initialise(strm))
-      debughelp.WalkStack(strm, GetCurrentThread(), *info->ContextRecord, 0);
+      debughelp.WalkStack(strm, nullptr, *info->ContextRecord, 0);
   }
 
   string msg = strm.str();

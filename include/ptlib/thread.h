@@ -38,15 +38,37 @@
 #undef Priority
 #endif
 
-#include <ptlib/mutex.h>
+#include <thread>
+
+// For backward compatibility
+#define PNullThreadIdentifier std::thread::id()
+typedef std::thread::id PThreadIdentifier;
+
+/** Structure for the three types of identifier used for threads.
+    The first is the C++11 thread identifier, the second is the native handle
+    which is used for platform specific calls and the third is a unique
+    identifier that can be used for tracing and debugging purposes. The
+    unique identifier is not guaranteed to be unique across multiple runs of
+    the application, but it will be unique across all threads in a single run.
+  */
+struct PThreadIdSet
+{
+  std::thread::id                 m_threadId;
+  std::thread::native_handle_type m_nativeHandle;
+  PUniqueThreadIdentifier         m_uniqueId;
+  PThreadIdSet() = default;
+  void SetCurrent();
+};
+
+#include <ptlib/mutex.h>  // Must be after PThreadIdSet
 #include <ptlib/syncpoint.h>
 #include <ptlib/notifier.h>
 #include <set>
-#include <thread>
 
 
 class PSemaphore;
 class PSyncPoint;
+
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -65,7 +87,7 @@ class PSyncPoint;
    Previous versions of PTLib/PWLib have some support for co-operative
    threads, but this has been removed.
  */
-class PThread : public PObject, PProfiling::HighWaterMark<PThread>, PNonCopyable
+class PThread : public PObject, protected PThreadIdSet, PProfiling::HighWaterMark<PThread>, PNonCopyable
 {
   PCLASSINFO(PThread, PObject);
 
@@ -254,25 +276,34 @@ class PThread : public PObject, PProfiling::HighWaterMark<PThread>, PNonCopyable
 
   /**@name Miscellaneous */
   //@{
-    PPROFILE_EXCLUDE(
-      /** Get operating system specific thread identifier for this thread.
-      */
-      PThreadIdentifier GetThreadId() const
-    );
+    /** Get all the different thread identifiers for this thread.
+    */
+    void GetThreadIdSet(PThreadIdSet & idSet) const { idSet = *this; }
 
-    PPROFILE_EXCLUDE(
-    /** Get operating system specific thread identifier for the current thread.
-      */
-      static PThreadIdentifier GetCurrentThreadId() { return std::this_thread::get_id(); }
-    );
+    /** Get C++ thread identifier for this thread.
+    */
+    PThreadIdentifier GetThreadId() const { return m_threadId; }
 
-    PPROFILE_EXCLUDE(
+    /** This operating system specific thread handle for the thread.
+      */
+    std::thread::native_handle_type GetThreadHandle() const { return m_nativeHandle; }
+
     /** This returns a unique number for the thread.
-        For most platforms this is identical to GetThreadId(), but others,
-        e.g. Linux, it is different and GetThreadId() return values get
-        re-used during the run of the process.
+        This identifier is the one useful in debugging as it corresponds to
+        that shown in the operating system and debugger thread lists.
       */
-      PUniqueThreadIdentifier GetUniqueIdentifier() const
+    PUniqueThreadIdentifier GetUniqueIdentifier() const { return m_uniqueId; }
+
+    PPROFILE_EXCLUDE(
+    /** Get C++ thread identifier for the current thread.
+      */
+      static std::thread::id GetCurrentThreadId() { return std::this_thread::get_id(); }
+    );
+
+    PPROFILE_EXCLUDE(
+    /** Get operating system specific thread handle for the current thread.
+      */
+      static std::thread::native_handle_type GetCurrentNativeHandle();
     );
 
     PPROFILE_EXCLUDE(
@@ -414,7 +445,7 @@ class PThread : public PObject, PProfiling::HighWaterMark<PThread>, PNonCopyable
       const PString & threadName      ///< The name of the thread (for Debug/Trace)
     ) { return Create(notifier, 0, NoAutoDeleteThread, NormalPriority, threadName); }
   //@}
-  
+
   protected:
     enum Type { e_IsAutoDelete, e_IsManualDelete, e_IsProcess, e_IsExternal } m_type;
 
@@ -427,9 +458,6 @@ class PThread : public PObject, PProfiling::HighWaterMark<PThread>, PNonCopyable
 
     PSyncPoint               m_waitForStart;
     mutable std::timed_mutex m_runningFlag; // Not really a mutex, but used to indicate if thread is running or not.
-    std::thread::id          m_threadId;
-    std::thread::native_handle_type m_nativeHandle;
-    PUniqueThreadIdentifier  m_uniqueId = 0;
 
 // Include platform dependent part of class
 #ifdef _WIN32
@@ -450,7 +478,6 @@ class PThread : public PObject, PProfiling::HighWaterMark<PThread>, PNonCopyable
     int PXBlockOnChildTerminate(int pid, const PTimeInterval & timeout);
     int PXBlockOnIO(int handle, int type, const PTimeInterval & timeout);
     void PXAbortBlock() const;
-    static bool PX_kill(PThreadIdentifier tid, PUniqueThreadIdentifier uid, int sig);
 #endif
 
   private:

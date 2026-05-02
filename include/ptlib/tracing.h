@@ -532,8 +532,7 @@ public:
 
   static void WalkStack(
     ostream & strm,
-    PThreadIdentifier id = PNullThreadIdentifier,
-    PUniqueThreadIdentifier uid = 0,
+    std::thread::native_handle_type handle = std::thread::native_handle_type(),
     bool noSymbols = false
   );
 

@@ -984,57 +984,6 @@ static int GetSchedParam(PThread::Priority priority, sched_param & param)
 
 //////////////////////////////////////////////////////////////////////////////
 
-//
-//  Called to construct a PThread for either:
-//
-//       a) The primordial PProcesss thread
-//       b) A non-PTLib thread that needs to use PTLib routines, such as PTRACE
-//
-//  This is always called in the context of the running thread, so naturally, the thread
-//  is not paused
-//
-
-bool PThread::PX_kill(PThreadIdentifier tid, PUniqueThreadIdentifier uid, int sig)
-{
-  if (!PProcess::IsInitialised())
-    return false;
-
-  PProcess & process = PProcess::Current();
-  {
-    PWaitAndSignal mutex(process.m_threadMutex);
-    PProcess::ThreadMap::iterator it = process.m_activeThreads.find(tid);
-    if (it == process.m_activeThreads.end() || (uid != 0 && it->second->GetUniqueIdentifier() != uid))
-      return false;
-  }
-
-  int error = pthread_kill(tid, sig);
-  switch (error) {
-    case 0:
-      return true;
-
-      // If just test for existance, is true even if we don't have permission
-    case EPERM:
-    case ENOTSUP: // Mac OS-X does this for GCD threads
-      return sig == 0;
-
-#if PTRACING
-    case ESRCH:   // Thread not running any more
-    case EINVAL:  // Id has never been used for a thread
-      break;
-
-    default:
-      // Output direct to stream, do not use PTRACE as it might cause an infinite recursion.
-      ostream * trace = PTrace::GetStream();
-      if (trace != NULL)
-        *trace << "pthread_kill failed for thread " << GetIdentifiersAsString(tid, uid)
-        << " errno " << error << ' ' << strerror(error) << endl;
-#endif // PTRACING
-  }
-
-  return false;
-}
-
-
 #ifdef P_MACOSX
 // obtain thread priority of the main thread
 static unsigned long GetThreadBasePriority()
@@ -1273,6 +1222,11 @@ void PThread::Terminate()
   }
 }
 
+
+std::thread::native_handle_type PThread::GetCurrentNativeHandle()
+{
+  return ::pthread_self();
+}
 
 static PUniqueThreadIdentifier GetCurrentUniqueIdentifier()
 {

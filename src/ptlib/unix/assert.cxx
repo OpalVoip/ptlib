@@ -276,10 +276,31 @@
           m_addressCount = -1;
           m_addresses.resize(InternalMaxStackWalk+OtherThreadSkip);
           m_signalSentTime.SetCurrentTime();
-          if (!PThread::PX_kill(tid, uid, PProcess::WalkStackSignal)) {
-            strm << "\n\tThread " << PThread::GetIdentifiersAsString(tid, uid) << " is no longer running";
-            pthread_mutex_unlock(&m_mainMutex);
-            return;
+
+          int error = pthread_kill(tid, sig);
+          switch (error) {
+            case 0:
+              return true;
+
+              // If just test for existance, is true even if we don't have permission
+            case EPERM:
+            case ENOTSUP: // Mac OS-X does this for GCD threads
+              return sig == 0;
+
+#if PTRACING
+            case ESRCH:   // Thread not running any more
+            case EINVAL:  // Id has never been used for a thread
+              strm << "\n\tThread " << PThread::GetIdentifiersAsString(tid, uid) << " is no longer running";
+              pthread_mutex_unlock(&m_mainMutex);
+              return;
+
+            default:
+              // Output direct to stream, do not use PTRACE as it might cause an infinite recursion.
+              ostream * trace = PTrace::GetStream();
+              if (trace != NULL)
+                *trace << "pthread_kill failed for thread " << GetIdentifiersAsString(tid, uid)
+                << " errno " << error << ' ' << strerror(error) << endl;
+#endif // PTRACING
           }
 
           int err = 0;
@@ -346,7 +367,7 @@
     static thread_local StackAddresses s_exceptionStack;
 
 
-    void PPlatformWalkStack(ostream & strm, PThreadIdentifier id, PUniqueThreadIdentifier uid, unsigned framesToSkip, bool noSymbols, bool exception)
+    void PPlatformWalkStack(ostream & strm, std::thread::native_handle_type handle, unsigned framesToSkip, bool noSymbols, bool exception)
     {
       if (!PProcess::IsInitialised())
         return;
@@ -354,9 +375,9 @@
       if (exception)
         InternalWalkStack(strm, 1, s_exceptionStack, noSymbols);
       else if (id != PNullThreadIdentifier && id != PThread::GetCurrentThreadId())
-        s_otherThreadStack.WalkOther(strm, id, uid, noSymbols);
+        s_otherThreadStack.WalkOther(strm, handle, noSymbols);
       else {
-        DEBUG_CERR("PPlatformWalkStack: id=0x" << hex << id << dec);
+        DEBUG_CERR("PPlatformWalkStack: handle=0x" << hex << handle << dec);
         // Allow for some bizarre optimisation when called from PTrace::WalkStack()
         if (framesToSkip == 1)
           framesToSkip = 0;
@@ -395,7 +416,7 @@
 
 #else // P_HAS_BACKTRACE && PTRACING
 
-  void PPlatformWalkStack(ostream & strm, PThreadIdentifier id, PUniqueThreadIdentifier uid, unsigned skip, bool noSymbols, bool exception)
+  void PPlatformWalkStack(ostream & strm, std::thread::native_handle_type handle, unsigned skip, bool noSymbols, bool exception)
   {
   }
 
