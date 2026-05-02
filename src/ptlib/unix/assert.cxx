@@ -30,8 +30,6 @@
 
 #include <ptlib.h>
 
-#include <ctype.h>
-#include <signal.h>
 #include <fstream>
 #include <stdexcept>
 #include <ptlib/pprocess.h>
@@ -235,7 +233,7 @@
         {
           DEBUG_CERR("WalkOther: " << idSet);
 
-          if (tid == 0) {
+          if (!idSet.m_nativeHandle) {
             strm << "\n\tStack trace WalkOther with zero thread ID.";
             return;
           }
@@ -273,32 +271,12 @@
           m_addresses.resize(InternalMaxStackWalk+OtherThreadSkip);
           m_signalSentTime.SetCurrentTime();
 
-          int error = pthread_kill(m_idSet.m_nativeHandle, sig);
-          switch (error) {
-            case 0:
-              return true;
-
-              // If just test for existance, is true even if we don't have permission
-            case EPERM:
-            case ENOTSUP: // Mac OS-X does this for GCD threads
-              return sig == 0;
-
-#if PTRACING
-            case ESRCH:   // Thread not running any more
-            case EINVAL:  // Id has never been used for a thread
-              strm << "\n\tThread " << idSet << " is no longer running";
-              pthread_mutex_unlock(&m_mainMutex);
-              return;
-
-            default:
-              // Output direct to stream, do not use PTRACE as it might cause an infinite recursion.
-              ostream * trace = PTrace::GetStream();
-              if (trace != NULL)
-                *trace << "pthread_kill failed for thread " << idSet << ", errno " << error << ' ' << strerror(error) << endl;
-#endif // PTRACING
+          int err = pthread_kill(m_idSet.m_nativeHandle, sig);
+          if (err != 0) {
+            strm << "pthread_kill failed for thread " << idSet << ", errno " << err << ' ' << strerror(err) << endl;
+            pthread_mutex_unlock(&m_mainMutex);
+            return;
           }
-
-          int err = 0;
 
           pthread_mutex_lock(&m_condMutex);
           while (m_addressCount < 0) {

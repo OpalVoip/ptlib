@@ -666,13 +666,12 @@ bool PThread::GetTimes(Times & times)
 {
   // Do not use any PTLib functions in here as they could do a PTRACE, and thus deadlock
   times.m_name = GetThreadName();
-  times.m_threadId = m_threadId;
-  times.m_uniqueId = GetUniqueIdentifier();
+  times.m_idSet = GetThreadIdSet();
   times.m_real = m_threadEndTime.IsValid() ? m_threadEndTime - m_threadStartTime : m_threadStartTime.GetElapsed();
   times.m_sample.SetCurrentTime();
 
   std::stringstream path;
-  path << "/proc/self/task/" << times.m_uniqueId << "/stat";
+  path << "/proc/self/task/" << times.m_idSet.m_uniqueId << "/stat";
   return InternalGetTimes(path.str().c_str(), times);
 }
 
@@ -991,7 +990,7 @@ static unsigned long GetThreadBasePriority()
   thread_basic_info_data_t threadInfo;
   policy_info_data_t       thePolicyInfo;
   unsigned int             count;
-  pthread_t baseThread = PProcess::Current().m_nativeHandle;
+  pthread_t baseThread = PProcess::Current().GetNativeHandle();
 
   // get basic info
   count = THREAD_BASIC_INFO_COUNT;
@@ -1039,7 +1038,7 @@ void PThread::SetPriority(Priority priorityLevel)
 
 #if defined(P_LINUX)
   struct sched_param params;
-  PAssertWithRetry(pthread_setschedparam, m_nativeHandle, GetSchedParam(priorityLevel, params), &params);
+  PAssertWithRetry(pthread_setschedparam, GetNativeHandle(), GetSchedParam(priorityLevel, params), &params);
 
 #elif defined(P_ANDROID)
   if (Current() != this) {
@@ -1103,7 +1102,7 @@ void PThread::SetPriority(Priority priorityLevel)
       long                            relativePriority;
 
       theFixedPolicy.timeshare = false; // set to true for a non-fixed thread
-      result = thread_policy_set(pthread_mach_thread_np(m_nativeHandle),
+      result = thread_policy_set(pthread_mach_thread_np(GetNativeHandle()),
                                  THREAD_EXTENDED_POLICY,
                                  (thread_policy_t)&theFixedPolicy,
                                  THREAD_EXTENDED_POLICY_COUNT);
@@ -1120,7 +1119,7 @@ void PThread::SetPriority(Priority priorityLevel)
       PTRACE(3, "relativePriority is " << relativePriority << " base priority is " << GetThreadBasePriority());
 
       thePrecedencePolicy.importance = relativePriority;
-      result = thread_policy_set(pthread_mach_thread_np(m_nativeHandle),
+      result = thread_policy_set(pthread_mach_thread_np(GetNativeHandle()),
                                  THREAD_PRECEDENCE_POLICY,
                                  (thread_policy_t)&thePrecedencePolicy,
                                  THREAD_PRECEDENCE_POLICY_COUNT);
@@ -1139,7 +1138,7 @@ PThread::Priority PThread::GetPriority() const
   int policy;
   struct sched_param params;
 
-  PAssertWithRetry(pthread_getschedparam, m_nativeHandle, &policy, &params);
+  PAssertWithRetry(pthread_getschedparam, GetNativeHandle(), &policy, &params);
 
   switch (policy) {
     case SCHED_OTHER:
@@ -1204,20 +1203,20 @@ void PThread::Terminate()
   // if thread calls Terminate on itself, then do it
   // don't use PThread::Current, as the thread may already not be in the
   // active threads list
-  if (m_nativeHandle == pthread_self()) {
+  if (GetNativeHandle() == pthread_self()) {
     pthread_exit(0);
     return;   // keeps compiler happy
   }
 
   // otherwise force thread to die
-  PTRACE(2, "PTLib\tForcing termination of thread id=0x" << hex << m_threadId << dec);
+  PTRACE(2, "PTLib\tForcing termination of thread id=" << GetThreadIdSet());
 
   PXAbortBlock();
   if (WaitForTermination(100))
     return;
 
-  if (m_threadId != PNullThreadIdentifier) {
-    pthread_kill(m_nativeHandle, SIGKILL);
+  if (GetNativeHandle()) {
+    pthread_kill(GetNativeHandle(), SIGKILL);
     WaitForTermination(100);
   }
 }

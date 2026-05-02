@@ -2972,7 +2972,7 @@ void PProcess::AsynchronousRunTimeSignal(int signal, PProcessIdentifier source)
       char buffer[1000];
       int length = snprintf(buffer, sizeof(buffer),
                             "\nCaught %s (%s), in thread %p (" P_UNIQUE_THREAD_ID_FMT ")\n",
-                            sigmsg, GetRunTimeSignalName(signal), idSet.m_nativeHandle, idSet.m_uniqueId);
+                            sigmsg, GetRunTimeSignalName(signal), (void *)idSet.m_nativeHandle, idSet.m_uniqueId);
       if (length > 0 && fwrite(buffer, 1, length, stderr) >= (size_t)length)
         couldNotWrite = "";
     }
