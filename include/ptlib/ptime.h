@@ -619,9 +619,10 @@ class PTime : public PObject
 
 // Include platform dependent part of class
 #ifdef _WIN32
-#include "msos/ptlib/ptime.h"
-#else
-#include "unix/ptlib/ptime.h"
+  public:
+    PTime(const FILETIME & timestamp);
+    void SetFromFileTime(const FILETIME & timestamp);
+    void SetToFileTime(FILETIME & timestamp) const;
 #endif
 };
 

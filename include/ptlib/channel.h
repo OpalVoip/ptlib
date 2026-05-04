@@ -762,9 +762,34 @@ class PChannel : public PObject, public std::iostream
 
 // Include platform dependent part of class
 #ifdef _WIN32
-#include "msos/ptlib/channel.h"
+  protected:
+    virtual HANDLE GetAsyncReadHandle() const;
+    virtual HANDLE GetAsyncWriteHandle() const;
+
+   public:
+     int GetOSHandleAsInt() const { return PtrToLong((void*)os_handle.load()); }
 #else
-#include "unix/ptlib/channel.h"
+  public:
+    enum PXBlockType
+    {
+      PXReadBlock,
+      PXWriteBlock,
+      PXAcceptBlock,
+      PXConnectBlock
+    };
+
+  protected:
+    PBoolean PXSetIOBlock(PXBlockType type, const PTimeInterval & timeout);
+    P_INT_PTR GetOSHandleAsInt() const { return os_handle; }
+    int  PXClose();
+
+    PDECLARE_MUTEX(px_threadMutex);
+    PXBlockType      px_lastBlockType;
+    PThread * px_readThread;
+    PThread * px_writeThread;
+    PDECLARE_MUTEX(px_writeMutex);
+    PThread * px_selectThread[3];
+    PCriticalSection px_selectMutex[3];
 #endif
 
 };

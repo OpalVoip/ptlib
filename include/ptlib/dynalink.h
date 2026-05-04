@@ -174,9 +174,10 @@ class PDynaLink : public PObject
 
 // Include platform dependent part of class
 #ifdef _WIN32
-#include "msos/ptlib/dynalink.h"
+    HINSTANCE m_hDLL;
 #else
-#include "unix/ptlib/dynalink.h"
+    void * m_dll;
+    PString m_name;
 #endif
 };
 

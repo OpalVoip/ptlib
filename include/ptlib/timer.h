@@ -402,19 +402,12 @@ class PTimer : public PTimeInterval
     mutable PTimedMutex  m_callbackMutex;
 
     friend class Emitter;
-
-// Include platform dependent part of class
-#ifdef _WIN32
-#include "msos/ptlib/timer.h"
-#else
-#include "unix/ptlib/timer.h"
-#endif
 };
 
 
 /**Template abstract class for a PTimer that queues a work item to a thread pool.
-   This allows for load balancing of timer actions and, in complex muti-threading
-   sytems, it is very easy for a deadlock to occur with the usual PNotifier
+   This allows for load balancing of timer actions and, in complex multi-threading
+   systems, it is very easy for a deadlock to occur with the usual PNotifier
    method of executing a PTimer call back. This tries to largely avoid the
    issue by the housekeeper thread queuing a PThreadPool "work item" for later
    processing. The thread pooling system has a sophisticated system for

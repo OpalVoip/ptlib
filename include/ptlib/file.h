@@ -677,9 +677,11 @@ class PFile : public PChannel
 
 // Include platform dependent part of class
 #ifdef _WIN32
-#include "msos/ptlib/file.h"
-#else
-#include "unix/ptlib/file.h"
+  public:
+    virtual FILE * FDOpen(const char * mode);
+
+  protected:
+    virtual PBoolean IsTextFile() const;
 #endif
 };
 

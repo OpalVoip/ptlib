@@ -56,6 +56,15 @@ class PSocket : public PChannel
     PSocket();
 
   public:
+    /// Close a socket and destroy object
+    ~PSocket();
+
+  /**@name Overrides from PChannel */
+  //@{
+    virtual bool Read(void * ptr, PINDEX len) override;
+    virtual bool Write(const void * buf, PINDEX len) override;
+  //@}
+
   /**@name Socket establishment functions */
   //@{
     /**Connect a socket to a remote host on the specified port number. This is
@@ -515,9 +524,17 @@ class PSocket : public PChannel
 
 // Include platform dependent part of class
 #ifdef _WIN32
-#include "msos/ptlib/socket.h"
+  public:
+    virtual PBoolean Close();
+    virtual PString GetErrorText(ErrorGroup group = NumErrorGroups) const;
+    static PString GetErrorText(Errors lastError, int osError = 0) { return PChannel::GetErrorText(lastError, osError); }
+
+  protected:
+    virtual HANDLE GetAsyncReadHandle() const;
+    virtual HANDLE GetAsyncWriteHandle() const;
 #else
-#include "unix/ptlib/socket.h"
+  public:
+    static unsigned NoBufferRetryCount;
 #endif
 };
 

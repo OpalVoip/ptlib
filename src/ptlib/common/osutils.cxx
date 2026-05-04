@@ -263,7 +263,7 @@ public:
 
     Lock();
 
-    if (m_stream != &cerr && m_stream != &cout)
+    if (m_stream != &std::cerr && m_stream != &std::cout && m_stream != &std::clog)
       oldStream = m_stream;
     m_stream = newStream;
 

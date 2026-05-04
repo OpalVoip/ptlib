@@ -896,8 +896,6 @@ void PThread::Terminate()
 
 void PThread::SetPriority(Priority priorityLevel)
 {
-  PAssert(!IsTerminated(), "Operation on terminated thread");
-
   static int const priorities[NumPriority] = {
     THREAD_PRIORITY_LOWEST,
     THREAD_PRIORITY_BELOW_NORMAL,
@@ -911,8 +909,6 @@ void PThread::SetPriority(Priority priorityLevel)
 
 PThread::Priority PThread::GetPriority() const
 {
-  PAssert(!IsTerminated(), "Operation on terminated thread");
-
   switch (GetThreadPriority(GetNativeHandle())) {
     case THREAD_PRIORITY_LOWEST :
       return LowestPriority;

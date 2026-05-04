@@ -36,6 +36,7 @@
 
 
 #include <chrono>
+#include <limits>
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -496,14 +497,6 @@ class PTimeInterval : public PObject
 
   private:
     atomic<int64_t> m_nanoseconds;
-
-
-// Include platform dependent part of class
-#ifdef _WIN32
-#include "msos/ptlib/timeint.h"
-#else
-#include "unix/ptlib/timeint.h"
-#endif
 };
 
 
@@ -534,6 +527,8 @@ struct PFrequencyTime : PTimeInterval
   PFrequencyTime(double frequency) { SetFrequency(frequency); }
 };
 
+
+const PTimeInterval PMaxTimeInterval(std::numeric_limits<int32_t>::max());
 
 namespace std
 {

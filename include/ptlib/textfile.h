@@ -113,9 +113,9 @@ class PTextFile : public PFile
 
 // Include platform dependent part of class
 #ifdef _WIN32
-#include "msos/ptlib/textfile.h"
-#else
-#include "unix/ptlib/textfile.h"
+  protected:
+    virtual PBoolean IsTextFile() const;
+      // Return true if text file translation is required
 #endif
 };
 

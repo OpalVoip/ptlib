@@ -35,6 +35,14 @@
 #define new PNEW
 
 
+#ifndef _WIN32
+#define _read(fd,vp,st)         ::read(fd, vp, (size_t)st)
+#define _write(fd,vp,st)        ::write(fd, vp, (size_t)st)
+#define _fdopen                 ::fdopen
+#define _lseek(fd,off,w)        ::lseek(fd, (off_t)off, w)
+#define _close(fd)              ::close(fd)
+#endif
+
 ///////////////////////////////////////////////////////////////////////////////
 // PChannel
 

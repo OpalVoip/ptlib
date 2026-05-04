@@ -429,9 +429,6 @@
     <ClInclude Include="..\..\..\Include\PtLib\Channel.h">
       <Filter>Header Files\Common</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\channel.h">
-      <Filter>Header Files\MSOS</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\Include\PtLib\Config.h">
       <Filter>Header Files\Common</Filter>
     </ClInclude>
@@ -440,9 +437,6 @@
     </ClInclude>
     <ClInclude Include="..\..\..\include\ptlib\atomic.h">
       <Filter>Header Files\Common</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\critsec.h">
-      <Filter>Header Files\MSOS</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\include\ptclib\cypher.h">
       <Filter>Header Files\Components</Filter>
@@ -459,9 +453,6 @@
     <ClInclude Include="..\..\..\Include\PtLib\Dynalink.h">
       <Filter>Header Files\Common</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\dynalink.h">
-      <Filter>Header Files\MSOS</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\Include\PtLib\Dict.h">
       <Filter>Header Files\Common</Filter>
     </ClInclude>
@@ -475,9 +466,6 @@
       <Filter>Header Files\Common</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\epacket.h">
-      <Filter>Header Files\MSOS</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\file.h">
       <Filter>Header Files\MSOS</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\include\ptclib\ftp.h">
@@ -509,9 +497,6 @@
     </ClInclude>
     <ClInclude Include="..\..\..\Include\PtLib\filepath.h">
       <Filter>Header Files\Common</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\filepath.h">
-      <Filter>Header Files\MSOS</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\icmpsock.h">
       <Filter>Header Files\MSOS</Filter>
@@ -557,9 +542,6 @@
     </ClInclude>
     <ClInclude Include="..\..\..\include\ptlib\notifier.h">
       <Filter>Header Files\Common</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\pdirect.h">
-      <Filter>Header Files\MSOS</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\Include\PtLib\Pdirect.h">
       <Filter>Header Files\Common</Filter>
@@ -699,29 +681,14 @@
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\remconn.h">
       <Filter>Header Files\MSOS</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\socket.h">
-      <Filter>Header Files\MSOS</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\spxsock.h">
       <Filter>Header Files\MSOS</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\svcproc.h">
       <Filter>Header Files\MSOS</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\textfile.h">
-      <Filter>Header Files\MSOS</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\include\ptclib\shttpsvc.h">
       <Filter>Header Files\Components</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\timer.h">
-      <Filter>Header Files\MSOS</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\timeint.h">
-      <Filter>Header Files\MSOS</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\udpsock.h">
-      <Filter>Header Files\MSOS</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\videoio.h">
       <Filter>Header Files\MSOS</Filter>
@@ -822,61 +789,22 @@
     <ClInclude Include="..\..\..\include\ptlib\bitwise_enum.h">
       <Filter>Header Files\Common</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\ptime.h">
-      <Filter>Header Files\Android</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\remconn.h">
-      <Filter>Header Files\Android</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\resampler.h">
       <Filter>Header Files\Android</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\serchan.h">
       <Filter>Header Files\Android</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\socket.h">
-      <Filter>Header Files\Android</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\svcproc.h">
-      <Filter>Header Files\Android</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\tcpsock.h">
-      <Filter>Header Files\Android</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\textfile.h">
-      <Filter>Header Files\Android</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\thread.h">
-      <Filter>Header Files\Android</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\timeint.h">
-      <Filter>Header Files\Android</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\timer.h">
-      <Filter>Header Files\Android</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\udpsock.h">
       <Filter>Header Files\Android</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\video.h">
       <Filter>Header Files\Android</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\channel.h">
-      <Filter>Header Files\Android</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\config.h">
       <Filter>Header Files\Android</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\dynalink.h">
-      <Filter>Header Files\Android</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\ethsock.h">
-      <Filter>Header Files\Android</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\file.h">
-      <Filter>Header Files\Android</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\filepath.h">
       <Filter>Header Files\Android</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\icmpsock.h">
@@ -891,9 +819,6 @@
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\mail.h">
       <Filter>Header Files\Android</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\pdirect.h">
-      <Filter>Header Files\Android</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\pipechan.h">
       <Filter>Header Files\Android</Filter>
     </ClInclude>
@@ -901,9 +826,6 @@
       <Filter>Header Files\Android</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\serchan.h">
-      <Filter>Header Files\MSOS</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\ptime.h">
       <Filter>Header Files\MSOS</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\include\ptclib\gstreamer.h">
