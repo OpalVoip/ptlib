@@ -169,8 +169,8 @@ class PTimedMutex : public PSync,
 #endif
 
   protected:
-    PThreadIdSet m_locker;
-    PThreadIdSet m_lastLocker;
+    PThreadIdSet m_locker{ nullptr };
+    PThreadIdSet m_lastLocker{ nullptr };
     unsigned     m_lockCount = 0;
 
     void InternalWait(const PDebugLocation * location);

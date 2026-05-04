@@ -874,6 +874,7 @@ bool PThread::GetTimes(Times & times)
   // Do not use any PTLib functions in here as they could to a PTRACE, and this deadlock
   times.m_name = GetThreadName();
   times.m_idSet = GetThreadIdSet();
+  times.m_sample.SetCurrentTime();
 
   PWindowsTimes wt;
   if (!wt.FromThread(GetNativeHandle()))

@@ -149,12 +149,12 @@ extern void PPlatformWalkStack(ostream & strm, const PThreadIdSet & idSet, unsig
 void PTrace::WalkStack(ostream & strm)
 {
   PWaitAndSignal lock(GetAssertMutex());
-  PPlatformWalkStack(strm, PThreadIdSet(1), 1, false, false); // 1 means skip reporting PTrace::WalkStack
+  PPlatformWalkStack(strm, PThreadIdSet(), 1, false, false); // 1 means skip reporting PTrace::WalkStack
 }
 void PTrace::WalkStack(ostream & strm, bool noSymbols)
 {
   PWaitAndSignal lock(GetAssertMutex());
-  PPlatformWalkStack(strm, PThreadIdSet(1), 1, noSymbols, false); // 1 means skip reporting PTrace::WalkStack
+  PPlatformWalkStack(strm, PThreadIdSet(), 1, noSymbols, false); // 1 means skip reporting PTrace::WalkStack
 }
 void PTrace::WalkStack(ostream & strm, const PThreadIdSet & idSet, bool noSymbols)
   {
@@ -212,7 +212,7 @@ static void InternalAssertFunc(const PDebugLocation & location, const char * msg
     if (PAssertWalkStackMode == PAssertWalkStackDisabled)
       strm << ", stack walk disabled";
     else
-      PPlatformWalkStack(strm, PThreadIdSet(1), 2, // 2 means skip reporting InternalAssertFunc & PAssertFunc
+      PPlatformWalkStack(strm, PThreadIdSet(), 2, // 2 means skip reporting InternalAssertFunc & PAssertFunc
                          PAssertWalkStackMode == PAssertWalkStackNoSymbols,
                          &location == &s_ExceptionLocation); 
     strm << ends;

@@ -61,14 +61,21 @@ static PConstString const ExternalThreadName("External thread");
 class PExternalThread : public PThread
 {
   PCLASSINFO(PExternalThread, PThread);
+#ifdef _WIN32
+  private:
+    PWin32Handle m_threadHandle;
+#endif
   public:
     PExternalThread()
       : PThread(e_IsExternal, NormalPriority, ExternalThreadName)
     {
+      m_idSet = PThreadIdSet();
+#ifdef _WIN32
+      if (m_threadHandle.Duplicate(m_idSet.m_nativeHandle)) // Don't want to use the pseudo handle.
+        m_idSet.m_nativeHandle = m_threadHandle;
+#endif
       InternalThreadStarted();
-      PTRACE(5, "Created external thread " << this << ","
-                " thread-id=" << GetCurrentThreadId() << ","
-                " unique-id=" << GetCurrentUniqueIdentifier());
+      PTRACE(5, "Created external thread " << this << ", id=" << m_idSet);
     }
 
     virtual void Main() override
@@ -2517,7 +2524,7 @@ PProcess::PProcess(const char * manuf, const char * name,
   m_version.m_svn = 0;
   m_version.m_git = NULL;
 
-  m_idSet = PThreadIdSet(1);
+  m_idSet = PThreadIdSet();
   m_activeThreads[GetThreadId()] = this;
 
 #if PTRACING
@@ -2962,7 +2969,7 @@ void PProcess::AsynchronousRunTimeSignal(int signal, PProcessIdentifier source)
   RemoveRunTimeSignalHandlers();
 
   if (!InSignalHandler.exchange(true)) {
-    PThreadIdSet idSet(1);
+    PThreadIdSet idSet;
 
     const char * couldNotWrite = ", stderr write failed";
     {
@@ -3329,7 +3336,7 @@ bool PProcess::HostSystemURLHandlerInfo::RegisterTypes(const PString & _types, b
 
 ///////////////////////////////////////////////////////////////////////////////
 
-PThreadIdSet::PThreadIdSet(int)
+PThreadIdSet::PThreadIdSet()
   : m_threadId(PThread::GetCurrentThreadId())
   , m_nativeHandle(PThread::GetCurrentNativeHandle())
   , m_uniqueId(PThread::GetCurrentUniqueIdentifier())
@@ -3338,11 +3345,7 @@ PThreadIdSet::PThreadIdSet(int)
 
 std::ostream & operator<<(std::ostream & strm, const PThreadIdSet & idSet)
 {
-#ifdef _WIN32
-  return strm << idSet.m_threadId;
-#else
-  return strm << idSet.m_threadId << '/' << idSet.m_nativeHandle << '/' << idSet.m_uniqueId;
-#endif
+  return strm << idSet.m_uniqueId; // This is the only id that really matters in logging.
 }
 
 
@@ -3370,7 +3373,6 @@ PThread::PThread(AutoDeleteFlag deletion, Priority priority, const PString & nam
 void PThread::InternalThreadStarted()
 {
   m_threadStartTime.SetCurrentTime();
-  m_idSet = PThreadIdSet(1);
   auto threadName = GetThreadName();
   SetThreadName(threadName.empty() ? PString(GetClassName()) : threadName);
   PProcess::Current().InternalThreadStarted(this);
@@ -3379,9 +3381,11 @@ void PThread::InternalThreadStarted()
 
 void PThread::InternalThreadMain()
 {
+  m_idSet.m_uniqueId = GetCurrentUniqueIdentifier();
+  InternalThreadStarted();
+
   std::lock_guard<std::timed_mutex> lock(m_runningFlag);
 
-  InternalThreadStarted();
   SetPriority(m_priority);
 #ifdef P_WIN_COM
   WinComInit wci;
@@ -3942,7 +3946,7 @@ void PMutexExcessiveLockInfo::ReleasedLock(const PObject & mutex,
       break;
     case PTimedMutex::DeadlockStackWalkNoSymbols :
       trace << " stack: ";
-      PTrace::WalkStack(trace, PThreadIdSet(1), true);
+      PTrace::WalkStack(trace, PThreadIdSet(), true);
       break;
     default :
       break;
@@ -4098,7 +4102,7 @@ void PTimedMutex::InternalWaitComplete(uint64_t startWaitCycle, const PDebugLoca
   if (m_lockCount++ == 0) {
     AcquiredLock(startWaitCycle, false, location);
     m_startHeldSamplePoint = PProfiling::GetCycles();
-    m_locker = PThreadIdSet(1);
+    m_locker = PThreadIdSet();
     m_lastLocker = m_locker;
   }
 }
@@ -4108,7 +4112,7 @@ void PTimedMutex::InternalSignal(const PDebugLocation * location)
 {
   if (--m_lockCount == 0) {
     ReleasedLock(*this, m_startHeldSamplePoint, false, location);
-    m_locker = PThreadIdSet();
+    m_locker = nullptr;
   }
   unlock();
 }
@@ -4394,7 +4398,8 @@ PReadWriteMutex::~PReadWriteMutex()
 
 
 PReadWriteMutex::Nest::Nest()
-  : m_readerCount(0)
+  : PThreadIdSet(nullptr)
+  , m_readerCount(0)
   , m_writerCount(0)
   , m_waiting(false)
   , m_startHeldCycle(0)

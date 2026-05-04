@@ -292,7 +292,7 @@
           else
             InternalWalkStack(strm, OtherThreadSkip, m_addresses, noSymbols);
 
-          m_idSet = PThreadIdSet();
+          m_idSet = nullptr;
 
           pthread_mutex_unlock(&m_mainMutex);
           DEBUG_CERR("WalkOther: done");
@@ -300,7 +300,7 @@
 
         void OthersWalk()
         {
-          PThreadIdSet currentIdSet(1);
+          PThreadIdSet currentIdSet();
 
           if (!m_signalSentTime.IsValid()) {
             PTRACE(0, "StackWalk", "No stack walk in operation, unexpected signal " << PProcess::WalkStackSignal);
@@ -312,7 +312,7 @@
             return;
           }
 
-          if (m_idSet.m_threadId != currentIdSet.m_threadId) {
+          if (m_idSet != currentIdSet) {
             PTRACE(0, "StackWalk", "Signal received on " << currentIdSet << " but expected " << m_idSet);
             return;
           }

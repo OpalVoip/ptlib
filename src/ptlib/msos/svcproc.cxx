@@ -453,7 +453,7 @@ int PServiceProcess::InternalMain(void * arg)
   // Set thread ID for the process back to this thread, mostly for destruction logging
   m_threadMutex.Wait();
   m_activeThreads.erase(GetThreadId());
-  m_idSet = PThreadIdSet(1);
+  m_idSet = PThreadIdSet();
   m_activeThreads[GetThreadId()] = this;
   m_threadMutex.Signal();
 
