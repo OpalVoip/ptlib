@@ -3643,9 +3643,9 @@ PString PThread::GetThreadName() const
 
 #if defined(_MSC_VER)
 
-static void SetOperatingSystemThreadName(DWORD threadId, const char * threadName)
+static void SetOperatingSystemThreadName(const PThreadIdSet & idSet, const char * threadName)
 {
-  THREADNAME_INFO threadInfo = { 0x1000, threadName, threadId, 0 };
+  THREADNAME_INFO threadInfo = { 0x1000, threadName, idSet.m_uniqueId, 0 };
 
   __try
   {
@@ -3658,20 +3658,15 @@ static void SetOperatingSystemThreadName(DWORD threadId, const char * threadName
   }
 }
 
-#elif defined(P_PTHREADS) && !defined(P_MACOSX)
-  #if defined(P_MACOSX)
-    // For some bizarre reason Mac OS-X version of this function only has one argument.
-    // So can only be called from the current thread, other calls to SetThreadName() will be ignored
-    #define SetOperatingSystemThreadName(threadId, threadName) \
-                    if (pthread_self() == threadId) pthread_setname_np(threadId, threadName.Left(15))
-  #else
-    #define SetOperatingSystemThreadName(threadId, threadName) pthread_setname_np(threadId, threadName.Left(15))
-  #endif
+#elif defined(P_MACOSX)
+  // For some bizarre reason Mac OS-X version of this function only has one argument.
+  // So can only be called from the current thread, other calls to SetThreadName() will be ignored
+  #define SetOperatingSystemThreadName(idSet, threadName) \
+    if (idSet.m_threadId == std::this_thread::get_id()) \
+      pthread_setname_np(threadName.Left(15))
 #else
-
-#define SetOperatingSystemThreadName(p1,p2)
-
-#endif // defined(_DEBUG) && defined(_MSC_VER)
+  #define SetOperatingSystemThreadName(idSet, threadName) pthread_setname_np(m_idSet.m_nativeHandle, threadName.Left(15))
+#endif
 
 void PThread::SetThreadName(const PString & name)
 {
@@ -3693,7 +3688,7 @@ void PThread::SetThreadName(const PString & name)
   }
 
   if (&PProcess::Current() != this)
-    SetOperatingSystemThreadName(GetUniqueIdentifier(), m_threadName);
+    SetOperatingSystemThreadName(GetThreadIdSet(), m_threadName);
 }
  
 
