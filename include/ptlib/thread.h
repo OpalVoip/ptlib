@@ -57,7 +57,7 @@ struct PThreadIdSet
   std::thread::native_handle_type m_nativeHandle;
   PUniqueThreadIdentifier         m_uniqueId;
   PThreadIdSet();
-  PThreadIdSet(nullptr_t) : m_threadId(), m_nativeHandle(nullptr), m_uniqueId(0) { }
+  PThreadIdSet(nullptr_t) : m_threadId(), m_nativeHandle(0), m_uniqueId(0) { }
   bool operator==(const PThreadIdSet & other) const { return m_uniqueId == other.m_uniqueId; }
   bool operator!=(const PThreadIdSet & other) const { return m_uniqueId != other.m_uniqueId; }
 };
