@@ -457,6 +457,39 @@ __inline void operator delete[](void * ptr) noexcept
 }
 
 
+#pragma pack(1)
+struct PMemoryHeap::Header
+{
+  enum
+  {
+// Assure that the Header struct is aligned to 8 byte boundary
+    NumGuardBytes = 16 - (sizeof(Header *) +
+                          sizeof(Header *) +
+                          sizeof(const char *) +
+                          sizeof(const char *) +
+                          sizeof(size_t) +
+                          sizeof(alloc_t) +
+                          sizeof(uint16_t) +
+                          sizeof(uint8_t) +
+                          sizeof(PThreadIdSet)
+                          )%8
+  };
+
+  Header * m_prev;
+  Header * m_next;
+  const char * m_className;
+  const char * m_fileName;
+  size_t       m_size;
+  alloc_t      m_request;
+  uint16_t     m_line;
+  uint8_t      m_flags;
+  PThreadIdSet m_thread;
+  char         m_guard[NumGuardBytes];
+
+  static char GuardBytes[NumGuardBytes];
+};
+#pragma pack()
+
 char PMemoryHeap::Header::GuardBytes[NumGuardBytes];
 static const size_t MaxMemoryDumBytes = 16;
 static void * DeletedPtr;
@@ -598,7 +631,7 @@ void * PMemoryHeap::InternalAllocate(size_t nSize, const char * file, int line, 
   obj->m_size      = nSize;
   obj->m_fileName  = file;
   obj->m_line      = (WORD)line;
-  obj->m_threadId  = PThread::GetCurrentThreadId();
+  obj->m_thread    = PThreadIdSet();
   obj->m_className = className;
   obj->m_flags     = m_flags;
 
@@ -758,7 +791,7 @@ PMemoryHeap::Validation PMemoryHeap::InternalValidate(const void * ptr,
     return Bad;
 
   Header * obj = ((Header *)ptr) - 1;
-  Header * link = obj;
+  Header * objLink = obj;
 
   if (m_state == e_Active) {
     Lock();
@@ -777,7 +810,7 @@ PMemoryHeap::Validation PMemoryHeap::InternalValidate(const void * ptr,
     Unlock();
   }
 
-  if (link != obj) {
+  if (objLink != obj) {
     PMEMORY_VALIDATE_ERROR("Block " << ptr << " not in heap!");
     return Bad;
   }
@@ -994,13 +1027,13 @@ void PMemoryHeap::InternalDumpObjectsSince(DWORD objectNumber, ostream & strm)
     if (obj->m_className != NULL)
       strm << "class=\"" << obj->m_className << "\" ";
 
-    if (PProcess::IsInitialised() && obj->m_threadId != PNullThreadIdentifier) {
+    if (PProcess::IsInitialised() && obj->m_thread != nullptr) {
       strm << "thread=";
-      PThread * thread = PProcess::Current().GetThread(obj->m_threadId);
+      PThread * thread = PProcess::Current().GetThread(obj->m_thread.m_threadId);
       if (thread != NULL)
         strm << '"' << thread->GetThreadName() << "\" ";
       else
-        strm << "0x" << hex << obj->m_threadId << dec << ' ';
+        strm << obj->m_thread;
     }
 
     strm << '\n' << hex << setfill('0') << PBYTEArray(data, std::min(MaxMemoryDumBytes, obj->m_size), false)
@@ -1497,19 +1530,17 @@ namespace PProfiling
       };
     } m_function;
 
-    FunctionType            m_type;
-    PThreadIdentifier       m_threadIdentifier;
-    PUniqueThreadIdentifier m_threadUniqueId;
-    uint64_t                m_when;
-    FunctionRawData       * m_link;
+    FunctionType      m_type;
+    PThreadIdSet      m_threadIdSet;
+    uint64_t          m_when;
+    FunctionRawData * m_link;
   };
 
 
   struct ThreadRawData : Thread
   {
     PPROFILE_EXCLUDE(ThreadRawData(
-      PThreadIdentifier threadId,
-      PUniqueThreadIdentifier uniqueId,
+      PThreadIdSet idSet,
       const char * name,
       float real,
       float systemCPU,
@@ -1544,8 +1575,6 @@ namespace PProfiling
 
   FunctionRawData::FunctionRawData(FunctionType type, void * function, void * caller)
     : m_type(type)
-    , m_threadIdentifier(PThread::GetCurrentThreadId())
-    , m_threadUniqueId(PThread::GetCurrentUniqueIdentifier())
     , m_when(GetCycles())
   {
     m_function.m_pointer = function;
@@ -1557,8 +1586,6 @@ namespace PProfiling
 
   FunctionRawData::FunctionRawData(FunctionType type, const PDebugLocation * location)
     : m_type(type)
-    , m_threadIdentifier(PThread::GetCurrentThreadId())
-    , m_threadUniqueId(PThread::GetCurrentUniqueIdentifier())
     , m_when(GetCycles())
   {
     if (location) {
@@ -1606,19 +1633,18 @@ namespace PProfiling
         PAssertAlways(PLogicError);
     }
 
-    out << '\t' << m_threadUniqueId << '\t' << m_when << '\n';
+    out << '\t' << m_threadIdSet.m_uniqueId << '\t' << m_when << '\n';
   }
 
 
   /////////////////////////////////////////////////////////////////////
 
-  ThreadRawData::ThreadRawData(PThreadIdentifier threadId,
-                               PUniqueThreadIdentifier uniqueId,
+  ThreadRawData::ThreadRawData(PThreadIdSet idSet,
                                const char * name,
                                float realTime,
                                float systemCPU,
                                float userCPU)
-    : Thread(threadId, uniqueId, name, realTime, systemCPU, userCPU)
+    : Thread(idSet.m_threadId, idSet.m_uniqueId, name, realTime, systemCPU, userCPU)
   {
   }
 
@@ -1643,8 +1669,7 @@ namespace PProfiling
   void OnThreadEnded(const PThread & thread, const PTimeInterval & realTime, const PTimeInterval & systemCPU, const PTimeInterval & userCPU)
   {
     if (s_database.m_enabled) {
-      ThreadRawData * info = new ThreadRawData(thread.GetThreadId(),
-                                               thread.GetUniqueIdentifier(),
+      ThreadRawData * info = new ThreadRawData(thread.GetThreadIdSet(),
                                                thread.GetThreadName(),
                                                realTime.GetMilliSeconds()/1000.0f,
                                                systemCPU.GetMilliSeconds()/1000.0f,
@@ -1983,13 +2008,13 @@ namespace PProfiling
 
   static ThreadByID::iterator AddThreadByID(ThreadByID & threadByID, const PThread::Times & times)
   {
-    Thread threadInfo(times.m_threadId, times.m_uniqueId);
+    Thread threadInfo(times.m_idSet.m_threadId, times.m_idSet.m_uniqueId);
     threadInfo.m_name = times.m_name.GetPointer();
     threadInfo.m_realTime = times.m_real.GetMilliSeconds()/1000.0f;
     threadInfo.m_systemCPU = times.m_kernel.GetMilliSeconds()/1000.0f;
     threadInfo.m_userCPU = times.m_user.GetMilliSeconds()/1000.0f;
     threadInfo.m_running = true;
-    return threadByID.insert(make_pair(times.m_uniqueId, threadInfo)).first;
+    return threadByID.insert(make_pair(times.m_idSet.m_uniqueId, threadInfo)).first;
   }
 
   void Analyse(Analysis & analysis)
@@ -2015,7 +2040,7 @@ namespace PProfiling
           break;
 
         case e_AutoExit:
-          stringstream strm;
+          std::ostringstream strm;
           strm << exit->m_function.m_pointer;
           functionName = strm.str();
           break;
@@ -2026,7 +2051,7 @@ namespace PProfiling
       // Find the next entry in that thread
       FunctionRawData * entry;
       for (entry = exit->m_link; entry != NULL; entry = entry->m_link) {
-        if (entry->m_threadUniqueId != exit->m_threadUniqueId)
+        if (entry->m_threadIdSet != exit->m_threadIdSet)
           continue;
 
         switch (entry->m_type) {
@@ -2041,7 +2066,7 @@ namespace PProfiling
             // Have an exit, so look for matching entry
             FunctionRawData * subEntry;
             for (subEntry = entry->m_link; subEntry != NULL; subEntry = subEntry->m_link) {
-              if (subEntry->m_threadUniqueId == entry->m_threadUniqueId && subEntry->m_function.m_pointer == entry->m_function.m_pointer)
+              if (subEntry->m_threadIdSet == entry->m_threadIdSet && subEntry->m_function.m_pointer == entry->m_function.m_pointer)
                 break;
             }
             if (subEntry == NULL)
@@ -2053,10 +2078,10 @@ namespace PProfiling
             continue;
         }
 
-        ThreadByID::iterator thrd = analysis.m_threadByID.find(entry->m_threadUniqueId);
+        ThreadByID::iterator thrd = analysis.m_threadByID.find(entry->m_threadIdSet.m_uniqueId);
         if (thrd == analysis.m_threadByID.end()) {
           PThread::Times threadTimes;
-          PThread::GetTimes(entry->m_threadIdentifier, threadTimes);
+          PThread::GetTimes(entry->m_threadIdSet.m_threadId, threadTimes);
           thrd = AddThreadByID(analysis.m_threadByID, threadTimes);
         }
 

@@ -208,130 +208,121 @@
   }
 
 
-    #if P_PTHREADS
-      struct PWalkStackInfo
-      {
-        enum { OtherThreadSkip = 6 };
-        pthread_mutex_t   m_mainMutex;
-        PThreadIdSet      m_idSet;
-        StackAddresses    m_addresses;
-        int               m_addressCount;
-        pthread_mutex_t   m_condMutex;
-        pthread_cond_t    m_condVar;
-        PTime             m_signalSentTime;
+    struct PWalkStackInfo
+    {
+      enum { OtherThreadSkip = 6 };
+      pthread_mutex_t   m_mainMutex;
+      PThreadIdSet      m_idSet;
+      StackAddresses    m_addresses;
+      int               m_addressCount;
+      pthread_mutex_t   m_condMutex;
+      pthread_cond_t    m_condVar;
+      PTime             m_signalSentTime;
 
-        PWalkStackInfo()
-          : m_addressCount(-1)
-          , m_signalSentTime(0)
-        {
-          pthread_mutex_init(&m_mainMutex, NULL);
-          pthread_mutex_init(&m_condMutex, NULL);
-          pthread_cond_init(&m_condVar, NULL);
+      PWalkStackInfo()
+        : m_addressCount(-1)
+        , m_signalSentTime(0)
+      {
+        pthread_mutex_init(&m_mainMutex, NULL);
+        pthread_mutex_init(&m_condMutex, NULL);
+        pthread_cond_init(&m_condVar, NULL);
+      }
+
+      void WalkOther(ostream & strm, const PThreadIdSet & idSet, bool noSymbols)
+      {
+        DEBUG_CERR("WalkOther: " << idSet);
+
+        if (!idSet.m_nativeHandle) {
+          strm << "\n\tStack trace WalkOther with zero thread ID.";
+          return;
         }
 
-        void WalkOther(ostream & strm, const PThreadIdSet & idSet, bool noSymbols)
-        {
-          DEBUG_CERR("WalkOther: " << idSet);
+        // Needs to all be done within X seconds
+        struct timespec absTime;
+        clock_gettime(CLOCK_REALTIME, &absTime);
+        absTime.tv_sec += 2;
 
-          if (!idSet.m_nativeHandle) {
-            strm << "\n\tStack trace WalkOther with zero thread ID.";
-            return;
-          }
-
-          // Needs to all be done within X seconds
-          struct timespec absTime;
-          clock_gettime(CLOCK_REALTIME, &absTime);
-          absTime.tv_sec += 2;
-
-          #if P_PTHREADS_XPG6
-            bool failed = pthread_mutex_timedlock(&m_mainMutex, &absTime) != 0;
-          #else // P_PTHREADS_XPG6
-            bool failed;
-            for (;;) {
-              failed = pthread_mutex_trylock(&m_mainMutex) != 0;
-              if (!failed)
-                break;
-
-              struct timespec now;
-              clock_gettime(CLOCK_REALTIME, &now);
-              if (now.tv_sec > absTime.tv_sec && now.tv_nsec > absTime.tv_nsec)
-                break;
-
-              usleep(10000);
-            }
-          #endif // P_PTHREADS_XPG6
-          if (failed) {
-            strm << "\n\tStack trace system is too busy to WalkOther";
-            DEBUG_CERR("WalkOther: mutex timeout");
-            return;
-          }
-
-          m_idSet = idSet;
-          m_addressCount = -1;
-          m_addresses.resize(InternalMaxStackWalk+OtherThreadSkip);
-          m_signalSentTime.SetCurrentTime();
-
-          int err = pthread_kill(m_idSet.m_nativeHandle, PProcess::WalkStackSignal);
-          if (err != 0) {
-            strm << "pthread_kill failed for thread " << idSet << ", errno " << err << ' ' << strerror(err) << endl;
-            pthread_mutex_unlock(&m_mainMutex);
-            return;
-          }
-
-          pthread_mutex_lock(&m_condMutex);
-          while (m_addressCount < 0) {
-            if ((err = pthread_cond_timedwait(&m_condVar, &m_condMutex, &absTime)) != 0)
+        #if P_PTHREADS_XPG6
+          bool failed = pthread_mutex_timedlock(&m_mainMutex, &absTime) != 0;
+        #else // P_PTHREADS_XPG6
+          bool failed;
+          for (;;) {
+            failed = pthread_mutex_trylock(&m_mainMutex) != 0;
+            if (!failed)
               break;
+
+            struct timespec now;
+            clock_gettime(CLOCK_REALTIME, &now);
+            if (now.tv_sec > absTime.tv_sec && now.tv_nsec > absTime.tv_nsec)
+              break;
+
+            usleep(10000);
           }
-          pthread_mutex_unlock(&m_condMutex);
+        #endif // P_PTHREADS_XPG6
+        if (failed) {
+          strm << "\n\tStack trace system is too busy to WalkOther";
+          DEBUG_CERR("WalkOther: mutex timeout");
+          return;
+        }
 
-          if (err == ETIMEDOUT)
-            strm << "\n\tNo response getting stack trace for " << idSet;
-          else if (err != 0)
-            strm << "\n\tError " << err << " getting stack trace for " << idSet;
-          else
-            InternalWalkStack(strm, OtherThreadSkip, m_addresses, noSymbols);
+        m_idSet = idSet;
+        m_addressCount = -1;
+        m_addresses.resize(InternalMaxStackWalk+OtherThreadSkip);
+        m_signalSentTime.SetCurrentTime();
 
-          m_idSet = nullptr;
-
+        int err = pthread_kill(m_idSet.m_nativeHandle, PProcess::WalkStackSignal);
+        if (err != 0) {
+          strm << "pthread_kill failed for thread " << idSet << ", errno " << err << ' ' << strerror(err) << endl;
           pthread_mutex_unlock(&m_mainMutex);
-          DEBUG_CERR("WalkOther: done");
+          return;
         }
 
-        void OthersWalk()
-        {
-          PThreadIdSet currentIdSet();
-
-          if (!m_signalSentTime.IsValid()) {
-            PTRACE(0, "StackWalk", "No stack walk in operation, unexpected signal " << PProcess::WalkStackSignal);
-            return;
-          }
-
-          if (m_idSet.m_threadId == PNullThreadIdentifier) {
-            PTRACE(0, "StackWalk", "Thread took too long (" << m_signalSentTime.GetElapsed() << "s) to respond to signal.");
-            return;
-          }
-
-          if (m_idSet != currentIdSet) {
-            PTRACE(0, "StackWalk", "Signal received on " << currentIdSet << " but expected " << m_idSet);
-            return;
-          }
-
-          int addressCount = backtrace(m_addresses.data(), m_addresses.size());
-
-          pthread_mutex_lock(&m_condMutex);
-          m_addressCount = addressCount < 0 ? 0 : addressCount;
-          pthread_cond_signal(&m_condVar);
-          pthread_mutex_unlock(&m_condMutex);
+        pthread_mutex_lock(&m_condMutex);
+        while (m_addressCount < 0) {
+          if ((err = pthread_cond_timedwait(&m_condVar, &m_condMutex, &absTime)) != 0)
+            break;
         }
-      };
-    #else // P_PTHREADS
-      struct PWalkStackInfo
+        pthread_mutex_unlock(&m_condMutex);
+
+        if (err == ETIMEDOUT)
+          strm << "\n\tNo response getting stack trace for " << idSet;
+        else if (err != 0)
+          strm << "\n\tError " << err << " getting stack trace for " << idSet;
+        else
+          InternalWalkStack(strm, OtherThreadSkip, m_addresses, noSymbols);
+
+        m_idSet = nullptr;
+
+        pthread_mutex_unlock(&m_mainMutex);
+        DEBUG_CERR("WalkOther: done");
+      }
+
+      void OthersWalk()
       {
-        void WalkOther(ostream &, PThreadIdentifier, bool) { }
-        void OthersWalk() { }
-      };
-    #endif // P_PTHREADS
+        if (!m_signalSentTime.IsValid()) {
+          PTRACE(0, "StackWalk", "No stack walk in operation, unexpected signal " << PProcess::WalkStackSignal);
+          return;
+        }
+
+        if (m_idSet == nullptr) {
+          PTRACE(0, "StackWalk", "Thread took too long (" << m_signalSentTime.GetElapsed() << "s) to respond to signal.");
+          return;
+        }
+
+        PThreadIdSet currentIdSet;
+        if (m_idSet != currentIdSet) {
+          PTRACE(0, "StackWalk", "Signal received on " << currentIdSet << " but expected " << m_idSet);
+          return;
+        }
+
+        int addressCount = backtrace(m_addresses.data(), m_addresses.size());
+
+        pthread_mutex_lock(&m_condMutex);
+        m_addressCount = addressCount < 0 ? 0 : addressCount;
+        pthread_cond_signal(&m_condVar);
+        pthread_mutex_unlock(&m_condMutex);
+      }
+    };
 
     static PWalkStackInfo s_otherThreadStack;
     static thread_local StackAddresses s_exceptionStack;

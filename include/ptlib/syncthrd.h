@@ -337,7 +337,7 @@ class PReadWriteMutex : public PObject,
       Nest(const Nest & other);
       Nest & operator=(const Nest & other);
     };
-    typedef std::unordered_map<PThreadIdentifier, Nest> NestMap;
+    typedef std::unordered_map<std::thread::id, Nest> NestMap;
     NestMap          m_nestedThreads;
     PCriticalSection m_nestingMutex;
 

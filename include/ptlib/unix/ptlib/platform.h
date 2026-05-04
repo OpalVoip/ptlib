@@ -200,34 +200,24 @@ typedef int SOCKET;
 typedef pid_t PProcessIdentifier;
 typedef void (*PRunTimeSignalHandler)(int, siginfo_t *, void *);
 
-#ifdef P_PTHREADS
-  #ifndef _THREAD_SAFE
-    #define _THREAD_SAFE 1
-  #endif
-
-  #ifdef P_LINUX
-    typedef pid_t PUniqueThreadIdentifier;
-    #define P_UNIQUE_THREAD_ID_FMT "%u"
-  #elif defined(P_MACOSX)
-    typedef uint64_t PUniqueThreadIdentifier;
-    #define P_UNIQUE_THREAD_ID_FMT "%llu"
-  #else
-    typedef pthread_t PUniqueThreadIdentifier;
-    #define P_UNIQUE_THREAD_ID_FMT "%u"
-  #endif
-
-  #if defined(P_HAS_SEMAPHORES) || defined(P_HAS_NAMED_SEMAPHORES)
-    #include <semaphore.h>
-  #endif  // P_HAS_SEMPAHORES
-
-#else
-
-typedef pid_t PThreadIdentifier;
-#define PNullThreadIdentifier ((PThreadIdentifier)-1)
-#define P_THREAD_ID_FMT "%u"
-typedef pid_t PUniqueThreadIdentifier;
-
+#ifndef _THREAD_SAFE
+  #define _THREAD_SAFE 1
 #endif
+
+#ifdef P_LINUX
+  typedef pid_t PUniqueThreadIdentifier;
+  #define P_UNIQUE_THREAD_ID_FMT "%u"
+#elif defined(P_MACOSX)
+  typedef uint64_t PUniqueThreadIdentifier;
+  #define P_UNIQUE_THREAD_ID_FMT "%llu"
+#else
+  typedef pthread_t PUniqueThreadIdentifier;
+  #define P_UNIQUE_THREAD_ID_FMT "%u"
+#endif
+
+#if defined(P_HAS_SEMAPHORES) || defined(P_HAS_NAMED_SEMAPHORES)
+  #include <semaphore.h>
+#endif  // P_HAS_SEMPAHORES
 
 #ifdef _DEBUG
   __inline void PBreakToDebugger() { kill(getpid(), SIGABRT); }

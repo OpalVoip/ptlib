@@ -255,7 +255,7 @@ class PThread : public PObject, PProfiling::HighWaterMark<PThread>, PNonCopyable
        @return
        current thread name.
      */
-    static PString GetThreadName(PThreadIdentifier id);
+    static PString GetThreadName(std::thread::id id);
 
     /**Get the current threads name.
       */
@@ -279,7 +279,7 @@ class PThread : public PObject, PProfiling::HighWaterMark<PThread>, PNonCopyable
 
     /** Get C++ thread identifier for this thread.
     */
-    PThreadIdentifier GetThreadId() const { return m_idSet.m_threadId; }
+    std::thread::id GetThreadId() const { return m_idSet.m_threadId; }
 
     /** This operating system specific thread handle for the thread.
       */
@@ -356,7 +356,7 @@ class PThread : public PObject, PProfiling::HighWaterMark<PThread>, PNonCopyable
     /** Get the thread execution times.
      */
     static bool GetTimes(
-      PThreadIdentifier id, ///< Thread identifier to get times for
+      std::thread::id id, ///< Thread identifier to get times for
       Times & times         ///< Times for thread execution.
     ));
 
@@ -389,7 +389,7 @@ class PThread : public PObject, PProfiling::HighWaterMark<PThread>, PNonCopyable
     static int GetPercentageCPU(
       Times & previousTimes,                             ///< Previous CPU times, contecxt for calculations
       const PTimeInterval & period = PTimeInterval(0,1), ///< Time over which to integrate the average CPU usage.
-      PThreadIdentifier id = PNullThreadIdentifier       ///< Thread ID to get CPU usage, null means current thread
+      std::thread::id id = std::thread::id()             ///< Thread ID to get CPU usage, null means current thread
     );
 
     /**Get number of processors, or processor cores, this machine has available.

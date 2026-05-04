@@ -2843,10 +2843,12 @@ void PProcess::OnThreadEnded(PThread &
     return;
 
 #if P_PROFILING
-  PThread::Times times;
-  if (!thread.GetTimes(times))
-    return;
-  PProfiling::OnThreadEnded(thread, times.m_real, times.m_kernel, times.m_user);
+  {
+    PThread::Times times;
+    if (!thread.GetTimes(times))
+      return;
+    PProfiling::OnThreadEnded(thread, times.m_real, times.m_kernel, times.m_user);
+  }
 #endif // P_PROFILING
 
 #if PTRACING
@@ -3267,7 +3269,7 @@ void PProcess::SetConfigurationPath(const PString & path)
 #endif
 
 
-PThread * PProcess::GetThread(PThreadIdentifier threadId) const
+PThread * PProcess::GetThread(std::thread::id threadId) const
 {
   PWaitAndSignal mutex(m_threadMutex);
   ThreadMap::const_iterator it = m_activeThreads.find(threadId);
@@ -3482,9 +3484,9 @@ PBoolean PThread::WaitForTermination(const PTimeInterval & maxWait) const
 }
 
 
-PString PThread::GetThreadName(PThreadIdentifier id)
+PString PThread::GetThreadName(std::thread::id id)
 {
-  if (id == PNullThreadIdentifier)
+  if (id == std::thread::id())
     return "(null)";
 
   if (PProcess::IsInitialised()) {
@@ -3507,12 +3509,12 @@ PINDEX PThread::GetTotalCount()
 }
 
 
-bool PThread::GetTimes(PThreadIdentifier id, Times & times)
+bool PThread::GetTimes(std::thread::id id, Times & times)
 {
   if (!PProcess::IsInitialised())
     return false;
 
-  if (id == PNullThreadIdentifier)
+  if (id == std::thread::id())
     return Current()->GetTimes(times);
 
   PProcess & process = PProcess::Current();
@@ -3523,7 +3525,7 @@ bool PThread::GetTimes(PThreadIdentifier id, Times & times)
 }
 
 
-bool PProcess::GetAllThreadIdentifiers(std::vector<PThreadIdentifier> & identifiers)
+bool PProcess::GetAllThreadIdentifiers(std::vector<std::thread::id> & identifiers)
 {
   if (!PProcess::IsInitialised())
     return false;
@@ -3537,12 +3539,12 @@ bool PProcess::GetAllThreadIdentifiers(std::vector<PThreadIdentifier> & identifi
 
 void PThread::GetTimes(std::vector<Times> & allThreadTimes)
 {
-  std::vector<PThreadIdentifier> identifiers;
+  std::vector<std::thread::id> identifiers;
   if (PProcess::Current().GetAllThreadIdentifiers(identifiers)) {
     allThreadTimes.reserve(identifiers.size());
     Times threadTimes;
-    for (std::vector<PThreadIdentifier>::iterator it = identifiers.begin(); it != identifiers.end(); ++it) {
-      if (GetTimes(*it, threadTimes))
+    for (auto id : identifiers) {
+      if (GetTimes(id, threadTimes))
         allThreadTimes.push_back(threadTimes);
     }
   }
@@ -3551,11 +3553,11 @@ void PThread::GetTimes(std::vector<Times> & allThreadTimes)
 
 void PThread::GetTimes(std::list<Times> & allThreadTimes)
 {
-  std::vector<PThreadIdentifier> identifiers;
+  std::vector<std::thread::id> identifiers;
   if (PProcess::Current().GetAllThreadIdentifiers(identifiers)) {
     Times threadTimes;
-    for (std::vector<PThreadIdentifier>::iterator it = identifiers.begin(); it != identifiers.end(); ++it) {
-      if (GetTimes(*it, threadTimes))
+    for (auto id : identifiers) {
+      if (GetTimes(id, threadTimes))
         allThreadTimes.push_back(threadTimes);
     }
   }
@@ -3564,18 +3566,18 @@ void PThread::GetTimes(std::list<Times> & allThreadTimes)
 
 void PThread::GetTimes(std::set<Times> & allThreadTimes)
 {
-  std::vector<PThreadIdentifier> identifiers;
+  std::vector<std::thread::id> identifiers;
   if (PProcess::Current().GetAllThreadIdentifiers(identifiers)) {
     Times threadTimes;
-    for (std::vector<PThreadIdentifier>::iterator it = identifiers.begin(); it != identifiers.end(); ++it) {
-      if (GetTimes(*it, threadTimes))
+    for (auto id : identifiers) {
+      if (GetTimes(id, threadTimes))
         allThreadTimes.insert(threadTimes);
     }
   }
 }
 
 
-int PThread::GetPercentageCPU(Times & previousTimes, const PTimeInterval & period, PThreadIdentifier id)
+int PThread::GetPercentageCPU(Times & previousTimes, const PTimeInterval & period, std::thread::id id)
 {
   if (!previousTimes.m_sample.IsValid())
     return GetTimes(id, previousTimes) ? -2 : -1;
@@ -3651,7 +3653,7 @@ static void SetOperatingSystemThreadName(DWORD threadId, const char * threadName
     // if not running under debugger exception comes back
   }
   __except(EXCEPTION_CONTINUE_EXECUTION)
-  {
+{
     // just keep on truckin'
   }
 }
@@ -3690,7 +3692,7 @@ void PThread::SetThreadName(const PString & name)
       m_threadName += idStr;
   }
 
-  if (&PProcess::Current() != this && name != ExternalThreadName)
+  if (&PProcess::Current() != this)
     SetOperatingSystemThreadName(GetUniqueIdentifier(), m_threadName);
 }
  
@@ -4060,7 +4062,7 @@ void PTimedMutex::InternalWait(const PDebugLocation * location)
       trace << ", ";
     }
 
-    if (locker.m_threadId != PNullThreadIdentifier)
+    if (locker != nullptr)
       trace << "Owner Thread:";
     else {
       trace << "Owner no longer has lock, last owner:";

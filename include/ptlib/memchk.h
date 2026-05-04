@@ -34,6 +34,8 @@
 #pragma interface
 #endif
 
+#include <mutex>
+
 ///////////////////////////////////////////////////////////////////////////////
 // Memory management
 
@@ -237,37 +239,6 @@ class PMemoryHeap {
       NoLeakPrint = 1
     };
 
-#pragma pack(1)
-    struct Header {
-      enum {
-        // Assure that the Header struct is aligned to 8 byte boundary
-        NumGuardBytes = 16 - (sizeof(Header *) +
-                              sizeof(Header *) +
-                              sizeof(const char *) +
-                              sizeof(const char *) +
-                              sizeof(size_t) +
-                              sizeof(alloc_t) +
-                              sizeof(uint16_t) +
-                              sizeof(uint8_t) +
-                              sizeof(PThreadIdentifier)
-                              )%8
-      };
-
-      Header     * m_prev;
-      Header     * m_next;
-      const char * m_className;
-      const char * m_fileName;
-      size_t       m_size;
-      alloc_t      m_request;
-      uint16_t     m_line;
-      uint8_t      m_flags;
-      PThreadIdentifier m_threadId;
-      char         m_guard[NumGuardBytes];
-
-      static char GuardBytes[NumGuardBytes];
-    };
-#pragma pack()
-
     enum {
       e_Destroyed =-1,
       e_Disabled,
@@ -275,6 +246,7 @@ class PMemoryHeap {
       e_Active
     } m_state;
 
+    struct Header;
     Header * m_listHead;
     Header * m_listTail;
 

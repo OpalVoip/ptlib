@@ -155,7 +155,7 @@ namespace PProfiling
   struct Thread
   {
     std::string             m_name;
-    PThreadIdentifier       m_threadId;
+    std::thread::id         m_threadId;
     PUniqueThreadIdentifier m_uniqueId;
     float                   m_realTime;
     float                   m_systemCPU;
@@ -164,7 +164,7 @@ namespace PProfiling
     FunctionMap             m_functions;
 
     Thread(
-      PThreadIdentifier       threadId = PNullThreadIdentifier,
+      std::thread::id threadId = std::thread::id(),
       PUniqueThreadIdentifier uniqueId = 0,
       const char * name = "",
       float realTime = 0,

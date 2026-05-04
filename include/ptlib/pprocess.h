@@ -169,7 +169,7 @@ class PProcess : public PThread
         @rturn true if there are identifiers available.
       */
     bool GetAllThreadIdentifiers(
-      std::vector<PThreadIdentifier> & identifiers   ///< Returned identifiers
+      std::vector<std::thread::id> & identifiers   ///< Returned identifiers
     );
 
     /** Return the thread for the operating system thread identifier.
@@ -178,7 +178,7 @@ class PProcess : public PThread
         thread is an AutoDeleteThread mode.
       */
     PThread * GetThread(
-      PThreadIdentifier threadId    ///< Identifier if thread to get
+      std::thread::id threadId    ///< Identifier if thread to get
     ) const;
 
     /**Callback for when a thread is started by the PTLib system. Note this is
@@ -689,7 +689,7 @@ class PProcess : public PThread
     // the target log mutex before obtaining this in PThread::Current().
     PCriticalSection m_threadMutex; 
 
-    typedef std::map<PThreadIdentifier, PThread *> ThreadMap;
+    typedef std::map<std::thread::id, PThread *> ThreadMap;
     ThreadMap m_activeThreads;
     void InternalThreadStarted(PThread * thread);
     void InternalThreadEnded(PThread * thread);
