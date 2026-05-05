@@ -1743,13 +1743,13 @@ PBoolean PHTTPConnectionInfo::Initialise(PHTTPServer & server, PString & args)
       else if (token == PHTTP::UpgradeTag()) {
         PCaselessString protocol = m_mimeInfo(PHTTP::UpgradeTag());
         if (protocol != PHTTP::WebSocketTag()) {
-          PTRACE(4, "Cannot upgrade to protocol \"" << protocol << '"');
+          PTRACE(3, "Cannot upgrade \"" << args << "\" to protocol \"" << protocol << "\"\n" << m_mimeInfo);
           return server.OnError(PHTTP::MethodNotAllowed, "Can only upgrade to \"websocket\" protocol", *this);
         }
 
         int wsVer = m_mimeInfo.GetInteger(PHTTP::WebSocketVersionTag());
         if (wsVer < 13) {
-          PTRACE(4, "WebSocket version " << wsVer << " is not supported.");
+          PTRACE(3, "WebSocket \"" << args << "\" version " << wsVer << " is not supported.\n" << m_mimeInfo);
           return server.OnError(PHTTP::MethodNotAllowed, "Can only upgrade to websocket version 13 or later", *this);
         }
 
