@@ -30,7 +30,7 @@
 
 #if P_VIDEO
 
-#include <ptlib/video.h>
+#include <ptlib/videoio.h>
 
 #ifdef P_USE_PRAGMA
 #pragma implementation "vconvert.h"

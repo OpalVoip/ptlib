@@ -262,14 +262,6 @@ class PVideoChannel : public PChannel
                                     // members in this video channel.
   private:
     void Construct();
-
-
-// Include platform dependent part of class
-#ifdef _WIN32
-#include "msos/ptlib/video.h"
-#else
-#include "unix/ptlib/video.h"
-#endif
 };
 
 #endif // P_VIDEO
