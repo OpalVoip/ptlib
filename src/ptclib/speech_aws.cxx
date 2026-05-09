@@ -1049,16 +1049,11 @@ public:
 
   virtual bool Close() override
   {
-    PWaitAndSignal lock(m_mutex);
-    if (!IsOpen())
-      return false;
-
+    m_mutex.Wait();
     PTRACE(3, "Closing " << *this);
     m_webSocket.CloseBaseReadChannel();
     m_openingWebSocket = false; // In case we close while still opening
-    PThread::WaitAndDelete(m_eventThread);
-
-    return true;
+    return PThread::WaitAndDelete(m_eventThread, 5000, &m_mutex, false);
   }
 
 
