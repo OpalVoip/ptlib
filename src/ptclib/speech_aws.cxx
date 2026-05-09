@@ -753,6 +753,11 @@ class PSpeechRecognition_AWS : public PSpeechRecognition, PAwsClient<Aws::Transc
     {
       PWaitAndSignal lock(m_mutex);
 
+      if (!m_openingWebSocket) {
+        PTRACE(4, "Closed before we opened WebSocket, thread ended.");
+        return;
+      }
+
       HeaderMap headers;
       headers["media-encoding"] = "pcm";
       headers["sample-rate"] = GetSampleRate();
@@ -1044,15 +1049,11 @@ public:
 
   virtual bool Close() override
   {
-    PWaitAndSignal lock(m_mutex);
-    if (!IsOpen())
-      return false;
-
+    m_mutex.Wait();
     PTRACE(3, "Closing " << *this);
     m_webSocket.CloseBaseReadChannel();
-    PThread::WaitAndDelete(m_eventThread);
-
-    return true;
+    m_openingWebSocket = false; // In case we close while still opening
+    return PThread::WaitAndDelete(m_eventThread, 5000, &m_mutex, false);
   }
 
 
