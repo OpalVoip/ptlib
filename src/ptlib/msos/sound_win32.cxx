@@ -43,10 +43,11 @@
 #pragma comment(lib, "winmm.lib")
 #endif
 
-
 class PSound;
 
 PCREATE_SOUND_PLUGIN(WindowsMultimedia, PSoundChannelWin32);
+
+static PMutex bufferMutex;
 
 #define new PNEW
 

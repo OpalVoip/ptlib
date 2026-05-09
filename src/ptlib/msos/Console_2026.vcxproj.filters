@@ -513,9 +513,6 @@
     <ClInclude Include="..\..\..\Include\PtLib\Ipdsock.h">
       <Filter>Header Files\Common</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\ipsock.h">
-      <Filter>Header Files\MSOS</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\Include\PtLib\ipsock.h">
       <Filter>Header Files\Common</Filter>
     </ClInclude>
@@ -690,9 +687,6 @@
     <ClInclude Include="..\..\..\include\ptclib\shttpsvc.h">
       <Filter>Header Files\Components</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\videoio.h">
-      <Filter>Header Files\MSOS</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\include\ptclib\snmp.h">
       <Filter>Header Files\Components</Filter>
     </ClInclude>
@@ -811,9 +805,6 @@
       <Filter>Header Files\Android</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\ipdsock.h">
-      <Filter>Header Files\Android</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\ipsock.h">
       <Filter>Header Files\Android</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\mail.h">
