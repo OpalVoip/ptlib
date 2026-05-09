@@ -546,9 +546,18 @@ class PConfig : public PObject
 
 // Include platform dependent part of class
 #ifdef _WIN32
-#include "msos/ptlib/config.h"
+  protected:
+    Source  source;
+    PString location;
 #else
-#include "unix/ptlib/config.h"
+  public:
+    ~PConfig();
+
+  protected:
+    class Cached;
+    Cached * m_config;
+
+    friend class PConfigCache;
 #endif
 };
 

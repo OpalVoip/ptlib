@@ -106,16 +106,7 @@ class PIPDatagramSocket : public PIPSocket
       const PIPSocketAddressAndPort & ipAndPort
     );
 
-
-// Include platform dependent part of class
-#ifdef _WIN32
-#include "msos/ptlib/ipdsock.h"
-#else
-#include "unix/ptlib/ipdsock.h"
-#endif
-
   public:
-  
     // Normally, one would expect these to be protected, but they are just so darn
     // useful that it's just easier if they are public
     virtual bool InternalReadFrom(
