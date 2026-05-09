@@ -135,9 +135,12 @@ class PICMPSocket : public PIPDatagramSocket
 
 // Include platform dependent part of class
 #ifdef _WIN32
-#include "msos/ptlib/icmpsock.h"
-#else
-#include "unix/ptlib/icmpsock.h"
+public:
+  PBoolean Close();
+  PBoolean IsOpen() const;
+
+protected:
+  HANDLE icmpHandle;
 #endif
 };
 
