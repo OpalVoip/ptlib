@@ -105,14 +105,12 @@ debugshared debugstatic debugclean debugdepend debuglibs :: INTERNAL_DEBUG_BUILD
 optshared debugshared optclean debugclean optdepend debugdepend optlibs debuglibs :: INTERNAL_STATIC_BUILD:=no
 optstatic debugstatic :: INTERNAL_STATIC_BUILD:=yes
 
-clean optclean debugclean :: MAKEFLAGS+=--no-print-directory NODEPS=yes
-
 ifndef ALLOW_PARALLEL
 .NOTPARALLEL:
 endif
 
 optshared debugshared optstatic debugstatic optclean debugclean optdepend debugdepend optlibs debuglibs ::
-	+$(Q_MAKE) --file="$(firstword $(MAKEFILE_LIST))" ALLOW_PARALLEL=1 DEBUG_BUILD=$(INTERNAL_DEBUG_BUILD) STATIC_BUILD=$(INTERNAL_STATIC_BUILD) internal_$(subst opt,,$(subst debug,,$@))
+	+$(Q_MAKE) --file="$(firstword $(MAKEFILE_LIST))" ALLOW_PARALLEL=1 DEBUG_BUILD=$(INTERNAL_DEBUG_BUILD) STATIC_BUILD=$(INTERNAL_STATIC_BUILD) NODEPS=$(NODEPS) internal_$(subst opt,,$(subst debug,,$@))
 
 
 # For backward compatibility reasons
