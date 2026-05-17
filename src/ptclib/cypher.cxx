@@ -853,10 +853,6 @@ void PMessageDigest5::InternalCompleteDigest(Result & result)
 #error OpenSSL too old! Use at least 1.1.1
 #endif
 
-#if (OPENSSL_VERSION_NUMBER < 0x30000000L)
-#define EVP_MD_CTX_get_size EVP_MD_CTX_size
-#endif
-
 #ifdef P_SSL_LIB1
 #pragma comment(lib, P_SSL_LIB1)
 #endif
@@ -893,7 +889,7 @@ struct PMessageDigestSHA::Context
   bool Final(PBYTEArray & digest)
   {
     unsigned int dummy;
-    return EVP_DigestFinal(m_ctx, digest.GetPointer(EVP_MD_get_size(m_type)), &dummy) != 0;
+    return EVP_DigestFinal(m_ctx, digest.GetPointer(EVP_MD_size(m_type)), &dummy) != 0;
   }
 };
 
