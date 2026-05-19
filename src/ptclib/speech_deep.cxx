@@ -111,6 +111,12 @@ class PSpeechRecognition_Deepgram : public PSpeechRecognition
 
     {
       PWaitAndSignal lock(m_mutex);
+
+      if (!m_openingWebSocket) {
+        PTRACE(4, "Closed before we opened WebSocket, thread ended.");
+        return;
+      }
+
       PURL url(m_endpoint, "wss");
       url.AppendPath("listen");
       for (PStringOptions::const_iterator opt = m_options.begin(); opt != m_options.end(); ++opt)
@@ -258,12 +264,14 @@ protected:
       m_options.SetAt("interim_results", "true");
     }
     m_options.SetAt(EncodingHeader, "linear16");
+    PTRACE(4, "Created " << this);
   }
 
 
 public:
   ~PSpeechRecognition_Deepgram()
   {
+    PTRACE(4, "Destroying " << this);
     Close();
   }
 
@@ -377,7 +385,7 @@ public:
   virtual bool Close() override
   {
     m_mutex.Wait();
-    PTRACE(3, "Closing " << *this);
+    PTRACE(3, (IsOpen() ? "Closing " : "Already closed") << this);
     m_webSocket.CloseBaseReadChannel();
     m_notifier = Notifier();
     m_openingWebSocket = false; // In case we close while still opening
