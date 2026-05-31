@@ -192,6 +192,8 @@ class PSerialChannel : public PChannel
     );
 #endif // P_CONFIG_FILE
 
+    virtual PBoolean Close();
+
     /**Get a list of the available serial ports. This returns a set of
        platform dependent strings which describe the serial ports of the
        computer. For example under unix it may be "ttyS0", under MS-DOS or
@@ -387,9 +389,28 @@ class PSerialChannel : public PChannel
 
 // Include platform dependent part of class
 #ifdef _WIN32
-#include "msos/ptlib/serchan.h"
+
+  public:
+    virtual PBoolean Read(void * buf, PINDEX len);
+    virtual PBoolean Write(const void * buf, PINDEX len);
+
+  private:
+    PBoolean SetCommsParam(DWORD speed, BYTE data, Parity parity,
+                           BYTE stop, FlowControl inputFlow, FlowControl outputFlow);
+    HANDLE  commsResource;
+    enum { InputQueueSize = 2048, OutputQueueSize = 1024 };
+    DCB deviceControlBlock;
+
 #else
-#include "unix/ptlib/serchan.h"
+
+    struct termios oldTermio;
+    struct termios Termio;
+
+    unsigned baudRate;
+    unsigned dataBits;
+    Parity   parityBits;
+    unsigned stopBits;
+
 #endif
 };
 

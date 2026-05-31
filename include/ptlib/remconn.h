@@ -279,12 +279,16 @@ class PRemoteConnection : public PObject, PNonCopyable
   private:
     void Construct();
 
-
 // Include platform dependent part of class
 #ifdef _WIN32
-#include "msos/ptlib/remconn.h"
+    // Win32 specific stuff
+    HRASCONN rasConnection;
 #else
-#include "unix/ptlib/remconn.h"
+    PString        pppDeviceName;
+    PPipeChannel * pipeChannel;
+    bool           wasConnected;
+    Status         status;
+    PString        deviceStr;
 #endif
 };
 
