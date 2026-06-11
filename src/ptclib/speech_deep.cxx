@@ -45,11 +45,14 @@ static const PConstCaselessString BufferDurationTag("Buffer-Duration");
 static const PConstCaselessString ShortInputMaxLenTag("shortinput-maxlen");
 static const PConstCaselessString ShortInputTimeoutTag("shortinput-timeout");
 static const PConstCaselessString FinalHeuristicTag("Deepgram-IsFinal-Heuristic");
+static const PConstCaselessString LanguageHintTag("LanguageHint");
 
 static const PConstCaselessString SampleRateHeader("sample_rate");
 static const PConstCaselessString ChannelsHeader("channels");
 static const PConstCaselessString LanguageHeader("language");
 static const PConstCaselessString EncodingHeader("encoding");
+static const PConstCaselessString ModelHeader("model");
+static const PConstCaselessString DefaultModel("flux-general-en");
 
 static PStringSet MakeSkipParameters()
 {
@@ -69,6 +72,7 @@ static PStringSet MakeSkipParameters()
   set += DeepgramFluxPrefix + SampleRateHeader;
   set += DeepgramFluxPrefix + ChannelsHeader;
   set += DeepgramFluxPrefix + LanguageHeader;
+  set += DeepgramFluxPrefix + LanguageHintTag;
   set += DeepgramFluxPrefix + EncodingHeader;
   set += DeepgramFluxPrefix + ShortInputMaxLenTag;
   set += DeepgramFluxPrefix + ShortInputTimeoutTag;
@@ -89,6 +93,7 @@ class PSpeechRecognition_Deepgram : public PSpeechRecognition
   unsigned m_sampleRate;
   unsigned m_channels;
   PString m_language;
+  bool m_languageHint = true;
   PString m_endpoint;
   PString m_apiKey;
   unsigned m_shortInputMaxLen;
@@ -122,10 +127,10 @@ class PSpeechRecognition_Deepgram : public PSpeechRecognition
       for (PStringOptions::const_iterator opt = m_options.begin(); opt != m_options.end(); ++opt)
         url.SetQueryVar(opt->first, opt->second);
       url.SetQueryVar(SampleRateHeader, m_sampleRate);
-      if (!m_flux) {
+      if (!m_flux)
         url.SetQueryVar(ChannelsHeader, m_channels);
+      if (m_languageHint)
         url.SetQueryVar(LanguageHeader, m_language);
-      }
 
       m_webSocket.SetAuthorization("token " + m_apiKey);
       m_webSocket.SetProxies(m_httpProxies);
@@ -255,7 +260,7 @@ protected:
     m_apiKey = env.GetString("DEEPGRAM_API_KEY");
     if (flux) {
       m_endpoint = env.GetString("DEEPGRAM_FLUX_ENDPOINT", "wss://api.deepgram.com/v2");
-      m_options.SetAt("model", "flux-general-en");
+      m_options.SetAt(ModelHeader, DefaultModel);
       m_options.SetAt("eot_timeout_ms", "1000");
     }
     else {
@@ -294,6 +299,8 @@ public:
       if (opt->first.starts_with(m_prefix) && !SkipParams.Contains(opt->first))
         m_options.SetAt(opt->first.Mid(m_prefix.length()), opt->second);
     }
+
+    m_languageHint = options.GetBoolean(m_prefix + LanguageHintTag, !m_flux || m_options(ModelHeader) != DefaultModel);
 
     // Get buffer size in milliseconds before the sample rate changes
     unsigned bufferMilliseconds = options.GetVar(m_prefix + BufferDurationTag, m_bufferSize * 1000 / m_sampleRate);
