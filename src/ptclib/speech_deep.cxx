@@ -50,6 +50,7 @@ static const PConstCaselessString LanguageHintTag("LanguageHint");
 static const PConstCaselessString SampleRateHeader("sample_rate");
 static const PConstCaselessString ChannelsHeader("channels");
 static const PConstCaselessString LanguageHeader("language");
+static const PConstCaselessString LanguageHintHeader("language_hint");
 static const PConstCaselessString EncodingHeader("encoding");
 static const PConstCaselessString ModelHeader("model");
 static const PConstCaselessString DefaultModel("flux-general-en");
@@ -73,6 +74,7 @@ static PStringSet MakeSkipParameters()
   set += DeepgramFluxPrefix + ChannelsHeader;
   set += DeepgramFluxPrefix + LanguageHeader;
   set += DeepgramFluxPrefix + LanguageHintTag;
+  set += DeepgramFluxPrefix + LanguageHintHeader;
   set += DeepgramFluxPrefix + EncodingHeader;
   set += DeepgramFluxPrefix + ShortInputMaxLenTag;
   set += DeepgramFluxPrefix + ShortInputTimeoutTag;
@@ -93,7 +95,7 @@ class PSpeechRecognition_Deepgram : public PSpeechRecognition
   unsigned m_sampleRate;
   unsigned m_channels;
   PString m_language;
-  bool m_languageHint = true;
+  bool m_languageHint = false;
   PString m_endpoint;
   PString m_apiKey;
   unsigned m_shortInputMaxLen;
@@ -127,10 +129,12 @@ class PSpeechRecognition_Deepgram : public PSpeechRecognition
       for (PStringOptions::const_iterator opt = m_options.begin(); opt != m_options.end(); ++opt)
         url.SetQueryVar(opt->first, opt->second);
       url.SetQueryVar(SampleRateHeader, m_sampleRate);
-      if (!m_flux)
+      if (!m_flux) {
         url.SetQueryVar(ChannelsHeader, m_channels);
-      if (m_languageHint)
         url.SetQueryVar(LanguageHeader, m_language);
+      }
+      if (m_languageHint)
+        url.SetQueryVar(LanguageHintHeader, m_language);
 
       m_webSocket.SetAuthorization("token " + m_apiKey);
       m_webSocket.SetProxies(m_httpProxies);
@@ -300,7 +304,7 @@ public:
         m_options.SetAt(opt->first.Mid(m_prefix.length()), opt->second);
     }
 
-    m_languageHint = options.GetBoolean(m_prefix + LanguageHintTag, !m_flux || m_options(ModelHeader) != DefaultModel);
+    m_languageHint = options.GetBoolean(m_prefix + LanguageHintTag, m_flux && m_options(ModelHeader) != DefaultModel);
 
     // Get buffer size in milliseconds before the sample rate changes
     unsigned bufferMilliseconds = options.GetVar(m_prefix + BufferDurationTag, m_bufferSize * 1000 / m_sampleRate);
