@@ -14,7 +14,7 @@
 
 #include <ptlib/pluginmgr.h>
 #include <ptlib/sound.h>
-#include <ptlib/video.h>
+#include <ptlib/videoio.h>
 #include "main.h"
 
 #include <math.h>
