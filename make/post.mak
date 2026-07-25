@@ -105,6 +105,8 @@ debugshared debugstatic debugclean debugdepend debuglibs :: INTERNAL_DEBUG_BUILD
 optshared debugshared optclean debugclean optdepend debugdepend optlibs debuglibs :: INTERNAL_STATIC_BUILD:=no
 optstatic debugstatic :: INTERNAL_STATIC_BUILD:=yes
 
+clean optlean debuglean internal_clean :: NODEPS:=1
+
 ifndef ALLOW_PARALLEL
 .NOTPARALLEL:
 endif
@@ -361,7 +363,7 @@ internal_libs ::
 ifneq (,$(SUBDIRS))
   export CC CXX LD AR RANLIB ARFLAGS target target_os target_cpu
   $(STANDARD_TARGETS) ::
-	$(Q)set -e; $(foreach dir,$(SUBDIRS), $(MAKE) --print-directory --directory="$(dir)" $@;)
+	$(Q)set -e; $(foreach dir,$(SUBDIRS), $(MAKE) --print-directory --directory="$(dir)" NODEPS=$(NODEPS) $@;)
 endif
 
 

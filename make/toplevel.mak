@@ -196,7 +196,6 @@ ifeq ($(HAS_VIDEO),1)
   SOURCES += $(COMMON_SRC_DIR)/vfakeio.cxx \
              $(COMMON_SRC_DIR)/videoio.cxx \
              $(COMMON_SRC_DIR)/vconvert.cxx \
-             $(COMMON_SRC_DIR)/pvidchan.cxx \
              $(COMMON_SRC_DIR)/tinyjpeg.c \
              $(COMMON_SRC_DIR)/jidctflt.c
 

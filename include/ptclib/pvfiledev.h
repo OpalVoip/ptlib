@@ -37,7 +37,7 @@
 #if P_VIDEO
 #if P_VIDFILE
 
-#include <ptlib/video.h>
+#include <ptlib/videoio.h>
 #include <ptlib/vconvert.h>
 #include <ptclib/pvidfile.h>
 
