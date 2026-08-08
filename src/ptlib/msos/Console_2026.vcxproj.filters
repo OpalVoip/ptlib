@@ -58,9 +58,6 @@
     <ClCompile Include="..\common\ptime.cxx">
       <Filter>Source Files\Console</Filter>
     </ClCompile>
-    <ClCompile Include="..\common\pvidchan.cxx">
-      <Filter>Source Files\Console</Filter>
-    </ClCompile>
     <ClCompile Include="..\common\safecoll.cxx">
       <Filter>Source Files\Console</Filter>
     </ClCompile>
