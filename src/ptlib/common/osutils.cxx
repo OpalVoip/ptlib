@@ -3083,7 +3083,7 @@ void PProcess::AsynchronousRunTimeSignal(int signal, PProcessIdentifier source)
 void PProcess::InternalPostRunTimeSignal(int signal, PProcessIdentifier source)
 {
   m_RunTimeSignalsQueueMutex.Wait();
-  m_RunTimeSignalsQueue.emplace(signal, source);
+  m_RunTimeSignalsQueue.emplace(RunTimeSignalInfo{signal, source});
   m_RunTimeSignalsQueueMutex.Signal();
 
   SignalTimerChange(); // Inform house keeping thread we have a signal to be processed
