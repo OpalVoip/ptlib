@@ -89,7 +89,7 @@ void External()
   PAssert(PThread::Current() != NULL, "Failed!");
   for (int i = 0; i < 25; ++i) {
     std::cout << "E " << std::flush;
-    Sleep(100);
+    PThread::Sleep(100);
   }
 }
 
