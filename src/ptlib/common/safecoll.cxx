@@ -416,10 +416,11 @@ PBoolean PSafeCollection::DeleteObjectsToBeRemoved()
       }
       else {
 #if PTRACING
-        if (it->m_safeRemovalTime.GetElapsed() > g_deleteTakingTooLong) {
+        PTimeInterval age = it->m_safeRemovalTime.GetElapsed();
+        if (age > g_deleteTakingTooLong) {
           PTRACE(it->m_safeRemovalLogThrottle, &*it, it->GetClassName() << '@' << &*it
-                 << " has been pending deletion for " << setprecision(1) << g_deleteTakingTooLong
-                 << " seconds: references = " << it->GetSafeReferenceCount());
+                 << " has been pending deletion for " << setprecision(1) << age
+                 << " - references = " << it->GetSafeReferenceCount());
         }
         PTRACE(it->GetTraceLogLevel(), &*it, it->GetClassName() << '@' << &*it
                << " awaiting delete: references=" << it->GetSafeReferenceCount());
