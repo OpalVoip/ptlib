@@ -56,9 +56,9 @@
    interactors in the PTLib library.
  */
 template <typename ParamType>
-class PNotifierFunctionTemplate : public PSmartObject
+class PNotifierFunctionTemplate : public PObject
 {
-  PCLASSINFO(PNotifierFunctionTemplate, PSmartObject);
+  PCLASSINFO(PNotifierFunctionTemplate, PObject);
 
   protected:
     /// Create a notification function instance.
@@ -106,17 +106,29 @@ typedef PNotifierFunctionTemplate<P_INT_PTR> PNotifierFunction;
    interactors in the PTLib library.
  */
 template <typename ParamType>
-class PNotifierTemplate : public PSmartPointer
+class PNotifierTemplate : public PObject
 {
-  PCLASSINFO(PNotifierTemplate, PSmartPointer);
+  PCLASSINFO(PNotifierTemplate, PObject);
 
+  private:
+    std::shared_ptr<PNotifierFunctionTemplate<ParamType>> m_fn;
   public:
     typedef PNotifierFunctionTemplate<ParamType> * FunctionPtr;
 
     /** Create a new notification function smart pointer. */
     PNotifierTemplate(
       FunctionPtr func = NULL   ///< Notifier function to call.
-    ) : PSmartPointer(func) { }
+    ) : m_fn(func) { }
+
+    void PrintOn(ostream & strm) const override
+    {
+      strm << (void *)m_fn.get();
+    }
+
+    bool IsNULL() const
+    {
+      return !m_fn;
+    }
 
     /**Execute the call to the actual notification function on the object
        instance contained in this object. This will make a polymorphic call to
@@ -127,15 +139,13 @@ class PNotifierTemplate : public PSmartPointer
       PObject & notifier,  ///< Object that is making the notification.
       ParamType extra       ///< Extra information that may be passed to function.
     ) const {
-      FunctionPtr ptr = dynamic_cast<FunctionPtr>(GetObject());
-      if (PAssertNULL(ptr) != NULL)
-        ptr->Call(notifier, extra);
+      if (PAssertNULL(m_fn.get()) != NULL)
+        m_fn->Call(notifier, extra);
     }
 
     void * GetTarget() const
     {
-      FunctionPtr ptr = dynamic_cast<FunctionPtr>(GetObject());
-      return ptr != NULL ? ptr->GetTarget() : NULL;
+      return m_fn ? m_fn->GetTarget() : NULL;
     }
 };
 

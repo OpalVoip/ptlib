@@ -44,9 +44,9 @@
 
 /**Abstract class for a file containing a audio/visual media.
   */
-class PMediaFile : public PSmartObject
+class PMediaFile : public PObject
 {
-    PCLASSINFO(PMediaFile, PSmartObject);
+    PCLASSINFO(PMediaFile, PObject);
   protected:
     /** Create the media file abstraction.
       */
@@ -68,7 +68,7 @@ class PMediaFile : public PSmartObject
 
     typedef PFactory<PMediaFile, PFilePathString> Factory;
 
-    typedef PSmartPtr<PMediaFile> Ptr;
+    typedef std::shared_ptr<PMediaFile> Ptr;
 
     /** Create a concreate class for the media file, given it's file extension.
         Returns: NULL if the file type is not supported.

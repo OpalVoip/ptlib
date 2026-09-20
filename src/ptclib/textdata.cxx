@@ -260,7 +260,7 @@ PTextDataFile::PTextDataFile(const PFilePath & name, OpenMode mode, OpenOptions 
 
 bool PTextDataFile::SetFormat(const PTextDataFormatPtr & format)
 {
-  if (IsOpen() || format.IsNULL())
+  if (IsOpen() || !format)
     return false;
 
   m_format = format;
@@ -340,11 +340,11 @@ bool PTextDataFile::InternalOpen(OpenMode mode, OpenOptions opts, PFileInfo::Per
   if (!PAssert(mode != ReadWrite, PInvalidParameter))
     return false;
 
-  if (m_format.IsNULL()) {
+  if (!m_format) {
     if (GetFilePath().GetType() == ".csv")
-      m_format = new PCommaSeparatedVariableFormat();
+      m_format.reset(new PCommaSeparatedVariableFormat());
     else if (GetFilePath().GetType() == ".txt" || GetFilePath().GetType() == ".tsv")
-      m_format = new PTabDelimitedFormat();
+      m_format.reset(new PTabDelimitedFormat());
     else
       return false;
   }
@@ -361,7 +361,7 @@ bool PTextDataFile::InternalOpen(OpenMode mode, OpenOptions opts, PFileInfo::Per
 
   bool ok = false;
 
-  if (m_format.IsNULL()) {
+  if (!m_format) {
     bool hadComma = false;
     for (;;) {
       char c;
@@ -370,7 +370,7 @@ bool PTextDataFile::InternalOpen(OpenMode mode, OpenOptions opts, PFileInfo::Per
 
       if (c == '\t') {
         SetPosition(0);
-        m_format = new PTabDelimitedFormat;
+        m_format.reset(new PTabDelimitedFormat);
         break;
       }
 
@@ -383,10 +383,10 @@ bool PTextDataFile::InternalOpen(OpenMode mode, OpenOptions opts, PFileInfo::Per
         hadComma = true;
     }
 
-    if (m_format.IsNULL()) {
+    if (!m_format) {
       if (!hadComma)
         return false;
-      m_format = new PCommaSeparatedVariableFormat();
+      m_format.reset(new PCommaSeparatedVariableFormat());
     }
   }
   else

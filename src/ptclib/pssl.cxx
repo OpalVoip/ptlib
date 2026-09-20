@@ -3050,8 +3050,7 @@ void PSSLChannel::SetVerifyMode(VerifyMode mode, const VerifyNotifier & notifier
     if (!notifier.IsNULL() && mode == PSSLContext::VerifyNone)
         mode = PSSLContext::VerifyPeer;
     SSL_set_verify(m_ssl, VerifyModeBits[mode], VerifyCallback);
-    PTRACE(5, "Verify mode for " << m_ssl << " set to " << mode
-           << ", callback=" << (void *)notifier.GetObject());
+    PTRACE(5, "Verify mode for " << m_ssl << " set to " << mode << ", callback=" << notifier);
   }
 }
 

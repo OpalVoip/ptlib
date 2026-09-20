@@ -415,9 +415,9 @@ class PSafeLockReadWrite : public PSafeLockBase
   See the PSafeObject class for more details. Especially in regard to
   enumeration of collections.
  */
-class PSafeCollection : public PSmartObject, PNonCopyable
+class PSafeCollection : public PObject, PNonCopyable
 {
-    PCLASSINFO(PSafeCollection, PSmartObject);
+    PCLASSINFO(PSafeCollection, PObject);
   public:
   /**@name Construction */
   //@{
@@ -1037,7 +1037,7 @@ template <class Collection> class PSafeColl : public PSafeCollection
         typedef value_type & reference;
 
       protected:
-        PSmartPtr<PSafeColl> m_collection;
+        std::shared_ptr<PSafeColl> m_collection;
         coll_iter            m_iterator;
         ptr_type             m_pointer;
 
@@ -1324,7 +1324,7 @@ template <class K, class D> class PSafeDictionary : public PSafeCollection
         const key_type * m_internal_first;  // Must be first two members
         ptr_type       * m_internal_second;
 
-        PSmartPtr<PSafeDictionary> m_collection;
+        std::shared_ptr<PSafeDictionary> m_collection;
         dict_iter                  m_iterator;
         ptr_type                   m_pointer;
 
