@@ -141,7 +141,7 @@ class PHTTP : public PInternetProtocol
 
     enum StatusCode {
       BadResponse = 1,             ///<   1 = response is malformed
-      ContentProcessorError,       ///< Content Processer returned error
+      ContentProcessorError,       ///< Content Processor returned error
       UnknownTransferEncoding,     ///< Unknown "Transfer-Encoding" extension
       TransportConnectError,       ///< Could not connect transport
       TransportWriteError,         ///< Could not write transport
@@ -1083,6 +1083,13 @@ class PWebSocket : public PIndirectChannel, public PSSLCertificateInfo
       PString * selectedProtocol = NULL  ///< Selected protocol by server
     );
 
+    /** Close the WebSocket with the specified code and description.
+        See RFC6455 Section 7.4 for details on the codes.
+      */
+    virtual bool Close(
+      uint16_t code = 1000,
+      const PString & reason = PString::Empty()
+    );
 
     /// Read a complete WebSocket message
     virtual bool ReadMessage(
@@ -1562,7 +1569,7 @@ class PHTTPServer : public PHTTP
     typedef PNotifierTemplate<PHTTPConnectionInfo&> WebSocketNotifier;
 
     /** Set the handler for WebSocket sub-protocol.
-        A NULL notifier may be set which indiates that the protocol is
+        A NULL notifier may be set which indicates that the protocol is
         supported, but that ProcessCommand() is to simply return false as
         the caller will handle the channel from then on.
     */
@@ -2431,7 +2438,7 @@ class PHTTPString : public PHTTPResource
   PCLASSINFO(PHTTPString, PHTTPResource)
 
   public:
-    /** Contruct a new simple string resource for the HTTP space. If no MIME
+    /** Construct a new simple string resource for the HTTP space. If no MIME
        content type is specified then a default type is "text/html".
      */
     PHTTPString(

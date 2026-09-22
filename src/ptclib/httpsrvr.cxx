@@ -1312,8 +1312,7 @@ bool PWebSocket::InternalRead(void * buf, PINDEX len)
 
     if (m_remainingPayload > m_maxFrameSize) {
       PTRACE(3, "Closing due to excessive frame size: " << m_remainingPayload << " > " << m_maxFrameSize);
-      InternalWrite(ConnectionClose, false, payload, payload.GetSize());
-      CloseBaseReadChannel();
+      Close(1009);
       return false;
     }
 
@@ -1397,6 +1396,15 @@ bool PWebSocket::ReadMasked(void * buf, PINDEX len)
   }
 
   return true;
+}
+
+
+bool PWebSocket::Close(uint16_t code, const PString & reason)
+{
+  PBYTEArray payload(reason.length() + sizeof(uint16_t));
+  payload.SetAs<PUInt16b>(0, code);
+  memcpy(payload.GetPointer() + sizeof(uint16_t), reason.GetPointer(), reason.length());
+  return InternalWrite(ConnectionClose, false, payload, payload.GetSize()) && CloseBaseReadChannel();
 }
 
 
