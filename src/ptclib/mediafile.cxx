@@ -1008,7 +1008,7 @@ public:
             m_codecContext->time_base = av_make_q(1, m_codecContext->sample_rate);
             m_frame->sample_rate = m_codecContext->sample_rate;
 
-#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(60, 0, 0)
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59, 0, 0)
             if (ch_layouts) {
               m_codecContext->channels = ch_layouts[0].nb_channels;
               m_codecContext->channel_layout = ch_layouts[0];
