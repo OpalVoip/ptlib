@@ -36,10 +36,8 @@
 #if P_MEDIAFILE
 
 #include <ptlib/pfactory.h>
-#include <ptlib/smartptr.h>
 #include <ptlib/sound.h>
 #include <ptlib/videoio.h>
-#include <ptclib/delaychan.h>
 
 
 /**Abstract class for a file containing a audio/visual media.

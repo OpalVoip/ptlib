@@ -370,6 +370,10 @@ std::string PObject::GetClassName(const std::type_info & t)
 ///////////////////////////////////////////////////////////////////////////////
 // General reference counting support
 
+P_PUSH_MSVC_WARNINGS(4996)
+
+#include <ptlib/smartptr.h>
+
 PSmartPointer::PSmartPointer(const PSmartPointer & ptr)
 {
   object = ptr.object;
@@ -412,6 +416,7 @@ PObject::Comparison PSmartPointer::Compare(const PObject & obj) const
   return object < other ? LessThan : GreaterThan;
 }
 
+P_POP_MSVC_WARNINGS()
 
 
 //////////////////////////////////////////////////////////////////////////////////////////

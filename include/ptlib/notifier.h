@@ -28,7 +28,6 @@
 #define PTLIB_NOTIFIER_H
 
 #include <ptlib.h>
-#include <ptlib/smartptr.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 // General notification mechanism from one object to another
