@@ -873,7 +873,12 @@ PString PSSLCertificate::X509_Name::GetCommonName() const
 PString PSSLCertificate::X509_Name::GetNID(int id) const
 {
   if (m_name != NULL) {
-    const X509_NAME_ENTRY * entry = X509_NAME_get_entry(m_name, X509_NAME_get_index_by_NID(m_name, id, -1));
+#if (OPENSSL_VERSION_NUMBER < 0x40000000L)
+    int idx = X509_NAME_get_index_by_NID(const_cast<X509_NAME *>(m_name), id, -1);
+#else
+    int idx = X509_NAME_get_index_by_NID(m_name, id, -1);
+#endif
+    const X509_NAME_ENTRY * entry = X509_NAME_get_entry(m_name, idx);
     if (entry != NULL)
       return From_ASN1_STRING(X509_NAME_ENTRY_get_data(entry));
   }
