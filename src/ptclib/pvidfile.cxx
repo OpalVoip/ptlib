@@ -342,8 +342,11 @@ class PStillImageVideoFile : public PVideoFile
     }
 
     virtual PBoolean IsOpen() const override
-    { 
-      return !m_pixelData.IsEmpty();
+    {
+      // Pixel data is what later reads return. The file handle has to count
+      // as open too, or header parsing fails with EBADF before the picture
+      // has been decoded.
+      return !m_pixelData.IsEmpty() || PFile::IsOpen();
     }
 
     virtual off_t GetLength() const override
@@ -427,19 +430,42 @@ class PImageMagickFile : public PStillImageVideoFile
       m_videoInfo.SetFrameSize(width, height);
       m_frameBytes = m_videoInfo.CalculateFrameBytes();
 
-      PBYTEArray rgb(width*height*4);
-      MagickExportImagePixels(wand, 0, 0, width, height, "RGBA", CharPixel, rgb.GetPointer());
+      // RGB24 is read in R,G,B order on every platform. RGB32 is not: on
+      // macOS the FFmpeg converter treats it as ABGR, which turns this
+      // image's green bars magenta and its blue bar yellow.
+      PINDEX stride = ((PINDEX)width * 3 + 3) & ~3;
+      PBYTEArray rgb(stride * height);
+      PBYTEArray packed;
+      void * exported = rgb.GetPointer();
+      if (stride != (PINDEX)width * 3) {
+        packed.SetSize((PINDEX)width * height * 3);
+        exported = packed.GetPointer();
+      }
+      if (!MagickExportImagePixels(wand, 0, 0, width, height, "RGB", CharPixel, exported)) {
+        PTRACE(2, "ImageMagick could not export pixels from " << m_path);
+        SetErrorValues(Miscellaneous, EINVAL);
+        return false;
+      }
+      if (exported != rgb.GetPointer()) {
+        const BYTE * src = packed.GetPointer();
+        BYTE * dst = rgb.GetPointer();
+        for (unsigned y = 0; y < height; ++y) {
+          memcpy(dst, src, width * 3);
+          src += width * 3;
+          dst += stride;
+        }
+      }
 
-      PColourConverter * converter = PColourConverter::Create(PVideoFrameInfo(width, height, "RGB32"), m_videoInfo);
+      PColourConverter * converter = PColourConverter::Create(PVideoFrameInfo(width, height, "RGB24"), m_videoInfo);
       if (converter == NULL) {
-        PTRACE(2, "Could not create colour converter from RGB32 to " << m_videoInfo);
+        PTRACE(2, "Could not create colour converter from RGB24 to " << m_videoInfo);
         SetErrorValues(Miscellaneous, EINVAL);
         return false;
       }
 
       bool converted = m_pixelData.SetSize(m_frameBytes) && converter->Convert(rgb, m_pixelData.GetPointer());
       delete converter;
-      PTRACE_IF(2, !converted, "Could not do colour conversion from RGB32 to " << m_videoInfo);
+      PTRACE_IF(2, !converted, "Could not do colour conversion from RGB24 to " << m_videoInfo);
       return converted;
     }
 };
@@ -585,16 +611,22 @@ class PJPEGFile : public PStillImageVideoFile
       if (!PVideoFile::InternalOpen(mode, opts, permissions))
         return false;
 
+      // Load from a plain file. This object's GetLength() is a frame count,
+      // and IsOpen() stays false until the picture has been decoded.
+      PFile raw;
+      if (!raw.Open(GetFilePath(), PFile::ReadOnly, PFile::MustExist)) {
+        SetErrorValues(raw.GetErrorCode(), raw.GetErrorNumber());
+        return false;
+      }
+
       PJPEGConverter decoder(PVideoFrameInfo(0, 0, "JPEG"), m_videoInfo);
-      if (!decoder.Load(*this, m_pixelData))
+      if (!decoder.Load(raw, m_pixelData))
         return false;
 
       decoder.GetDstFrameInfo(m_videoInfo);
       m_frameBytes = m_videoInfo.CalculateFrameBytes();
       return true;
     }
-
-    PBYTEArray m_pixelData;
 };
 
 PFACTORY_CREATE(PVideoFileFactory, PJPEGFile, ".jpg");
