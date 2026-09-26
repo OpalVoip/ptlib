@@ -66,6 +66,13 @@ if(PTLIB_OS_TAG)
   ptlib_define(${PTLIB_OS_TAG} 1)
 endif()
 
+# tools/configure enables the "winver" feature by default (configure.ac:
+# WINVER=0x601, Windows 7). platform.h uses Windows 2000 only when this
+# macro is left undefined.
+if(PTLIB_PLATFORM_SOURCES STREQUAL "msos")
+  ptlib_define(WINVER 0x0601)
+endif()
+
 ptlib_define(PTLIB_MAJOR ${PTLIB_VERSION_MAJOR})
 ptlib_define(PTLIB_MINOR ${PTLIB_VERSION_MINOR})
 ptlib_define(PTLIB_PATCH ${PTLIB_VERSION_PATCH})

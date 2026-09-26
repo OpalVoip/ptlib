@@ -77,6 +77,19 @@
 
 #define PTraceModule() "WinSock"
 
+// iptypes.h only aliases PIP_ADAPTER_UNICAST_ADDRESS when NTDDI_VERSION is at
+// least NTDDI_WINXP. Below that, IP_ADAPTER_ADDRESSES::FirstUnicastAddress is
+// still the XP layout.
+#if defined(_WINSOCK2API_) && defined(NTDDI_VERSION) && (NTDDI_VERSION < NTDDI_WINXP)
+  typedef PIP_ADAPTER_UNICAST_ADDRESS_XP PIP_ADAPTER_UNICAST_ADDRESS;
+#endif
+
+// _WIN32_WINNT_WINXP is a version number (0x0501), not a feature test.
+#ifndef _WIN32_WINNT_WINXP
+  #define _WIN32_WINNT_WINXP 0x0501
+#endif
+#define P_WIN32_HAS_GETADAPTERSADDRESSES (P_HAS_IPV6 || (_WIN32_WINNT >= _WIN32_WINNT_WINXP))
+
 
 //////////////////////////////////////////////////////////////////////////////
 // PWinSock
@@ -761,7 +774,7 @@ public:
 };
 
 
-#if (P_HAS_IPV6 || _WIN32_WINNT_WINXP)
+#if P_WIN32_HAS_GETADAPTERSADDRESSES
 class PIPAdaptersAddressTable
 {
 public:
@@ -1351,12 +1364,12 @@ PBoolean PIPSocket::GetInterfaceTable(InterfaceTable & table, PBoolean includeDo
 
   PINDEX count = 0; // address count
 
-#if P_HAS_IPV6 || _WIN32_WINNT_WINXP
+#if P_WIN32_HAS_GETADAPTERSADDRESSES
   PIPAdaptersAddressTable interfaces;
 
 #if P_HAS_IPV6
   PIPRouteTableIPv6 routes;
-#else // _WIN32_WINNT_WINXP
+#else // _WIN32_WINNT >= _WIN32_WINNT_WINXP
   PIPRouteTable routes;
 #endif
 
