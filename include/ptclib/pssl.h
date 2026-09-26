@@ -331,7 +331,7 @@ class PSSLCertificate : public PObject
     class X509_Name : public PObject {
         PCLASSINFO(X509_Name, PObject);
       public:
-        X509_Name(X509_name_st * name = NULL) : m_name(name) { }
+        X509_Name(const X509_name_st * name = NULL) : m_name(name) { }
 
         Comparison Compare(const PObject & other) const override;
         void PrintOn(ostream & strm) const override;
@@ -345,7 +345,7 @@ class PSSLCertificate : public PObject
         ) const;
 
       protected:
-        X509_name_st * m_name;
+        const X509_name_st * m_name;
     };
 
     /**Get certificate issuer name.
