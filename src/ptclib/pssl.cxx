@@ -796,7 +796,7 @@ bool PSSLCertificate::GetIssuerName(X509_Name & name) const
 }
 
 
-static PString From_ASN1_STRING(ASN1_STRING * asn)
+static PString From_ASN1_STRING(const ASN1_STRING * asn)
 {
   PString str;
   if (asn != NULL) {
@@ -873,7 +873,7 @@ PString PSSLCertificate::X509_Name::GetCommonName() const
 PString PSSLCertificate::X509_Name::GetNID(int id) const
 {
   if (m_name != NULL) {
-    X509_NAME_ENTRY * entry = X509_NAME_get_entry(m_name, X509_NAME_get_index_by_NID(m_name, id, -1));
+    const X509_NAME_ENTRY * entry = X509_NAME_get_entry(m_name, X509_NAME_get_index_by_NID(m_name, id, -1));
     if (entry != NULL)
       return From_ASN1_STRING(X509_NAME_ENTRY_get_data(entry));
   }
