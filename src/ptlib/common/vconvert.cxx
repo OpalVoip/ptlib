@@ -3236,9 +3236,10 @@ struct PJPEGConverter::Context
       m_decoder.out_color_space = m_colourSpace;
       m_decoder.dct_method = JDCT_IFAST;
       if (jpeg_start_decompress(&m_decoder)) {
-        if (width > m_decoder.output_width)
+        // A zero size means the caller wants the picture's own dimensions.
+        if (width == 0 || width > m_decoder.output_width)
           width = m_decoder.output_width;
-        if (height > m_decoder.output_height)
+        if (height == 0 || height > m_decoder.output_height)
           height = m_decoder.output_height;
         return true;
       }
