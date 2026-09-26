@@ -1023,7 +1023,12 @@ PSemaphore::~PSemaphore()
   #if defined(P_HAS_NAMED_SEMAPHORES)
     if (m_namedSemaphore.ptr != NULL) {
       PAssertWithRetry(sem_close, m_namedSemaphore.ptr);
+      m_namedSemaphore.ptr = NULL;
     }
+    // Names we generated are not shared. Unlink them or the next open of the
+    // same name fails with EEXIST. macOS keeps the name until sem_unlink.
+    if (m_name.Find("/pt-") == 0)
+      sem_unlink(m_name);
     #if !defined(P_MACOSX)
     else if (m_name.IsEmpty())
       PAssertWithRetry(sem_destroy, &m_semaphore);
@@ -1065,14 +1070,26 @@ void PSemaphore::Reset(unsigned initial, unsigned maximum)
       static pthread_mutex_t semCreationMutex = PTHREAD_MUTEX_INITIALIZER;
       PAssertWithRetry(pthread_mutex_lock, &semCreationMutex);
 
-      if (m_name.IsEmpty()) {
-        // sem_init didn't work, so try a named sem
-        std::stringstream generatedName;
-        generatedName << "/ptlib/" << getpid() << '/' << this;
-        m_name = generatedName.str();
-        sem_unlink(m_name);
+      if (m_namedSemaphore.ptr != NULL) {
+        sem_close(m_namedSemaphore.ptr);
+        m_namedSemaphore.ptr = NULL;
       }
-  
+
+      if (m_name.IsEmpty()) {
+        // sem_init didn't work, so try a named sem.
+        // macOS requires a single leading slash, no other slashes, and a short name.
+        char generatedName[32];
+        snprintf(generatedName, sizeof(generatedName), "/pt-%05x%016llx",
+                 (unsigned)getpid() & 0xfffff,
+                 (unsigned long long)(uintptr_t)this);
+        m_name = generatedName;
+      }
+
+      // Reset() is called again on a live semaphore (the jitter buffer does
+      // this). O_EXCL then fails with EEXIST unless the previous name is removed.
+      if (m_name.Find("/pt-") == 0)
+        sem_unlink(m_name);
+
       PAssertWithRetry(pthread_mutex_unlock, &semCreationMutex);
   
       m_namedSemaphore.ptr = sem_open(m_name, (O_CREAT | O_EXCL), 700, m_initial);
