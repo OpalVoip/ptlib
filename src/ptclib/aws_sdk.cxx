@@ -308,12 +308,18 @@ static bool FindAccessKeys(PString & accessKeyId, PString & secretAccessKey, con
 #endif // P_SSL
 
 
-bool PAwsSigner::Calculate(bool useHeaders)
-{
 #if !P_SSL
+
+bool PAwsSigner::Calculate(bool)
+{
   PTRACE(1, "AWS4 authentication requires OpenSSL");
   return false;
+}
+
 #else
+
+bool PAwsSigner::Calculate(bool useHeaders)
+{
   if (!FindAccessKeys(m_awsAccessKeyId, m_awsSecretAccessKey, "default")) {
     PTRACE(2, "AWS4 authentication requires access keys");
     return false;
@@ -453,6 +459,8 @@ bool PAwsSigner::Calculate(bool useHeaders)
   return true;
 }
 
+#endif // P_SSL
+
 ////////////////////////////////////////////////////////////////////////////////////
 
 PBoolean PHTTPAws4Authentication::Parse(const PString&, PBoolean proxy)
@@ -461,12 +469,18 @@ PBoolean PHTTPAws4Authentication::Parse(const PString&, PBoolean proxy)
 }
 
 
-PBoolean PHTTPAws4Authentication::Authorise(AuthObject& authObject) const
-{
 #if !P_SSL
+
+PBoolean PHTTPAws4Authentication::Authorise(AuthObject&) const
+{
   PTRACE(1, "AWS4 authentication requires OpenSSL");
   return false;
+}
+
 #else
+
+PBoolean PHTTPAws4Authentication::Authorise(AuthObject& authObject) const
+{
   auto & headers = authObject.GetMIME();
   if (!headers.Has(PHTTP::ContentLengthTag)) {
     PTRACE(1, "AWS4 authentication requires Content-Length header");
@@ -508,8 +522,9 @@ PBoolean PHTTPAws4Authentication::Authorise(AuthObject& authObject) const
 
   headers = signer.m_headers;
   return true;
-#endif // P_SSL
 }
+
+#endif // P_SSL
 
 PConstString PHTTPAws4Authentication::SchemeName() { static PConstString s = "aws4"; return s; }
 
