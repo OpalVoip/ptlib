@@ -710,9 +710,13 @@ void PProcess::GetMemoryUsage(MemoryUsage & usage) const
   if (!ok)
 #endif // P_HAS_MALLOC_INFO
   {
+#if defined(__GLIBC_PREREQ) && __GLIBC_PREREQ(2, 33)
+    struct mallinfo2 info = mallinfo2();
+#else
     struct mallinfo info = mallinfo();
-    usage.m_current = (unsigned)info.uordblks;
-    usage.m_max = info.usmblks != 0 ? (unsigned)info.usmblks : (usage.m_current + (unsigned)info.fordblks + (unsigned)info.fsmblks);
+#endif
+    usage.m_current = info.uordblks;
+    usage.m_max = info.usmblks != 0 ? info.usmblks : (usage.m_current + info.fordblks + info.fsmblks);
     usage.m_blocks = info.hblks;
   }
 }
