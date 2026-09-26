@@ -57,6 +57,13 @@ A downstream project then uses:
   find_package(PTLib CONFIG REQUIRED)
   target_link_libraries(myapp PRIVATE PTLib::ptlib)
 
+The build directory is also a CMake package. OPAL can use it without an
+install step:
+
+  cmake -S opalvoip-opal -B opalvoip-opal/build -DOPAL_PTLIB_DIR=<ptlib-build>
+
+OPAL_PTLIB_DIR accepts that build directory or an install prefix.
+
 
 vcpkg
 -----

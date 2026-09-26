@@ -98,10 +98,11 @@ class PSemaphore : public PSync
     ) : m_name(name) { Reset(initial, maximum); }
 
     /** Create a new semaphore with the same initial and maximum values as the original.
+        The name is not copied. On platforms that implement every semaphore as a
+        named semaphore, reusing the name makes creation fail with EEXIST.
      */
     PSemaphore(const PSemaphore & sem)
       : PSync()
-      , m_name(sem.m_name)
     { Reset(sem.m_initial, sem.m_maximum); }
 
     /**Destroy the semaphore. This will assert if there are still waiting

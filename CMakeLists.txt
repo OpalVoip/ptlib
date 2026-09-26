@@ -319,5 +319,9 @@ install(FILES
 install(EXPORT PTLibTargets
   NAMESPACE PTLib::
   DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/PTLib")
+# Build-tree package so a consumer can find_package(PTLib) without installing.
+export(EXPORT PTLibTargets
+  FILE "${CMAKE_CURRENT_BINARY_DIR}/PTLibTargets.cmake"
+  NAMESPACE PTLib::)
 
 include(cmake/PTLibBuildVariants.cmake)
