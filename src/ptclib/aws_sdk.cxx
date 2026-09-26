@@ -27,6 +27,7 @@
 #include <ptlib.h>
 
 #include <ptclib/aws_sdk.h>
+#include <ptlib/pprocess.h>
 #include <utility>
 
 #if P_AWS_SDK
@@ -272,6 +273,8 @@ PConstCaselessString PAwsSigner::AmzSignedHeaders() { static PConstCaselessStrin
 PConstCaselessString PAwsSigner::AmzContentSHA256() { static PConstCaselessString s("X-Amz-Content-SHA256"); return s; }
 PConstCaselessString PAwsSigner::AmzSignature() { static PConstCaselessString s("X-Amz-Signature"); return s; }
 
+#if P_SSL
+
 static void UriEncode(std::ostream& strm, const PString& str)
 {
   // This is subtly different to PURL::TranslateString, well done Amazon!
@@ -302,9 +305,15 @@ static bool FindAccessKeys(PString & accessKeyId, PString & secretAccessKey, con
   return !accessKeyId.empty() && !secretAccessKey.empty();
 }
 
+#endif // P_SSL
+
 
 bool PAwsSigner::Calculate(bool useHeaders)
 {
+#if !P_SSL
+  PTRACE(1, "AWS4 authentication requires OpenSSL");
+  return false;
+#else
   if (!FindAccessKeys(m_awsAccessKeyId, m_awsSecretAccessKey, "default")) {
     PTRACE(2, "AWS4 authentication requires access keys");
     return false;
@@ -454,6 +463,10 @@ PBoolean PHTTPAws4Authentication::Parse(const PString&, PBoolean proxy)
 
 PBoolean PHTTPAws4Authentication::Authorise(AuthObject& authObject) const
 {
+#if !P_SSL
+  PTRACE(1, "AWS4 authentication requires OpenSSL");
+  return false;
+#else
   auto & headers = authObject.GetMIME();
   if (!headers.Has(PHTTP::ContentLengthTag)) {
     PTRACE(1, "AWS4 authentication requires Content-Length header");
@@ -495,6 +508,7 @@ PBoolean PHTTPAws4Authentication::Authorise(AuthObject& authObject) const
 
   headers = signer.m_headers;
   return true;
+#endif // P_SSL
 }
 
 PConstString PHTTPAws4Authentication::SchemeName() { static PConstString s = "aws4"; return s; }
