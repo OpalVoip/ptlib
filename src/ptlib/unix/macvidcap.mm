@@ -45,6 +45,30 @@
 #define PTraceModule() "MacVideo"
 #define PTRACE_DETAILED(...) PTRACE(5, __VA_ARGS__)
 
+// devicesWithMediaType: was deprecated in macOS 10.15. Discovery sessions
+// return only the device types listed, so include built-in, external, and
+// Continuity cameras. ExternalUnknown was renamed in the macOS 14 SDK.
+static NSArray * VideoCaptureDevices()
+{
+#if !defined(MAC_OS_X_VERSION_10_15) || MAC_OS_X_VERSION_MAX_ALLOWED < MAC_OS_X_VERSION_10_15
+  return [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo];
+#else
+  NSArray * types = @[
+    AVCaptureDeviceTypeBuiltInWideAngleCamera,
+#if defined(MAC_OS_VERSION_14_0) && MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_VERSION_14_0
+    AVCaptureDeviceTypeExternal,
+    AVCaptureDeviceTypeContinuityCamera
+#else
+    AVCaptureDeviceTypeExternalUnknown
+#endif
+  ];
+  return [[AVCaptureDeviceDiscoverySession
+            discoverySessionWithDeviceTypes:types
+                                  mediaType:AVMediaTypeVideo
+                                   position:AVCaptureDevicePositionUnspecified] devices];
+#endif
+}
+
 
 class PLocalMemoryPool
 {
@@ -278,7 +302,7 @@ PBoolean PVideoInputDevice_Mac::Open(const PString & devName, PBoolean startImme
     m_device = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeVideo];
   else {
     NSString * name = [NSString stringWithUTF8String:devName];
-    NSArray * devices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo];
+    NSArray * devices = VideoCaptureDevices();
     for (AVCaptureDevice * device in devices) {
       if ([[device localizedName] caseInsensitiveCompare:name] == 0) {
         m_device = [AVCaptureDevice deviceWithUniqueID:[device uniqueID]];
@@ -518,7 +542,7 @@ PStringArray PVideoInputDevice_Mac::GetDeviceNames() const
   
   PStringArray names;
 
-  NSArray * devices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo];
+  NSArray * devices = VideoCaptureDevices();
   for (AVCaptureDevice * device in devices)
     names += [[device localizedName] cStringUsingEncoding:NSUTF8StringEncoding];
 

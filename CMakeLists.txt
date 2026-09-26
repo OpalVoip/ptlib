@@ -2,6 +2,10 @@
 #   cmake -B build -DCMAKE_TOOLCHAIN_FILE=<vcpkg>/scripts/buildsystems/vcpkg.cmake
 # Default manifest features are openssl, expat, sdl2, and jpeg. Other features
 # are listed in vcpkg.json.
+#
+# The default target is Release. Other targets:
+#   cmake --build build --target debug   # Debug tree in build/debug
+#   cmake --build build --target both     # Release and Debug
 cmake_minimum_required(VERSION 3.20)
 
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/version.h" _ptlib_version_h)
@@ -27,6 +31,20 @@ project(PTLib
   VERSION "${PTLIB_VERSION_MAJOR}.${PTLIB_VERSION_MINOR}.${PTLIB_VERSION_PATCH}"
   DESCRIPTION "Portable Tools Library"
   LANGUAGES C CXX)
+
+# Single-config generators (Makefiles, Ninja) have no build type until one is
+# chosen. Release stays the default target; debug and both are added below.
+if(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release CACHE STRING
+    "Build type for the default target. The debug and both targets build Debug separately."
+    FORCE)
+  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
+    Release Debug RelWithDebInfo MinSizeRel)
+endif()
+if(CMAKE_GENERATOR STREQUAL "Ninja Multi-Config" AND NOT CMAKE_DEFAULT_BUILD_TYPE)
+  set(CMAKE_DEFAULT_BUILD_TYPE Release CACHE STRING
+    "Configuration built by default for the Ninja Multi-Config generator." FORCE)
+endif()
 
 if(APPLE)
   enable_language(OBJCXX)
@@ -273,6 +291,13 @@ if(_ptlib_dep_calls)
 else()
   set(PTLIB_CMAKE_DEPENDENCY_CALLS "")
 endif()
+get_property(_ptlib_snippets GLOBAL PROPERTY PTLIB_CMAKE_EXTRA_SNIPPETS)
+if(_ptlib_snippets)
+  list(JOIN _ptlib_snippets "\n" PTLIB_CMAKE_EXTRA_SNIPPETS)
+  string(PREPEND PTLIB_CMAKE_EXTRA_SNIPPETS "find_package(PkgConfig REQUIRED)\n")
+else()
+  set(PTLIB_CMAKE_EXTRA_SNIPPETS "")
+endif()
 configure_package_config_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/cmake/PTLibConfig.cmake.in"
   "${CMAKE_CURRENT_BINARY_DIR}/PTLibConfig.cmake"
@@ -288,3 +313,5 @@ install(FILES
 install(EXPORT PTLibTargets
   NAMESPACE PTLib::
   DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/PTLib")
+
+include(cmake/PTLibBuildVariants.cmake)

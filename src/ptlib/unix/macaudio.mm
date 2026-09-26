@@ -42,6 +42,11 @@
 #ifdef P_MACOSX
   #include <CoreAudio/CoreAudio.h>
   #include <AudioToolbox/AudioConverter.h>
+  // Renamed in the macOS 12 SDK. The new name is an enum, so test the SDK
+  // version rather than defined(), which only sees macros.
+  #if !defined(MAC_OS_VERSION_12_0) || MAC_OS_X_VERSION_MAX_ALLOWED < MAC_OS_VERSION_12_0
+    #define kAudioObjectPropertyElementMain kAudioObjectPropertyElementMaster
+  #endif
 #else
   #include <AudioToolbox/AudioSession.h>
   #include <AudioToolbox/AudioServices.h>
@@ -188,7 +193,7 @@ protected:
 #ifdef P_MACOSX
         UInt32 size = 0;
         static const AudioObjectPropertyAddress DevicesAddr =
-            { kAudioHardwarePropertyDevices, kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyElementMaster };
+            { kAudioHardwarePropertyDevices, kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyElementMain };
         
         if (CHECK_SUCCESS(AudioObjectGetPropertyDataSize,(kAudioObjectSystemObject, &DevicesAddr, 0, NULL, &size))) {
           std::vector<AudioDeviceID> devIDs(size/sizeof(AudioDeviceID));
@@ -196,15 +201,15 @@ protected:
           
           for (size_t i = 0; i < devIDs.size(); ++i) {
             static const AudioObjectPropertyAddress InputStreamsAddr =
-                { kAudioDevicePropertyStreams, kAudioDevicePropertyScopeInput, kAudioObjectPropertyElementMaster };
+                { kAudioDevicePropertyStreams, kAudioDevicePropertyScopeInput, kAudioObjectPropertyElementMain };
             static const AudioObjectPropertyAddress OutputStreamsAddr =
-                { kAudioDevicePropertyStreams, kAudioDevicePropertyScopeOutput, kAudioObjectPropertyElementMaster };
+                { kAudioDevicePropertyStreams, kAudioDevicePropertyScopeOutput, kAudioObjectPropertyElementMain };
             if (CHECK_SUCCESS(AudioObjectGetPropertyDataSize,(devIDs[i],
                                                               dir == Recorder ? &InputStreamsAddr
                                                                               : &OutputStreamsAddr
                                                               , 0, NULL, &size)) && size >= sizeof(AudioStreamID)) {
               static const AudioObjectPropertyAddress DeviceNameAddr =
-                  { kAudioDevicePropertyDeviceName, kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyElementMaster };
+                  { kAudioDevicePropertyDeviceName, kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyElementMain };
               
               char name[100];
               size = sizeof(name);
@@ -217,9 +222,9 @@ protected:
         }
         
         static const AudioObjectPropertyAddress DefaultInputDeviceAddr =
-            { kAudioHardwarePropertyDefaultInputDevice, kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyElementMaster };
+            { kAudioHardwarePropertyDefaultInputDevice, kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyElementMain };
         static const AudioObjectPropertyAddress DefaultOutputDeviceAddr =
-            { kAudioHardwarePropertyDefaultOutputDevice, kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyElementMaster };
+            { kAudioHardwarePropertyDefaultOutputDevice, kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyElementMain };
 
         AudioDeviceID defID;
         size = sizeof(AudioDeviceID);

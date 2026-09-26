@@ -46,7 +46,7 @@
    requires to determine if the pointer is needed any more and should be
    deleted.
  */
-class P_DEPRECATED PSmartObject : public PObject
+class PSmartObject : public PObject
 {
   PCLASSINFO(PSmartObject, PObject);
 
@@ -108,7 +108,7 @@ class P_DEPRECATED PSmartObject : public PObject
    count, then C = B then copies the pointer "object" in thread 2. Thread 1
    then deletes it leaving C pointing to a deleted pointer.
  */
-class P_DEPRECATED PSmartPointer : public PObject
+class PSmartPointer : public PObject
 {
   PCLASSINFO(PSmartPointer, PObject);
 
