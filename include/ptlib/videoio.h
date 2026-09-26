@@ -1378,7 +1378,7 @@ PPLUGIN_STATIC_LOAD(FakeVideo, PVideoInputDevice);
   PPLUGIN_STATIC_LOAD(VideoFile, PVideoInputDevice);
 #endif
 
-#ifdef WIN32
+#if defined(_WIN32) && P_VFW_CAPTURE
   #define P_VIDEO_FOR_WINDOWS_DRIVER "VideoForWindows"
   PPLUGIN_STATIC_LOAD(VideoForWindows, PVideoInputDevice);
 #endif
@@ -1413,13 +1413,11 @@ PCREATE_PLUGIN_DEVICE(PVideoOutputDevice);
 PPLUGIN_STATIC_LOAD(NULLOutput, PVideoOutputDevice);
 
 
-#if P_VFW_CAPTURE
-#if _WIN32
+#if defined(_WIN32)
   #define P_MSWIN_VIDEO_DRIVER "Window"
   #define P_MSWIN_VIDEO_PREFIX "MSWIN"
   #define P_MSWIN_VIDEO_DEVICE(x,y,width,height) P_MSWIN_VIDEO_PREFIX " X=" x " Y=" y " WIDTH=" width " HEIGHT=" height
   PPLUGIN_STATIC_LOAD(Window, PVideoOutputDevice);
-#endif
 #endif
 
 #if P_SDL

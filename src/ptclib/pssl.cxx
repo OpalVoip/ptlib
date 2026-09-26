@@ -117,6 +117,8 @@ extern "C" {
 // On Windows, use a define from the header to guess the API type
 #ifdef _WIN32
   #include <wincrypt.h>
+  /* MinGW's cryptuiapi.h uses LPCPROPSHEETPAGEW without including prsht.h. */
+  #include <prsht.h>
   #include <cryptuiapi.h>
   #undef X509_NAME
   #pragma comment (lib, "crypt32.lib")
@@ -2312,7 +2314,7 @@ bool PSSLContext::SetVerifyFile(const PFilePath & caFile)
 bool PSSLContext::SetVerifySystemDefault()
 {
 #if _WIN32
-    HCERTSTORE hStore = CertOpenSystemStore(NULL, "ROOT");
+    HCERTSTORE hStore = CertOpenSystemStore(0, "ROOT");
     if (hStore != NULL) {
       X509_STORE *store = X509_STORE_new();
       unsigned count = 0;

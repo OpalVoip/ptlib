@@ -38,8 +38,17 @@
 
 #include <share.h>
 #ifdef _WIN32
-#include <WERAPI.H>
-#pragma comment(lib,"wer")
+/* werapi.h only declares WerAddExcludedApplication when _WIN32_WINNT is
+   Vista or later. The default PTLib target is Windows 2000, so provide
+   the import ourselves and link wer. */
+#if defined(_WIN32_WINNT) && (_WIN32_WINNT >= 0x0600)
+#include <werapi.h>
+#else
+extern "C" HRESULT WINAPI WerAddExcludedApplication(PCWSTR pwzExeName, WINBOOL bAllUsers);
+#endif
+#ifdef _MSC_VER
+#pragma comment(lib, "wer")
+#endif
 #endif
 
 

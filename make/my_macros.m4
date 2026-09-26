@@ -585,7 +585,7 @@ case "$target_os" in
 
    mingw* )
       target_os=mingw
-      LIBS="-lwinmm -lwsock32 -lws2_32 -lsnmpapi -lmpr -lcomdlg32 -lgdi32 -lavicap32 -liphlpapi -lole32 -lquartz $LIBS"
+      LIBS="-lwinmm -lwsock32 -lws2_32 -lsnmpapi -lmpr -lcomdlg32 -lgdi32 -lavicap32 -liphlpapi -lole32 -lquartz -lwer $LIBS"
    ;;
 
    * )

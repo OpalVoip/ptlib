@@ -752,10 +752,12 @@ bool PHTTPListener::ListenForHTTP(const PString & interfaces, WORD port, PSocket
     }
   }
 
+#if P_SSL
   if (HasSSLCertificates()) {
     m_sslContext.reset(new PSSLContext());
     ApplySSLCredentials(*m_sslContext);
   }
+#endif
 
   if (atLeastOne)
     m_listenerThread = new PThreadObj<PHTTPListener>(*this, &PHTTPListener::ListenMain, false, "HTTP-Listen");
