@@ -60,6 +60,19 @@ if(NOT DEFINED BUILD_SHARED_LIBS)
   set(BUILD_SHARED_LIBS ON)
 endif()
 
+# make/my_macros.m4 links MinGW and Cygwin DLLs with -shared -Wl,--kill-at.
+# -shared exports every global symbol. --kill-at strips the stdcall @N suffix
+# so the import library matches the undecorated names in the headers.
+# CMake already passes -shared. MSVC exports nothing unless a symbol is
+# marked dllexport or listed in a module definition, and then it writes no
+# import library. WINDOWS_EXPORT_ALL_SYMBOLS is that same export-all link.
+if(MINGW OR CYGWIN)
+  string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,--kill-at")
+  string(APPEND CMAKE_MODULE_LINKER_FLAGS " -Wl,--kill-at")
+elseif(MSVC)
+  set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
+endif()
+
 set(PTLIB_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 
 include(GNUInstallDirs)
