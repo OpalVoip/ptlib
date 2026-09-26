@@ -183,7 +183,13 @@ if(PTLIB_IS_APPLE)
 endif()
 
 if(WIN32)
-  target_link_libraries(ptlib PUBLIC ws2_32 iphlpapi)
+  # MinGW ignores #pragma comment(lib), so the Windows import libraries
+  # those pragmas name are listed here.
+  # mpr: WNetAddConnection. psapi: GetProcessMemoryInfo.
+  # crypt32: certificate store. vfw32: AVIFile.
+  # winmm: wave/mixer/mmio. dnsapi: DnsQuery.
+  target_link_libraries(ptlib PUBLIC
+    ws2_32 iphlpapi wer mpr psapi crypt32 vfw32 winmm dnsapi)
 endif()
 
 add_subdirectory(plugins)

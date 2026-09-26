@@ -46,7 +46,9 @@
   // Accommodate spelling error in windns.h
   enum { DnsSectionAdditional = DnsSectionAddtional };
 
-  #if VER_PRODUCTBUILD < 6000
+  /* Pre-Vista Windows SDKs omit NAPTR. MinGW's ntverp.h still reports
+     build 3790, but its windns.h already typedefs DNS_NAPTR_DATA. */
+  #if !defined(__MINGW32__) && VER_PRODUCTBUILD < 6000
     typedef struct
     {
         WORD            wOrder;

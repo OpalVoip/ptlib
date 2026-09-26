@@ -1356,7 +1356,7 @@ PBoolean PIPSocket::GetInterfaceTable(InterfaceTable & table, PBoolean includeDo
 
 #if P_HAS_IPV6
   PIPRouteTableIPv6 routes;
-#else _WIN32_WINNT_WINXP
+#else // _WIN32_WINNT_WINXP
   PIPRouteTable routes;
 #endif
 

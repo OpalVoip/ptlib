@@ -1595,7 +1595,7 @@ bool PVideoOutputDevice_Window::SetPosition(int x, int y)
 }
 
 
-static void Rotate(PBYTEArray & frameStore, int frameWidth, int frameHeight, unsigned bytesPerPixel, unsigned angle)
+static void Rotate(PBYTEArray & frameStore, int frameWidth, int frameHeight, unsigned bytesPerPixel, int angle)
 {
   PBYTEArray destination(frameStore.GetSize());
 

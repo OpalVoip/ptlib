@@ -484,7 +484,16 @@ public:
       ThrottleBase & operator=(const ThrottleBase & other);
 
       bool CanTrace(int64_t now = 0);
-      operator unsigned() const { return m_currentLevel; }
+      operator unsigned() const
+      {
+        // GCC 16 (MinGW) reports a false -Wstringop-overflow from the inlined
+        // atomic load when this conversion is used as a PTRACE level.
+        unsigned level;
+        P_PUSH_GCC_WARNING("-Wstringop-overflow")
+        level = m_currentLevel.load();
+        P_POP_GCC_WARNING()
+        return level;
+      }
 
       friend ostream & operator<<(ostream & strm, const ThrottleBase & throttle);
 

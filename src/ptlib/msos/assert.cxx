@@ -42,13 +42,11 @@
   {
   }
 
-  #define InternalStackWalk(strm, id)
-
-  #if PTRACING
-    void PTrace::WalkStack(ostream &, PThreadIdentifier)
-    {
-    }
-  #endif // PTRACING
+  // DbgHelp stack walking is the MSVC path below. MinGW still needs this
+  // symbol because PTrace::WalkStack and asserts call it.
+  void PPlatformWalkStack(ostream &, PThreadIdentifier, PUniqueThreadIdentifier, unsigned, bool, bool)
+  {
+  }
 
 #else
 
@@ -480,11 +478,13 @@ LONG WINAPI PExceptionHandler(PEXCEPTION_POINTERS info)
 
   strm << ", when=" << PTime().AsString(PTime::LoggingFormat PTRACE_PARAM(, PTrace::GetTimeZone()));
 
+#ifndef __MINGW32__
   if (info->ContextRecord) {
     PDebugDLL debughelp;
     if (debughelp.Initialise(strm))
       debughelp.WalkStack(strm, GetCurrentThread(), *info->ContextRecord, 0);
   }
+#endif
 
   string msg = strm.str();
 
