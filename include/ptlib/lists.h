@@ -423,7 +423,7 @@ template <class T> class PList : public PAbstractList
     P_POP_MSVC_WARNINGS()
     void erase(const iterator & it) { this->RemoveElement(it.element); }
     void erase(const const_iterator & it) { this->RemoveElement(it.element); }
-    void push_front(const value_type & value) { this->InsertAt(0, new value_type(value)); }
+    void push_front(const value_type & value) { this->Prepend(new value_type(value)); }
     void push_back(const value_type & value) { this->Append(new value_type(value)); }
     void pop_front() { this->RemoveHead(); }
     void pop_back() { this->RemoveTail(); }

@@ -37,6 +37,11 @@
 ///////////////////////////////////////////////////////////////////////////////
 // "Smart" pointers.
 
+// PSmartObject and PSmartPointer are not marked P_DEPRECATED. That attribute
+// applies to the type itself, so Clang warns at every declaration, definition,
+// and use. PSmartPtr still derives from PSmartPointer, and both classes are
+// still compiled and used throughout the library.
+
 /** This is the base class for objects that use the <i>smart pointer</i> system.
    In conjunction with the <code>PSmartPointer</code> class, this class creates
    objects that can have the automatic deletion of the object instance when
@@ -46,7 +51,7 @@
    requires to determine if the pointer is needed any more and should be
    deleted.
  */
-class P_DEPRECATED PSmartObject : public PObject
+class PSmartObject : public PObject
 {
   PCLASSINFO(PSmartObject, PObject);
 
@@ -108,7 +113,7 @@ class P_DEPRECATED PSmartObject : public PObject
    count, then C = B then copies the pointer "object" in thread 2. Thread 1
    then deletes it leaving C pointing to a deleted pointer.
  */
-class P_DEPRECATED PSmartPointer : public PObject
+class PSmartPointer : public PObject
 {
   PCLASSINFO(PSmartPointer, PObject);
 

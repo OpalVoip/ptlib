@@ -107,8 +107,9 @@ PBoolean PPipeChannel::PlatformOpen(const PString & subProgram,
     PX_NewHandle("PPipeChannel m_stderrChildPipe", PMAX(m_stderrChildPipe[0], m_stderrChildPipe[1]));
   }
 
-  // fork to allow us to execute the child
-  m_childPID = vfork();
+  // fork to allow us to execute the child. The child builds arguments and
+  // restores signal handlers before exec, which is not legal after vfork().
+  m_childPID = fork();
 
   if (m_childPID < 0) {
     PTRACE(1, "Could not fork process: errno=" << errno);

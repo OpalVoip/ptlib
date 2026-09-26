@@ -111,7 +111,13 @@ class PSDL_System
   {
     if (m_thread != NULL)
       return false;
-    
+
+    // The worker thread runs the process and then posts e_ForceQuit. SDL
+    // drops events posted before SDL_Init, and a short Main() can finish
+    // before MainLoop() reaches that call.
+    if (::SDL_Init(SDL_INIT_EVENTS) != 0)
+      return false;
+
     m_thread = PThread::Current();
 
     new PThreadObj<PSDL_System>(*this, &PSDL_System::ReturnToApplicationMain, true, PProcess::Current().GetName());

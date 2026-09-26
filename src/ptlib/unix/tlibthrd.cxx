@@ -1024,9 +1024,13 @@ PSemaphore::~PSemaphore()
     if (m_namedSemaphore.ptr != NULL) {
       PAssertWithRetry(sem_close, m_namedSemaphore.ptr);
     }
+    #if !defined(P_MACOSX)
     else if (m_name.IsEmpty())
-  #endif
       PAssertWithRetry(sem_destroy, &m_semaphore);
+    #endif
+  #elif !defined(P_MACOSX)
+    PAssertWithRetry(sem_destroy, &m_semaphore);
+  #endif
 #else
   PAssert(queuedLocks == 0, "Semaphore destroyed with queued locks");
   PAssertWithRetry(pthread_mutex_destroy, &mutex);
@@ -1041,13 +1045,17 @@ void PSemaphore::Reset(unsigned initial, unsigned maximum)
   m_initial = std::min(initial, m_maximum);
 
 #if defined(P_HAS_SEMAPHORES)
-  /* Due to bug in some Linux/Kernel versions, need to clear structure manually, sem_init does not do the job.
-     See http://stackoverflow.com/questions/1832395/sem-timedwait-not-supported-properly-on-redhat-enterprise-linux-5-3-onwards
-     While the above link was for RHEL, seems to happen on some Fedoras as well. */
-  memset(&m_semaphore, 0, sizeof(sem_t));
-
   #if defined(P_HAS_NAMED_SEMAPHORES)
-    if (m_name.IsEmpty() && sem_init(&m_semaphore, 0, m_initial) == 0)
+    // macOS deprecates unnamed semaphores and sem_init() returns ENOSYS.
+    bool useUnnamed = false;
+    #if !defined(P_MACOSX)
+    /* Due to bug in some Linux/Kernel versions, need to clear structure manually, sem_init does not do the job.
+       See http://stackoverflow.com/questions/1832395/sem-timedwait-not-supported-properly-on-redhat-enterprise-linux-5-3-onwards
+       While the above link was for RHEL, seems to happen on some Fedoras as well. */
+    memset(&m_semaphore, 0, sizeof(sem_t));
+    useUnnamed = m_name.IsEmpty() && sem_init(&m_semaphore, 0, m_initial) == 0;
+    #endif
+    if (useUnnamed)
       m_namedSemaphore.ptr = NULL;
     else {
       // Since sem_open and sem_unlink are two operations, there is a small
@@ -1071,7 +1079,7 @@ void PSemaphore::Reset(unsigned initial, unsigned maximum)
       if (!PAssert(m_namedSemaphore.ptr != SEM_FAILED, "Couldn't create named semaphore"))
         m_namedSemaphore.ptr = NULL;
     }
-  #else
+  #elif !defined(P_MACOSX)
     if (m_name.IsEmpty())
       PAssertWithRetry(sem_init, &m_semaphore, 0, m_initial);
   #endif
