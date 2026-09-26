@@ -54,6 +54,8 @@ endif()
 if(PTLIB_V4L2_ENABLED)
   ptlib_add_plugin(v4l2 device/videoinput
     SOURCES vidinput_v4l2/vidinput_v4l2.cxx vidinput_v4l2/vidinput_names.cxx)
+  target_compile_definitions(ptlib_plugin_v4l2 PRIVATE
+    "V4L2_HEADER=\"${PTLIB_V4L2_HEADER}\"")
 endif()
 
 if(PTLIB_BSDVIDEO_ENABLED)
