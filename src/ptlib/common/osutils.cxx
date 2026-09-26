@@ -43,7 +43,7 @@
 #include <ptlib/syslog.h>
 #include <ptclib/random.h>
 #include "../../../version.h"
-#include "../../../revision.h"
+#include <revision.h>
 
 #ifdef _WIN32
   #include <ptlib/msos/ptlib/debstrm.h>

@@ -518,7 +518,6 @@ if errorlevel 1 copy "%(FullPath)"+nul "%(RootDir)%(Directory)%(FileName)"</Comm
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\pprocess.h" />
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\ptime.h" />
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\remconn.h" />
-    <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\resampler.h" />
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\semaphor.h" />
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\serchan.h" />
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\socket.h" />

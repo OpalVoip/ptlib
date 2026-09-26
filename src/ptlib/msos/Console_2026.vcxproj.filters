@@ -846,9 +846,6 @@
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\remconn.h">
       <Filter>Header Files\Android</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\resampler.h">
-      <Filter>Header Files\Android</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\semaphor.h">
       <Filter>Header Files\Android</Filter>
     </ClInclude>

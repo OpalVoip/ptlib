@@ -1,0 +1,97 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "ptlib",
+  "version-semver": "4.0.0-alpha",
+  "description": "Portable Tools Library",
+  "homepage": "https://github.com/opalvoip/ptlib",
+  "builtin-baseline": "ee6a47dac031930715bea2e6dfb9ad60caaa5d83",
+  "dependencies": [
+    {
+      "name": "libiconv",
+      "platform": "windows"
+    }
+  ],
+  "default-features": [
+    "openssl",
+    "expat",
+    "sdl2",
+    "jpeg"
+  ],
+  "features": {
+    "openssl": {
+      "description": "TLS and cipher support via OpenSSL",
+      "dependencies": ["openssl"]
+    },
+    "expat": {
+      "description": "XML support via Expat",
+      "dependencies": ["expat"]
+    },
+    "jpeg": {
+      "description": "JPEG image support",
+      "dependencies": ["libjpeg-turbo"]
+    },
+    "sdl2": {
+      "description": "SDL video output",
+      "dependencies": ["sdl2"]
+    },
+    "ffmpeg": {
+      "description": "FFmpeg video file support",
+      "dependencies": ["ffmpeg"]
+    },
+    "ldap": {
+      "description": "OpenLDAP directory client",
+      "dependencies": ["openldap"]
+    },
+    "sasl": {
+      "description": "Cyrus SASL",
+      "dependencies": ["cyrus-sasl"]
+    },
+    "pcap": {
+      "description": "Packet capture",
+      "dependencies": ["libpcap"]
+    },
+    "gstreamer": {
+      "description": "GStreamer media pipeline",
+      "dependencies": ["gstreamer", "gst-plugins-base"]
+    },
+    "odbc": {
+      "description": "ODBC database access",
+      "dependencies": ["unixodbc"]
+    },
+    "lua": {
+      "description": "Lua scripting",
+      "dependencies": ["lua"]
+    },
+    "aws-sdk": {
+      "description": "AWS Polly and Transcribe",
+      "dependencies": [
+        {
+          "name": "aws-sdk-cpp",
+          "features": ["polly", "transcribe"]
+        }
+      ]
+    },
+    "imagemagick": {
+      "description": "ImageMagick video file support",
+      "dependencies": ["imagemagick"]
+    },
+    "ncurses": {
+      "description": "ncurses console UI",
+      "dependencies": ["ncurses"]
+    },
+    "portaudio": {
+      "description": "PortAudio",
+      "dependencies": ["portaudio"]
+    },
+    "alsa": {
+      "description": "ALSA audio plugin",
+      "supports": "linux",
+      "dependencies": ["alsa"]
+    },
+    "pulseaudio": {
+      "description": "PulseAudio plugin",
+      "supports": "linux",
+      "dependencies": ["pulseaudio"]
+    }
+  }
+}

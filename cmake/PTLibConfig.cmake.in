@@ -1,0 +1,4 @@
+include(CMakeFindDependencyMacro)
+find_dependency(Threads)
+@PTLIB_CMAKE_DEPENDENCY_CALLS@
+include("${CMAKE_CURRENT_LIST_DIR}/PTLibTargets.cmake")

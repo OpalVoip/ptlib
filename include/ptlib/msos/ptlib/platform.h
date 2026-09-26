@@ -109,38 +109,14 @@ static unsigned const P_WINDOWS_DELETE = DELETE;
   #undef min
   #undef max
 
-
-#else
-
-  typedef unsigned char  BYTE;  //  8 bit unsigned integer quantity
-  typedef unsigned short WORD;  // 16 bit unsigned integer quantity
-  typedef unsigned long  DWORD; // 32 bit unsigned integer quantity
-  typedef int            BOOL;  // type returned by expression (i != j)
-
-  #define TRUE 1
-  #define FALSE 0
-
-  #define NEAR __near
-
 #endif
 
 
 // Declaration for exported callback functions to OS
-#if defined(_WIN32)
-  #define PEXPORTED __stdcall
-#elif defined(_WINDOWS)
-  #define PEXPORTED WINAPI __export
-#else
-  #define PEXPORTED __far __pascal
-#endif
+#define PEXPORTED __stdcall
 
-
-// Declaration for static global variables (WIN16 compatibility)
-#if defined(_WIN32)
-  #define PSTATIC
-#else
-  #define PSTATIC __near
-#endif
+// Declaration for static global variables
+#define PSTATIC
 
 
 // Declaration for platform independent architectures

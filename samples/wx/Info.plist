@@ -41,9 +41,6 @@
 	<key>CSResourcesFileMapped</key>
 	<true/>
 
-	<key>LSRequiresCarbon</key>
-	<true/>
-
 	<key>NSHumanReadableCopyright</key>
 	<string>Copyright COPYRIGHT_YEAR COPYRIGHT_HOLDER</string>
 </dict>

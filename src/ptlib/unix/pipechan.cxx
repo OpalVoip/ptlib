@@ -463,7 +463,6 @@ PBoolean PPipeChannel::ReadStandardError(PString & errors, PBoolean wait)
   os_handle = m_stderrChildPipe[0];
   
   PBoolean status = false;
-#ifndef BE_BONELESS
   int available;
   if (ConvertOSError(ioctl(m_stderrChildPipe[0], FIONREAD, &available))) {
     if (available != 0)
@@ -480,7 +479,6 @@ PBoolean PPipeChannel::ReadStandardError(PString & errors, PBoolean wait)
       }
     }
   }
-#endif
 
   return status;
 }
