@@ -3,6 +3,7 @@
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros">
     <PTLibGitRootDir Condition="'$(PTLibGitRootDir)' == ''">$(SolutionDir).git</PTLibGitRootDir>
+    <PTLIBDIR>$(MSBuildThisFileDirectory)..\..\..</PTLIBDIR>
     <EXTERNALDIR Condition="'$(EXTERNALDIR)' == '' AND Exists('$(ProjectDir)..\..\external')">$(ProjectDir)..\..\external</EXTERNALDIR>
     <EXTERNALDIR Condition="'$(EXTERNALDIR)' == '' AND Exists('$(ProjectDir)..\..\..\external')">$(ProjectDir)..\..\..\external</EXTERNALDIR>
     <EXTERNALDIR Condition="'$(EXTERNALDIR)' == '' AND Exists('$(ProjectDir)..\..\..\..\external')">$(ProjectDir)..\..\..\..\external</EXTERNALDIR>
@@ -32,11 +33,14 @@
     <AWS32RELDIR Condition="'$(AWS32RELDIR)' == ''">$(AWSDIR)\install\x32-Release\bin</AWS32RELDIR>
     <AWS64RELDIR Condition="'$(AWS64RELDIR)' == ''">$(AWSDIR)\install\x64-Release\bin</AWS64RELDIR>
     <WXDIR Condition="'$(WXDIR)' == ''">$(EXTERNALDIR)\wxWidgets</WXDIR>
-    <LIB32PATH>$(LUA32DIR);$(OPENSSL32DIR)\bin;$(FFMPEG32DIR)\bin;$(AWS32DBGDIR);$(wxLibOrDllDir);$(VCPKG32DIR)\bin;$(ProjectDir)..\..\Lib</LIB32PATH>
-    <LIB64PATH>$(LUA64DIR);$(OPENSSL64DIR)\bin;$(FFMPEG64DIR)\bin;$(AWS64DBGDIR);$(wxLibOrDllDir);$(VCPKG64DIR)\bin;$(ProjectDir)..\..\Lib</LIB64PATH>
-    <LocalDebuggerEnvironment>PATH=$(LIB64PATH);$(PATH)</LocalDebuggerEnvironment>
+    <LIB32PATH>$(AWS32DBGDIR);$(FFMPEG32DIR)\bin;$(VCPKG32DIR)\bin;$(PTLIBDIR)\Lib</LIB32PATH>
+    <LIB64PATH>$(AWS64DBGDIR);$(FFMPEG64DIR)\bin;$(VCPKG64DIR)\bin;$(PTLIBDIR)\Lib</LIB64PATH>
+    <LocalDebuggerEnvironment>PATH=$(WXDIR)\lib\vc14x_x64_dll;$(LIB64PATH);$(PATH)</LocalDebuggerEnvironment>
   </PropertyGroup>
-  <PropertyGroup />
+  <PropertyGroup>
+    <IncludePath>$(PTLIBDIR)\lib\$(Platform)\include;$(PTLIBDIR)\include;$(VC_IncludePath);$(WindowsSDK_IncludePath)</IncludePath>
+    <LibraryPath>$(PTLIBDIR)\lib;$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
       <DisableSpecificWarnings>26812</DisableSpecificWarnings>
@@ -45,6 +49,10 @@
   <ItemGroup>
     <BuildMacro Include="PTLibGitRootDir">
       <Value>$(PTLibGitRootDir)</Value>
+      <EnvironmentVariable>true</EnvironmentVariable>
+    </BuildMacro>
+    <BuildMacro Include="PTLIBDIR">
+      <Value>$(PTLIBDIR)</Value>
       <EnvironmentVariable>true</EnvironmentVariable>
     </BuildMacro>
     <BuildMacro Include="EXTERNALDIR">
