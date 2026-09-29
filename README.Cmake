@@ -27,6 +27,16 @@ From the top of the PTLib tree:
   cmake --build build
   cmake --install build --prefix /usr/local
 
+Remove the files from that install with:
+
+  cmake --build build --target uninstall
+
+Use the same privileges as the install. A prefix such as /usr/local needs
+sudo on both commands. uninstall reads install_manifest.txt in the build
+tree, so it removes the last prefix this tree was installed to. Empty
+directories created for those files are removed. The prefix itself is left
+in place.
+
 Useful options, passed on the first cmake command:
 
   -DBUILD_SHARED_LIBS=OFF       static library
