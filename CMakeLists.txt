@@ -132,8 +132,17 @@ ptlib_collect_sources(PTLIB_SOURCES)
 
 add_library(ptlib ${PTLIB_SOURCES})
 add_library(PTLib::ptlib ALIAS ptlib)
+# Unix debug libraries are libpt_d, static libraries add _s (libpt_s, libpt_d_s).
+# Windows names are left unchanged.
+set(_ptlib_output_name pt)
+if(NOT WIN32)
+  set(_ptlib_output_name "pt$<$<CONFIG:Debug>:_d>")
+  if(NOT BUILD_SHARED_LIBS)
+    string(APPEND _ptlib_output_name "_s")
+  endif()
+endif()
 set_target_properties(ptlib PROPERTIES
-  OUTPUT_NAME pt
+  OUTPUT_NAME "${_ptlib_output_name}"
   VERSION "${PROJECT_VERSION}"
   SOVERSION "${PTLIB_VERSION_MAJOR}"
   POSITION_INDEPENDENT_CODE ON)
@@ -252,6 +261,16 @@ string(REPLACE "@CXXFLAGS@" "" _ptlib_pc "${_ptlib_pc}")
 string(REPLACE "@LDFLAGS@" "" _ptlib_pc "${_ptlib_pc}")
 string(REPLACE "@LIBS@" "" _ptlib_pc "${_ptlib_pc}")
 string(REPLACE "@CPLUSPLUS_STD@" "-std=c++20" _ptlib_pc "${_ptlib_pc}")
+set(_ptlib_pc_suffix "")
+if(NOT WIN32)
+  if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    string(APPEND _ptlib_pc_suffix "_d")
+  endif()
+  if(NOT BUILD_SHARED_LIBS)
+    string(APPEND _ptlib_pc_suffix "_s")
+  endif()
+endif()
+string(REPLACE "suffix=" "suffix=${_ptlib_pc_suffix}" _ptlib_pc "${_ptlib_pc}")
 
 macro(ptlib_pc_set name enabled)
   set(_pc_value no)
