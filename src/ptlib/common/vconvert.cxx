@@ -116,11 +116,8 @@ class PStandardColourConverter : public PColourConverter
         if (rgbIncrement == 3)
           fmt = redOffset == 0 ? AV_PIX_FMT_RGB24 : AV_PIX_FMT_BGR24;
         else
-#ifdef P_MACOSX
-          fmt = redOffset == 0 ? AV_PIX_FMT_ABGR : AV_PIX_FMT_ARGB;
-#else
+          // RGB32 is stored R,G,B,A and BGR32 is B,G,R,A.
           fmt = redOffset == 0 ? AV_PIX_FMT_RGBA : AV_PIX_FMT_BGRA;
-#endif
       }
     }
 
