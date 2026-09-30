@@ -2693,7 +2693,6 @@ int PSSLChannel::BioRead(char * buf, int len)
 
   switch (GetErrorCode(PChannel::LastReadError)) {
     case PChannel::Interrupted :
-    case PChannel::Unavailable :
       BIO_set_retry_read(m_bio); // Non fatal, keep trying
       break;
     case PChannel::Timeout :
