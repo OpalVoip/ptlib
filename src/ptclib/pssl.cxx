@@ -2894,6 +2894,9 @@ PBoolean PSSLChannel::ConvertOSError(P_INT_PTR libcReturnValue, ErrorGroup group
   if (libcReturnValue >= 0)
     return SetErrorValues(NoError, 0, group);
 
+  if (GetErrorCode() != NoError)
+    return false;
+
   Errors lastError = AccessDenied;
   DWORD osError = SSL_get_error(m_ssl, (int)libcReturnValue);
   if (osError == SSL_ERROR_NONE)
