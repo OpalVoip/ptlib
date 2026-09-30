@@ -132,8 +132,27 @@ ptlib_collect_sources(PTLIB_SOURCES)
 
 add_library(ptlib ${PTLIB_SOURCES})
 add_library(PTLib::ptlib ALIAS ptlib)
+if(BUILD_SHARED_LIBS AND MSVC)
+  target_compile_definitions(ptlib PRIVATE PTLIB_EXPORTS)
+  target_compile_definitions(ptlib INTERFACE PTLIB_SHARED)
+endif()
+# The Visual Studio projects named the x64 libraries ptlib64 / ptlib64d, and
+# ptlib64s / ptlib64sd for the static library, so both configurations can
+# share one directory. Other toolchains keep libpt.
+set(_ptlib_output pt)
+set(_ptlib_output_debug pt)
+if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
+  if(BUILD_SHARED_LIBS)
+    set(_ptlib_output ptlib64)
+    set(_ptlib_output_debug ptlib64d)
+  else()
+    set(_ptlib_output ptlib64s)
+    set(_ptlib_output_debug ptlib64sd)
+  endif()
+endif()
 set_target_properties(ptlib PROPERTIES
-  OUTPUT_NAME pt
+  OUTPUT_NAME "${_ptlib_output}"
+  OUTPUT_NAME_DEBUG "${_ptlib_output_debug}"
   VERSION "${PROJECT_VERSION}"
   SOVERSION "${PTLIB_VERSION_MAJOR}"
   POSITION_INDEPENDENT_CODE ON)
@@ -252,6 +271,7 @@ string(REPLACE "@CXXFLAGS@" "" _ptlib_pc "${_ptlib_pc}")
 string(REPLACE "@LDFLAGS@" "" _ptlib_pc "${_ptlib_pc}")
 string(REPLACE "@LIBS@" "" _ptlib_pc "${_ptlib_pc}")
 string(REPLACE "@CPLUSPLUS_STD@" "-std=c++20" _ptlib_pc "${_ptlib_pc}")
+string(REPLACE "-lpt\${suffix}" "-l${_ptlib_output}\${suffix}" _ptlib_pc "${_ptlib_pc}")
 
 macro(ptlib_pc_set name enabled)
   set(_pc_value no)
