@@ -289,9 +289,19 @@ class PSafeObject : public PObject, PNonCopyable
   //@}
 
 #if PTRACING
-    static atomic<unsigned> m_traceObjectContext;
-    static atomic<unsigned> m_traceObjectLevel;
-    static atomic<unsigned> m_traceDetailLevel;
+    // CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS does not export data symbols. These
+    // are read and written from OPAL, so a shared PTLib must export them.
+#if defined(_MSC_VER) && defined(PTLIB_EXPORTS)
+#define P_SAFE_DATA_EXPORT __declspec(dllexport)
+#elif defined(_MSC_VER) && defined(PTLIB_SHARED)
+#define P_SAFE_DATA_EXPORT __declspec(dllimport)
+#else
+#define P_SAFE_DATA_EXPORT
+#endif
+    static P_SAFE_DATA_EXPORT atomic<unsigned> m_traceObjectContext;
+    static P_SAFE_DATA_EXPORT atomic<unsigned> m_traceObjectLevel;
+    static P_SAFE_DATA_EXPORT atomic<unsigned> m_traceDetailLevel;
+#undef P_SAFE_DATA_EXPORT
     unsigned GetTraceLogLevel() const { return m_traceContextIdentifier == m_traceObjectContext ? m_traceObjectLevel : m_traceDetailLevel; }
 #endif // PTRACING
 

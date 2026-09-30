@@ -132,17 +132,35 @@ ptlib_collect_sources(PTLIB_SOURCES)
 
 add_library(ptlib ${PTLIB_SOURCES})
 add_library(PTLib::ptlib ALIAS ptlib)
-# Unix debug libraries are libpt_d, static libraries add _s (libpt_s, libpt_d_s).
-# Windows names are left unchanged.
-set(_ptlib_output_name pt)
-if(NOT WIN32)
-  set(_ptlib_output_name "pt$<$<CONFIG:Debug>:_d>")
-  if(NOT BUILD_SHARED_LIBS)
-    string(APPEND _ptlib_output_name "_s")
+if(BUILD_SHARED_LIBS AND MSVC)
+  target_compile_definitions(ptlib PRIVATE PTLIB_EXPORTS)
+  target_compile_definitions(ptlib INTERFACE PTLIB_SHARED)
+endif()
+# Unix: libpt, debug libpt_d, static libpt_s / libpt_d_s.
+# 64-bit MSVC matches the Visual Studio projects: ptlib64 / ptlib64d, and
+# ptlib64s / ptlib64sd for the static library, so both configurations can
+# share one directory. Other Windows toolchains keep pt.
+set(_ptlib_output pt)
+set(_ptlib_output_debug pt)
+if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
+  if(BUILD_SHARED_LIBS)
+    set(_ptlib_output ptlib64)
+    set(_ptlib_output_debug ptlib64d)
+  else()
+    set(_ptlib_output ptlib64s)
+    set(_ptlib_output_debug ptlib64sd)
+  endif()
+elseif(NOT WIN32)
+  if(BUILD_SHARED_LIBS)
+    set(_ptlib_output_debug pt_d)
+  else()
+    set(_ptlib_output pt_s)
+    set(_ptlib_output_debug pt_d_s)
   endif()
 endif()
 set_target_properties(ptlib PROPERTIES
-  OUTPUT_NAME "${_ptlib_output_name}"
+  OUTPUT_NAME "${_ptlib_output}"
+  OUTPUT_NAME_DEBUG "${_ptlib_output_debug}"
   VERSION "${PROJECT_VERSION}"
   SOVERSION "${PTLIB_VERSION_MAJOR}"
   POSITION_INDEPENDENT_CODE ON)
@@ -261,16 +279,11 @@ string(REPLACE "@CXXFLAGS@" "" _ptlib_pc "${_ptlib_pc}")
 string(REPLACE "@LDFLAGS@" "" _ptlib_pc "${_ptlib_pc}")
 string(REPLACE "@LIBS@" "" _ptlib_pc "${_ptlib_pc}")
 string(REPLACE "@CPLUSPLUS_STD@" "-std=c++20" _ptlib_pc "${_ptlib_pc}")
-set(_ptlib_pc_suffix "")
-if(NOT WIN32)
-  if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    string(APPEND _ptlib_pc_suffix "_d")
-  endif()
-  if(NOT BUILD_SHARED_LIBS)
-    string(APPEND _ptlib_pc_suffix "_s")
-  endif()
+set(_ptlib_pc_lib "${_ptlib_output}")
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+  set(_ptlib_pc_lib "${_ptlib_output_debug}")
 endif()
-string(REPLACE "suffix=" "suffix=${_ptlib_pc_suffix}" _ptlib_pc "${_ptlib_pc}")
+string(REPLACE "-lpt\${suffix}" "-l${_ptlib_pc_lib}" _ptlib_pc "${_ptlib_pc}")
 
 macro(ptlib_pc_set name enabled)
   set(_pc_value no)

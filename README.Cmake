@@ -4,8 +4,9 @@ Building PTLib with CMake
 CMake builds PTLib on macOS, Windows, Linux, MinGW-w64, Android, and iOS.
 The library target is ptlib, and consumers use the imported target PTLib::ptlib.
 On macOS and Linux the shared library is libpt, a debug build is libpt_d, and a
-static build adds _s (libpt_s or libpt_d_s). Windows names are unchanged, so the
-DLL is still pt.dll.
+static build adds _s (libpt_s or libpt_d_s). 64-bit MSVC installs ptlib64
+(ptlib64d for Debug); a static build is ptlib64s and ptlib64sd. Other Windows
+toolchains keep pt.dll.
 
 Requirements:
   CMake 3.20 or newer
