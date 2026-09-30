@@ -44,7 +44,10 @@ Useful options, passed on the first cmake command:
 
   -DBUILD_SHARED_LIBS=OFF       static library
   -DPTLIB_BUILD_SAMPLES=ON      sample programs
-  -DPTLIB_MINSIZE=ON            smaller feature set
+  -DPTLIB_MINSIZE=ON            smaller library (configure --enable-minsize)
+  -DPTLIB_OPALMIN=ON            omit FTP, Telnet, ILS, LDAP, SOAP,
+                                XML-RPC, SNMP, RFC1155, vCard, XMPP,
+                                SASL, serial, modem, and internet mail
   -DPTLIB_SSL=ON                require OpenSSL
   -DCMAKE_BUILD_TYPE=Debug      single-config generators (Ninja, Makefiles)
 
@@ -89,6 +92,9 @@ expat, sdl2, and jpeg. Point CMake at a vcpkg checkout:
 Extra features, comma separated:
 
   -DVCPKG_MANIFEST_FEATURES=ffmpeg,ldap,ncurses
+
+-DPTLIB_MINSIZE=ON skips the default openssl, expat, and sdl2 features.
+jpeg is still installed. That matches configure --enable-minsize.
 
 On Windows, vcpkg also supplies libiconv.
 

@@ -27,6 +27,26 @@ elseif(_ptlib_build_type STREQUAL "BetaCode")
   string(APPEND PTLIB_VERSION "-beta")
 endif()
 
+# configure --enable-minsize. Set before project() so a vcpkg manifest does
+# not install the default features that this switch turns off. jpeg stays,
+# matching configure.ac, which does not disable it.
+if(PTLIB_MINSIZE)
+  set(VCPKG_MANIFEST_NO_DEFAULT_FEATURES ON)
+  if(NOT VCPKG_MANIFEST_FEATURES)
+    set(VCPKG_MANIFEST_FEATURES jpeg)
+  endif()
+endif()
+if(PTLIB_OPALMIN)
+  set(_ptlib_vcpkg_features "${VCPKG_MANIFEST_FEATURES}")
+  if(NOT _ptlib_vcpkg_features AND DEFINED ENV{VCPKG_MANIFEST_FEATURES})
+    set(_ptlib_vcpkg_features "$ENV{VCPKG_MANIFEST_FEATURES}")
+  endif()
+  string(REPLACE "," ";" _ptlib_vcpkg_features "${_ptlib_vcpkg_features}")
+  list(REMOVE_ITEM _ptlib_vcpkg_features ldap sasl)
+  set(VCPKG_MANIFEST_FEATURES "${_ptlib_vcpkg_features}")
+  unset(_ptlib_vcpkg_features)
+endif()
+
 project(PTLib
   VERSION "${PTLIB_VERSION_MAJOR}.${PTLIB_VERSION_MINOR}.${PTLIB_VERSION_PATCH}"
   DESCRIPTION "Portable Tools Library"

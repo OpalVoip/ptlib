@@ -1,6 +1,7 @@
 include(CMakeDependentOption)
 
 option(PTLIB_MINSIZE "Disable lesser-used features, matching --enable-minsize" OFF)
+option(PTLIB_OPALMIN "Omit modules OPAL does not use: FTP, Telnet, ILS, LDAP, SOAP, XML-RPC, SNMP, RFC1155, vCard, XMPP, SASL, serial, modem, and internet mail" OFF)
 option(PTLIB_BUILD_SAMPLES "Build the sample programs" OFF)
 option(PTLIB_TRACING "Include PTRACE logging" ON)
 cmake_dependent_option(PTLIB_TRACE_INSTANCE "Include object instance ids in PTRACE" ON "PTLIB_TRACING" OFF)
@@ -19,10 +20,86 @@ endif()
 
 # Defaults match configure.ac: most features on, with a short always-off list,
 # and --enable-minsize flipping the bulky optional pieces off.
+# ASN, audio, plugins, and AWS SDK stay available. An existing build directory
+# keeps its cached options, so turning the switch on later replaces that set.
+# After the switch has been applied, individual options can be changed again.
 if(PTLIB_MINSIZE)
   set(_on OFF)
+  set(_pkg OFF)
 else()
   set(_on ON)
+  set(_pkg AUTO)
+endif()
+# opalmin leaves the OPAL feature set in place and only drops the modules
+# listed below. ILS is built with LDAP. RFC1155 is built with SNMP.
+# XMPP is the Jabber sources.
+if(PTLIB_OPALMIN)
+  set(_keep OFF)
+  set(_opal_pkg OFF)
+else()
+  set(_keep ${_on})
+  set(_opal_pkg ${_pkg})
+endif()
+
+set(_ptlib_opalmin_options
+  FTP TELNET VCARD SNMP XMLRPC SOAP JABBER POP3SMTP SERIAL MODEM)
+set(_ptlib_opalmin_packages OPENLDAP SASL)
+
+set(_ptlib_minsize_options
+  URL HTTP CONFIG_FILE HTTPFORMS HTTPSVC SSDP VIDEO WAVFILE VIDFILE VCARD
+  NAT STUN STUNSRVR PIPECHAN DTMF SOCKS FTP SNMP TELNET CLI REMCONN SERIAL
+  POP3SMTP TEXT_TO_SPEECH VXML VXML_VIDEO XMLRPC SOAP JABBER TURN)
+set(_ptlib_minsize_packages
+  SSL EXPAT OPENLDAP SASL PCAP FFMPEG SDL GSTREAMER ODBC LUA V8 IMAGEMAGICK
+  RESOLVER)
+
+if(PTLIB_MINSIZE AND NOT PTLIB_MINSIZE_PREV AND DEFINED CACHE{PTLIB_URL})
+  foreach(name IN LISTS _ptlib_minsize_options)
+    set(PTLIB_${name} OFF CACHE BOOL "Disabled by PTLIB_MINSIZE" FORCE)
+  endforeach()
+  foreach(name IN LISTS _ptlib_minsize_packages)
+    set(PTLIB_${name} OFF CACHE STRING "Disabled by PTLIB_MINSIZE" FORCE)
+  endforeach()
+elseif(NOT PTLIB_MINSIZE AND PTLIB_MINSIZE_PREV)
+  foreach(name IN LISTS _ptlib_minsize_options)
+    if(PTLIB_OPALMIN AND name IN_LIST _ptlib_opalmin_options)
+      continue()
+    endif()
+    set(PTLIB_${name} ON CACHE BOOL "Restored when PTLIB_MINSIZE was turned off" FORCE)
+  endforeach()
+  foreach(name IN LISTS _ptlib_minsize_packages)
+    if(PTLIB_OPALMIN AND name IN_LIST _ptlib_opalmin_packages)
+      continue()
+    endif()
+    set(PTLIB_${name} AUTO CACHE STRING "Restored when PTLIB_MINSIZE was turned off" FORCE)
+  endforeach()
+endif()
+set(PTLIB_MINSIZE_PREV "${PTLIB_MINSIZE}" CACHE INTERNAL
+  "Previous PTLIB_MINSIZE value, so a later change can reset cached features")
+
+if(PTLIB_OPALMIN AND NOT PTLIB_OPALMIN_PREV AND DEFINED CACHE{PTLIB_FTP})
+  foreach(name IN LISTS _ptlib_opalmin_options)
+    set(PTLIB_${name} OFF CACHE BOOL "Disabled by PTLIB_OPALMIN" FORCE)
+  endforeach()
+  foreach(name IN LISTS _ptlib_opalmin_packages)
+    set(PTLIB_${name} OFF CACHE STRING "Disabled by PTLIB_OPALMIN" FORCE)
+  endforeach()
+elseif(NOT PTLIB_OPALMIN AND PTLIB_OPALMIN_PREV AND NOT PTLIB_MINSIZE)
+  foreach(name IN LISTS _ptlib_opalmin_options)
+    set(PTLIB_${name} ON CACHE BOOL "Restored when PTLIB_OPALMIN was turned off" FORCE)
+  endforeach()
+  foreach(name IN LISTS _ptlib_opalmin_packages)
+    set(PTLIB_${name} AUTO CACHE STRING "Restored when PTLIB_OPALMIN was turned off" FORCE)
+  endforeach()
+endif()
+set(PTLIB_OPALMIN_PREV "${PTLIB_OPALMIN}" CACHE INTERNAL
+  "Previous PTLIB_OPALMIN value, so a later change can reset cached features")
+
+if(PTLIB_MINSIZE)
+  message(STATUS "PTLIB_MINSIZE: lesser-used modules are disabled")
+endif()
+if(PTLIB_OPALMIN)
+  message(STATUS "PTLIB_OPALMIN: FTP, Telnet, ILS, LDAP, SOAP, XML-RPC, SNMP, RFC1155, vCard, XMPP, SASL, serial, modem, and internet mail are omitted")
 endif()
 
 function(ptlib_feature name doc default)
@@ -56,7 +133,7 @@ ptlib_feature(MEDIAFILE "Media file support" ON)
 ptlib_feature(APPSHARE "Application sharing support" OFF "PTLIB_VIDEO")
 ptlib_feature(SHM_VIDEO "Shared-memory video devices" OFF)
 ptlib_feature(SHM_AUDIO "Shared-memory audio devices" OFF)
-ptlib_feature(VCARD "vCard support" ${_on} "PTLIB_URL")
+ptlib_feature(VCARD "vCard support" ${_keep} "PTLIB_URL")
 ptlib_feature(ASN "ASN encode/decode support" ON)
 ptlib_feature(NAT "NAT traversal support" ${_on})
 ptlib_feature(STUN "STUN support" ${_on} "PTLIB_NAT")
@@ -64,20 +141,21 @@ ptlib_feature(STUNSRVR "STUN server support" ${_on} "PTLIB_NAT")
 ptlib_feature(PIPECHAN "PPipeChannel support" ${_on})
 ptlib_feature(DTMF "DTMF support" ${_on})
 ptlib_feature(SOCKS "SOCKS support" ${_on})
-ptlib_feature(FTP "FTP support" ${_on})
-ptlib_feature(SNMP "SNMP support" ${_on} "PTLIB_ASN")
-ptlib_feature(TELNET "Telnet support" ${_on})
+ptlib_feature(FTP "FTP support" ${_keep})
+ptlib_feature(SNMP "SNMP support" ${_keep} "PTLIB_ASN")
+ptlib_feature(TELNET "Telnet support" ${_keep})
 ptlib_feature(CLI "Command line interpreter" ${_on})
 ptlib_feature(REMCONN "Remote connection support" ${_on} "PTLIB_CONFIG_FILE;PTLIB_PIPECHAN")
-ptlib_feature(SERIAL "Serial port support" ${_on})
-ptlib_feature(POP3SMTP "POP3/SMTP support" ${_on})
+ptlib_feature(SERIAL "Serial port support" ${_keep})
+ptlib_feature(MODEM "Modem support" ${_keep} "PTLIB_SERIAL")
+ptlib_feature(POP3SMTP "POP3/SMTP support" ${_keep})
 ptlib_feature(TEXT_TO_SPEECH "Text-to-speech support" ${_on})
 ptlib_feature(SPEECH_RECOGNITION "Speech recognition support" ON)
 ptlib_feature(VXML "VXML support" ${_on} "PTLIB_HTTP;PTLIB_SCRIPTS")
 ptlib_feature(VXML_VIDEO "VXML video support" ${_on} "PTLIB_VXML")
-ptlib_feature(XMLRPC "XML-RPC support" ${_on} "PTLIB_HTTP")
-ptlib_feature(SOAP "SOAP support" ${_on} "PTLIB_HTTP")
-ptlib_feature(JABBER "Jabber support" ${_on})
+ptlib_feature(XMLRPC "XML-RPC support" ${_keep} "PTLIB_HTTP")
+ptlib_feature(SOAP "SOAP support" ${_keep} "PTLIB_HTTP")
+ptlib_feature(JABBER "Jabber support" ${_keep})
 ptlib_feature(TURN "TURN support" ${_on} "PTLIB_STUN")
 ptlib_feature(PLUGINMGR "Plugin manager" ON)
 ptlib_feature(PLUGINS "Device plugins" ON "PTLIB_PLUGINMGR")
@@ -92,16 +170,10 @@ function(ptlib_tristate name doc default)
   set_property(CACHE PTLIB_${name} PROPERTY STRINGS AUTO ON OFF)
 endfunction()
 
-if(PTLIB_MINSIZE)
-  set(_pkg OFF)
-else()
-  set(_pkg AUTO)
-endif()
-
 ptlib_tristate(SSL "OpenSSL" ${_pkg})
 ptlib_tristate(EXPAT "Expat XML parser" ${_pkg})
-ptlib_tristate(OPENLDAP "OpenLDAP" ${_pkg})
-ptlib_tristate(SASL "Cyrus SASL" ${_pkg})
+ptlib_tristate(OPENLDAP "OpenLDAP" ${_opal_pkg})
+ptlib_tristate(SASL "Cyrus SASL" ${_opal_pkg})
 ptlib_tristate(PCAP "libpcap" ${_pkg})
 ptlib_tristate(FFMPEG "FFmpeg" ${_pkg})
 ptlib_tristate(SDL "SDL2" ${_pkg})
@@ -835,7 +907,7 @@ set(_simple
   EXCEPTIONS AUDIO VIDEO URL HTTP CONFIG_FILE HTTPFORMS HTTPSVC SSDP
   CYPHER VARTYPE GUID SCRIPTS SPOOLDIR SYSTEMLOG CHANNEL_UTILS TIMERS
   NETWORKING WAVFILE VIDFILE MEDIAFILE APPSHARE VCARD ASN NAT STUN TURN STUNSRVR
-  PIPECHAN DTMF SOCKS FTP SNMP TELNET CLI REMCONN SERIAL POP3SMTP
+  PIPECHAN DTMF SOCKS FTP SNMP TELNET CLI REMCONN SERIAL MODEM POP3SMTP
   TEXT_TO_SPEECH SPEECH_RECOGNITION VXML VXML_VIDEO XMLRPC SOAP JABBER)
 foreach(feature IN LISTS _simple)
   if(PTLIB_${feature})

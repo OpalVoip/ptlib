@@ -308,6 +308,7 @@
 #undef P_ODBC
 #undef P_ODBC_DEFINES_WINDOWS_TYPES
 #undef P_SERIAL
+#undef P_MODEM
 #undef P_POP3SMTP
 #undef P_CONFIG_FILE
 #undef P_CYPHER
