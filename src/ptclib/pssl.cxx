@@ -2824,7 +2824,6 @@ int PSSLChannel::BioWrite(const char * buf, int len)
 
   switch (GetErrorCode(PChannel::LastWriteError)) {
     case PChannel::Interrupted :
-    case PChannel::Unavailable :
       BIO_set_retry_write(m_bio); // Non fatal, keep trying
       break;
     case PChannel::Timeout:
