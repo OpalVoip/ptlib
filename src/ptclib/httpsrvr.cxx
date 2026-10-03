@@ -716,6 +716,33 @@ bool PHTTPListener::ListenForHTTP(WORD port, PSocket::Reusability reuse, unsigne
 
 bool PHTTPListener::ListenForHTTP(const PString & interfaces, WORD port, PSocket::Reusability reuse, unsigned queueSize)
 {
+  std::set<PIPAddress> ifaces;
+
+  if (interfaces.empty()) {
+    ifaces.insert(PIPAddress::GetAny());
+#if P_HAS_IPV6
+    ifaces.insert(PIPAddress::GetAny(6));
+#endif
+  }
+  else {
+    for (const PString & iface : interfaces.Tokenise(',')) {
+      PIPAddress ip;
+      if (PIPSocket::GetHostAddress(iface, ip))
+        ifaces.insert(ip);
+      else {
+        PTRACE(2, "Invalid interface address " << iface.ToLiteral());
+      }
+    }
+    if (ifaces.empty())
+      return false;
+  }
+
+  return ListenForHTTP(ifaces, port, reuse, queueSize);
+}
+
+
+bool PHTTPListener::ListenForHTTP(const std::set<PIPAddress> & interfaces, WORD port, PSocket::Reusability reuse, unsigned queueSize)
+{
   if (m_listenerInterfaces == interfaces && m_listenerPort == port && IsListening())
     return true;
 
@@ -723,32 +750,18 @@ bool PHTTPListener::ListenForHTTP(const PString & interfaces, WORD port, PSocket
   m_listenerInterfaces = interfaces;
   m_listenerPort = port;
 
-  PStringArray ifaces = interfaces.Tokenise(',');
-  if (ifaces.IsEmpty()) {
-    ifaces.AppendString("0.0.0.0");
-#if P_HAS_IPV6
-    ifaces.AppendString("[::]");
-#endif
-  }
-
   bool atLeastOne = false;
-  for (PINDEX i = 0; i < ifaces.GetSize(); ++i) {
-    PIPSocket::Address binding;
-    if (PIPSocket::GetHostAddress(ifaces[i], binding)) {
-      PTCPSocket * listener = new PTCPSocket(m_listenerPort);
-      if (listener->Listen(binding, queueSize, 0, reuse)) {
-        m_listenerPort = listener->GetPort();
-        PTRACE(3, "Listening for HTTP on " << listener->GetLocalAddress());
-        m_httpListeningSockets.Append(listener);
-        atLeastOne = true;
-      }
-      else {
-        PTRACE(2, "Listen on port " << binding << ':' << listener->GetPort() << " failed: " << listener->GetErrorText());
-        delete listener;
-      }
+  for (const auto & binding : interfaces) {
+    PTCPSocket * listener = new PTCPSocket(m_listenerPort);
+    if (listener->Listen(binding, queueSize, 0, reuse)) {
+      m_listenerPort = listener->GetPort();
+      PTRACE(3, "Listening for HTTP on " << listener->GetLocalAddress());
+      m_httpListeningSockets.Append(listener);
+      atLeastOne = true;
     }
     else {
-      PTRACE(2, "Invalid interface address \"" << ifaces[i] << '"');
+      PTRACE(2, "Listen on port " << binding << ':' << listener->GetPort() << " failed: " << listener->GetErrorText());
+      delete listener;
     }
   }
 
