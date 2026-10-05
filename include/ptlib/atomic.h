@@ -42,6 +42,32 @@
 using std::atomic;
 #define PAtomicEnum std::atomic
 
+#if __cplusplus < 202002L
+
+#include <memory>
+
+namespace std {
+  // It is a mystery to me that it took until C++20 to have this class!
+  template <typename T> struct atomic<std::shared_ptr<T>>
+  {
+    atomic() noexcept = default;
+    atomic(std::nullptr_t) noexcept { }
+    atomic(const atomic & ptr) = delete;
+    void operator=(const atomic & ptr) = delete;
+    __inline void operator=(const std::shared_ptr<T> & ptr) { std::atomic_store(&m_ptr, ptr); }
+    __inline void store(const std::shared_ptr<T> & ptr) { std::atomic_store(&m_ptr, ptr); }
+    __inline std::shared_ptr<T> load() const { return std::atomic_load(&m_ptr); }
+    __inline operator std::shared_ptr<T>() const { return std::atomic_load(&m_ptr); }
+    __inline std::shared_ptr<T> exchange(const std::shared_ptr<T> & ptr) { return std::atomic_exchange(&m_ptr, ptr); }
+    __inline bool compare_exchange_strong(std::shared_ptr<T> & expected, std::shared_ptr<T> desired) { return atomic_compare_exchange_strong(&m_ptr, &expected, desired); }
+    __inline bool compare_exchange_weak(std::shared_ptr<T> & expected, std::shared_ptr<T> desired) { return atomic_compare_exchange_weak(&m_ptr, &expected, desired); }
+  private:
+    std::shared_ptr<T> m_ptr;
+  };
+}
+
+#endif // __cplusplus < 202002L
+
 #else
 
 #ifdef P_ATOMICITY_HEADER
