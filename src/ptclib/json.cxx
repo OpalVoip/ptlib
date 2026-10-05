@@ -1413,7 +1413,7 @@ bool PRESTResourceBase::OnCommand(PHTTPRequest & request)
   else if (restRequest.m_noCommand && PHTTPResource::OnCommand(request))
     return true;
   else if (request.code == PHTTP::NoContent)
-    return false;
+    return request.SendResponse();
   else if (request.code / 100 == 2)
     return request.SendResponse(restRequest.GetAbstractResponse().AsString());
 
