@@ -187,6 +187,19 @@ bool PVideoInputDevice_VideoFile::InternalReadFrameData(BYTE * frame)
 }
 
 
+PBoolean PVideoInputDevice_VideoFile::SetFrameRate(unsigned rate)
+{
+  PWriteWaitAndSignal lock(m_mutex);
+  if (m_file != NULL && m_file->IsStillImage()) {
+    // Repeat the same picture at the call's rate. A moving file keeps its own.
+    m_fixedFrameRate = 0;
+    return PVideoDevice::SetFrameRate(rate);
+  }
+
+  return PVideoInputEmulatedDevice::SetFrameRate(rate);
+}
+
+
 ///////////////////////////////////////////////////////////////////////////////
 // PVideoOutputDevice_VideoFile
 

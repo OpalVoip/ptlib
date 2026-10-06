@@ -1,7 +1,7 @@
 include(CMakeDependentOption)
 
 option(PTLIB_MINSIZE "Disable lesser-used features, matching --enable-minsize" OFF)
-option(PTLIB_OPALMIN "Omit modules OPAL does not use: FTP, Telnet, ILS, LDAP, SOAP, XML-RPC, SNMP, RFC1155, vCard, XMPP, SASL, serial, modem, and internet mail" OFF)
+option(PTLIB_OPALMIN "Omit modules OPAL does not use: FTP, Telnet, ILS, LDAP, SOAP, XML-RPC, SNMP, RFC1155, vCard, XMPP, SASL, serial, remote connection, modem, and internet mail" OFF)
 option(PTLIB_BUILD_SAMPLES "Build the sample programs" OFF)
 option(PTLIB_TRACING "Include PTRACE logging" ON)
 cmake_dependent_option(PTLIB_TRACE_INSTANCE "Include object instance ids in PTRACE" ON "PTLIB_TRACING" OFF)
@@ -42,7 +42,7 @@ else()
 endif()
 
 set(_ptlib_opalmin_options
-  FTP TELNET VCARD SNMP XMLRPC SOAP JABBER POP3SMTP SERIAL MODEM)
+  FTP TELNET VCARD SNMP XMLRPC SOAP JABBER POP3SMTP SERIAL REMCONN MODEM)
 set(_ptlib_opalmin_packages OPENLDAP SASL)
 
 set(_ptlib_minsize_options
@@ -99,7 +99,7 @@ if(PTLIB_MINSIZE)
   message(STATUS "PTLIB_MINSIZE: lesser-used modules are disabled")
 endif()
 if(PTLIB_OPALMIN)
-  message(STATUS "PTLIB_OPALMIN: FTP, Telnet, ILS, LDAP, SOAP, XML-RPC, SNMP, RFC1155, vCard, XMPP, SASL, serial, modem, and internet mail are omitted")
+  message(STATUS "PTLIB_OPALMIN: FTP, Telnet, ILS, LDAP, SOAP, XML-RPC, SNMP, RFC1155, vCard, XMPP, SASL, serial, remote connection, modem, and internet mail are omitted")
 endif()
 
 function(ptlib_feature name doc default)
@@ -145,7 +145,7 @@ ptlib_feature(FTP "FTP support" ${_keep})
 ptlib_feature(SNMP "SNMP support" ${_keep} "PTLIB_ASN")
 ptlib_feature(TELNET "Telnet support" ${_keep})
 ptlib_feature(CLI "Command line interpreter" ${_on})
-ptlib_feature(REMCONN "Remote connection support" ${_on} "PTLIB_CONFIG_FILE;PTLIB_PIPECHAN")
+ptlib_feature(REMCONN "Remote connection support" ${_keep} "PTLIB_CONFIG_FILE;PTLIB_PIPECHAN")
 ptlib_feature(SERIAL "Serial port support" ${_keep})
 ptlib_feature(MODEM "Modem support" ${_keep} "PTLIB_SERIAL")
 ptlib_feature(POP3SMTP "POP3/SMTP support" ${_keep})

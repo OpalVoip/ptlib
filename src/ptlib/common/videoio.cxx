@@ -1775,7 +1775,7 @@ bool PVideoInputDeviceIndirect::SetFrameInfoConverter(const PVideoFrameInfo & in
   if (!m_actualDevice->SetFrameInfoConverter(info))
     return false;
 
-  *static_cast<PVideoFrameInfo *>(this) = *m_actualDevice;
+  CopyDeliveredFrameInfo();
   return true;
 }
 
@@ -1789,7 +1789,7 @@ PBoolean PVideoInputDeviceIndirect::SetColourFormatConverter(const PString & col
   if (!m_actualDevice->SetColourFormatConverter(colourFormat))
     return false;
 
-  *static_cast<PVideoFrameInfo *>(this) = *m_actualDevice;
+  CopyDeliveredFrameInfo();
   return true;
 }
 
@@ -1803,8 +1803,27 @@ PBoolean PVideoInputDeviceIndirect::SetFrameSizeConverter(unsigned width, unsign
   if (!m_actualDevice->SetFrameSizeConverter(width, height, resizeMode))
     return false;
 
-  *static_cast<PVideoFrameInfo *>(this) = *m_actualDevice;
+  CopyDeliveredFrameInfo();
   return true;
+}
+
+
+void PVideoInputDeviceIndirect::CopyDeliveredFrameInfo()
+{
+  if (m_actualDevice == NULL)
+    return;
+
+  // The file keeps its native size. The size and colour delivered to the
+  // caller are the converter output, which GetFrameSize/GetColourFormat report.
+  *static_cast<PVideoFrameInfo *>(this) = *m_actualDevice;
+
+  unsigned width, height;
+  m_actualDevice->GetFrameSize(width, height);
+  PVideoFrameInfo::SetFrameSize(width, height);
+
+  PString colourFormat = m_actualDevice->GetColourFormat();
+  if (!colourFormat.IsEmpty())
+    PVideoFrameInfo::SetColourFormat(colourFormat);
 }
 
 

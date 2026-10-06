@@ -187,8 +187,8 @@ set_target_properties(ptlib PROPERTIES
 
 target_include_directories(ptlib
   PUBLIC
-    "$<BUILD_INTERFACE:${PTLIB_SOURCE_DIR}/include>"
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>"
+    "$<BUILD_INTERFACE:${PTLIB_SOURCE_DIR}/include>"
     "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
 
 target_compile_definitions(ptlib
