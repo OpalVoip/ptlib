@@ -1651,6 +1651,12 @@ public:
     PSocket::Reusability reuse = PSocket::CanReuseAddress,  ///< Can/Cant listen more than once.
     unsigned queueSize = 10     ///< Number of pending accepts that may be queued.
   );
+  bool ListenForHTTP(
+    const std::set<PIPAddress> & interfaces, ///< Set of interfaces to listen on.
+    WORD port,                  ///< Port to listen on, zero picks a random one
+    PSocket::Reusability reuse = PSocket::CanReuseAddress,  ///< Can/Cant listen more than once.
+    unsigned queueSize = 10     ///< Number of pending accepts that may be queued.
+  );
 
   /// Shut down the listener socket, it's thread, and all threads in the pool.
   void ShutdownListeners();
@@ -1712,13 +1718,13 @@ protected:
   class SSLChannel;
   PAutoPtr<PSSLContext> m_sslContext;
 #endif
-  PString            m_listenerInterfaces;
-  WORD               m_listenerPort;
-  PThread          * m_listenerThread;
-  PSocketList        m_httpListeningSockets;
-  PList<PHTTPServer> m_httpServers;
-  PDECLARE_MUTEX(    m_httpServersMutex);
-  ThreadPool         m_threadPool;
+  std::set<PIPAddress> m_listenerInterfaces;
+  WORD                 m_listenerPort;
+  PThread            * m_listenerThread;
+  PSocketList          m_httpListeningSockets;
+  PList<PHTTPServer>   m_httpServers;
+  PDECLARE_MUTEX(      m_httpServersMutex);
+  ThreadPool           m_threadPool;
 };
 
 
