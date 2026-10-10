@@ -1113,7 +1113,9 @@
 #endif
 
 
-#if defined(_MSC_VER) && P_LIBJPEG
+/* CMake/vcpkg supply libjpeg via imported targets; @LIBJPEG_DIR@ is only
+   filled by the classic MSWIN finder. */
+#if defined(_MSC_VER) && P_LIBJPEG && (defined(P_LIBJPEG_WIN64) || defined(P_LIBJPEG_WIN32))
   #pragma include_alias(<jpeglib.h>, <@LIBJPEG_DIR@/include/jpeglib.h>)
 
   #pragma include_alias("jconfig.h", "@LIBJPEG_DIR@/include/jconfig.h")
@@ -1201,7 +1203,9 @@
   #define P_GSTREAMER 1
 #endif
 
-#if defined(_MSC_VER) && defined(P_GSTREAMER)
+/* CMake/vcpkg supply GStreamer via imported targets; @GSTREAMER*_DIR@ is only
+   filled by the classic MSWIN finder. */
+#if defined(_MSC_VER) && defined(P_GSTREAMER) && (defined(P_GSTREAMER_WIN64) || defined(P_GSTREAMER_WIN32))
   #if P_GSTREAMER_1_0_API
     #define P_GSTREAMER_VERSTR       "1.0"
     #define P_GSTREAMER_DIRSTR       "@GSTREAMER1_DIR@"

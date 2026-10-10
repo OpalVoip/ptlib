@@ -46,7 +46,7 @@
   extern"C" {
     #include <jpeglib.h>
   };
-  #ifdef _MSC_VER
+  #ifdef P_LIBJPEG_LIBRARY
     #pragma comment(lib, P_LIBJPEG_LIBRARY)
   #endif
 #endif
