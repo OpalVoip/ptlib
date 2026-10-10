@@ -28,6 +28,10 @@
 #ifndef _PTLIB_CONFIG_H
 #define _PTLIB_CONFIG_H
 
+// CMake defines this. The blocks below that mention @DIR@ are for the Visual
+// Studio projects, which substitute those paths. CMake passes the headers and
+// libraries on the command line instead.
+#undef P_CMAKE
 
 #undef    PTLIB_MAJOR
 #undef    PTLIB_MINOR
@@ -375,7 +379,7 @@
   #define P_PCAP 1
 #endif
 
-#if defined(_MSC_VER) && defined(P_PCAP)
+#if defined(_MSC_VER) && defined(P_PCAP) && !defined(P_CMAKE)
   #pragma include_alias(<pcap/pcap.h>, <@PCAP_DIR@/include/pcap/pcap.h>)
   #pragma include_alias(<pcap/bpf.h>, <@PCAP_DIR@/include/pcap/bpf.h>)
   #pragma include_alias(<pcap-stdinc.h>, <@PCAP_DIR@/include/pcap-stdinc.h>)
@@ -411,7 +415,7 @@
   #define P_SSL 1
 #endif
 
-#if defined(_MSC_VER) && P_SSL && !(defined(P_SSL_VCPKG32) || defined(P_SSL_VCPKG64))
+#if defined(_MSC_VER) && P_SSL && !defined(P_CMAKE) && !(defined(P_SSL_VCPKG32) || defined(P_SSL_VCPKG64))
 
   #if P_64BIT
 
@@ -605,7 +609,7 @@
   #define P_LUA 1
 #endif
 
-#if defined(_MSC_VER) && defined(P_LUA)
+#if defined(_MSC_VER) && defined(P_LUA) && !defined(P_CMAKE)
   #if defined(P_64BIT)
     #define P_LUA_INCLUDE(inc) include_alias(<inc>, <@LUA_DIR_WIN64@/include/inc>)
     #undef P_LUA_LIBRARY64
@@ -679,7 +683,7 @@
       #endif
     #endif
 
-    #if defined(P_V8)
+    #if defined(P_V8) && !defined(P_CMAKE)
       #pragma include_alias(<v8.h>, <@V8_DIR@/include/v8.h>)
       #pragma include_alias("v8config.h", "@V8_DIR@/include/v8config.h")
       #pragma include_alias("v8-platform.h", "@V8_DIR@/include/v8-platform.h")
@@ -719,7 +723,7 @@
   #define P_EXPAT 1
 #endif
 
-#if defined(_MSC_VER) && P_EXPAT
+#if defined(_MSC_VER) && P_EXPAT && !defined(P_CMAKE)
 
   #if P_EXPAT_BUILD
     #pragma include_alias(<expat.h>, <@EXPAT_BUILD_DIR@/lib/expat.h>)
@@ -774,7 +778,7 @@
   #define P_SASL 1
 #endif
 
-#if defined(_MSC_VER) && P_SASL
+#if defined(_MSC_VER) && P_SASL && !defined(P_CMAKE)
 
   #pragma include_alias(<sasl/sasl.h>, <@SASL_DIR@/include/sasl.h>)
 
@@ -800,7 +804,7 @@
   #define P_LDAP 1
 #endif
 
-#if defined(_MSC_VER) && P_LDAP
+#if defined(_MSC_VER) && P_LDAP && !defined(P_CMAKE)
 
   #pragma include_alias(<ldap.h>,          <@LDAP_DIR@/include/ldap.h>)
   #pragma include_alias(<lber.h>,          <@LDAP_DIR@/include/lber.h>)
@@ -868,7 +872,7 @@
   #define P_SDL P_SDL_WIN32
 #endif
 
-#if defined(_MSC_VER) && P_SDL
+#if defined(_MSC_VER) && P_SDL && !defined(P_CMAKE)
   #define P_SDL_INCLUDE(inc) include_alias(<inc>, <@SDL_DIR@/include/inc>)
   #pragma P_SDL_INCLUDE(SDL.h)
   #pragma P_SDL_INCLUDE(SDL_main.h)
@@ -1059,7 +1063,7 @@
     #define P_FFMPEG_FULL 1
   #endif
 
-  #ifdef _MSC_VER
+  #if defined(_MSC_VER) && defined(P_FFMPEG_LIBDIR)
     #define P_AVFORMAT_LIB   P_FFMPEG_LIBDIR "avformat.lib"
     #define P_AVCODEC_LIB    P_FFMPEG_LIBDIR "avcodec.lib"
     #define P_AVUTIL_LIB     P_FFMPEG_LIBDIR "avutil.lib"
@@ -1078,7 +1082,7 @@
   #undef P_IMAGEMAGICK
 #endif
 
-#if defined(_MSC_VER) && P_IMAGEMAGICK
+#if defined(_MSC_VER) && P_IMAGEMAGICK && !defined(P_CMAKE)
   #pragma include_alias(<MagickWand/MagickWand.h>, <@IMAGEMAGICK_DIR@/include/MagickWand/MagickWand.h>)
 #define P_IMAGEMAGICK_LIB "@IMAGEMAGICK_DIR@/lib/CORE_RL_MagickWand_.lib"
 #endif
@@ -1108,7 +1112,7 @@
 #endif
 
 
-#if defined(_MSC_VER) && P_LIBJPEG
+#if defined(_MSC_VER) && P_LIBJPEG && !defined(P_CMAKE)
   #pragma include_alias(<jpeglib.h>, <@LIBJPEG_DIR@/include/jpeglib.h>)
 
   #pragma include_alias("jconfig.h", "@LIBJPEG_DIR@/include/jconfig.h")
@@ -1175,7 +1179,7 @@
 #undef P_MEDIALIB
 #undef P_IPP
 
-#if defined(_MSC_VER) && defined(P_IPP)
+#if defined(_MSC_VER) && defined(P_IPP) && !defined(P_CMAKE)
   #define P_IPP_INCLUDE(inc) include_alias(<inc>, <@IPP_DIR@/include/inc>)
   #pragma P_IPP_INCLUDE(ippcc.h)
 #endif
@@ -1196,7 +1200,7 @@
   #define P_GSTREAMER 1
 #endif
 
-#if defined(_MSC_VER) && defined(P_GSTREAMER)
+#if defined(_MSC_VER) && defined(P_GSTREAMER) && !defined(P_CMAKE)
   #if P_GSTREAMER_1_0_API
     #define P_GSTREAMER_VERSTR       "1.0"
     #define P_GSTREAMER_DIRSTR       "@GSTREAMER1_DIR@"
@@ -1621,7 +1625,7 @@
   #endif
 #endif
 
-#if defined(P_AWS_SDK) && !defined(P_AWS_SDK_VCPKG)
+#if defined(P_AWS_SDK) && !defined(P_AWS_SDK_VCPKG) && !defined(P_CMAKE)
   #if defined(_MSC_VER)
     #define P_AWS_SDK_LIBDIR(module) "@AWS_SDK_DIR@/" AWS_SDK_SUBDIR "/bin/aws-cpp-sdk-" ## #module ## ".lib"
   #elif __cplusplus < 201103L

@@ -75,7 +75,7 @@ struct PCookedFrameHeader {
 #endif
 
 
-#if _MSC_VER
+#ifdef P_PCAP_LIBRARY1
   #pragma comment(lib, P_PCAP_LIBRARY1)
   #pragma comment(lib, P_PCAP_LIBRARY2)
 #endif

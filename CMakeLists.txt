@@ -148,6 +148,10 @@ file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/include/revision.h"
 #endif
 ")
 
+# The config header's MSVC include_alias paths belong to the Visual Studio
+# projects. This build passes headers and libraries on the command line.
+ptlib_define(P_CMAKE 1)
+
 ptlib_write_config_header(
   "${PTLIB_SOURCE_DIR}/include/ptlib_config.h.in"
   "${CMAKE_CURRENT_BINARY_DIR}/include/ptlib_config.h")
