@@ -119,7 +119,13 @@ static VideoDevice * CreateDeviceWithDefaults(PString & adjustedDeviceName,
     if (devices.IsEmpty())
       return NULL;
 
-    adjustedDeviceName = devices[0];
+    adjustedDeviceName = devices[0]; // Default to first device, but prefer one with "webcam" in the name
+    for (PINDEX i = 0; i < devices.GetSize(); ++i) {
+      if (PCaselessString(devices[i]).Find("webcam") != P_MAX_INDEX) {
+        adjustedDeviceName = devices[i];
+        break;
+      }
+    }
   }
   else if (adjustedDriverName.IsEmpty() && adjustedDeviceName.Find(PPluginServiceDescriptor::SeparatorChar) != P_MAX_INDEX) {
     adjustedDeviceName.Split(PPluginServiceDescriptor::SeparatorChar, adjustedDriverName, adjustedDeviceName);
@@ -1337,7 +1343,8 @@ PVideoInputDevice * PVideoInputDevice::CreateOpenedDevice(const PString & driver
   if (device == NULL)
     return NULL;
 
-  PTRACE(4, device, "Found video input device: " << device->GetClassName());
+  PTRACE(4, device, "Found video input device: "
+         << adjustedDeviceName.ToLiteral() << " (" << device->GetClassName() << ')');
   if (device->Open(adjustedDeviceName, startImmediate))
     return device;
 
