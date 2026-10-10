@@ -81,6 +81,14 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
+# MSVC defaults __cplusplus to 199711L/201703L unless this is set. PTLib's
+# atomic.h polyfill for std::atomic<std::shared_ptr> is gated on that macro,
+# so without this it redefines the C++20 specialization from <memory>.
+# /FS serialises writes to a shared vc*.pdb under parallel Debug compiles.
+if(MSVC)
+  add_compile_options(/Zc:__cplusplus /FS)
+endif()
+
 if(NOT DEFINED BUILD_SHARED_LIBS)
   set(BUILD_SHARED_LIBS ON)
 endif()
