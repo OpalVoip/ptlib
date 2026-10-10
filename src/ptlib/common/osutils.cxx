@@ -34,6 +34,7 @@
 #include <algorithm>
 
 #include <ctype.h>
+#include <sstream>
 #include <ptlib/pfactory.h>
 #include <ptlib/id_generator.h>
 #include <ptlib/ipsock.h>
@@ -2970,8 +2971,34 @@ static int SignalsToHandle[] = {
   0
 };
 
+static void AppendCrashLog(const char * text);
+
 void HandleTerminate()
 {
+  // OpenPhone has no console, and this handler used to abort before anything
+  // was written down. Copy the active exception into the crash log first.
+  std::string text("std::terminate: ");
+  try {
+    std::exception_ptr eptr = std::current_exception();
+    if (!eptr)
+      text += "no current exception";
+    else {
+      try {
+        std::rethrow_exception(eptr);
+      }
+      catch (const std::exception & e) {
+        text += e.what();
+      }
+      catch (...) {
+        text += "non-standard exception";
+      }
+    }
+  }
+  catch (...) {
+    text += "could not read exception";
+  }
+  AppendCrashLog(text.c_str());
+
   PTRACE(2, "PTLib", "Received std::terminate()");
   std::abort(); // Dump core
 }
@@ -3007,6 +3034,65 @@ void PProcess::RemoveRunTimeSignalHandlers()
 
 
 static atomic<bool> InSignalHandler(false);
+
+static FILE * OpenCrashLog(const char * mode)
+{
+#ifdef _WIN32
+  char exe[MAX_PATH];
+  DWORD length = GetModuleFileNameA(NULL, exe, MAX_PATH);
+  if (length > 0 && length < MAX_PATH) {
+    char * slash = strrchr(exe, '\\');
+    if (slash != NULL) {
+      slash[1] = '\0';
+      char path[MAX_PATH];
+      if (snprintf(path, sizeof(path), "%sptlib-crash.log", exe) < (int)sizeof(path)) {
+        FILE * file = fopen(path, mode);
+        if (file != NULL)
+          return file;
+      }
+    }
+  }
+#endif
+  return fopen("ptlib-crash.log", mode);
+}
+
+
+static void AppendCrashLog(const char * text)
+{
+  if (text == NULL || text[0] == '\0')
+    return;
+
+  FILE * file = OpenCrashLog("a");
+  if (file == NULL)
+    return;
+
+  fputs(text, file);
+  if (text[strlen(text)-1] != '\n')
+    fputc('\n', file);
+  fflush(file);
+  fclose(file);
+}
+
+
+void PProcess::ResetCrashLog()
+{
+  FILE * file = OpenCrashLog("w");
+  if (file != NULL)
+    fclose(file);
+}
+
+
+void PProcess::CrashMark(const char * where)
+{
+  if (where == NULL)
+    where = "";
+
+  PTime now;
+  PString stamp = now.AsString(PTime::LoggingFormat);
+  PString line(PString::Printf, "%s %s", stamp.GetPointer(), where);
+  AppendCrashLog(line);
+}
+
 
 void PProcess::AsynchronousRunTimeSignal(int signal, PProcessIdentifier source)
 {
@@ -3060,7 +3146,15 @@ void PProcess::AsynchronousRunTimeSignal(int signal, PProcessIdentifier source)
                             sigmsg, GetRunTimeSignalName(signal), tid, uid);
       if (length > 0 && fwrite(buffer, 1, length, stderr) >= (size_t)length)
         couldNotWrite = "";
+      AppendCrashLog(buffer);
     }
+
+#if PTRACING
+    std::ostringstream crash;
+    crash << "stack:\n";
+    PTrace::WalkStack(crash);
+    AppendCrashLog(crash.str().c_str());
+#endif
 
     PSystemLog log(PSystemLog::Fatal);
     log << "Caught " << sigmsg << " (" << GetRunTimeSignalName(signal) << "),"
@@ -3445,12 +3539,14 @@ void PThread::InternalThreadMain()
   }
   catch (const std::exception & e) {
     std::ostringstream msg;
-    msg << "in thread " << *this;
+    msg << "in thread " << *this << ": " << e.what();
+    AppendCrashLog(msg.str().c_str());
     PAssertException(msg.str().c_str(), &e);
   }
   catch (...) {
     std::ostringstream msg;
-    msg << "in thread " << *this;
+    msg << "in thread " << *this << ": non-standard exception";
+    AppendCrashLog(msg.str().c_str());
     PAssertException(msg.str().c_str(), NULL);
   }
 #else

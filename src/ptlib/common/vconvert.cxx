@@ -2086,21 +2086,14 @@ bool PStandardColourConverter::YUV420PtoRGB(const BYTE * srcFrameBuffer,
 #endif // P_FFMPEG_SWSCALE
 
   unsigned srcPixpos[4] = { 0, 1, planeWidth, planeWidth + 1 };
-  unsigned dstPixpos[4];
-
-  if (m_verticalFlip) {
-    scanLinePtrRGB -= scanLineSizeRGB; // We do two scan lines at a time
-    dstPixpos[0] = (unsigned)scanLineSizeRGB;
-    dstPixpos[1] =  (unsigned)scanLineSizeRGB+rgbIncrement;
-    dstPixpos[2] = 0;
-    dstPixpos[3] = rgbIncrement;
-  }
-  else {
-    dstPixpos[0] = 0;
-    dstPixpos[1] = rgbIncrement;
-    dstPixpos[2] = (unsigned)scanLineSizeRGB;
-    dstPixpos[3] = (unsigned)scanLineSizeRGB+rgbIncrement;
-  }
+  // Signed: a bottom-up display makes scanLineSizeRGB negative, and an
+  // unsigned offset wraps that to a 4GB write past the frame buffer.
+  int dstPixpos[4] = {
+    0,
+    (int)rgbIncrement,
+    scanLineSizeRGB,
+    scanLineSizeRGB + (int)rgbIncrement
+  };
 
   scanLineSizeRGB *= 2;
 

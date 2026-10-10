@@ -422,6 +422,267 @@ static bool AssertAction(int c, const char * msg)
 }
 
 
+enum {
+  CrashDialogCopyId = 1100,
+  CrashDialogTextId = 1101,
+  CrashDialogCopiedId = 1102
+};
+
+struct CrashDialogInfo
+{
+  const wchar_t * m_text;
+  bool            m_finished;
+  int             m_result;
+  HICON           m_copyIcon;
+};
+
+
+static HICON CreateCopyIcon()
+{
+  const int size = 32;
+  HDC screen = GetDC(NULL);
+  HDC dc = CreateCompatibleDC(screen);
+  HBITMAP colour = CreateCompatibleBitmap(screen, size, size);
+  HBITMAP mask = CreateBitmap(size, size, 1, 1, NULL);
+  HGDIOBJ previous = SelectObject(dc, colour);
+
+  RECT background = { 0, 0, size, size };
+  HBRUSH face = CreateSolidBrush(GetSysColor(COLOR_BTNFACE));
+  FillRect(dc, &background, face);
+  DeleteObject(face);
+
+  HPEN pen = CreatePen(PS_SOLID, 2, GetSysColor(COLOR_BTNTEXT));
+  HGDIOBJ previousPen = SelectObject(dc, pen);
+  HGDIOBJ previousBrush = SelectObject(dc, GetStockObject(NULL_BRUSH));
+  Rectangle(dc, 12, 4, 28, 20);
+  SelectObject(dc, GetStockObject(WHITE_BRUSH));
+  Rectangle(dc, 4, 12, 20, 28);
+  SelectObject(dc, previousBrush);
+  SelectObject(dc, previousPen);
+  DeleteObject(pen);
+  SelectObject(dc, previous);
+
+  HDC maskDc = CreateCompatibleDC(screen);
+  HGDIOBJ previousMask = SelectObject(maskDc, mask);
+  PatBlt(maskDc, 0, 0, size, size, BLACKNESS);
+  SelectObject(maskDc, previousMask);
+  DeleteDC(maskDc);
+  DeleteDC(dc);
+  ReleaseDC(NULL, screen);
+
+  ICONINFO info;
+  memset(&info, 0, sizeof(info));
+  info.fIcon = TRUE;
+  info.hbmColor = colour;
+  info.hbmMask = mask;
+  HICON icon = CreateIconIndirect(&info);
+  DeleteObject(colour);
+  DeleteObject(mask);
+  return icon;
+}
+
+
+static void CopyCrashText(HWND dialog, CrashDialogInfo * info)
+{
+  if (info == NULL || info->m_text == NULL || !OpenClipboard(dialog))
+    return;
+
+  EmptyClipboard();
+  SIZE_T bytes = (wcslen(info->m_text) + 1) * sizeof(wchar_t);
+  HGLOBAL memory = GlobalAlloc(GMEM_MOVEABLE, bytes);
+  if (memory != NULL) {
+    void * destination = GlobalLock(memory);
+    if (destination != NULL) {
+      memcpy(destination, info->m_text, bytes);
+      GlobalUnlock(memory);
+      if (SetClipboardData(CF_UNICODETEXT, memory) == NULL)
+        GlobalFree(memory);
+    }
+    else
+      GlobalFree(memory);
+  }
+  CloseClipboard();
+
+  HWND edit = GetDlgItem(dialog, CrashDialogTextId);
+  if (edit != NULL)
+    SendMessageW(edit, EM_SETSEL, 0, -1);
+  HWND copied = GetDlgItem(dialog, CrashDialogCopiedId);
+  if (copied != NULL)
+    SetWindowTextW(copied, L"Copied");
+}
+
+
+static void FinishCrashDialog(HWND dialog, CrashDialogInfo * info, int result)
+{
+  if (info != NULL) {
+    info->m_result = result;
+    info->m_finished = true;
+  }
+  DestroyWindow(dialog);
+}
+
+
+static LRESULT CALLBACK CrashDialogProc(HWND dialog, UINT message, WPARAM wParam, LPARAM lParam)
+{
+  CrashDialogInfo * info = (CrashDialogInfo *)GetWindowLongPtrW(dialog, GWLP_USERDATA);
+  switch (message) {
+    case WM_NCCREATE :
+      SetWindowLongPtrW(dialog, GWLP_USERDATA, (LONG_PTR)((CREATESTRUCTW *)lParam)->lpCreateParams);
+      return DefWindowProcW(dialog, message, wParam, lParam);
+
+    case WM_COMMAND :
+      switch (LOWORD(wParam)) {
+        case CrashDialogCopyId :
+        case CrashDialogCopiedId :
+          CopyCrashText(dialog, info);
+          return 0;
+        case IDABORT :
+        case IDRETRY :
+        case IDIGNORE :
+        case IDOK :
+          FinishCrashDialog(dialog, info, LOWORD(wParam));
+          return 0;
+      }
+      break;
+
+    case WM_CLOSE :
+      FinishCrashDialog(dialog, info, info != NULL && GetDlgItem(dialog, IDABORT) != NULL ? IDIGNORE : IDOK);
+      return 0;
+
+    case WM_DESTROY :
+      if (info != NULL && info->m_copyIcon != NULL) {
+        DestroyIcon(info->m_copyIcon);
+        info->m_copyIcon = NULL;
+      }
+      return 0;
+  }
+
+  return DefWindowProcW(dialog, message, wParam, lParam);
+}
+
+
+static std::wstring CrashDialogText(const wchar_t * text)
+{
+  std::wstring formatted;
+  if (text == NULL)
+    return formatted;
+
+  // The edit control treats only CR LF as a line break. Stack walks use LF.
+  for (const wchar_t * p = text; *p != L'\0'; ++p) {
+    if (*p == L'\n' && (formatted.empty() || formatted.back() != L'\r'))
+      formatted += L'\r';
+    formatted += *p;
+  }
+  return formatted;
+}
+
+
+static int ShowCrashDialog(const wchar_t * text, const wchar_t * title, bool choices)
+{
+  static bool registered = false;
+  static const wchar_t className[] = L"PTLibCrashDialog";
+  HINSTANCE instance = GetModuleHandleW(NULL);
+  std::wstring formatted = CrashDialogText(text);
+  if (!registered) {
+    WNDCLASSW windowClass;
+    memset(&windowClass, 0, sizeof(windowClass));
+    windowClass.lpfnWndProc = CrashDialogProc;
+    windowClass.hInstance = instance;
+    windowClass.hCursor = LoadCursor(NULL, IDC_ARROW);
+    windowClass.hbrBackground = (HBRUSH)(COLOR_BTNFACE + 1);
+    windowClass.lpszClassName = className;
+    registered = RegisterClassW(&windowClass) != 0 || GetLastError() == ERROR_CLASS_ALREADY_EXISTS;
+  }
+
+  CrashDialogInfo info;
+  info.m_text = formatted.c_str();
+  info.m_finished = false;
+  info.m_result = choices ? IDIGNORE : IDOK;
+  info.m_copyIcon = CreateCopyIcon();
+
+  const int width = 760;
+  const int height = 520;
+  HWND dialog = CreateWindowExW(WS_EX_DLGMODALFRAME,
+                                className,
+                                title != NULL ? title : L"PTLib",
+                                WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_VISIBLE,
+                                (GetSystemMetrics(SM_CXSCREEN) - width) / 2,
+                                (GetSystemMetrics(SM_CYSCREEN) - height) / 2,
+                                width,
+                                height,
+                                NULL,
+                                NULL,
+                                instance,
+                                &info);
+  if (dialog == NULL) {
+    if (info.m_copyIcon != NULL)
+      DestroyIcon(info.m_copyIcon);
+    return MessageBoxW(NULL, info.m_text, title, choices ? MB_ABORTRETRYIGNORE|MB_ICONHAND|MB_TASKMODAL
+                                                         : MB_OK|MB_ICONHAND|MB_TASKMODAL);
+  }
+
+  RECT client;
+  GetClientRect(dialog, &client);
+  const int margin = 12;
+  const int buttonHeight = 36;
+  const int buttonTop = client.bottom - margin - buttonHeight;
+  HFONT font = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
+  HFONT fixed = CreateFontW(-15, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+                            OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
+                            FIXED_PITCH | FF_MODERN, L"Consolas");
+
+  HWND edit = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", info.m_text,
+                              WS_CHILD | WS_VISIBLE | WS_VSCROLL | WS_HSCROLL |
+                                ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL | ES_AUTOHSCROLL,
+                              margin, margin,
+                              client.right - 2 * margin, buttonTop - 2 * margin,
+                              dialog, (HMENU)(INT_PTR)CrashDialogTextId, instance, NULL);
+  SendMessageW(edit, WM_SETFONT, (WPARAM)(fixed != NULL ? fixed : font), TRUE);
+
+  HWND copy = CreateWindowW(L"BUTTON", L"",
+                            WS_CHILD | WS_VISIBLE | BS_ICON | WS_TABSTOP,
+                            margin, buttonTop, buttonHeight, buttonHeight,
+                            dialog, (HMENU)(INT_PTR)CrashDialogCopyId, instance, NULL);
+  if (info.m_copyIcon != NULL)
+    SendMessageW(copy, BM_SETIMAGE, IMAGE_ICON, (LPARAM)info.m_copyIcon);
+
+  HWND copied = CreateWindowW(L"BUTTON", L"Copy to clipboard",
+                              WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON,
+                              margin + buttonHeight + 8, buttonTop, 150, buttonHeight,
+                              dialog, (HMENU)(INT_PTR)CrashDialogCopiedId, instance, NULL);
+  SendMessageW(copied, WM_SETFONT, (WPARAM)font, TRUE);
+
+  const int actionIds[3] = { choices ? IDABORT : IDOK, choices ? IDRETRY : 0, choices ? IDIGNORE : 0 };
+  const wchar_t * actionText[3] = { choices ? L"Abort" : L"OK", L"Retry", L"Ignore" };
+  int actionCount = choices ? 3 : 1;
+  const int actionWidth = 88;
+  int actionLeft = client.right - margin - actionCount * actionWidth;
+  for (int i = 0; i < actionCount; ++i) {
+    HWND button = CreateWindowW(L"BUTTON", actionText[i],
+                                WS_CHILD | WS_VISIBLE | WS_TABSTOP | (i == 0 ? BS_DEFPUSHBUTTON : BS_PUSHBUTTON),
+                                actionLeft, buttonTop, actionWidth - 8, buttonHeight,
+                                dialog, (HMENU)(INT_PTR)actionIds[i], instance, NULL);
+    SendMessageW(button, WM_SETFONT, (WPARAM)font, TRUE);
+    actionLeft += actionWidth;
+  }
+
+  SendMessageW(edit, EM_SETSEL, 0, -1);
+  SetForegroundWindow(dialog);
+
+  MSG message;
+  while (!info.m_finished && GetMessageW(&message, NULL, 0, 0) > 0) {
+    if (!IsDialogMessageW(dialog, &message)) {
+      TranslateMessage(&message);
+      DispatchMessageW(&message);
+    }
+  }
+
+  if (fixed != NULL)
+    DeleteObject(fixed);
+  return info.m_result;
+}
+
+
 void PPlatformAssertFunc(const PDebugLocation & PTRACE_PARAM(location), const char * msg, char defaultAction)
 {
 #if PTRACING
@@ -432,9 +693,9 @@ void PPlatformAssertFunc(const PDebugLocation & PTRACE_PARAM(location), const ch
       return;
 
   else if (PProcess::Current().IsGUIProcess()) {
-    PVarString boxMsg = msg;
-    PVarString boxTitle = PProcess::Current().GetName();
-    AssertAction(MessageBox(NULL, boxMsg, boxTitle, MB_ABORTRETRYIGNORE|MB_ICONHAND|MB_TASKMODAL), msg);
+    PWideString boxMsg(msg != NULL ? msg : "");
+    PWideString boxTitle(PProcess::Current().GetName());
+    AssertAction(ShowCrashDialog(boxMsg, boxTitle, true), msg);
   }
   else {
     do {
@@ -497,9 +758,9 @@ LONG WINAPI PExceptionHandler(PEXCEPTION_POINTERS info)
     PTrace::Begin(0, NULL, 0, NULL, "PException") << msg << PTrace::End;
 #endif
     if (PProcess::Current().IsGUIProcess()) {
-      PVarString boxMsg = msg;
-      PVarString boxTitle = PProcess::Current().GetName();
-      MessageBox(NULL, boxMsg, boxTitle, MB_OK | MB_ICONHAND | MB_TASKMODAL);
+      PWideString boxMsg(msg.c_str());
+      PWideString boxTitle(PProcess::Current().GetName());
+      ShowCrashDialog(boxMsg, boxTitle, false);
     }
     else {
       cerr << msg << endl;

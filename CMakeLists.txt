@@ -8,6 +8,11 @@
 #   cmake --build build --target both     # Release and Debug
 cmake_minimum_required(VERSION 3.20)
 
+# A machine-wide "vcpkg integrate install" notices vcpkg.json and, with
+# manifest mode off, prints a warning on every MSBuild invocation. CMake
+# selects the libraries, so the generated projects do not use that integration.
+list(APPEND CMAKE_VS_GLOBALS "VcpkgEnabled=false")
+
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/version.h" _ptlib_version_h)
 string(REGEX MATCH "#define MAJOR_VERSION ([0-9]+)" _ "${_ptlib_version_h}")
 set(PTLIB_VERSION_MAJOR "${CMAKE_MATCH_1}")
