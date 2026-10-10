@@ -86,17 +86,18 @@ vcpkg
 -----
 
 vcpkg.json lists the optional libraries. The default features are openssl,
-expat, and sdl2. Point CMake at a vcpkg checkout:
+expat, sdl2, and ffmpeg. Point CMake at a vcpkg checkout:
 
   cmake -S . -B build "-DCMAKE_TOOLCHAIN_FILE=<vcpkg>/scripts/buildsystems/vcpkg.cmake"
 
 Extra features, comma separated:
 
-  -DVCPKG_MANIFEST_FEATURES=ffmpeg,ldap,ncurses
+  -DVCPKG_MANIFEST_FEATURES=ldap,ncurses
 
--DPTLIB_MINSIZE=ON skips the default openssl, expat, and sdl2 features.
-That matches configure --enable-minsize. Still-image files (BMP, JPEG, PNG)
-and JPEG/MJPEG colour conversion use FFmpeg when that feature is enabled.
+-DPTLIB_MINSIZE=ON skips the default openssl, expat, sdl2, and ffmpeg
+features. That matches configure --enable-minsize. Still-image files (BMP,
+JPEG, PNG) and JPEG/MJPEG colour conversion use FFmpeg when it is enabled
+(PTLIB_FFMPEG=AUTO uses it when the library is present).
 
 Windows does not use libiconv; character conversion uses the Win32 APIs.
 

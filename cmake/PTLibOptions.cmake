@@ -409,9 +409,10 @@ ptlib_pkg_probe(OPENLDAP ldap)
 ptlib_pkg_probe(SASL libsasl2)
 ptlib_pkg_probe(PCAP libpcap)
 
-# vcpkg's ffmpeg port exposes a FindFFMPEG module (variables and, when the
-# module creates them, FFmpeg:: imported targets). Config packages that
-# already provide those targets are accepted first.
+# vcpkg's ffmpeg port ships FindFFMPEG.cmake (variables only; no FFmpeg::
+# targets). Config packages that already provide those targets are preferred.
+# The variable fallback must be INTERFACE IMPORTED: a plain INTERFACE library
+# cannot carry build/vcpkg_installed paths (CMake rejects them on export).
 function(ptlib_probe_ffmpeg)
   ptlib_wants(FFMPEG _want)
   if(NOT _want OR PTLIB_FFMPEG_FOUND)
@@ -442,15 +443,16 @@ function(ptlib_probe_ffmpeg)
   endif()
   if(FFMPEG_FOUND AND FFMPEG_LIBRARIES AND FFMPEG_INCLUDE_DIRS)
     if(NOT TARGET PTLib_ffmpeg)
-      add_library(PTLib_ffmpeg INTERFACE)
-      target_include_directories(PTLib_ffmpeg INTERFACE ${FFMPEG_INCLUDE_DIRS})
+      add_library(PTLib_ffmpeg INTERFACE IMPORTED GLOBAL)
+      set_target_properties(PTLib_ffmpeg PROPERTIES
+        INTERFACE_INCLUDE_DIRECTORIES "${FFMPEG_INCLUDE_DIRS}")
+      # FindFFMPEG uses optimized/debug keywords; those are only valid through
+      # target_link_libraries, which turns them into generator expressions.
       target_link_libraries(PTLib_ffmpeg INTERFACE ${FFMPEG_LIBRARIES})
-      if(FFMPEG_LIBRARY_DIRS)
-        target_link_directories(PTLib_ffmpeg INTERFACE ${FFMPEG_LIBRARY_DIRS})
-      endif()
     endif()
     set(PTLIB_FFMPEG_FOUND TRUE PARENT_SCOPE)
     set(PTLIB_FFMPEG_LINK PTLib_ffmpeg PARENT_SCOPE)
+    ptlib_note_dependency(FFMPEG)
   endif()
 endfunction()
 ptlib_probe_ffmpeg()
@@ -879,9 +881,15 @@ foreach(feature IN LISTS _simple)
 endforeach()
 
 set(PTLIB_LINK_LIBRARIES "")
-foreach(feature IN ITEMS SSL EXPAT OPENLDAP SASL PCAP FFMPEG SDL GSTREAMER
+# FFmpeg stays private: headers are only used inside ptlib sources, and the
+# link helper is INTERFACE IMPORTED (not installable / not in the export set).
+set(PTLIB_PRIVATE_LINK_LIBRARIES "")
+foreach(feature IN ITEMS SSL EXPAT OPENLDAP SASL PCAP SDL GSTREAMER
     ODBC LUA V8 AWS_SDK CURSES PORTAUDIO RESOLVER)
   if(PTLIB_${feature}_ENABLED AND PTLIB_${feature}_LINK)
     list(APPEND PTLIB_LINK_LIBRARIES ${PTLIB_${feature}_LINK})
   endif()
 endforeach()
+if(PTLIB_FFMPEG_ENABLED AND PTLIB_FFMPEG_LINK)
+  list(APPEND PTLIB_PRIVATE_LINK_LIBRARIES ${PTLIB_FFMPEG_LINK})
+endif()

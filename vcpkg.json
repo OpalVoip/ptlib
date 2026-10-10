@@ -9,7 +9,8 @@
   "default-features": [
     "openssl",
     "expat",
-    "sdl2"
+    "sdl2",
+    "ffmpeg"
   ],
   "features": {
     "openssl": {

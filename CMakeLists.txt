@@ -1,12 +1,20 @@
 # Optional dependencies can come from vcpkg. Point CMake at a vcpkg checkout:
 #   cmake -B build -DCMAKE_TOOLCHAIN_FILE=<vcpkg>/scripts/buildsystems/vcpkg.cmake
-# Default manifest features are openssl, expat, sdl2, and jpeg. Other features
-# are listed in vcpkg.json.
+# Default manifest features are openssl, expat, sdl2, and ffmpeg. Other
+# features are listed in vcpkg.json.
 #
 # The default target is Release. Other targets:
 #   cmake --build build --target debug   # Debug tree in build/debug
 #   cmake --build build --target both     # Release and Debug
 cmake_minimum_required(VERSION 3.20)
+
+# vcpkg's FindFFMPEG calls append_dependencies(NAMES ""). That trips CMP0174
+# unless the default is set before project() (function-local policy is ignored
+# once the find module runs through the vcpkg wrapper).
+if(POLICY CMP0174)
+  cmake_policy(SET CMP0174 NEW)
+endif()
+set(CMAKE_POLICY_DEFAULT_CMP0174 NEW)
 
 # A machine-wide "vcpkg integrate install" notices vcpkg.json and, with
 # manifest mode off, prints a warning on every MSBuild invocation. CMake
@@ -258,6 +266,14 @@ endif()
 if(PTLIB_LINK_LIBRARIES)
   target_link_libraries(ptlib PUBLIC ${PTLIB_LINK_LIBRARIES})
 endif()
+if(PTLIB_PRIVATE_LINK_LIBRARIES)
+  # Shared: keep FFmpeg out of the export set. Static: consumers must link it.
+  if(BUILD_SHARED_LIBS)
+    target_link_libraries(ptlib PRIVATE ${PTLIB_PRIVATE_LINK_LIBRARIES})
+  else()
+    target_link_libraries(ptlib PUBLIC ${PTLIB_PRIVATE_LINK_LIBRARIES})
+  endif()
+endif()
 
 if(PTLIB_IS_APPLE)
   target_link_libraries(ptlib PUBLIC
@@ -295,9 +311,6 @@ install(TARGETS ptlib
   ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
   LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
   RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
-if(TARGET PTLib_ffmpeg)
-  install(TARGETS PTLib_ffmpeg EXPORT PTLibTargets)
-endif()
 install(FILES
   "${PTLIB_SOURCE_DIR}/include/ptlib.h"
   "${PTLIB_SOURCE_DIR}/include/ptlib_wx.h"
