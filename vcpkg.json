@@ -5,12 +5,7 @@
   "description": "Portable Tools Library",
   "homepage": "https://github.com/opalvoip/ptlib",
   "builtin-baseline": "ee6a47dac031930715bea2e6dfb9ad60caaa5d83",
-  "dependencies": [
-    {
-      "name": "libiconv",
-      "platform": "windows"
-    }
-  ],
+  "dependencies": [],
   "default-features": [
     "openssl",
     "expat",

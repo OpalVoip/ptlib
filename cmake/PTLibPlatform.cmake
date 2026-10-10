@@ -256,30 +256,33 @@ if(PTLIB_HAS_DLOPEN OR WIN32)
   ptlib_define(P_DYNALINK 1)
 endif()
 
-find_package(Iconv QUIET)
-if(Iconv_FOUND AND TARGET Iconv::Iconv)
-  ptlib_define(P_HAS_ICONV 1)
-  set(PTLIB_ICONV_LINK Iconv::Iconv)
-  set(PTLIB_ICONV_PACKAGE Iconv)
-else()
-  cmake_push_check_state(RESET)
-  set(CMAKE_REQUIRED_LIBRARIES iconv)
-  check_cxx_source_compiles("
-#include <iconv.h>
-int main(){ iconv_t cd = iconv_open(\"UTF-8\", \"WCHAR_T\"); return cd == (iconv_t)-1; }
-" PTLIB_HAS_ICONV_LIB)
-  if(NOT PTLIB_HAS_ICONV_LIB)
-    set(CMAKE_REQUIRED_LIBRARIES)
+# Windows uses MultiByteToWideChar / WideCharToMultiByte in contain.cxx.
+if(NOT WIN32)
+  find_package(Iconv QUIET)
+  if(Iconv_FOUND AND TARGET Iconv::Iconv)
+    ptlib_define(P_HAS_ICONV 1)
+    set(PTLIB_ICONV_LINK Iconv::Iconv)
+    set(PTLIB_ICONV_PACKAGE Iconv)
+  else()
+    cmake_push_check_state(RESET)
+    set(CMAKE_REQUIRED_LIBRARIES iconv)
     check_cxx_source_compiles("
 #include <iconv.h>
 int main(){ iconv_t cd = iconv_open(\"UTF-8\", \"WCHAR_T\"); return cd == (iconv_t)-1; }
+" PTLIB_HAS_ICONV_LIB)
+    if(NOT PTLIB_HAS_ICONV_LIB)
+      set(CMAKE_REQUIRED_LIBRARIES)
+      check_cxx_source_compiles("
+#include <iconv.h>
+int main(){ iconv_t cd = iconv_open(\"UTF-8\", \"WCHAR_T\"); return cd == (iconv_t)-1; }
 " PTLIB_HAS_ICONV_LIBC)
-  endif()
-  cmake_pop_check_state()
-  if(PTLIB_HAS_ICONV_LIB OR PTLIB_HAS_ICONV_LIBC)
-    ptlib_define(P_HAS_ICONV 1)
-    if(PTLIB_HAS_ICONV_LIB)
-      set(PTLIB_ICONV_LINK iconv)
+    endif()
+    cmake_pop_check_state()
+    if(PTLIB_HAS_ICONV_LIB OR PTLIB_HAS_ICONV_LIBC)
+      ptlib_define(P_HAS_ICONV 1)
+      if(PTLIB_HAS_ICONV_LIB)
+        set(PTLIB_ICONV_LINK iconv)
+      endif()
     endif()
   endif()
 endif()
