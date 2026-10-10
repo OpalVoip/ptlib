@@ -88,7 +88,7 @@ vcpkg
 vcpkg.json lists the optional libraries. The default features are openssl,
 expat, sdl2, and jpeg. Point CMake at a vcpkg checkout:
 
-  cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=<vcpkg>/scripts/buildsystems/vcpkg.cmake
+  cmake -S . -B build "-DCMAKE_TOOLCHAIN_FILE=<vcpkg>/scripts/buildsystems/vcpkg.cmake"
 
 Extra features, comma separated:
 
