@@ -25,7 +25,9 @@
  * Contributor(s): Ted Szoczei, Nimajin Software Consulting
  */
 
+#ifdef P_USE_PRAGMA
 #pragma implementation "directsound.h"
+#endif
 
 #include <ptlib.h>
 
