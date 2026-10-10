@@ -38,26 +38,21 @@
 
 #include <ptlib/vconvert.h>
 
-#if P_TINY_JPEG
-  #include "tinyjpeg.h"
-#endif
-
-#if P_LIBJPEG
-  extern"C" {
-    #include <jpeglib.h>
-  };
-  #ifdef P_LIBJPEG_LIBRARY
-    #pragma comment(lib, P_LIBJPEG_LIBRARY)
-  #endif
-#endif
-
 #if P_FFMPEG_SWSCALE
   extern "C" {
     P_PUSH_MSVC_WARNINGS(4244)
+    #include <libavcodec/avcodec.h>
+    #include <libavutil/imgutils.h>
     #include <libswscale/swscale.h>
     P_POP_MSVC_WARNINGS()
   };
 
+  #ifdef P_AVCODEC_LIB
+    #pragma comment(lib, P_AVCODEC_LIB)
+  #endif
+  #ifdef P_AVUTIL_LIB
+    #pragma comment(lib, P_AVUTIL_LIB)
+  #endif
   #ifdef P_SWSCALE_LIB
     #pragma comment(lib, P_SWSCALE_LIB)
   #endif
@@ -3093,215 +3088,113 @@ PRAGMA_OPTIMISE_DEFAULT()
 
 struct PJPEGConverter::Context
 {
-#if P_TINY_JPEG
+  typedef AVPixelFormat ColourSpace;
+  #define MY_JPEG_Grey    AV_PIX_FMT_GRAY8
+  #define MY_JPEG_RGB24   AV_PIX_FMT_RGB24
+  #define MY_JPEG_BGR24   AV_PIX_FMT_BGR24
+  #define MY_JPEG_RGB32   AV_PIX_FMT_RGBA
+  #define MY_JPEG_BGR32   AV_PIX_FMT_BGRA
+  #define MY_JPEG_YUV420P AV_PIX_FMT_YUV420P
 
-  typedef int ColourSpace;
-  #define MY_JPEG_Grey      TINYJPEG_FMT_GREY
-  #define MY_JPEG_RGB24     TINYJPEG_FMT_RGB24
-  #define MY_JPEG_BGR24     TINYJPEG_FMT_BGR24
-  #define MY_JPEG_YUV420P   TINYJPEG_FMT_YUV420P
-
-  jdec_private * m_decoder;
+  const AVCodec  * m_codec;
+  AVCodecContext * m_decoder;
+  AVFrame        * m_frame;
+  AVPacket       * m_packet;
+  PBYTEArray       m_paddedInput;
+  ColourSpace      m_colourSpace;
 
   Context()
+    : m_codec(avcodec_find_decoder(AV_CODEC_ID_MJPEG))
+    , m_decoder(NULL)
+    , m_frame(av_frame_alloc())
+    , m_packet(av_packet_alloc())
+    , m_colourSpace(AV_PIX_FMT_YUV420P)
   {
-    m_decoder = tinyjpeg_init();
-    if (m_decoder == NULL) {
-      PTRACE(2, NULL, "JPEG", "TinyJpeg error: Can't allocate memory");
+    if (m_codec != NULL)
+      m_decoder = avcodec_alloc_context3(m_codec);
+    if (m_decoder == NULL || m_frame == NULL || m_packet == NULL ||
+        avcodec_open2(m_decoder, m_codec, NULL) < 0) {
+      PTRACE(2, NULL, "JPEG", "FFmpeg MJPEG decoder unavailable");
+      avcodec_free_context(&m_decoder);
+      m_decoder = NULL;
       return;
     }
-
-    tinyjpeg_set_flags(m_decoder, TINYJPEG_FLAGS_MJPEG_TABLE);
-    PTRACE(4, NULL, "JPEG", "TinyJpeg decoder created");
+    PTRACE(4, NULL, "JPEG", "FFmpeg MJPEG decoder created");
   }
 
 
   ~Context()
   {
-    if (m_decoder != NULL)
-      free(m_decoder);
-    PTRACE(4, NULL, "JPEG", "TinyJpeg decoder destroyed");
+    av_packet_free(&m_packet);
+    av_frame_free(&m_frame);
+    avcodec_free_context(&m_decoder);
+    PTRACE(4, NULL, "JPEG", "FFmpeg MJPEG decoder destroyed");
   }
 
 
   bool Start(const BYTE * srcFrameBuffer, PINDEX srcFrameBytes, unsigned & width, unsigned & height)
   {
-    if (tinyjpeg_parse_header(m_decoder, srcFrameBuffer, srcFrameBytes) < 0) {
-      PTRACE(2, NULL, "JPEG", "Header parse error: " << tinyjpeg_get_errorstring(m_decoder));
+    if (m_decoder == NULL || m_frame == NULL || m_packet == NULL || srcFrameBuffer == NULL || srcFrameBytes <= 0)
+      return false;
+
+    avcodec_flush_buffers(m_decoder);
+    av_frame_unref(m_frame);
+
+    if (!m_paddedInput.SetSize(srcFrameBytes + AV_INPUT_BUFFER_PADDING_SIZE))
+      return false;
+    memcpy(m_paddedInput.GetPointer(), srcFrameBuffer, srcFrameBytes);
+    memset(m_paddedInput.GetPointer() + srcFrameBytes, 0, AV_INPUT_BUFFER_PADDING_SIZE);
+
+    m_packet->data = m_paddedInput.GetPointer();
+    m_packet->size = (int)srcFrameBytes;
+    if (avcodec_send_packet(m_decoder, m_packet) < 0 ||
+        avcodec_receive_frame(m_decoder, m_frame) < 0) {
+      PTRACE(2, NULL, "JPEG", "FFmpeg decode failed");
+      m_packet->data = NULL;
+      m_packet->size = 0;
       return false;
     }
+    m_packet->data = NULL;
+    m_packet->size = 0;
 
-    tinyjpeg_get_size(m_decoder, &width, &height);
+    // A zero size means the caller wants the picture's own dimensions.
+    if (width == 0 || width > (unsigned)m_frame->width)
+      width = (unsigned)m_frame->width;
+    if (height == 0 || height > (unsigned)m_frame->height)
+      height = (unsigned)m_frame->height;
     return true;
   }
 
 
   bool Finish(BYTE * dstFrameBuffer, unsigned width, unsigned height)
   {
-    if (PAssertNULL(dstFrameBuffer) == NULL)
+    if (PAssertNULL(dstFrameBuffer) == NULL || m_frame == NULL || m_frame->data[0] == NULL)
       return false;
 
-    int componentCount = 1;
-    BYTE *components[4];
-    components[0] = dstFrameBuffer;
-
-    if (m_colourSpace == TINYJPEG_FMT_YUV420P) {
-      componentCount = 4;
-      int npixels = width * height;
-      components[1] = dstFrameBuffer + npixels;
-      components[2] = dstFrameBuffer + npixels + npixels/4;
-      components[3] = NULL;
-    }
- 
-    tinyjpeg_set_components(m_decoder, components, componentCount);
-
-    if (tinyjpeg_decode(m_decoder, m_colourSpace) >= 0)
-      return true;
-
-    PTRACE(2, NULL, "JPEG", "Decode error: " << tinyjpeg_get_errorstring(m_decoder));
-    return false;
-  }
-
-
-#elif P_LIBJPEG
-
-  typedef J_COLOR_SPACE ColourSpace;
-  #define MY_JPEG_Grey    JCS_GRAYSCALE
-  #define MY_JPEG_RGB24   JCS_RGB
-  #define MY_JPEG_YUV420P JCS_YCbCr
-#if JCS_EXTENSIONS
-  #define MY_JPEG_BGR24   JCS_EXT_BGR
-  #define MY_JPEG_RGB32   JCS_EXT_RGBX
-  #define MY_JPEG_BGR32   JCS_EXT_BGRX
-#endif
-
-  jpeg_error_mgr         m_error_mgr;
-  jpeg_decompress_struct m_decoder;
-  PBYTEArray             m_scan_line;
-
-
-  Context()
-  {
-    m_decoder.err = jpeg_std_error(&m_error_mgr);
-    jpeg_create_decompress(&m_decoder);
-    PTRACE(4, NULL, "JPEG", "libjpeg decoder created");
-  }
-
-
-  ~Context()
-  {
-    jpeg_destroy_decompress(&m_decoder);
-    PTRACE(4, NULL, "JPEG", "libjpeg decoder destroyed");
-  }
-
-
-  void Error()
-  {
-#if PTRACING
-    if (PTrace::CanTrace(2)) {
-      ostream & trace = PTRACE_BEGIN(2, NULL, "JPEG");
-      trace << "Turbo-JPEG failed: ";
-      switch (m_error_mgr.last_jpeg_message) {
-        case 0 :
-          trace << "unknown error";
-          break;
-        case 1 :
-          trace << *m_error_mgr.jpeg_message_table;
-          break;
-        default :
-          for (int msg = 0; msg < m_error_mgr.last_jpeg_message; ++msg)
-            trace << "\n  Error " << (msg+1) << ": " << m_error_mgr.jpeg_message_table[msg];
-      }
-      trace << PTrace::End;
-    }
-#endif
-  }
-
-
-  bool Start(const BYTE * srcFrameBuffer, PINDEX srcFrameBytes, unsigned & width, unsigned & height)
-  {
-    jpeg_mem_src(&m_decoder, const_cast<unsigned char *>(srcFrameBuffer), srcFrameBytes);
-
-    if (jpeg_read_header(&m_decoder, TRUE) == JPEG_HEADER_OK) {
-      m_decoder.out_color_space = m_colourSpace;
-      m_decoder.dct_method = JDCT_IFAST;
-      if (jpeg_start_decompress(&m_decoder)) {
-        // A zero size means the caller wants the picture's own dimensions.
-        if (width == 0 || width > m_decoder.output_width)
-          width = m_decoder.output_width;
-        if (height == 0 || height > m_decoder.output_height)
-          height = m_decoder.output_height;
-        return true;
-      }
+    SwsContext * sws = sws_getContext(m_frame->width, m_frame->height, (AVPixelFormat)m_frame->format,
+                                     (int)width, (int)height, m_colourSpace,
+                                     SWS_BILINEAR, NULL, NULL, NULL);
+    if (sws == NULL) {
+      PTRACE(2, NULL, "JPEG", "FFmpeg swscale context failed");
+      return false;
     }
 
-    Error();
-    return false;
-  }
-
-
-  bool Finish(BYTE * dstFrameBuffer, unsigned width, unsigned height)
-  {
-    JSAMPROW row, y, u, v;
-    row = y = u = v = dstFrameBuffer;
-
-    if (m_colourSpace == JCS_YCbCr) {
-      row = m_scan_line.GetPointer(m_decoder.output_width*3); // Do not sue width here, it could be smaller.
-      u += width*height;
-      v += width*height*5/4;
+    uint8_t * dstData[4] = {};
+    int dstLinesize[4] = {};
+    if (av_image_fill_arrays(dstData, dstLinesize, dstFrameBuffer, m_colourSpace,
+                             (int)width, (int)height, 1) < 0) {
+      sws_freeContext(sws);
+      PTRACE(2, NULL, "JPEG", "FFmpeg image layout failed");
+      return false;
     }
 
-    while (jpeg_read_scanlines(&m_decoder, &row, 1) == 1) {
-      switch (m_colourSpace) {
-        default :
-          PAssertAlways(PUnsupportedFeature);
-          return false;
-
-#if JCS_EXTENSIONS
-        case JCS_EXT_RGBX :
-        case JCS_EXT_BGRX :
-          row += width*4;
-          break;
-          
-        case JCS_EXT_RGB :
-        case JCS_EXT_BGR :
-#endif
-        case JCS_RGB :
-          row += width*3;
-          break;
-
-        case JCS_GRAYSCALE :
-          row += width;
-          break;
-
-        case JCS_YCbCr :
-          if (m_decoder.output_scanline < height) {
-            for (JDIMENSION x = 0; x < width; ++x) {
-              *y++ = row[0];
-              if (((m_decoder.output_scanline|x) & 1) == 0) {
-                *u++ = row[1];
-                *v++ = row[2];
-              }
-              row += 3;
-            }
-            row = m_scan_line.GetPointer();
-          }
-      }
-
-      if (m_decoder.output_scanline >= m_decoder.output_height) {
-        jpeg_finish_decompress(&m_decoder);
-        return true;
-      }
-    }
-
-    Error();
-    return false;
+    bool ok = sws_scale(sws, m_frame->data, m_frame->linesize, 0, m_frame->height,
+                        dstData, dstLinesize) > 0;
+    sws_freeContext(sws);
+    if (!ok)
+      PTRACE(2, NULL, "JPEG", "FFmpeg swscale failed");
+    return ok;
   }
-
-#endif // P_TINY_JPEG/P_LIBJPEG
-
-
-  ColourSpace m_colourSpace;
 
   bool SetColourSpace(const PCaselessString & colourFormat)
   {

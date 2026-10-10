@@ -2855,18 +2855,20 @@ PStringArray PVideoOutputDevice_MediaFile::GetOutputDeviceNames()
 {
   PStringArray names;
 
+  // Still-image extensions are handled by PVideoFileFactory (FFmpeg or BMP).
+  static const char * const stillImageExt[] = {
+    ".bmp", ".dib", ".jpg", ".jpeg", ".gif", ".png", ".tif", ".tiff", NULL
+  };
+
   PMediaFile::Factory::KeyList_T keyList = PMediaFile::Factory::GetKeyList();
   for (PMediaFile::Factory::KeyList_T::iterator it = keyList.begin(); it != keyList.end(); ++it) {
-#if P_IMAGEMAGICK
-    extern const char * PImageMagickExtensions[];
     const char * const * ext;
-    for (ext = PImageMagickExtensions; *ext != NULL; ++ext) {
+    for (ext = stillImageExt; *ext != NULL; ++ext) {
       if (*it == *ext)
         break;
     }
     if (*ext != NULL)
       continue;
-#endif
     names.AppendString("*" + *it);
   }
 

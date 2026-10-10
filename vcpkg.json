@@ -9,8 +9,7 @@
   "default-features": [
     "openssl",
     "expat",
-    "sdl2",
-    "jpeg"
+    "sdl2"
   ],
   "features": {
     "openssl": {
@@ -21,16 +20,12 @@
       "description": "XML support via Expat",
       "dependencies": ["expat"]
     },
-    "jpeg": {
-      "description": "JPEG image support",
-      "dependencies": ["libjpeg-turbo"]
-    },
     "sdl2": {
       "description": "SDL video output",
       "dependencies": ["sdl2"]
     },
     "ffmpeg": {
-      "description": "FFmpeg video file support",
+      "description": "FFmpeg media and still-image (BMP/JPEG/PNG) support",
       "dependencies": ["ffmpeg"]
     },
     "ldap": {
@@ -65,10 +60,6 @@
           "features": ["polly", "transcribe"]
         }
       ]
-    },
-    "imagemagick": {
-      "description": "ImageMagick video file support",
-      "dependencies": ["imagemagick"]
     },
     "ncurses": {
       "description": "ncurses console UI",
