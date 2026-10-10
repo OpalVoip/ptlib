@@ -97,7 +97,7 @@ Extra features, comma separated:
 -DPTLIB_MINSIZE=ON skips the default openssl, expat, and sdl2 features.
 jpeg is still installed. That matches configure --enable-minsize.
 
-On Windows, vcpkg also supplies libiconv.
+Windows does not use libiconv; character conversion uses the Win32 APIs.
 
 
 macOS
