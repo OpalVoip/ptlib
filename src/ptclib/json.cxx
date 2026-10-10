@@ -1320,6 +1320,9 @@ bool PRESTClient::Execute(PHTTP::Commands method,
   if (result < 100)
     return false;
 
+  if (result == PHTTP::NoContent)
+    return true;
+
   PString responseStr;
   if (!ReadContentBody(responseHeaders, responseStr))
     return false;
@@ -1335,14 +1338,14 @@ bool PRESTClient::Execute(PHTTP::Commands method,
     return false;
   }
 
-  if (result != PHTTP::NoContent && !response.FromString(responseStr)) {
+  if (!response.FromString(responseStr)) {
     m_lastResponseCode = PHTTP::BadResponse;
     m_lastResponseInfo = "Response invalid JSON";
     return false;
   }
 
   if (result < 300)
-    return result != PHTTP::NoContent;
+    return true;
 
   m_lastResponseInfo += ' ' + response.AsString();
   return false;
@@ -1413,7 +1416,7 @@ bool PRESTResourceBase::OnCommand(PHTTPRequest & request)
   else if (restRequest.m_noCommand && PHTTPResource::OnCommand(request))
     return true;
   else if (request.code == PHTTP::NoContent)
-    return false;
+    return request.SendResponse();
   else if (request.code / 100 == 2)
     return request.SendResponse(restRequest.GetAbstractResponse().AsString());
 

@@ -2756,7 +2756,6 @@ int PSSLChannel::BioRead(char * buf, int len)
 
   switch (GetErrorCode(PChannel::LastReadError)) {
     case PChannel::Interrupted :
-    case PChannel::Unavailable :
       BIO_set_retry_read(m_bio); // Non fatal, keep trying
       break;
     case PChannel::Timeout :
@@ -2827,7 +2826,6 @@ int PSSLChannel::BioWrite(const char * buf, int len)
 
   switch (GetErrorCode(PChannel::LastWriteError)) {
     case PChannel::Interrupted :
-    case PChannel::Unavailable :
       BIO_set_retry_write(m_bio); // Non fatal, keep trying
       break;
     case PChannel::Timeout:
@@ -2896,6 +2894,9 @@ PBoolean PSSLChannel::ConvertOSError(P_INT_PTR libcReturnValue, ErrorGroup group
 
   if (libcReturnValue >= 0)
     return SetErrorValues(NoError, 0, group);
+
+  if (GetErrorCode() != NoError)
+    return false;
 
   Errors lastError = AccessDenied;
   DWORD osError = SSL_get_error(m_ssl, (int)libcReturnValue);

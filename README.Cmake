@@ -47,7 +47,8 @@ Useful options, passed on the first cmake command:
   -DPTLIB_MINSIZE=ON            smaller library (configure --enable-minsize)
   -DPTLIB_OPALMIN=ON            omit FTP, Telnet, ILS, LDAP, SOAP,
                                 XML-RPC, SNMP, RFC1155, vCard, XMPP,
-                                SASL, serial, modem, and internet mail
+                                SASL, serial, remote connection, modem,
+                                and internet mail
   -DPTLIB_SSL=ON                require OpenSSL
   -DCMAKE_BUILD_TYPE=Debug      single-config generators (Ninja, Makefiles)
 

@@ -1237,6 +1237,7 @@ class PVideoInputDeviceIndirect : public PVideoInputDevice
 
   protected:
     virtual bool InternalGetFrameData(BYTE * buffer, PINDEX & bytesReturned, bool & keyFrame, bool wait) override;
+    void CopyDeliveredFrameInfo();
     PDECLARE_MUTEX(     m_actualDeviceMutex);
     PVideoInputDevice * m_actualDevice;
     bool                m_autoDeleteActualDevice;

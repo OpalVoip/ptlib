@@ -80,6 +80,7 @@ class PVideoFile : public PFile
 
     operator const PVideoFrameInfo &() const { return m_videoInfo; }
     bool IsFixedFrameSize() const { return m_fixedFrameSize; }
+    virtual bool IsStillImage() const { return false; }
     bool GetFrameSize(unsigned & w, unsigned & h) const { return m_videoInfo.GetFrameSize(w, h); }
     unsigned GetFrameWidth() const { return m_videoInfo.GetFrameWidth(); }
     unsigned GetFrameHeight() const { return m_videoInfo.GetFrameHeight(); }
