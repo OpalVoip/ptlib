@@ -542,12 +542,9 @@ function(ptlib_probe_sdl)
     endif()
     return()
   endif()
-  if(WIN32 AND TARGET SDL2::SDL2main)
-    ptlib_imported_target_usable(SDL2::SDL2main _main_ok)
-    if(_main_ok)
-      list(APPEND _sdl SDL2::SDL2main)
-    endif()
-  endif()
+  # Do not link SDL2main. It supplies WinMain/SDL_main for SDL apps; PTLib
+  # (and OPAL samples) already have their own entry point, so pulling it in
+  # via PUBLIC ptlib deps causes LNK2005/LNK2019 on Windows console targets.
   set(PTLIB_SDL_FOUND TRUE PARENT_SCOPE)
   set(PTLIB_SDL_LINK ${_sdl} PARENT_SCOPE)
   ptlib_note_dependency(SDL2)
