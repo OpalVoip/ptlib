@@ -426,14 +426,10 @@ bool PVideoInputDevice_DirectShow::SetPinFormat(unsigned useDefaultColourOrSize)
 
   int iCount = 0, iSize=0;
   PCOM_RETURN_ON_FAILED(pStreamConfig->GetNumberOfCapabilities,(&iCount, &iSize));
-
-  if (iSize != sizeof(VIDEO_STREAM_CONFIG_CAPS))
-    return false;
-
   for (int iFormat = 0; iFormat < iCount; iFormat++) {
     VIDEO_STREAM_CONFIG_CAPS scc;
     MediaTypePtr pMediaFormat;
-    if (SUCCEEDED(pStreamConfig->GetStreamCaps(iFormat, &pMediaFormat, (BYTE *)&scc)) &&
+    if (PCOM_SUCCEEDED(pStreamConfig->GetStreamCaps, (iFormat, &pMediaFormat, (BYTE *)&scc)) &&
         pMediaFormat->majortype == MEDIATYPE_Video &&
         pMediaFormat->formattype == FORMAT_VideoInfo &&
         pMediaFormat->pbFormat != NULL &&
@@ -497,6 +493,7 @@ bool PVideoInputDevice_DirectShow::SetPinFormat(unsigned useDefaultColourOrSize)
     }
   }
 
+  PTRACE(2, "Video capture device has no suitable capabilities!");
   return false;
 }
 
