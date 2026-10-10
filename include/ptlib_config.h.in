@@ -1079,66 +1079,11 @@
 
 /////////////////////////////////////////////////
 //
-// ImageMagick support
+// JPEG / MJPEG decode via FFmpeg (libavcodec + libswscale)
 //
 
-// Have not yet determined how to disambiguate Windows 32 bit and 64 bit versions of ImageMagick
-#if !defined(_WIN32) || defined(P_64BIT)
-  #undef P_IMAGEMAGICK
-#endif
-
-#if defined(_MSC_VER) && P_IMAGEMAGICK && !defined(P_CMAKE)
-  #pragma include_alias(<MagickWand/MagickWand.h>, <@IMAGEMAGICK_DIR@/include/MagickWand/MagickWand.h>)
-#define P_IMAGEMAGICK_LIB "@IMAGEMAGICK_DIR@/lib/CORE_RL_MagickWand_.lib"
-#endif
-
-
-/////////////////////////////////////////////////
-//
-// libjpeg support
-//
-
-#undef P_LIBJPEG
-#undef P_LIBJPEG_WIN32
-#undef P_LIBJPEG_WIN64
-
-#if (defined(P_LIBJPEG_WIN64) &&  defined(P_64BIT)) || \
-    (defined(P_LIBJPEG_WIN32) && !defined(P_64BIT))
-  #define P_LIBJPEG 1
-#endif
-
-#if P_LIBJPEG
+#if P_FFMPEG_SWSCALE
   #define P_JPEG_DECODER 1
-#else
-  #define P_TINY_JPEG 1
-  #if P_TINY_JPEG
-    #define P_JPEG_DECODER 1
-  #endif
-#endif
-
-
-/* CMake/vcpkg supply libjpeg via imported targets; @LIBJPEG_DIR@ is only
-   filled by the classic MSWIN finder. */
-#if defined(_MSC_VER) && P_LIBJPEG && (defined(P_LIBJPEG_WIN64) || defined(P_LIBJPEG_WIN32))
-  #pragma include_alias(<jpeglib.h>, <@LIBJPEG_DIR@/include/jpeglib.h>)
-
-  #pragma include_alias("jconfig.h", "@LIBJPEG_DIR@/include/jconfig.h")
-  #pragma include_alias("jmorecfg.h", "@LIBJPEG_DIR@/include/jmorecfg.h")
-
-  #undef P_LIBJPEG_LIBRARY
-  #ifndef P_LIBJPEG_LIBRARY
-    #if defined(P_64BIT)
-      #define P_LIBJPEG_BUILD "x64/"
-    #else
-      #define P_LIBJPEG_BUILD "win32/"
-    #endif
-
-    #ifdef _DEBUG
-      #define P_LIBJPEG_LIBRARY "@LIBJPEG_DIR@/lib/" P_LIBJPEG_BUILD "libjpeg_d.lib"
-    #else
-      #define P_LIBJPEG_LIBRARY "@LIBJPEG_DIR@/lib/" P_LIBJPEG_BUILD "libjpeg.lib"
-    #endif
-  #endif
 #endif
 
 

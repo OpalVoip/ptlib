@@ -1231,87 +1231,8 @@ AC_LANG_POP(C)
 
 
 dnl ########################################################################
-dnl check for ImageMagick
-
-dnl MSWIN_DISPLAY    imagemagick,ImageMagick support
-dnl MSWIN_CHECK_FILE imagemagick,include\MagickWand\MagickWand.h,P_IMAGEMAGICK=7
-dnl MSWIN_DIR_SYMBOL imagemagick,IMAGEMAGICK_DIR
-dnl MSWIN_CHECK_DIR  imagemagick,%IMAGEMAGICKDIR%\ImageMagick*
-dnl MSWIN_CHECK_DIR  imagemagick,..\external\ImageMagick*
-dnl MSWIN_CHECK_DIR  imagemagick,..\..\external\ImageMagick*
-dnl MSWIN_CHECK_DIR  imagemagick,%ProgramFiles%\ImageMagick*
-dnl MSWIN_CHECK_DIR  imagemagick,%ProgramW6432%\ImageMagick*
-
-MY_MODULE_OPTION(
-   [IMAGEMAGICK],
-   [imagemagick],
-   [ImageMagick v6 support],
-   [MagickWand],
-   [],
-   [],
-   [#include <wand/MagickWand.h>],
-   [MagickWandGenesis()],
-   [
-      AC_SUBST(HAS_IMAGEMAGICK,1)
-      AC_DEFINE(P_IMAGEMAGICK,6)
-      PTLIB_IMAGEMAGICK="yes (before v7)"
-   ],
-   [MY_MODULE_OPTION(
-      [IMAGEMAGICK],
-      [imagemagick],
-      [ImageMagick v7 support],
-      [MagickWand],
-      [],
-      [],
-      [#include <MagickWand/MagickWand.h>],
-      [MagickWandGenesis()],
-      [
-         AC_SUBST(HAS_IMAGEMAGICK,1)
-         AC_DEFINE(P_IMAGEMAGICK,7)
-         PTLIB_IMAGEMAGICK="yes (after v7)"
-      ]
-   )]
-)
-
-
-dnl ########################################################################
-dnl check for libjpeg
-
-dnl MSWIN_DISPLAY    libjpeg,libjpeg support
-dnl MSWIN_IF_FEATURE libjpeg,!imagemagick
-dnl MSWIN_CHECK_FILE libjpeg,lib\jpeg.lib,P_LIBJPEG_WIN32=1
-dnl MSWIN_CHECK_FILE libjpeg,lib\win32\libjpeg.lib,P_LIBJPEG_WIN32=1
-dnl MSWIN_CHECK_FILE libjpeg,lib\x64\libjpeg.lib,P_LIBJPEG_WIN64=1
-dnl MSWIN_DIR_SYMBOL libjpeg,LIBJPEG_DIR
-dnl MSWIN_FIND_FILE  libjpeg,P_LIBJPEG_LIBRARY,jpeg.lib,lib
-dnl MSWIN_CHECK_DIR  libjpeg,%JPEGTURBODIR%\libjpeg-turbo
-dnl MSWIN_CHECK_DIR  libjpeg,..\external\libjpeg-turbo
-dnl MSWIN_CHECK_DIR  libjpeg,..\..\external\libjpeg-turbo
-dnl MSWIN_CHECK_DIR  libjpeg,%ProgramFiles%\libjpeg-turbo
-dnl MSWIN_CHECK_DIR  libjpeg,%ProgramW6432%\libjpeg-turbo
-
-AC_LANG_PUSH(C)
-
-PTLIB_MODULE_OPTION(
-   [LIBJPEG],
-   [libjpeg],
-   [libJPEG support],
-   [libjpeg],
-   [],
-   [-ljpeg],
-   [
-      #include <stdio.h>
-      #include <jpeglib.h>
-   ],
-   [
-     struct jpeg_decompress_struct d;
-     unsigned char * b;
-     unsigned long s;
-     jpeg_mem_src(&d, b, s);
-   ]
-)
-
-AC_LANG_POP(C)
+dnl Still images and JPEG/MJPEG decode use FFmpeg (see P_FFMPEG / P_JPEG_DECODER).
+dnl ImageMagick, libjpeg, and TinyJPEG are no longer used.
 
 
 dnl ########################################################################
@@ -2935,7 +2856,5 @@ MY_OUTPUT_SUMMARY(
    [                     Video4linux2], PTLIB_V4L2,
    [                    IEEE-1394/AVC], PTLIB_AVC1394,
    [                    IEEE-1394/DC ], PTLIB_DC1394,
-   [                           FFMPEG], [PTLIB_FFMPEG],
-   [                      ImageMagick], [PTLIB_IMAGEMAGICK],
-   [                        JPEG File], [PTLIB_LIBJPEG]dnl
+   [                           FFMPEG], [PTLIB_FFMPEG]dnl
 )

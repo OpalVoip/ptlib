@@ -68,9 +68,7 @@ function(ptlib_collect_sources out_var)
     list(APPEND sources
       "${common}/vfakeio.cxx"
       "${common}/videoio.cxx"
-      "${common}/vconvert.cxx"
-      "${common}/tinyjpeg.cxx"
-      "${common}/jidctflt.cxx")
+      "${common}/vconvert.cxx")
     if(PTLIB_SHM_VIDEO AND NOT msos)
       list(APPEND sources "${plat}/shmvideo.cxx")
     endif()
