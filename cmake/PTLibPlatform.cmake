@@ -211,10 +211,21 @@ check_symbol_exists(inet_ntop arpa/inet.h PTLIB_HAS_INET_NTOP)
 if(PTLIB_HAS_INET_NTOP)
   ptlib_define(P_HAS_INET_NTOP 1)
 endif()
-check_cxx_source_compiles("
+# Windows has sockaddr_in6 in ws2tcpip.h; Unix uses netinet/in.h. The old
+# Unix-only probe left PTLIB_IPV6 off on Windows, which hid IsLinkLocal().
+if(WIN32)
+  check_cxx_source_compiles("
+#define WIN32_LEAN_AND_MEAN
+#include <winsock2.h>
+#include <ws2tcpip.h>
+int main(void) { struct sockaddr_in6 a; return (int)sizeof(a); }
+" PTLIB_HAS_SOCKADDR_IN6)
+else()
+  check_cxx_source_compiles("
 #include <netinet/in.h>
 int main(void) { struct sockaddr_in6 a; return (int)sizeof(a); }
 " PTLIB_HAS_SOCKADDR_IN6)
+endif()
 if(PTLIB_HAS_SOCKADDR_IN6)
   set(PTLIB_HOST_HAS_IPV6 TRUE)
 else()
