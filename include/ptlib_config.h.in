@@ -28,6 +28,10 @@
 #ifndef _PTLIB_CONFIG_H
 #define _PTLIB_CONFIG_H
 
+// CMake defines this. The blocks below that mention @DIR@ are for the Visual
+// Studio projects, which substitute those paths. CMake passes the headers and
+// libraries on the command line instead.
+#undef P_CMAKE
 
 #undef    PTLIB_MAJOR
 #undef    PTLIB_MINOR
@@ -723,7 +727,7 @@
   #define P_EXPAT 1
 #endif
 
-#if defined(_MSC_VER) && P_EXPAT
+#if defined(_MSC_VER) && P_EXPAT && !defined(P_CMAKE)
 
   #if P_EXPAT_BUILD
     #pragma include_alias(<expat.h>, <@EXPAT_BUILD_DIR@/lib/expat.h>)
@@ -1064,7 +1068,7 @@
     #define P_FFMPEG_FULL 1
   #endif
 
-  #ifdef _MSC_VER
+  #if defined(_MSC_VER) && defined(P_FFMPEG_LIBDIR)
     #define P_AVFORMAT_LIB   P_FFMPEG_LIBDIR "avformat.lib"
     #define P_AVCODEC_LIB    P_FFMPEG_LIBDIR "avcodec.lib"
     #define P_AVUTIL_LIB     P_FFMPEG_LIBDIR "avutil.lib"
@@ -1083,7 +1087,7 @@
   #undef P_IMAGEMAGICK
 #endif
 
-#if defined(_MSC_VER) && P_IMAGEMAGICK
+#if defined(_MSC_VER) && P_IMAGEMAGICK && !defined(P_CMAKE)
   #pragma include_alias(<MagickWand/MagickWand.h>, <@IMAGEMAGICK_DIR@/include/MagickWand/MagickWand.h>)
 #define P_IMAGEMAGICK_LIB "@IMAGEMAGICK_DIR@/lib/CORE_RL_MagickWand_.lib"
 #endif
@@ -1182,7 +1186,7 @@
 #undef P_MEDIALIB
 #undef P_IPP
 
-#if defined(_MSC_VER) && defined(P_IPP)
+#if defined(_MSC_VER) && defined(P_IPP) && !defined(P_CMAKE)
   #define P_IPP_INCLUDE(inc) include_alias(<inc>, <@IPP_DIR@/include/inc>)
   #pragma P_IPP_INCLUDE(ippcc.h)
 #endif
@@ -1630,7 +1634,7 @@
   #endif
 #endif
 
-#if defined(P_AWS_SDK) && !defined(P_AWS_SDK_VCPKG)
+#if defined(P_AWS_SDK) && !defined(P_AWS_SDK_VCPKG) && !defined(P_CMAKE)
   #if defined(_MSC_VER)
     #define P_AWS_SDK_LIBDIR(module) "@AWS_SDK_DIR@/" AWS_SDK_SUBDIR "/bin/aws-cpp-sdk-" ## #module ## ".lib"
   #elif __cplusplus < 201103L

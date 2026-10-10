@@ -141,7 +141,9 @@ Finally, reconfigure PTLib and rebuild.
   #pragma comment(lib, "winmm.lib")
   #pragma comment(lib, "dbghelp.lib")
   #pragma comment(lib, "shlwapi.lib")
-  #pragma comment(lib, P_V8_LIB)
+  #ifdef P_V8_LIB
+    #pragma comment(lib, P_V8_LIB)
+  #endif
 #endif
 
 

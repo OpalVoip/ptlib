@@ -156,6 +156,10 @@ file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/include/revision.h"
 #endif
 ")
 
+# The config header's MSVC include_alias paths belong to the Visual Studio
+# projects. This build passes headers and libraries on the command line.
+ptlib_define(P_CMAKE 1)
+
 ptlib_write_config_header(
   "${PTLIB_SOURCE_DIR}/include/ptlib_config.h.in"
   "${CMAKE_CURRENT_BINARY_DIR}/include/ptlib_config.h")
@@ -216,6 +220,13 @@ if(NOT PTLIB_EXCEPTIONS)
   else()
     target_compile_options(ptlib PRIVATE -fno-exceptions)
   endif()
+endif()
+# MSVC leaves __cplusplus defined as 199711L unless this switch is set, so a
+# generated solution would ignore the C++20 standard above. ptlib/atomic.h uses
+# the macro to decide whether std::atomic<std::shared_ptr<T>> already exists.
+# PUBLIC puts the switch on this target and on every project that links it.
+if(MSVC)
+  target_compile_options(ptlib PUBLIC $<$<COMPILE_LANGUAGE:CXX>:/Zc:__cplusplus>)
 endif()
 
 if(NOT PTLIB_USE_SYSTEM_REGEX)
