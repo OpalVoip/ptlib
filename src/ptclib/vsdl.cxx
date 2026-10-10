@@ -49,7 +49,7 @@ extern "C" {
   #include <SDL.h>
 };
 
-#ifdef _MSC_VER
+#ifdef P_SDL_LIBRARY
   #pragma comment(lib, P_SDL_LIBRARY)
 #endif
 

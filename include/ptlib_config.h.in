@@ -375,7 +375,9 @@
   #define P_PCAP 1
 #endif
 
-#if defined(_MSC_VER) && defined(P_PCAP)
+/* CMake/vcpkg supply includes via the imported target; @PCAP_DIR@ is only
+   filled by the classic MSWIN finder. */
+#if defined(_MSC_VER) && defined(P_PCAP) && (defined(P_PCAP_WIN64) || defined(P_PCAP_WIN32))
   #pragma include_alias(<pcap/pcap.h>, <@PCAP_DIR@/include/pcap/pcap.h>)
   #pragma include_alias(<pcap/bpf.h>, <@PCAP_DIR@/include/pcap/bpf.h>)
   #pragma include_alias(<pcap-stdinc.h>, <@PCAP_DIR@/include/pcap-stdinc.h>)
@@ -411,7 +413,9 @@
   #define P_SSL 1
 #endif
 
-#if defined(_MSC_VER) && P_SSL && !(defined(P_SSL_VCPKG32) || defined(P_SSL_VCPKG64))
+/* CMake/vcpkg supply OpenSSL via imported targets; @SSL_WIN*_DIR@ is only
+   filled by the classic MSWIN finder. Skip when only P_OPENSSL is set. */
+#if defined(_MSC_VER) && P_SSL && (defined(P_SSL_WIN32) || defined(P_SSL_WIN64))
 
   #if P_64BIT
 
@@ -605,7 +609,7 @@
   #define P_LUA 1
 #endif
 
-#if defined(_MSC_VER) && defined(P_LUA)
+#if defined(_MSC_VER) && defined(P_LUA) && (defined(P_LUA_WIN64) || defined(P_LUA_WIN32))
   #if defined(P_64BIT)
     #define P_LUA_INCLUDE(inc) include_alias(<inc>, <@LUA_DIR_WIN64@/include/inc>)
     #undef P_LUA_LIBRARY64
@@ -679,7 +683,7 @@
       #endif
     #endif
 
-    #if defined(P_V8)
+    #if defined(P_V8) && defined(P_V8_LIB)
       #pragma include_alias(<v8.h>, <@V8_DIR@/include/v8.h>)
       #pragma include_alias("v8config.h", "@V8_DIR@/include/v8config.h")
       #pragma include_alias("v8-platform.h", "@V8_DIR@/include/v8-platform.h")
@@ -729,20 +733,19 @@
     #pragma include_alias(<expat.h>, <@EXPAT_WIN64_DIR@/include/expat.h>)
   #endif
 
+  /* CMake links EXPAT::EXPAT; only the old MSWIN finders set P_EXPAT_LIBRARY_W*.
+     Defining P_EXPAT_LIBRARY as an undefined identifier makes #pragma comment(lib)
+     emit C4083. */
   #if defined(P_EXPAT_WIN32) || defined(P_EXPAT_WIN64) || defined(P_EXPAT_VCPKG32) || defined(P_EXPAT_VCPKG64)
     #undef P_EXPAT_LIBRARY
-  #elif defined(P_64BIT)
-    #if defined(_DEBUG)
-      #define P_EXPAT_LIBRARY P_EXPAT_LIBRARY_W64_DEBUG
-    #else
-      #define P_EXPAT_LIBRARY P_EXPAT_LIBRARY_W64_RELEASE
-    #endif
-  #else
-    #if defined(_DEBUG)
-      #define P_EXPAT_LIBRARY P_EXPAT_LIBRARY_W32_DEBUG
-    #else
-      #define P_EXPAT_LIBRARY P_EXPAT_LIBRARY_W32_RELEASE
-    #endif
+  #elif defined(P_64BIT) && defined(_DEBUG) && defined(P_EXPAT_LIBRARY_W64_DEBUG)
+    #define P_EXPAT_LIBRARY P_EXPAT_LIBRARY_W64_DEBUG
+  #elif defined(P_64BIT) && !defined(_DEBUG) && defined(P_EXPAT_LIBRARY_W64_RELEASE)
+    #define P_EXPAT_LIBRARY P_EXPAT_LIBRARY_W64_RELEASE
+  #elif !defined(P_64BIT) && defined(_DEBUG) && defined(P_EXPAT_LIBRARY_W32_DEBUG)
+    #define P_EXPAT_LIBRARY P_EXPAT_LIBRARY_W32_DEBUG
+  #elif !defined(P_64BIT) && !defined(_DEBUG) && defined(P_EXPAT_LIBRARY_W32_RELEASE)
+    #define P_EXPAT_LIBRARY P_EXPAT_LIBRARY_W32_RELEASE
   #endif
 #endif
 
@@ -774,7 +777,7 @@
   #define P_SASL 1
 #endif
 
-#if defined(_MSC_VER) && P_SASL
+#if defined(_MSC_VER) && P_SASL && (defined(P_SASL_WIN64) || defined(P_SASL_WIN32))
 
   #pragma include_alias(<sasl/sasl.h>, <@SASL_DIR@/include/sasl.h>)
 
@@ -800,7 +803,7 @@
   #define P_LDAP 1
 #endif
 
-#if defined(_MSC_VER) && P_LDAP
+#if defined(_MSC_VER) && P_LDAP && (defined(P_LDAP_WIN64) || defined(P_LDAP_WIN32))
 
   #pragma include_alias(<ldap.h>,          <@LDAP_DIR@/include/ldap.h>)
   #pragma include_alias(<lber.h>,          <@LDAP_DIR@/include/lber.h>)
@@ -868,7 +871,9 @@
   #define P_SDL P_SDL_WIN32
 #endif
 
-#if defined(_MSC_VER) && P_SDL
+/* CMake/vcpkg supply SDL2 via imported targets; @SDL_DIR@ is only filled by
+   the classic MSWIN finder. */
+#if defined(_MSC_VER) && P_SDL && (defined(P_SDL_WIN64) || defined(P_SDL_WIN32))
   #define P_SDL_INCLUDE(inc) include_alias(<inc>, <@SDL_DIR@/include/inc>)
   #pragma P_SDL_INCLUDE(SDL.h)
   #pragma P_SDL_INCLUDE(SDL_main.h)
