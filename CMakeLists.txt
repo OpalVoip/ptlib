@@ -204,6 +204,13 @@ if(NOT PTLIB_EXCEPTIONS)
     target_compile_options(ptlib PRIVATE -fno-exceptions)
   endif()
 endif()
+# MSVC leaves __cplusplus defined as 199711L unless this switch is set, so a
+# generated solution would ignore the C++20 standard above. ptlib/atomic.h uses
+# the macro to decide whether std::atomic<std::shared_ptr<T>> already exists.
+# PUBLIC puts the switch on this target and on every project that links it.
+if(MSVC)
+  target_compile_options(ptlib PUBLIC $<$<COMPILE_LANGUAGE:CXX>:/Zc:__cplusplus>)
+endif()
 
 if(NOT PTLIB_USE_SYSTEM_REGEX)
   set_source_files_properties(
