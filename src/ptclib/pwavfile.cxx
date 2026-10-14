@@ -132,7 +132,7 @@ void PWAVFile::Construct(OpenMode mode)
   m_autoConverter = NULL;
   m_status = mode == WriteOnly ? e_PreWrite : e_Reading;
 
-  P_DISABLE_GCC_WARNING("-Wclass-memaccess", memset(&m_wavFmtChunk, 0, sizeof(m_wavFmtChunk)));
+  P_DISABLE_GCC_WARNING("-Wclass-memaccess", memset((void *)&m_wavFmtChunk, 0, sizeof(m_wavFmtChunk)));
   m_wavFmtChunk.hdr.len = sizeof(m_wavFmtChunk) - sizeof(m_wavFmtChunk.hdr);
 
   m_readSampleRate = m_readChannels = 0;  // Zero means automatically set in ProcessHeader
