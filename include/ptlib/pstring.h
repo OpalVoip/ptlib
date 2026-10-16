@@ -3304,6 +3304,7 @@ class PStringOptions : public PStringToString
     explicit PStringOptions(const PString & str) : PStringToString(str) { }
     PStringOptions(const PStringToString & other) : PStringToString(other) { }
     PStringOptions & operator=(const PStringToString & other) { PStringToString::operator=(other); return *this; }
+    virtual void PrintOn(ostream & strm) const;
 
     /// Determine if the specified key is present.
     bool Contains(const char *              key   ) const { PConstCaselessString k(key); return PStringToString::Contains(k); }

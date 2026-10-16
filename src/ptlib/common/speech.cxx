@@ -104,7 +104,7 @@ bool PTextToSpeech::SetOptions(const PStringOptions & options)
       return false;
   }
 
-  PTRACE(4, "SetOptions succeeded");
+  PTRACE(4, "SetOptions succeeded\n" << options);
   return true;
 }
 
@@ -543,7 +543,7 @@ bool PSpeechRecognition::SetOptions(const PStringOptions & options)
       return false;
   }
 
-  PTRACE(4, "SetOptions succeeded");
+  PTRACE(4, "SetOptions succeeded\n" << options);
   return true;
 }
 

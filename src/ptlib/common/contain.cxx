@@ -3269,6 +3269,18 @@ char ** PStringToString::ToCharArray(bool withEqualSign, PCharArray * storage) c
 
 ///////////////////////////////////////////////////////////////////////////////
 
+void PStringOptions::PrintOn(ostream & strm) const
+{
+  for (const_iterator it = begin(); it != end(); ++it) {
+    PStringArray data = it->second.Lines();
+    for (PINDEX i = 0; i < data.GetSize(); ++i) {
+      if (i > 0 || it != begin())
+        strm << '\n';
+      strm << it->first << '=' << data[i];
+    }
+  }
+}
+
 
 PString PStringOptions::GetString(const PCaselessString & key, const char * dflt) const
 {
