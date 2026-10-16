@@ -159,6 +159,33 @@ automatically. PulseAudio stays off unless -DPTLIB_PULSE=ON or
 -DPTLIB_PULSE=AUTO finds it.
 
 
+Debian packages
+---------------
+
+A Linux configure can also build one binary .deb. It contains the same
+files as cmake --install: the shared library, plugins, headers, ptlib.pc,
+and the CMake package files. There is no separate development package and
+no source package.
+
+Install dpkg-dev so cpack can run dpkg-shlibdeps. Configure with a /usr
+prefix so the package installs libraries where Debian's ldconfig trigger
+sees them. A normal /usr/local install does not need this.
+
+  cmake -S . -B build -DCMAKE_INSTALL_PREFIX=/usr
+  cmake --build build
+  cmake --build build --target package
+
+The package target writes ptlib_<version>_<arch>.deb in the build
+directory. "cpack -G DEB" from that directory does the same thing. The
+Debian version uses ~alpha or ~beta in place of the hyphen in the PTLib
+version, so 4.0.0-alpha is packaged as 4.0.0~alpha.
+
+Depends lists the shared libraries this build actually linked. Install
+the package with:
+
+  sudo dpkg -i build/ptlib_*.deb
+
+
 MinGW-w64
 ---------
 
