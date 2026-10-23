@@ -72,7 +72,7 @@ class PVideoFrameInfo : public PObject
       i1080Width = 1920, i1080Height = 1080,
       HDTVWidth  = 1920, HDTVHeight  = 1080,
       UHDTVWidth = 3840, UHDTVHeight = 2160,
-      MaxWidth   = 8192, MaxHeight   = 4320
+      MaxWidth   = 7680, MaxHeight   = 4320
     };
 
     static const PString & YUV420P();
