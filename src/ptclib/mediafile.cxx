@@ -864,6 +864,13 @@ public:
         if (CHECK_ERROR_TRK(avcodec_parameters_to_context, (m_codecContext, m_stream->codecpar)))
           return false;
 
+        // avcodec_receive_frame() requires an allocated frame. The write path
+        // allocates one in Create(); the read path has to do it here.
+        if ((m_frame = av_frame_alloc()) == NULL) {
+          PTRACE(2, m_owner, "Could not allocate frame for " << m_owner->m_filePath);
+          return false;
+        }
+
         switch (m_codecContext->codec_type) {
         case AVMEDIA_TYPE_AUDIO:
           m_type = Audio();
@@ -1159,12 +1166,15 @@ public:
 
         AVPacket packet = m_interleaved.front();
         m_interleaved.pop();
-        if (size < (PINDEX)packet.size)
+        if (size < (PINDEX)packet.size) {
+          av_packet_unref(&packet);
           return false;
+        }
 
         size = packet.size;
         memcpy(data, packet.data, size);
         frames = 1;
+        av_packet_unref(&packet);
         return true;
       }
 
@@ -1186,9 +1196,13 @@ public:
 
       bool ReadAndDecodeFrame()
       {
+        if (m_codecContext == NULL || m_frame == NULL)
+          return false;
+
         int result;
         while ((result = avcodec_receive_frame(m_codecContext, m_frame)) < 0) {
-          if (result != AVERROR(EAGAIN) && result == AVERROR_EOF)
+          // EAGAIN means the decoder wants another packet. Anything else, including EOF, is finished.
+          if (result != AVERROR(EAGAIN))
             return false;
 
           if (m_interleaved.empty()) {
@@ -1204,7 +1218,9 @@ public:
             AVPacket packet = m_interleaved.front();
             m_interleaved.pop();
 
-            if (CHECK_ERROR_TRK(avcodec_send_packet, (m_codecContext, &packet)))
+            bool failed = CHECK_ERROR_TRK(avcodec_send_packet, (m_codecContext, &packet));
+            av_packet_unref(&packet);
+            if (failed)
               return false;
           }
         }
@@ -1491,19 +1507,22 @@ public:
           return false;
         }
 
-        if (m_codecContext->pix_fmt == AV_PIX_FMT_YUV420P) {
-          unsigned planeWidth = (m_width + 1)&~1;
-          unsigned planeHeight = (m_height + 1)&~1;
-
-          uint8_t * plane = (uint8_t *)data;
-          av_image_copy_plane(plane, planeWidth, m_frame->data[0], m_frame->linesize[0], m_width, m_height);
-          plane += planeWidth*planeHeight;
-          planeWidth /= 2;
-          planeHeight /= 2;
-          av_image_copy_plane(plane, planeWidth, m_frame->data[1], m_frame->linesize[1], planeWidth, planeHeight);
-          plane += planeWidth*planeHeight;
-          av_image_copy_plane(plane, planeWidth, m_frame->data[2], m_frame->linesize[2], planeWidth, planeHeight);
+        if (m_frame->format != AV_PIX_FMT_YUV420P) {
+          PTRACE(2, m_owner, "Unsupported decoded pixel format " << m_frame->format << " in " << m_owner->m_filePath);
+          return false;
         }
+
+        unsigned planeWidth = (m_width + 1)&~1;
+        unsigned planeHeight = (m_height + 1)&~1;
+
+        uint8_t * plane = (uint8_t *)data;
+        av_image_copy_plane(plane, planeWidth, m_frame->data[0], m_frame->linesize[0], m_width, m_height);
+        plane += planeWidth*planeHeight;
+        planeWidth /= 2;
+        planeHeight /= 2;
+        av_image_copy_plane(plane, planeWidth, m_frame->data[1], m_frame->linesize[1], planeWidth, planeHeight);
+        plane += planeWidth*planeHeight;
+        av_image_copy_plane(plane, planeWidth, m_frame->data[2], m_frame->linesize[2], planeWidth, planeHeight);
 
         if (m_frame->pts != AV_NOPTS_VALUE)
           m_videoTimestamp.SetNanoSeconds(av_rescale_q(m_frame->pts, m_codecContext->time_base, s_NanosecondScale));
@@ -1597,8 +1616,9 @@ public:
     bool ReadInterleaved(unsigned track)
     {
       for (;;) {
+        // av_read_frame() unrefs the packet first, so it must start empty.
         AVPacket packet;
-        av_new_packet(&packet, 0);
+        memset(&packet, 0, sizeof(packet));
 
         int result = av_read_frame(m_formatContext, &packet);
         if (result == AVERROR_EOF)
