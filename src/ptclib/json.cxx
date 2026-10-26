@@ -1409,7 +1409,8 @@ bool PRESTResourceBase::OnCommand(PHTTPRequest & request)
 
   request.outMIME.SetAt(PHTTP::ContentTypeTag, PMIMEInfo::ApplicationJSON());
 
-  if (!restRequest.GetAbstractRequest().FromString(request.GetEntityBody()))
+  PString body = request.GetEntityBody();
+  if (!body.empty() && !restRequest.GetAbstractRequest().FromString(body))
     request.code = PHTTP::BadRequest;
   else if (OnCommandFunction(restRequest))
     return true;
