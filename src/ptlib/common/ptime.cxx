@@ -66,7 +66,7 @@ void PTimeInterval::PrintOn(ostream & strm) const
 
   if ((strm.flags()&ios::floatfield) == ios::scientific) {
     if ((strm.flags()&ios::showbase) != 0 && ns < SecsToNano)
-      strm << PScaleSI(ns/(double)SecsToNano, (unsigned)decimals);
+      strm << PScaleSI(ns/(double)SecsToNano, (unsigned)decimals, "s");
     else {
       ios::fmtflags oldMode = strm.flags()&ios::floatfield;
       strm << fixed << ns/(double)SecsToNano;
