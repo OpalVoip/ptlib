@@ -346,8 +346,14 @@ PHTTP::StatusCode PHTTPClient::ExecuteCommand(Commands cmd,
     if (noPredefinedCookies)
       m_cookies.AddCookie(outMIME, adjustableURL);
 
-    if (!WriteCommand(cmd, adjustableURL.AsString(m_commandUrlFormat), outMIME, processor))
+    if (!WriteCommand(cmd, adjustableURL.AsString(m_commandUrlFormat), outMIME, processor)) {
+      if (!m_persist)
+        break;
+      // If we were persisting, then the connection may have been closed by
+      // the other end, so force reopen and try again
+      forceReopen = true;
       continue;
+    }
 
     // If not persisting need to shut down write so other end stops reading
     if (!m_persist && !outMIME.Has(ContentLengthTag))
