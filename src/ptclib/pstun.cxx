@@ -248,19 +248,10 @@ void PSTUN::AppendMessageIntegrity(PSTUNMessage & message)
   }
 
   message.AddAttribute(PSTUNStringAttribute(PSTUNAttribute::USERNAME, m_userName));
-  // Short-term ICE credentials have no realm. An empty REALM attribute is not
-  // part of an ICE Binding request and some peers reject it.
-  if (!m_realm.IsEmpty())
-    message.AddAttribute(PSTUNStringAttribute(PSTUNAttribute::REALM, m_realm));
+  message.AddAttribute(PSTUNStringAttribute(PSTUNAttribute::REALM,    m_realm));
   if (!m_nonce.IsEmpty())
     message.AddAttribute(PSTUNStringAttribute(PSTUNAttribute::NONCE,  m_nonce));
   message.AddMessageIntegrity(m_password);
-}
-
-
-bool PSTUN::IntegrityMatches(const PSTUNMessage & message) const
-{
-  return !m_password.IsEmpty() && message.CheckMessageIntegrity(m_password) == 0;
 }
 
 
@@ -427,13 +418,6 @@ void PSTUN::SetIceRole(IceRole role)
     m_iceTieBreak = 0;
   else
     memcpy(&m_iceTieBreak, PRandom::Octets(sizeof(m_iceTieBreak)), sizeof(m_iceTieBreak));
-}
-
-
-void PSTUN::AdoptIceRole(IceRole role, uint64_t tieBreak)
-{
-  m_iceRole = role;
-  m_iceTieBreak = role == IceLite ? 0 : tieBreak;
 }
 
 
@@ -827,9 +811,6 @@ void PSTUNMessage::PrintOn(ostream & strm) const
   switch (GetType()) {
     case BindingRequest :
       strm << "Binding Request";
-      break;
-    case BindingIndication :
-      strm << "Binding Indication";
       break;
     case BindingResponse:
       strm << "Binding Response";
