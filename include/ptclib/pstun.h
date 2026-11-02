@@ -133,6 +133,27 @@ class PSTUN {
       IceRole role
     );
 
+    IceRole GetIceRole() const { return m_iceRole; }
+    uint64_t GetIceTieBreak() const { return m_iceTieBreak; }
+
+    /**Set the role without generating a new tie-breaker.
+       Both the connectivity-check client and the request server must share one
+       tie-breaker for the life of the ICE session.
+      */
+    void AdoptIceRole(
+      IceRole role,
+      uint64_t tieBreak
+    );
+
+#if P_SSL
+    /**MESSAGE-INTEGRITY over \p message using the configured short-term password.
+       Does not require a USERNAME or REALM attribute, which ICE responses omit.
+      */
+    bool IntegrityMatches(
+      const PSTUNMessage & message
+    ) const;
+#endif
+
   protected:
     PINDEX                  m_pollRetries;
     PSASLString             m_userName;
@@ -455,6 +476,7 @@ class PSTUNMessage : public PBYTEArray
       BindingRequestRFC3489 = 0x10001,
 
       BindingRequest        = 0x0001,
+      BindingIndication     = 0x0011,
       BindingResponse       = 0x0101,
       BindingError          = 0x0111,
         
