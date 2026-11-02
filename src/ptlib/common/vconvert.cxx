@@ -868,36 +868,38 @@ bool PColourConverter::CopyYUV420P(unsigned srcX, unsigned srcY, unsigned srcWid
 
 #if P_FFMPEG_SWSCALE
 
-  struct SwsContext * context = sws_getContext(srcWidth, srcHeight, AV_PIX_FMT_YUV420P,
-                                               dstWidth, dstHeight, AV_PIX_FMT_YUV420P,
-                                               SWS_BILINEAR, NULL, NULL, NULL);
-  if (context != NULL) {
-    const uint8_t* srcSlice[] = {
-        ffmpeg_yuvptr(srcYUV, srcFrameWidth, srcFrameHeight, srcX, srcY, 0),
-        ffmpeg_yuvptr(srcYUV, srcFrameWidth, srcFrameHeight, srcX, srcY, 1),
-        ffmpeg_yuvptr(srcYUV, srcFrameWidth, srcFrameHeight, srcX, srcY, 2)
-    };
-    const int srcStride[] = {
-        (int)srcFrameWidth,
-        (int)srcFrameWidth/2,
-        (int)srcFrameWidth/2
-    };
+  if (resizeMode == PVideoFrameInfo::eScale) {
+    struct SwsContext * context = sws_getContext(srcWidth, srcHeight, AV_PIX_FMT_YUV420P,
+                                                 dstWidth, dstHeight, AV_PIX_FMT_YUV420P,
+                                                 SWS_BILINEAR, NULL, NULL, NULL);
+    if (context != NULL) {
+      const uint8_t * srcSlice[] = {
+          ffmpeg_yuvptr(srcYUV, srcFrameWidth, srcFrameHeight, srcX, srcY, 0),
+          ffmpeg_yuvptr(srcYUV, srcFrameWidth, srcFrameHeight, srcX, srcY, 1),
+          ffmpeg_yuvptr(srcYUV, srcFrameWidth, srcFrameHeight, srcX, srcY, 2)
+      };
+      const int srcStride[] = {
+          (int)srcFrameWidth,
+          (int)srcFrameWidth/2,
+          (int)srcFrameWidth/2
+      };
 
-    uint8_t* dstSlice[] = {
-        ffmpeg_yuvptr(dstYUV, dstFrameWidth, dstFrameHeight, dstX, dstY, 0),
-        ffmpeg_yuvptr(dstYUV, dstFrameWidth, dstFrameHeight, dstX, dstY, 1),
-        ffmpeg_yuvptr(dstYUV, dstFrameWidth, dstFrameHeight, dstX, dstY, 2)
-    };
-    const int dstStride[] = {
-        (int)dstFrameWidth,
-        (int)dstFrameWidth/2,
-        (int)dstFrameWidth/2
-    };
+      uint8_t * dstSlice[] = {
+          ffmpeg_yuvptr(dstYUV, dstFrameWidth, dstFrameHeight, dstX, dstY, 0),
+          ffmpeg_yuvptr(dstYUV, dstFrameWidth, dstFrameHeight, dstX, dstY, 1),
+          ffmpeg_yuvptr(dstYUV, dstFrameWidth, dstFrameHeight, dstX, dstY, 2)
+      };
+      const int dstStride[] = {
+          (int)dstFrameWidth,
+          (int)dstFrameWidth/2,
+          (int)dstFrameWidth/2
+      };
 
-    sws_scale(context, srcSlice, srcStride, 0, srcHeight, dstSlice, dstStride);
+      sws_scale(context, srcSlice, srcStride, 0, srcHeight, dstSlice, dstStride);
 
-    sws_freeContext(context);
-    return true;
+      sws_freeContext(context);
+      return true;
+    }
   }
 
 #endif // P_FFMPEG_SWSCALE
