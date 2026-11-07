@@ -407,7 +407,41 @@ ptlib_require(EXPAT PTLIB_EXPAT_FOUND)
 
 ptlib_pkg_probe(OPENLDAP ldap)
 ptlib_pkg_probe(SASL libsasl2)
-ptlib_pkg_probe(PCAP libpcap)
+# Homebrew's libpcap is keg-only (macOS already ships one), so libpcap.pc is
+# not on the default PKG_CONFIG_PATH. Prefer pkg-config, then find_path /
+# find_library, preferring a Homebrew keg when present.
+ptlib_wants(PCAP _want_pcap)
+set(PTLIB_PCAP_FOUND FALSE)
+set(PTLIB_PCAP_INCLUDE "")
+if(_want_pcap AND PKG_CONFIG_FOUND)
+  pkg_check_modules(PTLIB_PC_PCAP IMPORTED_TARGET libpcap)
+  if(PTLIB_PC_PCAP_FOUND)
+    set(PTLIB_PCAP_FOUND TRUE)
+    set(PTLIB_PCAP_LINK PkgConfig::PTLIB_PC_PCAP)
+    ptlib_note_snippet(
+      "pkg_check_modules(PTLIB_PC_PCAP REQUIRED IMPORTED_TARGET libpcap)")
+  endif()
+endif()
+if(_want_pcap AND NOT PTLIB_PCAP_FOUND)
+  set(_ptlib_pcap_hints "")
+  foreach(_prefix IN ITEMS /opt/homebrew/opt/libpcap /usr/local/opt/libpcap)
+    if(EXISTS "${_prefix}")
+      list(APPEND _ptlib_pcap_hints "${_prefix}")
+    endif()
+  endforeach()
+  find_path(PTLIB_PCAP_INCLUDE_DIR NAMES pcap/pcap.h pcap.h
+    HINTS ${_ptlib_pcap_hints} PATH_SUFFIXES include)
+  find_library(PTLIB_PCAP_LIBRARY NAMES pcap
+    HINTS ${_ptlib_pcap_hints} PATH_SUFFIXES lib)
+  if(PTLIB_PCAP_INCLUDE_DIR AND PTLIB_PCAP_LIBRARY)
+    set(PTLIB_PCAP_FOUND TRUE)
+    set(PTLIB_PCAP_INCLUDE "${PTLIB_PCAP_INCLUDE_DIR}")
+    set(PTLIB_PCAP_LINK "${PTLIB_PCAP_LIBRARY}")
+    message(STATUS "PCAP: found ${PTLIB_PCAP_LIBRARY} (no pkg-config module)")
+  endif()
+  unset(_ptlib_pcap_hints)
+endif()
+ptlib_require(PCAP PTLIB_PCAP_FOUND)
 
 # vcpkg's ffmpeg port ships FindFFMPEG.cmake (variables only; no FFmpeg::
 # targets). Config packages that already provide those targets are preferred.
@@ -569,12 +603,47 @@ if(_want_lua AND NOT PTLIB_LUA_FOUND AND PKG_CONFIG_FOUND)
     if(PTLIB_PC_LUA${_lua_i}_FOUND)
       set(PTLIB_LUA_FOUND TRUE)
       set(PTLIB_LUA_LINK PkgConfig::PTLIB_PC_LUA${_lua_i})
+      # Consumers loading PTLibTargets need the same IMPORTED_TARGET name.
+      ptlib_note_snippet(
+        "pkg_check_modules(PTLIB_PC_LUA${_lua_i} REQUIRED IMPORTED_TARGET ${_lua_pkg})")
       break()
     endif()
   endforeach()
 endif()
 ptlib_require(LUA PTLIB_LUA_FOUND)
-ptlib_pkg_probe(V8 v8)
+# Homebrew's v8 formula has no .pc file. Prefer pkg-config when present
+# (Debian/Ubuntu), then fall back to find_path/find_library as configure.ac
+# does for Ubuntu (/usr/include/v8) and Homebrew.
+ptlib_wants(V8 _want_v8)
+set(PTLIB_V8_FOUND FALSE)
+set(PTLIB_V8_INCLUDE "")
+if(_want_v8 AND PKG_CONFIG_FOUND)
+  pkg_check_modules(PTLIB_PC_V8 IMPORTED_TARGET v8)
+  if(PTLIB_PC_V8_FOUND)
+    set(PTLIB_V8_FOUND TRUE)
+    set(PTLIB_V8_LINK PkgConfig::PTLIB_PC_V8)
+    ptlib_note_snippet(
+      "pkg_check_modules(PTLIB_PC_V8 REQUIRED IMPORTED_TARGET v8)")
+  endif()
+endif()
+if(_want_v8 AND NOT PTLIB_V8_FOUND)
+  find_path(PTLIB_V8_INCLUDE_DIR v8.h
+    PATH_SUFFIXES v8)
+  find_library(PTLIB_V8_LIBRARY NAMES v8)
+  find_library(PTLIB_V8_PLATFORM_LIBRARY NAMES v8_libplatform)
+  find_library(PTLIB_V8_BASE_LIBRARY NAMES v8_libbase)
+  if(PTLIB_V8_INCLUDE_DIR AND PTLIB_V8_LIBRARY AND
+      PTLIB_V8_PLATFORM_LIBRARY AND PTLIB_V8_BASE_LIBRARY)
+    set(PTLIB_V8_FOUND TRUE)
+    set(PTLIB_V8_INCLUDE "${PTLIB_V8_INCLUDE_DIR}")
+    set(PTLIB_V8_LINK
+      "${PTLIB_V8_LIBRARY}"
+      "${PTLIB_V8_PLATFORM_LIBRARY}"
+      "${PTLIB_V8_BASE_LIBRARY}")
+    message(STATUS "V8: found ${PTLIB_V8_LIBRARY} (no pkg-config module)")
+  endif()
+endif()
+ptlib_require(V8 PTLIB_V8_FOUND)
 function(ptlib_probe_aws)
   ptlib_wants(AWS_SDK _want)
   if(NOT _want OR PTLIB_AWS_SDK_FOUND)

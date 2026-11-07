@@ -194,6 +194,8 @@ class P_DEPRECATED PSmartPointer : public PObject
 
 /** This template class creates a type safe version of PSmartPointer.
 */
+P_PUSH_GCC_WARNING("-Wdeprecated-declarations")
+P_PUSH_MSVC_WARNINGS(4996)
 template <class T> class PSmartPtr : public PSmartPointer
 {
   PCLASSINFO(PSmartPtr, PSmartPointer);
@@ -224,6 +226,8 @@ template <class T> class PSmartPtr : public PSmartPointer
       PSmartPointer::operator=(PSmartPtr(ptr));
     }
 };
+P_POP_MSVC_WARNINGS()
+P_POP_GCC_WARNING()
 
 
 #endif // PTLIB_SMARTPTR_H

@@ -106,17 +106,40 @@ macOS
 -----
 
 Install Xcode or the Xcode command line tools, then CMake. Homebrew is the
-usual source of OpenSSL, Expat, SDL2, and FFmpeg. Configure and build
-from the PTLib tree:
+usual source of optional libraries. A typical set:
 
-  cmake -S . -B build
+  brew install cmake pkgconf openssl expat sdl2 ffmpeg
+
+Other optional features, installed the same way:
+
+  openldap          OpenLDAP (PTLIB_OPENLDAP; pkg-config name ldap)
+  cyrus-sasl        Cyrus SASL (PTLIB_SASL; pkg-config name libsasl2)
+  libpcap           packet capture (PTLIB_PCAP)
+  lua               Lua (PTLIB_LUA)
+  v8                V8 JavaScript (PTLIB_V8)
+  unixodbc          ODBC (PTLIB_ODBC)
+  ncurses           curses UI (PTLIB_CURSES)
+  gstreamer         GStreamer (PTLIB_GSTREAMER)
+
+openldap, cyrus-sasl, and libpcap are keg-only on Homebrew because macOS
+already ships copies. Their .pc files are not on the default
+PKG_CONFIG_PATH. For OpenLDAP and SASL, point pkg-config at the kegs
+before configure (Apple silicon paths shown; on Intel use /usr/local):
+
+  export PKG_CONFIG_PATH="/opt/homebrew/opt/openldap/lib/pkgconfig:/opt/homebrew/opt/cyrus-sasl/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+
+libpcap and V8 are also found without pkg-config when the libraries are
+present. Pass -DCMAKE_PREFIX_PATH=/opt/homebrew (or /usr/local on Intel)
+so find_package and find_library see Homebrew.
+
+Configure and build from the PTLib tree:
+
+  cmake -S . -B build -DCMAKE_PREFIX_PATH=/opt/homebrew
   cmake --build build
   cmake --install build --prefix "$HOME/ptlib"
 
 This selects the macOS sources and defines P_MACOSX. The library links the
-Apple audio and video frameworks. Pass -DCMAKE_PREFIX_PATH if the
-dependencies are installed outside the default search path, for example
-/opt/homebrew on Apple silicon.
+Apple audio and video frameworks.
 
 
 Windows
