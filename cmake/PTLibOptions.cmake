@@ -628,6 +628,19 @@ if(_want_odbc)
       set(PTLIB_ODBC_LINK ${PTLIB_ODBC_LIBRARY})
     endif()
   endif()
+  # Unix ODBC headers may themselves define the Windows types (e.g. BYTE).
+  if(PTLIB_ODBC_FOUND)
+    cmake_push_check_state(RESET)
+    set(CMAKE_REQUIRED_INCLUDES ${ODBC_INCLUDE_DIRS} ${ODBC_INCLUDE_DIR} ${PTLIB_ODBC_INCLUDE})
+    check_c_source_compiles("
+#include <sqltypes.h>
+int main(void) { WCHAR w = 0; return 0; }
+" PTLIB_ODBC_DEFINES_WINDOWS_TYPES)
+    if (PTLIB_ODBC_DEFINES_WINDOWS_TYPES)
+      ptlib_define(P_ODBC_DEFINES_WINDOWS_TYPES 1)
+    endif()
+    cmake_pop_check_state()
+  endif()
 endif()
 ptlib_require(ODBC PTLIB_ODBC_FOUND)
 

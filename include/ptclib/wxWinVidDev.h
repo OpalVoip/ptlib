@@ -101,7 +101,9 @@ class P_WXWINDOWS_DEVICE_CLASS : public PVideoOutputDeviceRGB, public wxFrame
       */
     virtual PBoolean FrameComplete() override;
 
-  protected:
+    virtual PBoolean GetPosition(int &, int &) const override;
+
+protected:
     void InternalOpen();
     void InternalClose();
     void InternalFrameComplete();
@@ -317,6 +319,15 @@ void P_WXWINDOWS_DEVICE_CLASS::InternalFrameComplete()
     Show(true);
     Refresh(false);
   }
+}
+
+
+PBoolean P_WXWINDOWS_DEVICE_CLASS::GetPosition(int & x, int & y) const
+{
+  wxPoint pos = GetScreenPosition();
+  x = pos.x;
+  y = pos.y;
+  return true;
 }
 
 

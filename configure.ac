@@ -2011,6 +2011,13 @@ dnl MSWIN_DEFINE     serial,P_SERIAL
 PTLIB_SIMPLE_OPTION([serial], [SERIAL], [serial port support])
 
 dnl ########################################################################
+dnl check for enabling modem handling
+dnl MSWIN_DISPLAY    modem,Modem Support
+dnl MSWIN_DEFINE     modem,P_MODEM
+
+PTLIB_SIMPLE_OPTION([modem], [MODEM], [modem support])
+
+dnl ########################################################################
 dnl check for POP3/SMTP support
 dnl MSWIN_DISPLAY    pop3smtp,POP3/SMTP Support
 dnl MSWIN_DEFINE     pop3smtp,P_POP3SMTP
