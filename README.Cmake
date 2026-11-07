@@ -168,10 +168,28 @@ Linux
 -----
 
 Install CMake, a C++20 compiler, pkg-config, and the development packages
-for the features you want. On Debian and Ubuntu that is typically
-build-essential, cmake, pkg-config, libssl-dev, libexpat1-dev, and
-libsdl2-dev. FFmpeg, OpenLDAP, ncurses, ALSA, and PulseAudio follow the
-same pattern.
+for the features you want. On Debian and Ubuntu a typical base set is:
+
+  sudo apt install build-essential cmake pkg-config \
+    libssl-dev libexpat1-dev libsdl2-dev
+
+Other optional features:
+
+  libavcodec-dev libavutil-dev libavformat-dev \
+    libswscale-dev libswresample-dev   FFmpeg (PTLIB_FFMPEG)
+  libldap2-dev                         OpenLDAP (PTLIB_OPENLDAP)
+  libsasl2-dev                         Cyrus SASL (PTLIB_SASL)
+  libpcap-dev                          packet capture (PTLIB_PCAP)
+  liblua5.4-dev                        Lua (PTLIB_LUA; liblua5.3-dev also works)
+  libnode-dev                          V8 JavaScript (PTLIB_V8; older
+                                       releases may use libv8-dev)
+  unixodbc-dev                         ODBC (PTLIB_ODBC)
+  libncurses-dev                       curses UI (PTLIB_CURSES)
+  libgstreamer1.0-dev \
+    libgstreamer-plugins-base1.0-dev   GStreamer (PTLIB_GSTREAMER)
+  libasound2-dev                       ALSA plugin
+  libpulse-dev                         PulseAudio plugin (PTLIB_PULSE)
+  libv4l-dev                           Video4Linux2 plugin
 
   cmake -S . -B build
   cmake --build build

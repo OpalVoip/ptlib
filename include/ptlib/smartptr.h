@@ -46,6 +46,8 @@
    requires to determine if the pointer is needed any more and should be
    deleted.
  */
+P_PUSH_GCC_WARNING("-Wdeprecated-declarations")
+P_PUSH_MSVC_WARNINGS(4996)
 class P_DEPRECATED PSmartObject : public PObject
 {
   PCLASSINFO(PSmartObject, PObject);
@@ -194,8 +196,6 @@ class P_DEPRECATED PSmartPointer : public PObject
 
 /** This template class creates a type safe version of PSmartPointer.
 */
-P_PUSH_GCC_WARNING("-Wdeprecated-declarations")
-P_PUSH_MSVC_WARNINGS(4996)
 template <class T> class PSmartPtr : public PSmartPointer
 {
   PCLASSINFO(PSmartPtr, PSmartPointer);
