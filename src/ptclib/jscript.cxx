@@ -218,6 +218,23 @@ struct PJavaScript::Private : PObject
 
   template <class Type>                 inline v8::Local<Type> NewObject()            const { return Type::New(m_isolate); }
   template <class Type, typename Param> inline v8::Local<Type> NewObject(Param param) const { return Type::New(m_isolate, param); }
+  // V8 15 requires ExternalPointerTypeTag on External::New/Value.
+  inline v8::Local<v8::External> NewExternal(void * value) const
+  {
+#if V8_MAJOR_VERSION >= 15
+    return v8::External::New(m_isolate, value, v8::kExternalPointerTypeTagDefault);
+#else
+    return v8::External::New(m_isolate, value);
+#endif
+  }
+  static void * ExternalValue(v8::Local<v8::External> external)
+  {
+#if V8_MAJOR_VERSION >= 15
+    return external->Value(v8::kExternalPointerTypeTagDefault);
+#else
+    return external->Value();
+#endif
+  }
   inline v8::Local<v8::Context> GetContext() const { return v8::Local<v8::Context>::New(m_isolate, m_context); }
   template <typename T> inline PString ToPString(const T & value) { return *v8::String::Utf8Value(m_isolate, value);  }
 #else
@@ -233,6 +250,7 @@ struct PJavaScript::Private : PObject
   inline v8::Local<v8::String> NewString(const char * str) const { return v8::String::New(str); }
   template <class Type>                 inline v8::Local<Type> NewObject()            const { return Type::New(); }
   template <class Type, typename Param> inline v8::Local<Type> NewObject(Param param) const { return Type::New(param); }
+  inline v8::Local<v8::External> NewExternal(void * value) const { return v8::External::New(value); }
   inline v8::Local<v8::Context> GetContext() const { return v8::Local<v8::Context>::New(m_context); }
   template <typename T> inline PString ToPString(const T & value) { return *v8::String::Utf8Value(value);  }
 #endif
@@ -718,11 +736,21 @@ public:
 
   template <class ARGTYPE> static NotifierInfo * GetNotifierInfo(const ARGTYPE & callbackInfo)
   {
+#if V8_MAJOR_VERSION >= 15
+    v8::Local<v8::Data> callbackData = callbackInfo.DataV2();
+    if (callbackData.IsEmpty() || !callbackData->IsValue())
+      return NULL;
+    v8::Local<v8::Value> asValue = v8::Local<v8::Value>::Cast(callbackData);
+    if (!asValue->IsExternal())
+      return NULL;
+    return reinterpret_cast<NotifierInfo *>(ExternalValue(v8::Local<v8::External>::Cast(asValue)));
+#else
     v8::Local<v8::Value> callbackData = callbackInfo.Data();
     if (callbackData.IsEmpty() || !callbackData->IsExternal())
       return NULL;
 
     return reinterpret_cast<NotifierInfo *>(v8::Local<v8::External>::Cast(callbackData)->Value());
+#endif
   }
 
 #if V8_MAJOR_VERSION > 3
@@ -763,7 +791,7 @@ public:
     NotifierInfo & info = it->second;
     info.m_notifiers.Add(notifier);
 
-    v8::Local<v8::External> data = NewObject<v8::External, void *>(&info);
+    v8::Local<v8::External> data = NewExternal(&info);
     v8::Local<v8::Function> value;
 #if V8_MAJOR_VERSION > 3
     if (v8::Function::New(context, StaticFunctionCallback, data).ToLocal(&value) &&

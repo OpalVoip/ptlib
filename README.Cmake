@@ -106,17 +106,40 @@ macOS
 -----
 
 Install Xcode or the Xcode command line tools, then CMake. Homebrew is the
-usual source of OpenSSL, Expat, SDL2, and FFmpeg. Configure and build
-from the PTLib tree:
+usual source of optional libraries. A typical set:
 
-  cmake -S . -B build
+  brew install cmake pkgconf openssl expat sdl2 ffmpeg
+
+Other optional features, installed the same way:
+
+  openldap          OpenLDAP (PTLIB_OPENLDAP; pkg-config name ldap)
+  cyrus-sasl        Cyrus SASL (PTLIB_SASL; pkg-config name libsasl2)
+  libpcap           packet capture (PTLIB_PCAP)
+  lua               Lua (PTLIB_LUA)
+  v8                V8 JavaScript (PTLIB_V8)
+  unixodbc          ODBC (PTLIB_ODBC)
+  ncurses           curses UI (PTLIB_CURSES)
+  gstreamer         GStreamer (PTLIB_GSTREAMER)
+
+openldap, cyrus-sasl, and libpcap are keg-only on Homebrew because macOS
+already ships copies. Their .pc files are not on the default
+PKG_CONFIG_PATH. For OpenLDAP and SASL, point pkg-config at the kegs
+before configure (Apple silicon paths shown; on Intel use /usr/local):
+
+  export PKG_CONFIG_PATH="/opt/homebrew/opt/openldap/lib/pkgconfig:/opt/homebrew/opt/cyrus-sasl/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+
+libpcap and V8 are also found without pkg-config when the libraries are
+present. Pass -DCMAKE_PREFIX_PATH=/opt/homebrew (or /usr/local on Intel)
+so find_package and find_library see Homebrew.
+
+Configure and build from the PTLib tree:
+
+  cmake -S . -B build -DCMAKE_PREFIX_PATH=/opt/homebrew
   cmake --build build
   cmake --install build --prefix "$HOME/ptlib"
 
 This selects the macOS sources and defines P_MACOSX. The library links the
-Apple audio and video frameworks. Pass -DCMAKE_PREFIX_PATH if the
-dependencies are installed outside the default search path, for example
-/opt/homebrew on Apple silicon.
+Apple audio and video frameworks.
 
 
 Windows
@@ -145,10 +168,28 @@ Linux
 -----
 
 Install CMake, a C++20 compiler, pkg-config, and the development packages
-for the features you want. On Debian and Ubuntu that is typically
-build-essential, cmake, pkg-config, libssl-dev, libexpat1-dev, and
-libsdl2-dev. FFmpeg, OpenLDAP, ncurses, ALSA, and PulseAudio follow the
-same pattern.
+for the features you want. On Debian and Ubuntu a typical base set is:
+
+  sudo apt install build-essential cmake pkg-config \
+    libssl-dev libexpat1-dev libsdl2-dev
+
+Other optional features:
+
+  libavcodec-dev libavutil-dev libavformat-dev \
+    libswscale-dev libswresample-dev   FFmpeg (PTLIB_FFMPEG)
+  libldap2-dev                         OpenLDAP (PTLIB_OPENLDAP)
+  libsasl2-dev                         Cyrus SASL (PTLIB_SASL)
+  libpcap-dev                          packet capture (PTLIB_PCAP)
+  liblua5.4-dev                        Lua (PTLIB_LUA; liblua5.3-dev also works)
+  libnode-dev                          V8 JavaScript (PTLIB_V8; older
+                                       releases may use libv8-dev)
+  unixodbc-dev                         ODBC (PTLIB_ODBC)
+  libncurses-dev                       curses UI (PTLIB_CURSES)
+  libgstreamer1.0-dev \
+    libgstreamer-plugins-base1.0-dev   GStreamer (PTLIB_GSTREAMER)
+  libasound2-dev                       ALSA plugin
+  libpulse-dev                         PulseAudio plugin (PTLIB_PULSE)
+  libv4l-dev                           Video4Linux2 plugin
 
   cmake -S . -B build
   cmake --build build

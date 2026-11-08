@@ -876,7 +876,7 @@ public:
           m_type = Audio();
           m_rate = m_codecContext->sample_rate;
           m_frames = m_stream->nb_frames;
-        #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(60, 0, 0)
+        #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59, 0, 0)
           m_channels = m_codecContext->channels;
         #else
           m_channels = m_codecContext->ch_layout.nb_channels;
@@ -1232,7 +1232,7 @@ public:
       bool CreateResampler(AVSampleFormat  inFormat, int  inRate, int  inChannels,
                            AVSampleFormat outFormat, int outRate, int outChannels)
       {
-      #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(60, 0, 0)
+      #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59, 0, 0)
         m_swrContext = swr_alloc_set_opts(NULL,
                                           av_get_default_channel_layout(outChannels),
                                           outFormat,
@@ -1293,7 +1293,7 @@ public:
 
           if (!CreateResampler(m_codecContext->sample_fmt,
                                m_codecContext->sample_rate,
-                             #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(60, 0, 0)
+                             #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59, 0, 0)
                                m_codecContext->channels,
                              #else
                                m_codecContext->ch_layout.nb_channels,
@@ -1377,7 +1377,7 @@ public:
         if (!m_owner->CheckModeAndTrackType(false, Audio(), m_type))
           return false;
 
-      #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(60, 0, 0)
+      #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59, 0, 0)
         int channels = m_codecContext->channels;
       #else
         int channels = m_codecContext->ch_layout.nb_channels;
@@ -1415,7 +1415,7 @@ public:
             }
             m_swrFrame->format = m_codecContext->sample_fmt;
             m_swrFrame->sample_rate = m_codecContext->sample_rate;
-#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(60, 0, 0)
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59, 0, 0)
             m_swrFrame->channels = channels;
             m_swrFrame->channel_layout = m_codecContext->channel_layout;
 #else

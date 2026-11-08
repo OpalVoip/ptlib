@@ -255,6 +255,12 @@ if(NOT PTLIB_USE_SYSTEM_REGEX)
   target_include_directories(ptlib PRIVATE
     "${PTLIB_SOURCE_DIR}/src/ptlib/common/regex")
 endif()
+if(PTLIB_V8_ENABLED AND PTLIB_V8_INCLUDE)
+  target_include_directories(ptlib PRIVATE "${PTLIB_V8_INCLUDE}")
+endif()
+if(PTLIB_PCAP_ENABLED AND PTLIB_PCAP_INCLUDE)
+  target_include_directories(ptlib PRIVATE "${PTLIB_PCAP_INCLUDE}")
+endif()
 
 target_link_libraries(ptlib PUBLIC Threads::Threads)
 if(CMAKE_DL_LIBS)

@@ -46,7 +46,9 @@
    requires to determine if the pointer is needed any more and should be
    deleted.
  */
-class PSmartObject : public PObject
+P_PUSH_GCC_WARNING("-Wdeprecated-declarations")
+P_PUSH_MSVC_WARNINGS(4996)
+class P_DEPRECATED PSmartObject : public PObject
 {
   PCLASSINFO(PSmartObject, PObject);
 
@@ -108,7 +110,7 @@ class PSmartObject : public PObject
    count, then C = B then copies the pointer "object" in thread 2. Thread 1
    then deletes it leaving C pointing to a deleted pointer.
  */
-class PSmartPointer : public PObject
+class P_DEPRECATED PSmartPointer : public PObject
 {
   PCLASSINFO(PSmartPointer, PObject);
 
@@ -224,6 +226,8 @@ template <class T> class PSmartPtr : public PSmartPointer
       PSmartPointer::operator=(PSmartPtr(ptr));
     }
 };
+P_POP_MSVC_WARNINGS()
+P_POP_GCC_WARNING()
 
 
 #endif // PTLIB_SMARTPTR_H
