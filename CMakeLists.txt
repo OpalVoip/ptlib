@@ -1,7 +1,9 @@
-# Optional dependencies can come from vcpkg. Point CMake at a vcpkg checkout:
+# Optional dependencies can come from vcpkg. On Windows the toolchain is
+# selected automatically when a checkout can be found. Elsewhere, point
+# CMake at one:
 #   cmake -B build -DCMAKE_TOOLCHAIN_FILE=<vcpkg>/scripts/buildsystems/vcpkg.cmake
-# Default manifest features are openssl, expat, sdl2, and ffmpeg. Other
-# features are listed in vcpkg.json.
+# Default manifest features are openssl, expat, sdl2, and ffmpeg. On Windows,
+# sasl, pcap, lua, and gstreamer are added. Other features are in vcpkg.json.
 #
 # The default target is Release. Other targets:
 #   cmake --build build --target debug   # Debug tree in build/debug
@@ -15,6 +17,8 @@ if(POLICY CMP0174)
   cmake_policy(SET CMP0174 NEW)
 endif()
 set(CMAKE_POLICY_DEFAULT_CMP0174 NEW)
+
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/PTLibVcpkg.cmake")
 
 # A machine-wide "vcpkg integrate install" notices vcpkg.json and, with
 # manifest mode off, prints a warning on every MSBuild invocation. CMake
@@ -49,6 +53,7 @@ if(PTLIB_MINSIZE)
     set(VCPKG_MANIFEST_FEATURES jpeg)
   endif()
 endif()
+ptlib_vcpkg_windows_features()
 if(PTLIB_OPALMIN)
   set(_ptlib_vcpkg_features "${VCPKG_MANIFEST_FEATURES}")
   if(NOT _ptlib_vcpkg_features AND DEFINED ENV{VCPKG_MANIFEST_FEATURES})

@@ -43,7 +43,7 @@
     },
     "gstreamer": {
       "description": "GStreamer media pipeline",
-      "dependencies": ["gstreamer", "gst-plugins-base"]
+      "dependencies": ["gstreamer"]
     },
     "odbc": {
       "description": "ODBC database access",
