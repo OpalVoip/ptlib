@@ -1052,7 +1052,7 @@ if(NOT PTLIB_SSL_ENABLED)
 endif()
 
 if(PTLIB_SSL_ENABLED)
-  ptlib_define(P_OPENSSL 1)
+  ptlib_define(P_SSL 1)
 endif()
 if(PTLIB_EXPAT_ENABLED)
   ptlib_define(P_EXPAT 1)

@@ -292,6 +292,14 @@
   #undef P_SNMP
 #endif
 
+/* Sources test P_SSL. CMake writes that macro. Unix configure still
+   writes P_OPENSSL, which is accepted here so both builds enable SSL. */
+#undef P_SSL
+#undef P_OPENSSL
+#if defined(P_OPENSSL) && !defined(P_SSL)
+  #define P_SSL 1
+#endif
+
 #undef P_NAT
 #if P_NAT
   #undef P_STUN
@@ -324,7 +332,6 @@
 #undef P_PORTMIXER
 
 #undef P_PCAP
-#undef P_OPENSSL
 // For backward compatibility, should always be present now
 #define P_SSL_AES 1
 
