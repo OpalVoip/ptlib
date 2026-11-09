@@ -14,6 +14,7 @@ set "TOOLCHAIN="
 if defined VCPKG_ROOT if exist "%VCPKG_ROOT%\scripts\buildsystems\vcpkg.cmake" (
   set "TOOLCHAIN=-DCMAKE_TOOLCHAIN_FILE=%VCPKG_ROOT%\scripts\buildsystems\vcpkg.cmake"
 )
+if not defined TOOLCHAIN echo VCPKG_ROOT is not set. CMake will look for vcpkg.
 
 echo Configuring PTLib with "%GENERATOR%"
 cmake -S . -B build -G "%GENERATOR%" -A x64 %TOOLCHAIN%

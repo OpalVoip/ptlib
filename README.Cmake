@@ -170,17 +170,37 @@ vcpkg
 -----
 
 vcpkg.json lists the optional libraries. The default features are openssl,
-expat, sdl2, and ffmpeg. Point CMake at a vcpkg checkout:
+expat, sdl2, and ffmpeg.
+
+On Windows, CMake uses a vcpkg checkout for those libraries and for the
+other dependencies the build probes when the port supports the Visual
+Studio triplet: Cyrus SASL, libpcap, Lua, and GStreamer. The toolchain
+is loaded automatically unless one was already given or
+-DPTLIB_USE_VCPKG=OFF is set. CMake looks at VCPKG_ROOT, then vcpkg on
+PATH, then the Visual Studio vcpkg component, then a checkout under the
+user profile, %LOCALAPPDATA%\vcpkg, C:\vcpkg, or C:\src\vcpkg.
+
+An explicit -DVCPKG_MANIFEST_FEATURES list replaces that automatic set.
+The default features above are still installed. An empty list keeps only
+the defaults:
+
+  -DVCPKG_MANIFEST_FEATURES=
+
+OpenLDAP and ncurses are not selected for Visual Studio: those ports do
+not build for that triplet. ALSA and PulseAudio are Linux-only. Windows
+ODBC is the SDK library, so unixodbc is not selected. The AWS SDK,
+PortAudio, and V8 stay opt-in. PortAudio and the AWS SDK are features:
+
+  -DVCPKG_MANIFEST_FEATURES=aws-sdk,portaudio
+
+On other systems, point CMake at a checkout:
 
   cmake -S . -B build "-DCMAKE_TOOLCHAIN_FILE=<vcpkg>/scripts/buildsystems/vcpkg.cmake"
 
-Extra features, comma separated:
-
-  -DVCPKG_MANIFEST_FEATURES=ldap,ncurses
-
 -DPTLIB_MINSIZE=ON skips the default openssl, expat, sdl2, and ffmpeg
-features. That matches configure --enable-minsize. Still-image files (BMP,
-JPEG, PNG) and JPEG/MJPEG colour conversion use FFmpeg when it is enabled
+features and does not add the automatic Windows set. That matches
+configure --enable-minsize. Still-image files (BMP, JPEG, PNG) and
+JPEG/MJPEG colour conversion use FFmpeg when it is enabled
 (PTLIB_FFMPEG=AUTO uses it when the library is present).
 
 Windows does not use libiconv; character conversion uses the Win32 APIs.
@@ -237,6 +257,7 @@ vcxproj files:
   configure_vs.bat
 
 If VCPKG_ROOT is set, the script passes that vcpkg toolchain to CMake.
+Otherwise CMake looks for a checkout itself. See the vcpkg section.
 The same configure for Visual Studio 2022 from a command prompt:
 
   cmake -S . -B build -G "Visual Studio 17 2022" -A x64
@@ -246,8 +267,9 @@ The same configure for Visual Studio 2022 from a command prompt:
 "cmake --help" lists the generator name for a newer Visual Studio. This
 selects the Windows sources. The library links ws2_32 and iphlpapi.
 
-Optional libraries are easiest through vcpkg. Add the toolchain file to the
-first command:
+Optional libraries come from vcpkg when that toolchain is found. See the
+vcpkg section. Pass the toolchain file only when CMake should use a
+checkout it would not find on its own:
 
   -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
 
