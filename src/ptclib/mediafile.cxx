@@ -44,8 +44,6 @@
 
 #define PTraceModule() "MediaFile"
 
-//#undef P_FFMPEG_FULL
-
 
 const PString & PMediaFile::Audio() { static PConstString s("audio"); return s; }
 const PString & PMediaFile::Video() { static PConstString s("video"); return s; }
@@ -631,7 +629,7 @@ public:
 PFACTORY_CREATE(PMediaFile::Factory, PMediaFile_WAV, ".wav");
 
 
-#if P_FFMPEG_FULL
+#if P_FFMPEG
 
 extern "C" {
   P_PUSH_MSVC_WARNINGS(4244)
@@ -2714,7 +2712,7 @@ PStringSet PMediaFile::GetAllFileTypes()
   return PStringSet(PARRAYSIZE(SuperBasic), SuperBasic, true);
 }
 
-#else // P_FFMPEG_FULL - WIN32
+#else // P_FFMPEG - WIN32
 
 PStringSet PMediaFile::GetAllFileTypes()
 {
@@ -2722,7 +2720,7 @@ PStringSet PMediaFile::GetAllFileTypes()
   return ".wav";
 }
 
-#endif // P_FFMPEG_FULL
+#endif // P_FFMPEG
 
 
 #if P_VIDEO

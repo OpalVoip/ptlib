@@ -40,7 +40,7 @@
 #include <ptlib/videoio.h>
 #include <ptlib/vconvert.h>
 
-#if P_FFMPEG_FULL && P_FFMPEG_SWSCALE
+#if P_FFMPEG
   extern "C" {
     P_PUSH_MSVC_WARNINGS(4244)
     #include <libavformat/avformat.h>
@@ -49,18 +49,6 @@
     #include <libswscale/swscale.h>
     P_POP_MSVC_WARNINGS()
   };
-  #ifdef P_AVFORMAT_LIB
-    #pragma comment(lib, P_AVFORMAT_LIB)
-  #endif
-  #ifdef P_AVCODEC_LIB
-    #pragma comment(lib, P_AVCODEC_LIB)
-  #endif
-  #ifdef P_AVUTIL_LIB
-    #pragma comment(lib, P_AVUTIL_LIB)
-  #endif
-  #ifdef P_SWSCALE_LIB
-    #pragma comment(lib, P_SWSCALE_LIB)
-  #endif
 #endif
 
 
@@ -400,7 +388,7 @@ class PStillImageVideoFile : public PVideoFile
 
 ///////////////////////////////////////////////////////////////////////////////
 
-#if P_FFMPEG_FULL && P_FFMPEG_SWSCALE
+#if P_FFMPEG
 
 /**A still image decoded with FFmpeg (BMP, JPEG, PNG, GIF, TIFF, …).
   */
@@ -543,7 +531,7 @@ PFACTORY_SYNONYM(PVideoFileFactory, PFfmpegImageFile, png,  PFfmpegImageExtensio
 PFACTORY_SYNONYM(PVideoFileFactory, PFfmpegImageFile, tif,  PFfmpegImageExtensions[6]);
 PFACTORY_SYNONYM(PVideoFileFactory, PFfmpegImageFile, tiff, PFfmpegImageExtensions[7]);
 
-#else // P_FFMPEG_FULL
+#else // P_FFMPEG
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -686,6 +674,6 @@ PFACTORY_SYNONYM(PVideoFileFactory, PJPEGFile, jpeg, ".jpeg");
 
 
 #endif  // P_JPEG_DECODER
-#endif  // P_FFMPEG_FULL && P_FFMPEG_SWSCALE
+#endif  // P_FFMPEG
 #endif  // P_VIDFILE
 #endif  // P_VIDEO
