@@ -69,17 +69,69 @@ Install produces:
   lib/pkgconfig/ptlib.pc
   lib/cmake/PTLib/PTLibConfig.cmake
 
-A downstream project then uses:
+OPAL installs the same kind of files: lib/pkgconfig/opal.pc, which requires
+ptlib, and lib/cmake/OPAL/OPALConfig.cmake.
+
+
+Using PTLib from another project
+--------------------------------
+
+A CMake application uses the CMake package. PTLibConfig.cmake defines the
+imported target PTLib::ptlib, and that target carries the public link
+dependencies, including threads. The build directory is a CMake package
+too, so a consumer can use PTLib before it is installed. Set PTLib_DIR to
+the build directory or to an install prefix. A prefix already on
+CMAKE_PREFIX_PATH is found with no extra variable.
+
+  cmake_minimum_required(VERSION 3.20)
+  project(myapp LANGUAGES CXX)
+  set(CMAKE_CXX_STANDARD 20)
+  set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
   find_package(PTLib CONFIG REQUIRED)
+  add_executable(myapp main.cxx)
   target_link_libraries(myapp PRIVATE PTLib::ptlib)
 
-The build directory is also a CMake package. OPAL can use it without an
-install step:
+Configure it against a build tree or an install prefix:
 
-  cmake -S opalvoip-opal -B opalvoip-opal/build -DOPAL_PTLIB_DIR=<ptlib-build>
+  cmake -S . -B build -DPTLib_DIR=<ptlib-build-or-prefix>
 
-OPAL_PTLIB_DIR accepts that build directory or an install prefix.
+For an install under /usr/local, CMAKE_PREFIX_PATH=/usr/local is enough and
+PTLib_DIR can be omitted. Compile as C++20.
+
+OPAL's CMake package loads this one. OPAL_PTLIB_DIR accepts the PTLib build
+directory or an install prefix:
+
+  cmake -S opalvoip-opal -B opalvoip-opal/build -DOPAL_PTLIB_DIR=<ptlib>
+
+A program that uses both libraries links both imported targets.
+OPALConfig.cmake loads PTLib, so set PTLib_DIR when PTLib is outside the
+default search path, and set OPAL_DIR the same way for OPAL.
+
+  find_package(PTLib CONFIG REQUIRED)
+  find_package(OPAL CONFIG REQUIRED)
+  target_link_libraries(myapp PRIVATE OPAL::opal PTLib::ptlib)
+
+
+pkg-config
+----------
+
+pkg-config reads ptlib.pc after install. The copy written into the build
+directory already contains the install prefix, so it describes the
+installed tree. If that prefix is outside the default search path:
+
+  export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
+  pkg-config --cflags --libs ptlib
+
+That prints the include directory and the library name for this build, such
+as -lpt. The C++ standard is recorded in the cxxflags and cplusplus_std
+variables. pkg-config --cflags leaves -std=c++20 out, so the program still
+compiles as C++20. Libs.private is empty, so pkg-config --static does not
+add OpenSSL, libdl, or the other libraries a static link needs.
+
+opal.pc requires ptlib, so pkg-config --cflags --libs opal follows that and
+prints both libraries. Its Cflags line is empty. The -I comes from ptlib.pc,
+which means both libraries are installed under the same prefix.
 
 
 vcpkg
