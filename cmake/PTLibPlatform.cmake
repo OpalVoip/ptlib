@@ -262,7 +262,16 @@ if(PTLIB_OS_TAG STREQUAL "P_LINUX")
   endif()
 endif()
 
-check_symbol_exists(dlopen dlfcn.h PTLIB_HAS_DLOPEN)
+# dlopen is in libdl on glibc before 2.34 (Ubuntu 20.04). From 2.34 it is in
+# libc, so CMAKE_DL_LIBS is empty and a bare link succeeds. Without the
+# library here the probe fails, P_DYNALINK stays off, and udll.cxx is compiled
+# out while pluginmgr.cxx still references PDynaLink.
+if(NOT WIN32)
+  cmake_push_check_state(RESET)
+  set(CMAKE_REQUIRED_LIBRARIES ${CMAKE_DL_LIBS})
+  check_symbol_exists(dlopen dlfcn.h PTLIB_HAS_DLOPEN)
+  cmake_pop_check_state()
+endif()
 if(PTLIB_HAS_DLOPEN OR WIN32)
   ptlib_define(P_DYNALINK 1)
 endif()
