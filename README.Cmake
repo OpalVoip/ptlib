@@ -9,7 +9,7 @@ static build adds _s (libpt_s or libpt_d_s). 64-bit MSVC installs ptlib64
 toolchains keep pt.dll.
 
 Requirements:
-  CMake 3.20 or newer
+  CMake 3.16 or newer
   a C++20 compiler
   a C11 compiler
 
@@ -82,7 +82,7 @@ too, so a consumer can use PTLib before it is installed. Set PTLib_DIR to
 the build directory or to an install prefix. A prefix already on
 CMAKE_PREFIX_PATH is found with no extra variable.
 
-  cmake_minimum_required(VERSION 3.20)
+  cmake_minimum_required(VERSION 3.16)
   project(myapp LANGUAGES CXX)
   set(CMAKE_CXX_STANDARD 20)
   set(CMAKE_CXX_STANDARD_REQUIRED ON)

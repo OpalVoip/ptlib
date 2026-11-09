@@ -1056,6 +1056,28 @@ if(PTLIB_SSL_ENABLED)
 endif()
 if(PTLIB_EXPAT_ENABLED)
   ptlib_define(P_EXPAT 1)
+  # Upstream Expat 2.6 adds the 64-bit position calls and deprecates the
+  # original ones. Apple's expat reports a later version without those calls.
+  set(_expat_required_includes "${CMAKE_REQUIRED_INCLUDES}")
+  set(_expat_required_libraries "${CMAKE_REQUIRED_LIBRARIES}")
+  set(CMAKE_REQUIRED_INCLUDES ${EXPAT_INCLUDE_DIRS})
+  set(CMAKE_REQUIRED_LIBRARIES ${EXPAT_LIBRARIES})
+  check_cxx_source_compiles("
+#define XML_STATIC 1
+#include <expat.h>
+int main() {
+  XML_Parser parser = 0;
+  return (int)XML_GetCurrentLineNumber64(parser)
+       + (int)XML_GetCurrentColumnNumber64(parser);
+}
+" PTLIB_EXPAT_HAS_POSITION64)
+  set(CMAKE_REQUIRED_INCLUDES "${_expat_required_includes}")
+  set(CMAKE_REQUIRED_LIBRARIES "${_expat_required_libraries}")
+  unset(_expat_required_includes)
+  unset(_expat_required_libraries)
+  if(PTLIB_EXPAT_HAS_POSITION64)
+    ptlib_define(P_EXPAT_POSITION64 1)
+  endif()
 endif()
 if(PTLIB_OPENLDAP_ENABLED)
   ptlib_define(P_OPENLDAP 1)

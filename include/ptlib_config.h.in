@@ -346,10 +346,9 @@
 #endif // P_SCRIPTS
 
 #undef P_EXPAT
+#undef P_EXPAT_POSITION64
 #undef P_SASL
-#ifdef _WIN32
-  #define P_HAS_SASL_SASL_H 1
-#endif
+#undef P_HAS_SASL_SASL_H
 #undef P_OPENLDAP
 
 #if P_TEXT_TO_SPEECH

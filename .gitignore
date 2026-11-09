@@ -32,3 +32,4 @@ private/
 /samples/vxmltest/cache/
 /tools/configure/Release
 .vscode/*.log
+build_deb

@@ -8,7 +8,7 @@
 # The default target is Release. Other targets:
 #   cmake --build build --target debug   # Debug tree in build/debug
 #   cmake --build build --target both     # Release and Debug
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.16)
 
 # vcpkg's FindFFMPEG calls append_dependencies(NAMES ""). That trips CMP0174
 # unless the default is set before project() (function-local policy is ignored
