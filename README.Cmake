@@ -230,7 +230,14 @@ Windows
 -------
 
 Use Visual Studio 2022 or later, with the C++ desktop workload, and CMake.
-Generate an x64 solution:
+From this directory, configure_vs.bat selects the newest installed Visual
+Studio that has the C++ workload and writes build\PTLib.sln plus the
+vcxproj files:
+
+  configure_vs.bat
+
+If VCPKG_ROOT is set, the script passes that vcpkg toolchain to CMake.
+The same configure for Visual Studio 2022 from a command prompt:
 
   cmake -S . -B build -G "Visual Studio 17 2022" -A x64
   cmake --build build --config Release
