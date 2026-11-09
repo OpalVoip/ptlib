@@ -450,6 +450,7 @@ add_custom_target(uninstall
   VERBATIM)
 
 include(cmake/PTLibBuildVariants.cmake)
+include(cmake/PTLibVisualStudio.cmake)
 
 # Optional binary .deb. Build it with "cmake --build <build> --target package"
 # or "cpack -G DEB" from the build directory. Configure with
