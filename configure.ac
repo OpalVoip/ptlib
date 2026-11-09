@@ -53,7 +53,6 @@ if test "${enable_minsize}x" = "yesx" ; then
   DEFAULT_SNMP=no
   DEFAULT_TELNET=no
   DEFAULT_CLI=no
-  DEFAULT_REMCONN=no
   DEFAULT_SERIAL=no
   DEFAULT_POP3SMTP=no
   DEFAULT_VIDEO=no
@@ -1997,25 +1996,11 @@ dnl MSWIN_DEFINE     cli,P_CLI
 PTLIB_SIMPLE_OPTION([cli], [CLI], [command line interpreter support])
 
 dnl ########################################################################
-dnl check for enabling REMCONN support
-dnl MSWIN_DISPLAY    remconn,remote connection support
-dnl MSWIN_DEFINE     remconn,P_REMCONN
-
-PTLIB_SIMPLE_OPTION([remconn], [REMCONN], [remote connection support], [HAS_CONFIG_FILE], [HAS_PIPECHAN])
-
-dnl ########################################################################
 dnl check for enabling serial port handling
 dnl MSWIN_DISPLAY    serial,Serial Support
 dnl MSWIN_DEFINE     serial,P_SERIAL
 
 PTLIB_SIMPLE_OPTION([serial], [SERIAL], [serial port support])
-
-dnl ########################################################################
-dnl check for enabling modem handling
-dnl MSWIN_DISPLAY    modem,Modem Support
-dnl MSWIN_DEFINE     modem,P_MODEM
-
-PTLIB_SIMPLE_OPTION([modem], [MODEM], [modem support])
 
 dnl ########################################################################
 dnl check for POP3/SMTP support

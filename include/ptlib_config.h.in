@@ -312,7 +312,6 @@
 #undef P_ODBC
 #undef P_ODBC_DEFINES_WINDOWS_TYPES
 #undef P_SERIAL
-#undef P_MODEM
 #undef P_POP3SMTP
 #undef P_CONFIG_FILE
 #undef P_CYPHER
@@ -324,10 +323,6 @@
 #undef P_SYSTEMLOG
 #undef P_CHANNEL_UTILS
 #undef P_NETWORKING
-
-#if _WIN32 || P_PIPECHAN
-  #undef P_REMCONN
-#endif
 
 #if P_ASN
   #undef P_SNMP

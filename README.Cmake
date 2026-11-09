@@ -45,10 +45,9 @@ Useful options, passed on the first cmake command:
   -DBUILD_SHARED_LIBS=OFF       static library
   -DPTLIB_BUILD_SAMPLES=ON      sample programs
   -DPTLIB_MINSIZE=ON            smaller library (configure --enable-minsize)
-  -DPTLIB_OPALMIN=ON            omit FTP, Telnet, ILS, LDAP, SOAP,
+  -DPTLIB_OPALMIN=ON            omit FTP, Telnet, LDAP, SOAP,
                                 XML-RPC, SNMP, RFC1155, vCard, XMPP,
-                                SASL, serial, remote connection, modem,
-                                and internet mail
+                                SASL, serial, and internet mail
   -DPTLIB_SSL=ON                require OpenSSL
   -DCMAKE_BUILD_TYPE=Debug      single-config generators (Ninja, Makefiles)
 

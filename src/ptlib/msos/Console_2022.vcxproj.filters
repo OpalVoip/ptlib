@@ -121,9 +121,6 @@
     <ClCompile Include="assert.cxx">
       <Filter>Source Files\MSOS</Filter>
     </ClCompile>
-    <ClCompile Include="remconn.cxx">
-      <Filter>Source Files\MSOS</Filter>
-    </ClCompile>
     <ClCompile Include="..\unix\assert.cxx">
       <Filter>Source Files\Android</Filter>
     </ClCompile>
@@ -277,9 +274,6 @@
     <ClCompile Include="..\..\ptclib\psoap.cxx">
       <Filter>Source Files\Components\Protocols</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\ptclib\pils.cxx">
-      <Filter>Source Files\Components\Protocols</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\ptclib\ipacl.cxx">
       <Filter>Source Files\Components\Protocols</Filter>
     </ClCompile>
@@ -333,9 +327,6 @@
     </ClCompile>
     <ClCompile Include="..\..\ptclib\textdata.cxx">
       <Filter>Source Files\Components\Wrappers</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\ptclib\modem.cxx">
-      <Filter>Source Files\Components\Protocols</Filter>
     </ClCompile>
     <ClCompile Include="..\..\ptclib\pasn.cxx">
       <Filter>Source Files\Components\Protocols</Filter>
@@ -576,16 +567,10 @@
     <ClInclude Include="..\..\..\include\ptlib\pfactory.h">
       <Filter>Header Files\Common</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\include\ptclib\pils.h">
-      <Filter>Header Files\Components</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\include\ptclib\pdns.h">
       <Filter>Header Files\Components</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\include\ptclib\pasn.h">
-      <Filter>Header Files\Components</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\include\ptclib\modem.h">
       <Filter>Header Files\Components</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\include\ptclib\mime.h">
@@ -701,9 +686,6 @@
     </ClInclude>
     <ClInclude Include="..\..\..\include\ptclib\pwavfiledev.h">
       <Filter>Header Files\Common</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\remconn.h">
-      <Filter>Header Files\MSOS</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\semaphor.h">
       <Filter>Header Files\MSOS</Filter>
@@ -841,9 +823,6 @@
       <Filter>Header Files\Android</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\ptime.h">
-      <Filter>Header Files\Android</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\remconn.h">
       <Filter>Header Files\Android</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\semaphor.h">

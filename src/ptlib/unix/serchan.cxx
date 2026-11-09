@@ -29,7 +29,6 @@
  */
  
 #pragma implementation "serchan.h"
-#pragma implementation "modem.h"
 
 #include <ptlib.h>
 #include <fcntl.h>

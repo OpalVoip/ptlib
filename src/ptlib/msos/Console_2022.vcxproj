@@ -261,7 +261,6 @@
     <ClCompile Include="..\common\pluginmgr.cxx" />
     <ClCompile Include="..\common\ptime.cxx" />
     <ClCompile Include="ptlib.cxx" />
-    <ClCompile Include="remconn.cxx" />
     <ClCompile Include="..\common\safecoll.cxx" />
     <ClCompile Include="..\Common\serial.cxx" />
     <ClCompile Include="..\common\sockets.cxx" />
@@ -322,10 +321,8 @@
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(LUA64DIR)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <ClCompile Include="..\..\ptclib\memfile.cxx" />
-    <ClCompile Include="..\..\ptclib\modem.cxx" />
     <ClCompile Include="..\..\ptclib\pasn.cxx" />
     <ClCompile Include="..\..\ptclib\pdns.cxx" />
-    <ClCompile Include="..\..\ptclib\pils.cxx" />
     <ClCompile Include="..\..\ptclib\pldap.cxx">
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)..\..\..\..\external\openldap\include</AdditionalIncludeDirectories>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)..\..\..\..\external\openldap\include</AdditionalIncludeDirectories>
@@ -519,7 +516,6 @@ if errorlevel 1 copy "%(FullPath)"+nul "%(RootDir)%(Directory)%(FileName)"</Comm
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\platform.h" />
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\pprocess.h" />
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\ptime.h" />
-    <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\remconn.h" />
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\semaphor.h" />
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\serchan.h" />
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\socket.h" />
@@ -608,7 +604,6 @@ if errorlevel 1 copy "%(FullPath)"+nul "%(RootDir)%(Directory)%(FileName)"</Comm
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\pipechan.h" />
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\pprocess.h" />
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\ptime.h" />
-    <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\remconn.h" />
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\semaphor.h" />
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\serchan.h" />
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\sfile.h" />
@@ -644,10 +639,8 @@ if errorlevel 1 copy "%(FullPath)"+nul "%(RootDir)%(Directory)%(FileName)"</Comm
     <ClInclude Include="..\..\..\include\ptclib\lua.h" />
     <ClInclude Include="..\..\..\include\ptclib\memfile.h" />
     <ClInclude Include="..\..\..\include\ptclib\mime.h" />
-    <ClInclude Include="..\..\..\include\ptclib\modem.h" />
     <ClInclude Include="..\..\..\include\ptclib\pasn.h" />
     <ClInclude Include="..\..\..\include\ptclib\pdns.h" />
-    <ClInclude Include="..\..\..\include\ptclib\pils.h" />
     <ClInclude Include="..\..\..\include\ptclib\pldap.h" />
     <ClInclude Include="..\..\..\include\ptclib\podbc.h" />
     <ClInclude Include="..\..\..\include\ptclib\psasl.h" />
