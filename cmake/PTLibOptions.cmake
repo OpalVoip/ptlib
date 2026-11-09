@@ -72,6 +72,9 @@ elseif(NOT PTLIB_MINSIZE AND PTLIB_MINSIZE_PREV)
     endif()
     set(PTLIB_${name} AUTO CACHE STRING "Restored when PTLIB_MINSIZE was turned off" FORCE)
   endforeach()
+  if(WIN32)
+    set(PTLIB_V8 OFF CACHE STRING "V8 stays off on Windows unless requested" FORCE)
+  endif()
 endif()
 set(PTLIB_MINSIZE_PREV "${PTLIB_MINSIZE}" CACHE INTERNAL
   "Previous PTLIB_MINSIZE value, so a later change can reset cached features")
@@ -179,7 +182,14 @@ ptlib_tristate(SDL "SDL2" ${_pkg})
 ptlib_tristate(GSTREAMER "GStreamer" ${_pkg})
 ptlib_tristate(ODBC "ODBC" ${_pkg})
 ptlib_tristate(LUA "Lua" ${_pkg})
-ptlib_tristate(V8 "V8" ${_pkg})
+# Windows V8 is a prebuilt v8_monolith tree, not a vcpkg port. Leave it out
+# until -DPTLIB_V8=ON (or -DPTLIB_V8_DIR) asks for the configure.exe search.
+if(WIN32)
+  set(_v8_default OFF)
+else()
+  set(_v8_default ${_pkg})
+endif()
+ptlib_tristate(V8 "V8" ${_v8_default})
 ptlib_tristate(AWS_SDK "AWS SDK" AUTO)
 ptlib_tristate(CURSES "ncurses" AUTO)
 ptlib_tristate(PORTAUDIO "PortAudio" OFF)
@@ -611,36 +621,181 @@ if(_want_lua AND NOT PTLIB_LUA_FOUND AND PKG_CONFIG_FOUND)
   endforeach()
 endif()
 ptlib_require(LUA PTLIB_LUA_FOUND)
-# Homebrew's v8 formula has no .pc file. Prefer pkg-config when present
-# (Debian/Ubuntu), then fall back to find_path/find_library as configure.ac
-# does for Ubuntu (/usr/include/v8) and Homebrew.
+# Windows matches tools/configure/configure.exe (the dnl MSWIN_* lines in
+# configure.ac): a directory that contains include/v8.h, then v8_monolith.lib
+# under out.gn/<arch>.debug and out.gn/<arch>.release. There is no vcpkg
+# port. The feature stays off unless -DPTLIB_V8=ON or -DPTLIB_V8_DIR asks
+# for it. Other hosts use pkg-config, then the Unix library names.
+set(PTLIB_V8_DIR "" CACHE PATH
+  "Windows V8 directory (contains include/v8.h, or a fetch root that contains v8/include/v8.h)")
+if(WIN32 AND PTLIB_V8_DIR)
+  set(_v8_mode "${PTLIB_V8}")
+  if(_v8_mode STREQUAL "OFF" OR _v8_mode STREQUAL "FALSE" OR _v8_mode STREQUAL "0")
+    set(PTLIB_V8 ON)
+    message(STATUS "PTLIB_V8_DIR is set; V8 support is enabled")
+  endif()
+endif()
+
+function(ptlib_v8_has_headers dir out_root)
+  set(${out_root} "" PARENT_SCOPE)
+  if(NOT dir)
+    return()
+  endif()
+  get_filename_component(_abs "${dir}" ABSOLUTE)
+  if(EXISTS "${_abs}/include/v8.h")
+    set(${out_root} "${_abs}" PARENT_SCOPE)
+  endif()
+endfunction()
+
+function(ptlib_v8_find_monolith dir filename depth out_file)
+  set(_result "")
+  if(EXISTS "${dir}/${filename}")
+    set(_result "${dir}/${filename}")
+  elseif(depth LESS 6 AND EXISTS "${dir}")
+    file(GLOB _subs LIST_DIRECTORIES true "${dir}/*")
+    foreach(_sub IN LISTS _subs)
+      if(IS_DIRECTORY "${_sub}")
+        math(EXPR _next "${depth} + 1")
+        ptlib_v8_find_monolith("${_sub}" "${filename}" ${_next} _hit)
+        if(_hit)
+          set(_result "${_hit}")
+          break()
+        endif()
+      endif()
+    endforeach()
+  endif()
+  set(${out_file} "${_result}" PARENT_SCOPE)
+endfunction()
+
+function(ptlib_probe_v8_windows)
+  set(PTLIB_V8_FOUND FALSE PARENT_SCOPE)
+  set(PTLIB_V8_INCLUDE "" PARENT_SCOPE)
+  set(PTLIB_V8_LINK "" PARENT_SCOPE)
+
+  set(_candidates "")
+  if(PTLIB_V8_DIR)
+    list(APPEND _candidates "${PTLIB_V8_DIR}" "${PTLIB_V8_DIR}/v8")
+  else()
+    if(DEFINED ENV{V8DIR} AND NOT "$ENV{V8DIR}" STREQUAL "")
+      list(APPEND _candidates "$ENV{V8DIR}" "$ENV{V8DIR}/v8")
+    endif()
+    foreach(_rel IN ITEMS
+        "../v8" "../v8/v8"
+        "../external/v8" "../../external/v8"
+        "../external/v8/v8" "../../external/v8/v8")
+      list(APPEND _candidates "${PTLIB_SOURCE_DIR}/${_rel}")
+    endforeach()
+    if(DEFINED ENV{INCLUDE} AND NOT "$ENV{INCLUDE}" STREQUAL "")
+      # INCLUDE is a semicolon-separated path list. Also try the parent of
+      # any entry that already ends in include, as configure.exe does.
+      string(REPLACE "\\" "/" _include_env "$ENV{INCLUDE}")
+      foreach(_inc IN ITEMS ${_include_env})
+        string(REGEX REPLACE "/+$" "" _inc "${_inc}")
+        if(_inc)
+          list(APPEND _candidates "${_inc}")
+          if(_inc MATCHES "[/]include$")
+            get_filename_component(_parent "${_inc}" DIRECTORY)
+            list(APPEND _candidates "${_parent}")
+          endif()
+        endif()
+      endforeach()
+    endif()
+  endif()
+
+  if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    set(_arch x64)
+  else()
+    set(_arch ia32)
+  endif()
+
+  set(_root "")
+  set(_debug "")
+  set(_release "")
+  set(_header_root "")
+  foreach(_dir IN LISTS _candidates)
+    ptlib_v8_has_headers("${_dir}" _try)
+    if(NOT _try)
+      continue()
+    endif()
+    if(NOT _header_root)
+      set(_header_root "${_try}")
+    endif()
+    ptlib_v8_find_monolith("${_try}/out.gn/${_arch}.debug" "v8_monolith.lib" 0 _debug)
+    ptlib_v8_find_monolith("${_try}/out.gn/${_arch}.release" "v8_monolith.lib" 0 _release)
+    if(_debug OR _release)
+      set(_root "${_try}")
+      break()
+    endif()
+  endforeach()
+
+  if(NOT _root)
+    if(PTLIB_V8_DIR AND _header_root)
+      message(FATAL_ERROR
+        "V8 headers are in ${_header_root}/include but v8_monolith.lib was not found under out.gn/${_arch}.debug or out.gn/${_arch}.release")
+    elseif(PTLIB_V8_DIR)
+      message(FATAL_ERROR
+        "PTLIB_V8_DIR=${PTLIB_V8_DIR} does not contain include/v8.h (also checked ${PTLIB_V8_DIR}/v8)")
+    endif()
+    return()
+  endif()
+
+  if(_debug AND _release)
+    set(_link "$<IF:$<CONFIG:Debug>,${_debug},${_release}>")
+  elseif(_release)
+    set(_link "${_release}")
+  else()
+    set(_link "${_debug}")
+  endif()
+  # jscript.cxx names these with #pragma comment for MSVC. MinGW ignores that.
+  list(APPEND _link dbghelp shlwapi)
+  set(PTLIB_V8_FOUND TRUE PARENT_SCOPE)
+  set(PTLIB_V8_INCLUDE "${_root}/include" PARENT_SCOPE)
+  set(PTLIB_V8_LINK "${_link}" PARENT_SCOPE)
+  message(STATUS "V8: ${_root} (${_arch}, v8_monolith.lib)")
+endfunction()
+
 ptlib_wants(V8 _want_v8)
 set(PTLIB_V8_FOUND FALSE)
 set(PTLIB_V8_INCLUDE "")
-if(_want_v8 AND PKG_CONFIG_FOUND)
-  pkg_check_modules(PTLIB_PC_V8 IMPORTED_TARGET v8)
-  if(PTLIB_PC_V8_FOUND)
-    set(PTLIB_V8_FOUND TRUE)
-    set(PTLIB_V8_LINK PkgConfig::PTLIB_PC_V8)
-    ptlib_note_snippet(
-      "pkg_check_modules(PTLIB_PC_V8 REQUIRED IMPORTED_TARGET v8)")
+set(PTLIB_V8_LINK "")
+if(WIN32)
+  if(_want_v8)
+    ptlib_probe_v8_windows()
   endif()
-endif()
-if(_want_v8 AND NOT PTLIB_V8_FOUND)
-  find_path(PTLIB_V8_INCLUDE_DIR v8.h
-    PATH_SUFFIXES v8)
-  find_library(PTLIB_V8_LIBRARY NAMES v8)
-  find_library(PTLIB_V8_PLATFORM_LIBRARY NAMES v8_libplatform)
-  find_library(PTLIB_V8_BASE_LIBRARY NAMES v8_libbase)
-  if(PTLIB_V8_INCLUDE_DIR AND PTLIB_V8_LIBRARY AND
-      PTLIB_V8_PLATFORM_LIBRARY AND PTLIB_V8_BASE_LIBRARY)
-    set(PTLIB_V8_FOUND TRUE)
-    set(PTLIB_V8_INCLUDE "${PTLIB_V8_INCLUDE_DIR}")
-    set(PTLIB_V8_LINK
-      "${PTLIB_V8_LIBRARY}"
-      "${PTLIB_V8_PLATFORM_LIBRARY}"
-      "${PTLIB_V8_BASE_LIBRARY}")
-    message(STATUS "V8: found ${PTLIB_V8_LIBRARY} (no pkg-config module)")
+  # A requested search that misses, with no directory given, leaves V8 out.
+  # A directory that was given and does not contain V8 already failed above.
+  if(_want_v8 AND NOT PTLIB_V8_FOUND AND NOT PTLIB_V8_DIR)
+    set(PTLIB_V8 AUTO)
+  endif()
+else()
+  # Homebrew's v8 formula has no .pc file. Prefer pkg-config when present
+  # (Debian/Ubuntu), then fall back to find_path/find_library as configure.ac
+  # does for Ubuntu (/usr/include/v8) and Homebrew.
+  if(_want_v8 AND PKG_CONFIG_FOUND)
+    pkg_check_modules(PTLIB_PC_V8 IMPORTED_TARGET v8)
+    if(PTLIB_PC_V8_FOUND)
+      set(PTLIB_V8_FOUND TRUE)
+      set(PTLIB_V8_LINK PkgConfig::PTLIB_PC_V8)
+      ptlib_note_snippet(
+        "pkg_check_modules(PTLIB_PC_V8 REQUIRED IMPORTED_TARGET v8)")
+    endif()
+  endif()
+  if(_want_v8 AND NOT PTLIB_V8_FOUND)
+    find_path(PTLIB_V8_INCLUDE_DIR v8.h
+      PATH_SUFFIXES v8)
+    find_library(PTLIB_V8_LIBRARY NAMES v8)
+    find_library(PTLIB_V8_PLATFORM_LIBRARY NAMES v8_libplatform)
+    find_library(PTLIB_V8_BASE_LIBRARY NAMES v8_libbase)
+    if(PTLIB_V8_INCLUDE_DIR AND PTLIB_V8_LIBRARY AND
+        PTLIB_V8_PLATFORM_LIBRARY AND PTLIB_V8_BASE_LIBRARY)
+      set(PTLIB_V8_FOUND TRUE)
+      set(PTLIB_V8_INCLUDE "${PTLIB_V8_INCLUDE_DIR}")
+      set(PTLIB_V8_LINK
+        "${PTLIB_V8_LIBRARY}"
+        "${PTLIB_V8_PLATFORM_LIBRARY}"
+        "${PTLIB_V8_BASE_LIBRARY}")
+      message(STATUS "V8: found ${PTLIB_V8_LIBRARY} (no pkg-config module)")
+    endif()
   endif()
 endif()
 ptlib_require(V8 PTLIB_V8_FOUND)
