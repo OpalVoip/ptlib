@@ -31,7 +31,10 @@
 #include <ptlib.h>
 
 #include <ctype.h>
+#include <errno.h>
 #include <signal.h>
+#include <stdlib.h>
+#include <sys/wait.h>
 #include <fstream>
 #include <stdexcept>
 #include <ptlib/pprocess.h>
@@ -464,14 +467,55 @@
       case 'd' :
       case 'D' :
         {
-          PString cmd = ::getenv("PTLIB_ASSERT_DEBUGGER");
-          if (cmd.IsEmpty())
-            cmd = "gdb";
-          cmd &= PProcess::Current().GetFile();
-          cmd.sprintf(" %d", getpid());
-          PError << "\nStarting debugger \"" << cmd << '"' << endl;
-          if (system((const char *)cmd) < 0)
+          // PTLIB_ASSERT_DEBUGGER is a program name plus literal arguments,
+          // separated by spaces. execvp does not use a shell, so metacharacters
+          // in that setting or in the executable path cannot run another command.
+          const char * debugger = ::getenv("PTLIB_ASSERT_DEBUGGER");
+          if (debugger == NULL || debugger[0] == '\0')
+            debugger = "gdb";
+
+          PStringArray args;
+          PStringArray configured = PString(debugger).Tokenise(" \t", false);
+          for (PINDEX i = 0; i < configured.GetSize(); ++i) {
+            if (!configured[i].IsEmpty())
+              args.AppendString(configured[i]);
+          }
+          if (args.GetSize() == 0)
+            args.AppendString("gdb");
+
+          args.AppendString(PProcess::Current().GetFile());
+          args.AppendString(psprintf("%d", getpid()));
+
+          PError << "\nStarting debugger";
+          for (PINDEX i = 0; i < args.GetSize(); ++i)
+            PError << " \"" << args[i] << '"';
+          PError << endl;
+
+          char ** argv = args.ToCharArray();
+          if (argv == NULL) {
             PError << "Could not execute debugger!" << endl;
+            return false;
+          }
+
+          pid_t child = ::fork();
+          if (child == 0) {
+            ::execvp(argv[0], argv);
+            _exit(127);
+          }
+          ::free(argv);
+
+          if (child < 0) {
+            PError << "Could not execute debugger!" << endl;
+          }
+          else {
+            int status = 0;
+            pid_t waited;
+            do {
+              waited = ::waitpid(child, &status, 0);
+            } while (waited < 0 && errno == EINTR);
+            if (waited < 0 || (WIFEXITED(status) && WEXITSTATUS(status) == 127))
+              PError << "Could not execute debugger!" << endl;
+          }
         }
         return false;
   #endif
