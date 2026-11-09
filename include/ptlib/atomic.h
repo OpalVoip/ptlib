@@ -42,7 +42,26 @@
 using std::atomic;
 #define PAtomicEnum std::atomic
 
-#if __cplusplus < 202002L
+#if !defined(P_CXX_STANDARD)
+  #if __cplusplus >= 202302L
+    #define P_CXX_STANDARD 23
+  #elif __cplusplus >= 202002L
+    #define P_CXX_STANDARD 20
+  #elif __cplusplus >= 201703L
+    #define P_CXX_STANDARD 17
+  #else
+    #define P_CXX_STANDARD 14
+  #endif
+#endif
+
+// The shared_ptr specialisation below exists only when this library was
+// built before C++20. A translation unit on the other side of that line
+// would see a different std::atomic<std::shared_ptr<T>>.
+#if (P_CXX_STANDARD >= 20 && __cplusplus < 202002L) || (P_CXX_STANDARD < 20 && __cplusplus >= 202002L)
+  #error Compile this file as the C++ standard PTLib was built with (P_CXX_STANDARD).
+#endif
+
+#if P_CXX_STANDARD < 20
 
 #include <memory>
 
@@ -66,7 +85,7 @@ namespace std {
   };
 }
 
-#endif // __cplusplus < 202002L
+#endif // P_CXX_STANDARD < 20
 
 #else
 

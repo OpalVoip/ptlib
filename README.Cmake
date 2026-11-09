@@ -9,8 +9,8 @@ static build adds _s (libpt_s or libpt_d_s). 64-bit MSVC installs ptlib64
 toolchains keep pt.dll.
 
 Requirements:
-  CMake 3.16 or newer
-  a C++20 compiler
+  CMake 3.16 or newer (3.20 or newer for C++23)
+  a compiler for the selected C++ standard, which defaults to C++20
   a C11 compiler
 
 The default build is a shared Release library. Optional libraries are used
@@ -49,6 +49,10 @@ Useful options, passed on the first cmake command:
                                 XML-RPC, SNMP, RFC1155, vCard, XMPP,
                                 SASL, serial, and internet mail
   -DPTLIB_SSL=ON                require OpenSSL
+  -DPTLIB_CXX_STANDARD=17       C++ standard 17, 20, or 23 (default 20).
+                                Written to ptlib_config.h as
+                                P_CXX_STANDARD, and required of projects
+                                that link PTLib::ptlib. 23 needs CMake 3.20
   -DCMAKE_BUILD_TYPE=Debug      single-config generators (Ninja, Makefiles)
 
 Single-config generators also accept:
@@ -96,7 +100,9 @@ Configure it against a build tree or an install prefix:
   cmake -S . -B build -DPTLib_DIR=<ptlib-build-or-prefix>
 
 For an install under /usr/local, CMAKE_PREFIX_PATH=/usr/local is enough and
-PTLib_DIR can be omitted. Compile as C++20.
+PTLib_DIR can be omitted. Linking PTLib::ptlib requires the C++ standard
+this PTLib was built with. That value is P_CXX_STANDARD in ptlib_config.h.
+The default is 20. ptlib/atomic.h follows P_CXX_STANDARD.
 
 OPAL's CMake package loads this one. OPAL_PTLIB_DIR accepts the PTLib build
 directory or an install prefix:
@@ -156,9 +162,12 @@ installed tree. If that prefix is outside the default search path:
 
 That prints the include directory and the library name for this build, such
 as -lpt. The C++ standard is recorded in the cxxflags and cplusplus_std
-variables. pkg-config --cflags leaves -std=c++20 out, so the program still
-compiles as C++20. Libs.private is empty, so pkg-config --static does not
-add OpenSSL, libdl, or the other libraries a static link needs.
+variables, as -std=c++NN for the standard selected with
+-DPTLIB_CXX_STANDARD. pkg-config --cflags leaves that flag out, so the
+program still needs to compile as that standard. The same number is
+P_CXX_STANDARD in ptlib_config.h. Libs.private is empty, so
+pkg-config --static does not add OpenSSL, libdl, or the other libraries a
+static link needs.
 
 opal.pc requires ptlib, so pkg-config --cflags --libs opal follows that and
 prints both libraries. Its Cflags line is empty. The -I comes from ptlib.pc,
@@ -300,7 +309,8 @@ v8_monolith.lib files when both were built.
 Linux
 -----
 
-Install CMake, a C++20 compiler, pkg-config, and the development packages
+Install CMake, a compiler for the selected C++ standard (C++20 by default),
+pkg-config, and the development packages
 for the features you want. On Debian and Ubuntu a typical base set is:
 
   sudo apt install build-essential cmake pkg-config \

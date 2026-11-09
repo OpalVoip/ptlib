@@ -88,15 +88,30 @@ if(APPLE)
   enable_language(OBJCXX)
 endif()
 
-set(CMAKE_CXX_STANDARD 20)
+if(NOT DEFINED PTLIB_CXX_STANDARD AND DEFINED CMAKE_CXX_STANDARD)
+  set(_ptlib_cxx_default "${CMAKE_CXX_STANDARD}")
+else()
+  set(_ptlib_cxx_default 20)
+endif()
+set(PTLIB_CXX_STANDARD "${_ptlib_cxx_default}" CACHE STRING
+  "C++ standard for PTLib and for code that includes its headers")
+set_property(CACHE PTLIB_CXX_STANDARD PROPERTY STRINGS 17 20 23)
+if(NOT PTLIB_CXX_STANDARD MATCHES "^(17|20|23)$")
+  message(FATAL_ERROR "PTLIB_CXX_STANDARD must be 17, 20, or 23")
+endif()
+if(PTLIB_CXX_STANDARD EQUAL 23 AND CMAKE_VERSION VERSION_LESS 3.20)
+  message(FATAL_ERROR "PTLIB_CXX_STANDARD=23 requires CMake 3.20 or newer")
+endif()
+unset(_ptlib_cxx_default)
+set(CMAKE_CXX_STANDARD "${PTLIB_CXX_STANDARD}")
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
-# MSVC defaults __cplusplus to 199711L/201703L unless this is set. PTLib's
-# atomic.h polyfill for std::atomic<std::shared_ptr> is gated on that macro,
-# so without this it redefines the C++20 specialization from <memory>.
+# MSVC defaults __cplusplus to 199711L unless this is set. ptlib/atomic.h
+# uses P_CXX_STANDARD from the config header, and falls back to __cplusplus
+# when that macro is absent.
 # /FS serialises writes to a shared vc*.pdb under parallel Debug compiles.
 if(MSVC)
   add_compile_options(/Zc:__cplusplus /FS)
@@ -180,6 +195,7 @@ file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/include/revision.h"
 # The config header's MSVC include_alias paths belong to the Visual Studio
 # projects. This build passes headers and libraries on the command line.
 ptlib_define(P_CMAKE 1)
+ptlib_define(P_CXX_STANDARD ${PTLIB_CXX_STANDARD})
 
 ptlib_write_config_header(
   "${PTLIB_SOURCE_DIR}/include/ptlib_config.h.in"
@@ -221,7 +237,10 @@ set_target_properties(ptlib PROPERTIES
   OUTPUT_NAME_DEBUG "${_ptlib_output_debug}"
   VERSION "${PROJECT_VERSION}"
   SOVERSION "${PTLIB_VERSION_MAJOR}"
-  POSITION_INDEPENDENT_CODE ON)
+  POSITION_INDEPENDENT_CODE ON
+  CXX_STANDARD "${PTLIB_CXX_STANDARD}"
+  CXX_STANDARD_REQUIRED ON
+  CXX_EXTENSIONS OFF)
 
 target_include_directories(ptlib
   PUBLIC
@@ -242,10 +261,11 @@ if(NOT PTLIB_EXCEPTIONS)
     target_compile_options(ptlib PRIVATE -fno-exceptions)
   endif()
 endif()
-# MSVC leaves __cplusplus defined as 199711L unless this switch is set, so a
-# generated solution would ignore the C++20 standard above. ptlib/atomic.h uses
-# the macro to decide whether std::atomic<std::shared_ptr<T>> already exists.
-# PUBLIC puts the switch on this target and on every project that links it.
+# The selected standard applies to this library and to projects that link it.
+# Headers such as ptlib/atomic.h follow P_CXX_STANDARD from ptlib_config.h.
+target_compile_features(ptlib PUBLIC cxx_std_${PTLIB_CXX_STANDARD})
+# MSVC leaves __cplusplus defined as 199711L unless this switch is set.
+# PUBLIC puts it on this target and on every project that links it.
 if(MSVC)
   target_compile_options(ptlib PUBLIC $<$<COMPILE_LANGUAGE:CXX>:/Zc:__cplusplus>)
 endif()
@@ -354,7 +374,7 @@ string(REPLACE "@CFLAGS@" "" _ptlib_pc "${_ptlib_pc}")
 string(REPLACE "@CXXFLAGS@" "" _ptlib_pc "${_ptlib_pc}")
 string(REPLACE "@LDFLAGS@" "" _ptlib_pc "${_ptlib_pc}")
 string(REPLACE "@LIBS@" "" _ptlib_pc "${_ptlib_pc}")
-string(REPLACE "@CPLUSPLUS_STD@" "-std=c++20" _ptlib_pc "${_ptlib_pc}")
+string(REPLACE "@CPLUSPLUS_STD@" "-std=c++${PTLIB_CXX_STANDARD}" _ptlib_pc "${_ptlib_pc}")
 set(_ptlib_pc_lib "${_ptlib_output}")
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   set(_ptlib_pc_lib "${_ptlib_output_debug}")

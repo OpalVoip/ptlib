@@ -32,6 +32,7 @@
 // Studio projects, which substitute those paths. CMake passes the headers and
 // libraries on the command line instead.
 #undef P_CMAKE
+#undef P_CXX_STANDARD
 
 #undef    PTLIB_MAJOR
 #undef    PTLIB_MINOR
