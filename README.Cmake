@@ -188,7 +188,9 @@ the defaults:
 OpenLDAP and ncurses are not selected for Visual Studio: those ports do
 not build for that triplet. ALSA and PulseAudio are Linux-only. Windows
 ODBC is the SDK library, so unixodbc is not selected. The AWS SDK,
-PortAudio, and V8 stay opt-in. PortAudio and the AWS SDK are features:
+PortAudio, and V8 stay opt-in. On Windows, V8 is left out of the build
+until -DPTLIB_V8=ON. See the Windows section. PortAudio and the AWS SDK
+are features:
 
   -DVCPKG_MANIFEST_FEATURES=aws-sdk,portaudio
 
@@ -272,8 +274,27 @@ checkout it would not find on its own:
 
   -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
 
+V8 JavaScript is off by default. There is no vcpkg port. -DPTLIB_V8=ON
+turns it on and looks for a Windows V8 build the same way configure.exe
+does. The match is the first directory that contains include\v8.h and
+v8_monolith.lib under out.gn\x64.release or out.gn\x64.debug (ia32 when
+the build is 32-bit). Relative to the PTLib tree, the search checks
+%V8DIR%, ..\v8, ..\v8\v8, ..\external\v8, ..\..\external\v8,
+..\external\v8\v8, ..\..\external\v8\v8, then directories on the INCLUDE
+path. A fetch v8 tree at C:\Work\external\v8 is found when PTLib is in
+C:\Work\ptlib, because include\v8.h lives in external\v8\v8.
+
+If that search finds nothing and -DPTLIB_V8_DIR is not set, V8 stays out
+of the build. -DPTLIB_V8_DIR enables V8 on its own and points at a build
+that is somewhere else: the directory that contains include\v8.h, or the
+fetch root above the inner v8 directory. A path that does not contain
+those files is an error. -DPTLIB_V8=AUTO uses the same search.
+-DPTLIB_V8=OFF leaves V8 out even when a build is present. OPAL uses the
+V8 support compiled into this PTLib; it does not search for V8 again.
+
 Multi-config builds pass --config Release or --config Debug on both the
-build and the install command.
+build and the install command. Debug and Release can link different
+v8_monolith.lib files when both were built.
 
 
 Linux
