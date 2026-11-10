@@ -158,36 +158,10 @@ public:
   atomic<PINDEX>   m_maxLength;
 
 
-#if defined(_WIN32)
-  CRITICAL_SECTION mutex;
-  void InitMutex() { InitializeCriticalSection(&mutex); }
-  void Lock()      { EnterCriticalSection(&mutex); }
-  void Unlock()    { LeaveCriticalSection(&mutex); }
-#elif defined(P_PTHREADS) && P_HAS_RECURSIVE_MUTEX
-  pthread_mutex_t mutex;
-  void InitMutex() {
-    // NOTE this should actually guard against various errors
-    // returned.
-    pthread_mutexattr_t attr;
-    pthread_mutexattr_init(&attr);
-    pthread_mutexattr_settype(&attr,
-#if P_HAS_RECURSIVE_MUTEX == 2
-PTHREAD_MUTEX_RECURSIVE
-#else
-PTHREAD_MUTEX_RECURSIVE_NP
-#endif
-    );
-    pthread_mutex_init(&mutex, &attr);
-    pthread_mutexattr_destroy(&attr);
-  }
-  void Lock()      { pthread_mutex_lock(&mutex); }
-  void Unlock()    { pthread_mutex_unlock(&mutex); }
-#else
-  PMutex * mutex;
-  void InitMutex() { mutex = new PMutex; }
-  void Lock()      { mutex->Wait(); }
-  void Unlock()    { mutex->Signal(); }
-#endif
+  std::recursive_mutex mutex;
+  void InitMutex() { }
+  void Lock()      { mutex.lock(); }
+  void Unlock()    { mutex.unlock(); }
   
   struct Context : PObject
   {
@@ -4160,6 +4134,175 @@ void PTimedMutex::Construct()
 }
 
 
+void PTimedMutex::PlatformConstruct()
+{
+}
+
+
+PTimedMutex::~PTimedMutex()
+{
+  PMUTEX_DESTROYED();
+}
+
+
+void PTimedMutex::PrintOn(ostream & strm) const
+{
+  strm << "timed mutex " << this;
+  PMutexExcessiveLockInfo::PrintOn(strm);
+}
+
+
+PBoolean PTimedMutex::PlatformWait(const PTimeInterval & timeout)
+{
+  if (timeout == PMaxTimeInterval) {
+    PPROFILE_SYSTEM(m_mutex.lock());
+    return true;
+  }
+
+  if (timeout == 0)
+    return m_mutex.try_lock();
+
+  PPROFILE_PRE_SYSTEM();
+  bool locked = m_mutex.try_lock_for(timeout.AsChrono());
+  PPROFILE_POST_SYSTEM();
+  return locked;
+}
+
+
+void PTimedMutex::PlatformSignal(const PDebugLocation * location)
+{
+  InternalSignal(location);
+  m_mutex.unlock();
+}
+
+
+PCriticalSection::PCriticalSection()
+{
+}
+
+
+PCriticalSection::PCriticalSection(const PCriticalSection &)
+{
+}
+
+
+PCriticalSection::~PCriticalSection()
+{
+}
+
+
+void PCriticalSection::Wait()
+{
+  m_mutex.lock();
+}
+
+
+void PCriticalSection::Signal()
+{
+  m_mutex.unlock();
+}
+
+
+bool PCriticalSection::Try()
+{
+  return m_mutex.try_lock();
+}
+
+
+PSyncPoint::PSyncPoint()
+{
+}
+
+
+PSyncPoint::PSyncPoint(const PSyncPoint &)
+{
+}
+
+
+void PSyncPoint::Wait()
+{
+  std::unique_lock<std::mutex> lock(m_mutex);
+  m_condition.wait(lock, [this] { return m_signalled; });
+  m_signalled = false;
+}
+
+
+PBoolean PSyncPoint::Wait(const PTimeInterval & timeout)
+{
+  std::unique_lock<std::mutex> lock(m_mutex);
+  if (timeout == PMaxTimeInterval)
+    m_condition.wait(lock, [this] { return m_signalled; });
+  else if (!m_condition.wait_for(lock, timeout.AsChrono(), [this] { return m_signalled; }))
+    return false;
+  m_signalled = false;
+  return true;
+}
+
+
+void PSyncPoint::Signal()
+{
+  std::lock_guard<std::mutex> lock(m_mutex);
+  if (!m_signalled) {
+    m_signalled = true;
+    m_condition.notify_one();
+  }
+}
+
+
+void PSemaphore::Reset(unsigned initial, unsigned maximum)
+{
+  m_maximum = std::min(maximum, (unsigned)INT_MAX);
+  m_initial = std::min(initial, m_maximum);
+
+  std::lock_guard<std::mutex> lock(m_mutex);
+  m_currentCount = m_initial;
+}
+
+
+PSemaphore::~PSemaphore()
+{
+}
+
+
+void PSemaphore::Wait()
+{
+  std::unique_lock<std::mutex> lock(m_mutex);
+  m_condition.wait(lock, [this] { return m_currentCount > 0; });
+  --m_currentCount;
+}
+
+
+PBoolean PSemaphore::Wait(const PTimeInterval & timeout)
+{
+  if (timeout == PMaxTimeInterval) {
+    Wait();
+    return true;
+  }
+
+  std::unique_lock<std::mutex> lock(m_mutex);
+  if (timeout == 0) {
+    if (m_currentCount == 0)
+      return false;
+    --m_currentCount;
+    return true;
+  }
+  if (!m_condition.wait_for(lock, timeout.AsChrono(), [this] { return m_currentCount > 0; }))
+    return false;
+  --m_currentCount;
+  return true;
+}
+
+
+void PSemaphore::Signal()
+{
+  std::lock_guard<std::mutex> lock(m_mutex);
+  if (m_currentCount < m_maximum) {
+    ++m_currentCount;
+    m_condition.notify_one();
+  }
+}
+
+
 void PTimedMutex::Wait()
 {
   InternalWait(NULL);
@@ -4333,13 +4476,12 @@ void PSyncPointAck::Acknowledge()
 
 void PCondMutex::WaitCondition()
 {
-  for (;;) {
-    Wait();
-    if (Condition())
-      return;
-    PMutex::Signal();
+  Wait();
+  while (!Condition()) {
     OnWait();
-    syncPoint.Wait();
+    (void)InternalSignal(NULL);
+    m_condition.wait(m_mutex);
+    InternalWaitComplete(PProfiling::GetCycles(), NULL);
   }
 }
 
@@ -4347,7 +4489,7 @@ void PCondMutex::WaitCondition()
 void PCondMutex::Signal()
 {
   if (Condition())
-    syncPoint.Signal();
+    m_condition.notify_one();
   PMutex::Signal();
 }
 
@@ -4454,44 +4596,12 @@ PIntCondMutex & PIntCondMutex::operator-=(int dec)
 
 PReadWriteMutex::PReadWriteMutex()
   : PMutexExcessiveLockInfo()
-#if P_READ_WRITE_ALGO2
-  , m_inSemaphore(1, 1)
-  , m_inCount(0)
-  , m_outSemaphore(1, 1)
-  , m_outCount(0)
-  , m_writeSemaphore(0, 1)
-  , m_wait(false)
-#else
-  , m_readerSemaphore(1, 1)
-  , m_readerMutex()
-  , m_readerCount(0)
-  , m_starvationPreventer()
-  , m_writerSemaphore(1, 1)
-  , m_writerMutex()
-  , m_writerCount(0)
-#endif
 {
   PMUTEX_CONSTRUCTED();
 }
 
 PReadWriteMutex::PReadWriteMutex(const PDebugLocation & location, unsigned timeout)
   : PMutexExcessiveLockInfo(location, timeout)
-#if P_READ_WRITE_ALGO2
-  , m_inSemaphore(1, 1)
-  , m_inCount(0)
-  , m_outSemaphore(1, 1)
-  , m_outCount(0)
-  , m_writeSemaphore(0, 1)
-  , m_wait(false)
-#else
-  , m_readerSemaphore(1, 1)
-  , m_readerMutex(location, timeout)
-  , m_readerCount(0)
-  , m_starvationPreventer(location, timeout)
-  , m_writerSemaphore(1, 1)
-  , m_writerMutex(location, timeout)
-  , m_writerCount(0)
-#endif
 {
   PMUTEX_CONSTRUCTED();
 }
@@ -4604,11 +4714,14 @@ void PReadWriteMutex::InternalStartRead(const PDebugLocation * location)
 }
 
 
-void PReadWriteMutex::InternalWait(Nest & nest, PSync & sync, const PDebugLocation & location) const
+void PReadWriteMutex::InternalWait(Nest & nest, bool shared, const PDebugLocation & location) const
 {
   nest.m_waiting = true;
 
-  if (sync.InstrumentedWait(m_excessiveLockTimeout, location)) {
+  auto timeout = std::chrono::milliseconds(m_excessiveLockTimeout);
+  bool acquired = shared ? m_mutex.try_lock_shared_for(timeout)
+                         : m_mutex.try_lock_for(timeout);
+  if (acquired) {
     nest.m_waiting = false;
     return;
   }
@@ -4624,7 +4737,7 @@ void PReadWriteMutex::InternalWait(Nest & nest, PSync & sync, const PDebugLocati
 #if PTRACING
   {
     ostream & trace = PTRACE_BEGIN(0, "PTLib");
-    trace << "Assertion fail: Possible deadlock in " << *this << " :\n";
+    trace << "Assertion fail: Possible deadlock in " << *this << ", " << location << " :\n";
     for (NestMap::const_iterator it = nestedThreadsToDump.begin(); it != nestedThreadsToDump.end(); ++it) {
       if (it != nestedThreadsToDump.begin())
         trace << '\n';
@@ -4652,7 +4765,10 @@ void PReadWriteMutex::InternalWait(Nest & nest, PSync & sync, const PDebugLocati
   PAssertAlways(PSTRSTRM("Possible deadlock in " << *this));
 #endif
 
-  sync.InstrumentedWait(PMaxTimeInterval, location);
+  if (shared)
+    m_mutex.lock_shared();
+  else
+    m_mutex.lock();
   ExcessiveLockPhantom(*this);
 
   nest.m_waiting = false;
@@ -4759,88 +4875,29 @@ void PReadWriteMutex::InternalEndWrite(const PDebugLocation * location)
 
 void PReadWriteMutex::InternalStartReadWithNest(Nest & nest, const PDebugLocation & location)
 {
-#if P_READ_WRITE_ALGO2
-  InternalWait(nest, m_inSemaphore);
-  ++m_inCount;
-  m_inSemaphore.Signal();
-#else
-  InternalWait(nest, m_starvationPreventer, location);
-   InternalWait(nest, m_readerSemaphore, location);
-    InternalWait(nest, m_readerMutex, location);
-
-     m_readerCount++;
-     if (m_readerCount == 1)
-       InternalWait(nest, m_writerSemaphore, location);
-
-    m_readerMutex.InstrumentedSignal(location);
-   m_readerSemaphore.InstrumentedSignal(location);
-  m_starvationPreventer.InstrumentedSignal(location);
-#endif
+  InternalWait(nest, true, location);
 }
 
 
 void PReadWriteMutex::InternalEndReadWithNest(Nest & nest, const PDebugLocation & location)
 {
-#if P_READ_WRITE_ALGO2
-  InternalWait(nest, m_outSemaphore);
-  ++m_outCount;
-  if (m_wait && m_inCount == m_outCount)
-    m_writeSemaphore.Signal();
-  m_outSemaphore.Signal();
-#else
-  InternalWait(nest, m_readerMutex, location);
-
-  m_readerCount--;
-  if (m_readerCount == 0)
-    m_writerSemaphore.InstrumentedSignal(location);
-
-  m_readerMutex.InstrumentedSignal(location);
-#endif
+  (void)nest;
+  (void)location;
+  m_mutex.unlock_shared();
 }
 
 
 void PReadWriteMutex::InternalStartWriteWithNest(Nest & nest, const PDebugLocation & location)
 {
-#if P_READ_WRITE_ALGO2
-  InternalWait(nest, m_inSemaphore);
-  InternalWait(nest, m_outSemaphore);
-  if (m_inCount == m_outCount)
-    m_outSemaphore.Signal();
-  else {
-    m_wait = true;
-    m_outSemaphore.Signal();
-    InternalWait(nest, m_writeSemaphore);
-    m_wait = false;
-  }
-#else
-  InternalWait(nest, m_writerMutex, location);
-
-  m_writerCount++;
-  if (m_writerCount == 1)
-    InternalWait(nest, m_readerSemaphore, location);
-
-  m_writerMutex.InstrumentedSignal(location);
-
-  InternalWait(nest, m_writerSemaphore, location);
-#endif
+  InternalWait(nest, false, location);
 }
 
 
 void PReadWriteMutex::InternalEndWriteWithNest(Nest & nest, const PDebugLocation & location)
 {
-#if P_READ_WRITE_ALGO2
-  m_inSemaphore.Signal();
-#else
-  m_writerSemaphore.InstrumentedSignal(location);
-
-  InternalWait(nest, m_writerMutex, location);
-
-  m_writerCount--;
-  if (m_writerCount == 0)
-    m_readerSemaphore.InstrumentedSignal(location);
-
-  m_writerMutex.InstrumentedSignal(location);
-#endif
+  (void)nest;
+  (void)location;
+  m_mutex.unlock();
 }
 
 void PReadWriteMutex::PrintOn(ostream & strm) const

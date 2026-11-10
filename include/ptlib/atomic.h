@@ -89,16 +89,18 @@ namespace std {
 
 #else
 
+#include <mutex>
+
 #ifdef P_ATOMICITY_HEADER
   #include P_ATOMICITY_HEADER
 #endif
 
 template <typename Type> struct atomic
 {
-  __inline atomic() { this->ConstructMutex(); }
-  __inline atomic(Type value) : m_storage(value) { this->ConstructMutex(); }
-  __inline atomic(const atomic & other) : m_storage(other.m_storage) { this->ConstructMutex(); }
-  __inline ~atomic() { this->DestroyMutex(); }
+  __inline atomic() { }
+  __inline atomic(Type value) : m_storage(value) { }
+  __inline atomic(const atomic & other) : m_storage(other.m_storage) { }
+  __inline ~atomic() { }
   __inline atomic & operator=(const atomic & other) { this->Lock(); other.Lock(); this->m_storage = other.m_storage; other.Unlock(); this->Unlock(); return *this; }
   __inline operator Type() const { this->Lock(); Type value = this->m_storage; this->Unlock(); return value; }
   __inline Type load() const { this->Lock(); Type value = this->m_storage; this->Unlock(); return value; } \
@@ -122,20 +124,10 @@ template <typename Type> struct atomic
 private:
   volatile Type m_storage;
 
-  // This is declared before any PMutex classes, have to do it manually.
-#if _WIN32
-  mutable CRITICAL_SECTION m_mutex;
-  __inline void ConstructMutex() { InitializeCriticalSection(&this->m_mutex); }
-  __inline void DestroyMutex()   { DeleteCriticalSection(&this->m_mutex); }
-  __inline void Lock() const     { EnterCriticalSection(&this->m_mutex); }
-  __inline void Unlock() const   { LeaveCriticalSection(&this->m_mutex); }
-#else
-  mutable pthread_mutex_t m_mutex;
-  __inline void ConstructMutex() { pthread_mutex_init(&this->m_mutex, NULL); }
-  __inline void DestroyMutex()   { pthread_mutex_destroy(&this->m_mutex); }
-  __inline void Lock() const     { pthread_mutex_lock(&this->m_mutex); }
-  __inline void Unlock() const   { pthread_mutex_unlock(&this->m_mutex); }
-#endif
+  // Declared before PMutex; use std::mutex directly.
+  mutable std::mutex m_mutex;
+  __inline void Lock() const   { this->m_mutex.lock(); }
+  __inline void Unlock() const { this->m_mutex.unlock(); }
 };
 
 #define P_DEFINE_ATOMIC_FUNCTIONS(Type,Exch,FetchAdd,AddFetch,CompExch) \

@@ -42,9 +42,6 @@
     void PXAbortBlock() const;
 
   public:
-#ifndef P_HAS_SEMAPHORES
-    void PXSetWaitingSemaphore(PSemaphore * sem);
-#endif
     static bool PX_kill(PThreadIdentifier tid, PUniqueThreadIdentifier uid, int sig);
 
   protected:
@@ -63,7 +60,7 @@
     PTimeInterval     PX_startTick;
     PTimeInterval     PX_endTick;
 #endif
-    mutable pthread_mutex_t   PX_suspendMutex;
+    mutable std::mutex PX_suspendMutex;
     int               PX_suspendCount;
     enum PX_states {
       PX_firstResume,
@@ -79,11 +76,6 @@
 #endif
 
     PAutoPtr<PSyncPoint> PX_synchroniseThreadFinish;
-
-#ifndef P_HAS_SEMAPHORES
-    PSemaphore      * PX_waitingSemaphore;
-    pthread_mutex_t   PX_WaitSemMutex;
-#endif
 
     int unblockPipe[2];
     friend class PSocket;

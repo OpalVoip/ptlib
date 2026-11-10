@@ -36,6 +36,7 @@
 
 #include <ptlib/atomic.h>
 #include <ptlib/semaphor.h>
+#include <mutex>
 
 
 class PMutexExcessiveLockInfo
@@ -178,19 +179,8 @@ class PTimedMutex : public PSync, public PMutexExcessiveLockInfo, PProfiling::Hi
     void InternalWaitComplete(uint64_t startWaitCycle, const PDebugLocation * location);
     bool InternalSignal(const PDebugLocation * location);
 
-#ifdef _WIN32
-  public:
-    HANDLE GetHandle() const { return m_handle; }
   protected:
-    PWin32Handle m_handle;
-#else
-#if defined(P_PTHREADS)
-  public:
-    static void InitialiseRecursiveMutex(pthread_mutex_t *mutex);
-  protected:
-    mutable pthread_mutex_t m_mutex;
-#endif
-#endif
+    mutable std::recursive_timed_mutex m_mutex;
 };
 
 typedef PTimedMutex PMutex;
@@ -266,9 +256,7 @@ typedef PTimedMutex PMutex;
 #endif
 
 
-/** This class implements critical section mutexes using the most efficient
-    mechanism available on the host platform.
-    For example in Windows, a CRITICAL_SECTION is used.
+/** This class implements critical section mutexes using std::recursive_mutex.
 
     Note: There is no deadlock detection available on this version of a mutex,
     so it should only be used where a deadlock is clearly impossible, that is,
@@ -328,17 +316,13 @@ class PCriticalSection : public PSync
     virtual void Signal() override;
     inline void Leave() { Signal(); }
 
-    /** Try to enter the critical section for exlusive access. Does not wait.
-        @return true if cirical section entered, leave/Signal must be called.
+    /** Try to enter the critical section for exclusive access. Does not wait.
+        @return true if critical section entered, leave/Signal must be called.
       */
     bool Try();
   //@}
 
-#if _WIN32
-    mutable CRITICAL_SECTION criticalSection;
-#elif defined(P_PTHREADS)
-    mutable pthread_mutex_t m_mutex;
-#endif
+    mutable std::recursive_mutex m_mutex;
 };
 
 

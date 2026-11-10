@@ -34,6 +34,8 @@
 #pragma interface
 #endif
 
+#include <chrono>
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // Difference between two system times
@@ -177,6 +179,10 @@ class PTimeInterval : public PObject
        very long integer number of nanoseconds.
      */
     PInt64 GetNanoSeconds() const;
+
+    /** Convert the interval to a std::chrono duration.
+     */
+    std::chrono::nanoseconds AsChrono() const { return std::chrono::nanoseconds(GetNanoSeconds()); }
 
     /** Set the number of nanoseconds for the time interval.
      */

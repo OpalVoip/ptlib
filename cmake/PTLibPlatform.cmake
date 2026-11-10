@@ -126,18 +126,6 @@ if(PTLIB_HAS_SEM_OPEN)
   ptlib_define(P_HAS_NAMED_SEMAPHORES 1)
 endif()
 check_c_source_compiles("
-#include <pthread.h>
-int main(void) {
-  pthread_mutexattr_t attr;
-  pthread_mutexattr_init(&attr);
-  pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
-  return 0;
-}" PTLIB_HAS_RECURSIVE_MUTEX)
-if(PTLIB_HAS_RECURSIVE_MUTEX)
-  # 2 selects PTHREAD_MUTEX_RECURSIVE. 1 is the older _NP spelling.
-  ptlib_define(P_HAS_RECURSIVE_MUTEX 2)
-endif()
-check_c_source_compiles("
 #include <unistd.h>
 int main(void) { return setpgrp() < 0; }
 " PTLIB_SETPGRP_NOPARM)

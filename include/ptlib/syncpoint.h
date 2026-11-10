@@ -35,6 +35,8 @@
 #endif
 
 #include <ptlib/semaphor.h>
+#include <mutex>
+#include <condition_variable>
 
 
 /** This class defines a thread synchronisation object.
@@ -69,6 +71,7 @@ class PSyncPoint : public PSync
      */
     PSyncPoint();
     PSyncPoint(const PSyncPoint &);
+    virtual ~PSyncPoint() = default;
 
     /**Block until the synchronisation object is available.
      */
@@ -87,20 +90,10 @@ class PSyncPoint : public PSync
      */
     virtual void Signal() override;
 
-
-#ifdef _WIN32
-  public:
-    HANDLE GetHandle() const { return m_handle; }
-  protected:
-    PWin32Handle m_handle;
-#else
-  public:
-    virtual ~PSyncPoint();
   private:
-    mutable pthread_mutex_t mutex;
-    mutable pthread_cond_t  condVar;
-    bool signalled;
-#endif
+    mutable std::mutex m_mutex;
+    mutable std::condition_variable m_condition;
+    bool m_signalled = false;
 };
 
 

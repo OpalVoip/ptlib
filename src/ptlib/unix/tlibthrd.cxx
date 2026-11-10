@@ -177,9 +177,6 @@ static int GetSchedParam(PThread::Priority priority, sched_param & param)
 #endif
 
 
-static pthread_mutex_t MutexInitialiser = PTHREAD_MUTEX_INITIALIZER;
-
-
 #define new PNEW
 
 
@@ -204,13 +201,8 @@ PThread::PThread(bool isProcess)
 #if defined(P_LINUX)
   , PX_startTick(PTimer::Tick())
 #endif
-  , PX_suspendMutex(MutexInitialiser)
   , PX_suspendCount(0)
   , PX_state(PX_running)
-#ifndef P_HAS_SEMAPHORES
-  , PX_waitingSemaphore(NULL)
-  , PX_WaitSemMutex(MutexInitialiser)
-#endif
 {
   PAssertOS(::pipe(unblockPipe) == 0);
 
@@ -237,13 +229,8 @@ PThread::PThread(PINDEX stackSize,
   , m_threadId(PNullThreadIdentifier)  // indicates thread has not started
   , m_uniqueId(0)
   , PX_priority(priorityLevel)
-  , PX_suspendMutex(MutexInitialiser)
   , PX_suspendCount(1)
   , PX_state(PX_firstResume) // new thread is actually started the first time Resume() is called.
-#ifndef P_HAS_SEMAPHORES
-  , PX_waitingSemaphore(NULL)
-  , PX_WaitSemMutex(MutexInitialiser)
-#endif
 {
   PAssertOS(::pipe(unblockPipe) == 0);
   PX_NewHandle("Thread unblock pipe", PMAX(unblockPipe[0], unblockPipe[1]));
@@ -273,14 +260,9 @@ void PThread::InternalDestroy()
   ::close(unblockPipe[0]);
   ::close(unblockPipe[1]);
 
-#ifndef P_HAS_SEMAPHORES
-  pthread_mutex_destroy(&PX_WaitSemMutex);
-#endif
-
-  // If the mutex was not locked, the unlock will fail */
-  pthread_mutex_trylock(&PX_suspendMutex);
-  pthread_mutex_unlock(&PX_suspendMutex);
-  pthread_mutex_destroy(&PX_suspendMutex);
+  // Ensure the suspend mutex is unlocked before destruction.
+  if (PX_suspendMutex.try_lock())
+    PX_suspendMutex.unlock();
 }
 
 
@@ -289,19 +271,19 @@ void PThread::InternalPreMain()
   // Added this to guarantee that the thread creation (PThread::Restart)
   // has completed before we start the thread. Then the m_threadId has
   // been set.
-  pthread_mutex_lock(&PX_suspendMutex);
+  {
+    std::lock_guard<std::mutex> lock(PX_suspendMutex);
 
-  PAssert(PX_state == PX_starting, PLogicError);
-  PX_state = PX_running;
+    PAssert(PX_state == PX_starting, PLogicError);
+    PX_state = PX_running;
 
-  m_uniqueId = GetCurrentUniqueIdentifier();
-#if defined(P_LINUX)
-  PX_startTick = PTimer::Tick();
-#endif
+    m_uniqueId = GetCurrentUniqueIdentifier();
+  #if defined(P_LINUX)
+    PX_startTick = PTimer::Tick();
+  #endif
 
-  SetThreadName(GetThreadName());
-
-  pthread_mutex_unlock(&PX_suspendMutex);
+    SetThreadName(GetThreadName());
+  }
 
   PX_Suspended();
 
@@ -383,9 +365,8 @@ void PThread::Restart()
     return;
 
   PTRACE(2, "PTlib\tRestarting thread " << this << " \"" << GetThreadName() << '"');
-  pthread_mutex_lock(&PX_suspendMutex);
+  std::lock_guard<std::mutex> lock(PX_suspendMutex);
   PX_StartThread();
-  pthread_mutex_unlock(&PX_suspendMutex);
 }
 
 
@@ -488,7 +469,7 @@ void PX_SuspendSignalHandler(int)
 
 void PThread::Suspend(PBoolean susp)
 {
-  PAssertWithRetry(pthread_mutex_lock, &PX_suspendMutex);
+  PX_suspendMutex.lock();
 
   // Check for start up condition, first time Resume() is called
   if (PX_state == PX_firstResume) {
@@ -501,7 +482,7 @@ void PThread::Suspend(PBoolean susp)
         PX_StartThread();
     }
 
-    PAssertWithRetry(pthread_mutex_unlock, &PX_suspendMutex);
+    PX_suspendMutex.unlock();
     return;
   }
 
@@ -516,7 +497,7 @@ void PThread::Suspend(PBoolean susp)
           pthread_kill(m_threadId, SUSPEND_SIG);
         }
         else {
-          PAssertWithRetry(pthread_mutex_unlock, &PX_suspendMutex);
+          PX_suspendMutex.unlock();
           PX_SuspendSignalHandler(SUSPEND_SIG);
           return;  // Mutex already unlocked
         }
@@ -531,7 +512,7 @@ void PThread::Suspend(PBoolean susp)
     }
   }
 
-  PAssertWithRetry(pthread_mutex_unlock, &PX_suspendMutex);
+  PX_suspendMutex.unlock();
 }
 
 
@@ -543,10 +524,8 @@ void PThread::Resume()
 
 PBoolean PThread::IsSuspended() const
 {
-  PAssertWithRetry(pthread_mutex_lock, &PX_suspendMutex);
-  bool suspended = PX_state == PX_starting || (PX_suspendCount != 0 && !IsTerminated());
-  PAssertWithRetry(pthread_mutex_unlock, &PX_suspendMutex);
-  return suspended;
+  std::lock_guard<std::mutex> lock(PX_suspendMutex);
+  return PX_state == PX_starting || (PX_suspendCount != 0 && !IsTerminated());
 }
 
 
@@ -732,16 +711,6 @@ PThread::Priority PThread::GetPriority() const
 }
 
 
-#ifndef P_HAS_SEMAPHORES
-void PThread::PXSetWaitingSemaphore(PSemaphore * sem)
-{
-  PAssertWithRetry(pthread_mutex_lock, &PX_WaitSemMutex);
-  PX_waitingSemaphore = sem;
-  PAssertWithRetry(pthread_mutex_unlock, &PX_WaitSemMutex);
-}
-#endif
-
-
 // Normal Posix threads version
 void PThread::Sleep(const PTimeInterval & timeout)
 {
@@ -796,17 +765,6 @@ void PThread::Terminate()
   PXAbortBlock();
   if (WaitForTermination(100))
     return;
-
-#ifndef P_HAS_SEMAPHORES
-  PAssertWithRetry(pthread_mutex_lock, &PX_WaitSemMutex);
-  if (PX_waitingSemaphore != NULL) {
-    PAssertWithRetry(pthread_mutex_lock, &PX_waitingSemaphore->mutex);
-    PX_waitingSemaphore->queuedLocks--;
-    PAssertWithRetry(pthread_mutex_unlock, &PX_waitingSemaphore->mutex);
-    PX_waitingSemaphore = NULL;
-  }
-  PAssertWithRetry(pthread_mutex_unlock, &PX_WaitSemMutex);
-#endif
 
   if (m_threadId != PNullThreadIdentifier) {
 #if P_USE_THREAD_CANCEL
@@ -1015,542 +973,3 @@ void PThread::PXAbortBlock() const
   PTRACE(6, "PTLib\tUnblocking I/O fd=" << unblockPipe[0] << " thread=" << GetThreadName());
 }
 
-
-///////////////////////////////////////////////////////////////////////////////
-
-PSemaphore::~PSemaphore()
-{
-#if defined(P_HAS_SEMAPHORES)
-  #if defined(P_HAS_NAMED_SEMAPHORES)
-    #if defined(P_MACOSX)
-    // Unnamed semaphores are process-local. The dispatch object is stored in
-    // the named-semaphore slot so PSemaphore's layout does not change.
-    if (m_name.IsEmpty()) {
-      if (m_namedSemaphore.ptr != NULL) {
-        dispatch_release(reinterpret_cast<dispatch_semaphore_t>(m_namedSemaphore.ptr));
-        m_namedSemaphore.ptr = NULL;
-      }
-    }
-    else
-    #endif
-    {
-      if (m_namedSemaphore.ptr != NULL) {
-        PAssertWithRetry(sem_close, m_namedSemaphore.ptr);
-        m_namedSemaphore.ptr = NULL;
-      }
-      // Names we generated are not shared. Unlink them or the next open of the
-      // same name fails with EEXIST. macOS keeps the name until sem_unlink.
-      if (m_name.Find("/pt-") == 0)
-        sem_unlink(m_name);
-      #if !defined(P_MACOSX)
-      else if (m_name.IsEmpty())
-        PAssertWithRetry(sem_destroy, &m_semaphore);
-      #endif
-    }
-  #elif !defined(P_MACOSX)
-    PAssertWithRetry(sem_destroy, &m_semaphore);
-  #endif
-#else
-  PAssert(queuedLocks == 0, "Semaphore destroyed with queued locks");
-  PAssertWithRetry(pthread_mutex_destroy, &mutex);
-  PAssertWithRetry(pthread_cond_destroy, &condVar);
-#endif
-}
-
-
-void PSemaphore::Reset(unsigned initial, unsigned maximum)
-{
-  m_maximum = std::min(maximum, (unsigned)INT_MAX);
-  m_initial = std::min(initial, m_maximum);
-
-#if defined(P_HAS_SEMAPHORES)
-  #if defined(P_HAS_NAMED_SEMAPHORES)
-    #if defined(P_MACOSX)
-    // sem_init() returns ENOSYS. An unnamed semaphore stays inside this process.
-    if (m_name.IsEmpty()) {
-      if (m_namedSemaphore.ptr != NULL) {
-        dispatch_release(reinterpret_cast<dispatch_semaphore_t>(m_namedSemaphore.ptr));
-        m_namedSemaphore.ptr = NULL;
-      }
-      dispatch_semaphore_t created = dispatch_semaphore_create((long)m_initial);
-      if (!PAssert(created != NULL, "Couldn't create dispatch semaphore"))
-        return;
-      m_namedSemaphore.ptr = reinterpret_cast<sem_t *>(created);
-      return;
-    }
-    #endif
-    // Explicitly named semaphores are process-wide and use sem_open.
-    // sem_init() is the unnamed POSIX call; on macOS it returns ENOSYS, so
-    // unnamed semaphores are created above with dispatch_semaphore_create.
-    bool useUnnamed = false;
-    #if !defined(P_MACOSX)
-    /* Due to bug in some Linux/Kernel versions, need to clear structure manually, sem_init does not do the job.
-       See http://stackoverflow.com/questions/1832395/sem-timedwait-not-supported-properly-on-redhat-enterprise-linux-5-3-onwards
-       While the above link was for RHEL, seems to happen on some Fedoras as well. */
-    memset(&m_semaphore, 0, sizeof(sem_t));
-    useUnnamed = m_name.IsEmpty() && sem_init(&m_semaphore, 0, m_initial) == 0;
-    #endif
-    if (useUnnamed)
-      m_namedSemaphore.ptr = NULL;
-    else {
-      // Since sem_open and sem_unlink are two operations, there is a small
-      // window of opportunity that two simultaneous accesses may return
-      // the same semaphore. Therefore, the static mutex is used to
-      // prevent this.
-      static pthread_mutex_t semCreationMutex = PTHREAD_MUTEX_INITIALIZER;
-      PAssertWithRetry(pthread_mutex_lock, &semCreationMutex);
-
-      if (m_namedSemaphore.ptr != NULL) {
-        sem_close(m_namedSemaphore.ptr);
-        m_namedSemaphore.ptr = NULL;
-      }
-
-      if (m_name.IsEmpty()) {
-        // sem_init didn't work, so try a named sem.
-        // macOS requires a single leading slash, no other slashes, and a short name.
-        char generatedName[32];
-        snprintf(generatedName, sizeof(generatedName), "/pt-%05x%016llx",
-                 (unsigned)getpid() & 0xfffff,
-                 (unsigned long long)(uintptr_t)this);
-        m_name = generatedName;
-      }
-
-      // Reset() is called again on a live semaphore (the jitter buffer does
-      // this). O_EXCL then fails with EEXIST unless the previous name is removed.
-      if (m_name.Find("/pt-") == 0)
-        sem_unlink(m_name);
-
-      PAssertWithRetry(pthread_mutex_unlock, &semCreationMutex);
-  
-      m_namedSemaphore.ptr = sem_open(m_name, (O_CREAT | O_EXCL), 700, m_initial);
-      if (!PAssert(m_namedSemaphore.ptr != SEM_FAILED, "Couldn't create named semaphore"))
-        m_namedSemaphore.ptr = NULL;
-    }
-  #elif !defined(P_MACOSX)
-    if (m_name.IsEmpty())
-      PAssertWithRetry(sem_init, &m_semaphore, 0, m_initial);
-  #endif
-#else
-  if (m_name.IsEmpty()) {
-    PAssertWithRetry(pthread_mutex_init, &mutex, NULL);
-    PAssertWithRetry(pthread_cond_init, &condVar, NULL);
-    currentCount = initial;
-  }
-  else
-    currentCount = INT_MAX;
-  queuedLocks = 0;
-#endif
-}
-
-
-void PSemaphore::Wait() 
-{
-#if defined(P_HAS_SEMAPHORES)
-  #if defined(P_MACOSX)
-  if (m_name.IsEmpty()) {
-    dispatch_semaphore_t dispatchSem = reinterpret_cast<dispatch_semaphore_t>(m_namedSemaphore.ptr);
-    if (PAssert(dispatchSem != NULL, "Wait on uninitialised semaphore"))
-      dispatch_semaphore_wait(dispatchSem, DISPATCH_TIME_FOREVER);
-    return;
-  }
-  #endif
-  PAssertWithRetry(sem_wait, GetSemPtr());
-#else
-  if (currentCount == INT_MAX)
-    return;
-
-  PAssertWithRetry(pthread_mutex_lock, &mutex);
-
-  queuedLocks++;
-  PThread::Current()->PXSetWaitingSemaphore(this);
-
-  while (currentCount == 0) {
-    PPROFILE_SYSTEM(
-      int err = pthread_cond_wait(&condVar, &mutex);
-    );
-    PAssert(err == 0 || err == EINTR, psprintf("wait error = %i", err));
-  }
-
-  PThread::Current()->PXSetWaitingSemaphore(NULL);
-  queuedLocks--;
-
-  currentCount--;
-
-  PAssertWithRetry(pthread_mutex_unlock, &mutex);
-#endif
-}
-
-
-PBoolean PSemaphore::Wait(const PTimeInterval & waitTime) 
-{
-  if (waitTime == PMaxTimeInterval) {
-    Wait();
-    return true;
-  }
-
-  // create absolute finish time 
-  PTime finishTime;
-  finishTime += waitTime;
-
-#if defined(P_HAS_SEMAPHORES)
-  #if defined(P_MACOSX)
-  if (m_name.IsEmpty()) {
-    dispatch_semaphore_t dispatchSem = reinterpret_cast<dispatch_semaphore_t>(m_namedSemaphore.ptr);
-    if (!PAssert(dispatchSem != NULL, "Wait on uninitialised semaphore"))
-      return false;
-    int64_t nanoseconds = waitTime.GetNanoSeconds();
-    if (nanoseconds < 0)
-      nanoseconds = 0;
-    dispatch_time_t when = nanoseconds == 0 ? DISPATCH_TIME_NOW
-                           : dispatch_time(DISPATCH_TIME_NOW, nanoseconds);
-    PPROFILE_PRE_SYSTEM();
-    long result = dispatch_semaphore_wait(dispatchSem, when);
-    PPROFILE_POST_SYSTEM();
-    return result == 0;
-  }
-  #endif
-  #ifdef P_HAS_SEMAPHORES_XPG6
-    // use proper timed spinlocks if supported.
-    // http://www.opengroup.org/onlinepubs/007904975/functions/sem_timedwait.html
-
-    struct timespec absTime;
-    absTime.tv_sec  = finishTime.GetTimeInSeconds();
-    absTime.tv_nsec = finishTime.GetMicrosecond() * 1000;
-
-    PPROFILE_PRE_SYSTEM();
-    do {
-      if (sem_timedwait(GetSemPtr(), &absTime) == 0) {
-        PPROFILE_POST_SYSTEM();
-        return true;
-      }
-    } while (errno == EINTR);
-    PPROFILE_POST_SYSTEM();
-
-    PAssert(errno == ETIMEDOUT, strerror(errno));
-
-  #else
-    // loop until timeout, or semaphore becomes available
-    // don't use a PTimer, as this causes the housekeeping
-    // thread to get very busy
-    PPROFILE_PRE_SYSTEM();
-    do {
-      if (sem_trywait(GetSemPtr()) == 0) {
-        PPROFILE_POST_SYSTEM();
-        return true;
-      }
-
-      // tight loop is bad karma
-      // for the linux scheduler: http://www.ussg.iu.edu/hypermail/linux/kernel/0312.2/1127.html
-      PThread::Sleep(10);
-    } while (PTime() < finishTime);
-    PPROFILE_POST_SYSTEM();
-  #endif
-
-    return false;
-
-#else
-  if (currentCount == INT_MAX)
-    return false;
-
-  struct timespec absTime;
-  absTime.tv_sec  = finishTime.GetTimeInSeconds();
-  absTime.tv_nsec = finishTime.GetMicrosecond() * 1000;
-
-  PPROFILE_PRE_SYSTEM();
-
-  PAssertWithRetry(pthread_mutex_lock, &mutex);
-
-  PThread * thread = PThread::Current();
-  thread->PXSetWaitingSemaphore(this);
-  queuedLocks++;
-
-  PBoolean ok = true;
-  while (currentCount == 0) {
-    int err = pthread_cond_timedwait(&condVar, &mutex, &absTime);
-    if (err == ETIMEDOUT) {
-      ok = false;
-      break;
-    }
-    else
-      PAssert(err == 0 || err == EINTR, psprintf("timed wait error = %i", err));
-  }
-
-  thread->PXSetWaitingSemaphore(NULL);
-  queuedLocks--;
-
-  if (ok)
-    currentCount--;
-
-  PAssertWithRetry(pthread_mutex_unlock, &mutex);
-
-  PPROFILE_POST_SYSTEM();
-
-  return ok;
-#endif
-}
-
-
-void PSemaphore::Signal()
-{
-#if defined(P_HAS_SEMAPHORES)
-  #if defined(P_MACOSX)
-  if (m_name.IsEmpty()) {
-    dispatch_semaphore_t dispatchSem = reinterpret_cast<dispatch_semaphore_t>(m_namedSemaphore.ptr);
-    if (PAssert(dispatchSem != NULL, "Signal on uninitialised semaphore"))
-      dispatch_semaphore_signal(dispatchSem);
-    return;
-  }
-  #endif
-  PAssertWithRetry(sem_post, GetSemPtr());
-#else
-  PAssertWithRetry(pthread_mutex_lock, &mutex);
-
-  if (currentCount < m_maximum)
-    currentCount++;
-
-  if (queuedLocks > 0) 
-    PAssertWithRetry(pthread_cond_signal, &condVar);
-
-  PAssertWithRetry(pthread_mutex_unlock, &mutex);
-#endif
-}
-
-
-///////////////////////////////////////////////////////////////////////////////
-
-void PTimedMutex::InitialiseRecursiveMutex(pthread_mutex_t *mutex)
-{
-#if P_HAS_RECURSIVE_MUTEX
-
-  pthread_mutexattr_t attr;
-  pthread_mutexattr_init(&attr);
-
-#if (P_HAS_RECURSIVE_MUTEX == 2)
-  pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
-#else
-  pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE_NP);
-#endif
-
-  pthread_mutex_init(mutex, &attr);
-
-  pthread_mutexattr_destroy(&attr);
-
-#else // P_HAS_RECURSIVE_MUTEX
-
-  pthread_mutex_init(mutex, NULL);
-
-#endif // P_HAS_RECURSIVE_MUTEX
-}
-
-
-void PTimedMutex::PlatformConstruct()
-{
-  InitialiseRecursiveMutex(&m_mutex);
-}
-
-
-PTimedMutex::~PTimedMutex()
-{
-  int result;
-  if (m_lockerId == pthread_self()) {
-    // Unlock first
-    while (m_lockCount-- > 0 && pthread_mutex_unlock(&m_mutex) == 0)
-      ;
-    result = pthread_mutex_destroy(&m_mutex);
-  }
-  else {
-    // Wait a bit for someone else to unlock it
-    for (PINDEX i = 0; i < 100; ++i) {
-      if ((result = pthread_mutex_destroy(&m_mutex)) != EBUSY)
-        break;
-      PPROFILE_SYSTEM(
-        usleep(100);
-      );
-    }
-  }
-
-#ifdef _DEBUG
-  PAssert(result == 0, "Error destroying mutex");
-#endif
-
-  PMUTEX_DESTROYED();
-}
-
-
-void PTimedMutex::PrintOn(ostream &strm) const
-{
-  strm << "timed mutex " << this;
-  PMutexExcessiveLockInfo::PrintOn(strm);
-}
-
-
-PBoolean PTimedMutex::PlatformWait(const PTimeInterval & waitTime) 
-{
-#if !P_HAS_RECURSIVE_MUTEX
-  // if we already have the mutex, return immediately
-  if (pthread_equal(m_lockerId, pthread_self())) {
-    // Note this does not need a lock as it can only be touched by the thread
-    // which already has the mutex locked.
-    ++m_lockCount;
-    return true;
-  }
-#endif
-
-  int result;
-
-  // if waiting indefinitely, then do so
-  if (waitTime == PMaxTimeInterval) {
-    PPROFILE_SYSTEM(
-      result = pthread_mutex_lock(&m_mutex);
-    );
-  }
-  else {
-    // create absolute finish time
-    PTime finishTime;
-    finishTime += waitTime;
-
-#if P_PTHREADS_XPG6
-
-    struct timespec absTime;
-    absTime.tv_sec = finishTime.GetTimeInSeconds();
-    absTime.tv_nsec = finishTime.GetMicrosecond() * 1000;
-
-    PPROFILE_SYSTEM(
-      result = pthread_mutex_timedlock(&m_mutex, &absTime);
-    );
-
-#else // P_PTHREADS_XPG6
-
-    PPROFILE_PRE_SYSTEM();
-    while ((result = pthread_mutex_trylock(&m_mutex)) == EBUSY) {
-      if (PTime() >= finishTime) {
-        PPROFILE_POST_SYSTEM();
-        return false;
-      }
-      usleep(10000);
-    }
-    PPROFILE_POST_SYSTEM();
-
-#endif // P_PTHREADS_XPG6
-  }
-
-  switch (result) {
-    case 0 :       // Got the lock
-    case EDEADLK : // Just a recursive call
-#if !P_HAS_RECURSIVE_MUTEX
-      PAssert(lockerId == PNullThreadIdentifier && m_lockCount == 0,
-          "PMutex acquired whilst locked by another thread");
-#endif
-      return true;
-    case ETIMEDOUT :
-      return false; // No assert
-  }
-
-  PAssertAlways(psprintf("Mutex lock failed, result=%i", result));
-  return false;
-}
-
-
-void PTimedMutex::PlatformSignal(const PDebugLocation * location)
-{
-#if P_HAS_RECURSIVE_MUTEX
-
-  InternalSignal(location);
-
-#else
-
-  if (!pthread_equal(m_lockerId, pthread_self())) {
-    PAssertAlways("PMutex signal failed - no matching wait or signal by wrong thread");
-    return;
-  }
-
-  // if lock was recursively acquired, then decrement the counter
-  // Note this does not need a separate lock as it can only be touched by the thread
-  // which already has the mutex locked.
-  if (InternalSignal(location))
-    return;
-
-#endif
-
-  unsigned threadOpRetry = 0;
-  while (PAssertThreadOp(pthread_mutex_unlock(&m_mutex), threadOpRetry, "pthread_mutex_unlock",
-          reinterpret_cast<const void *>(&m_mutex), m_location))
-    /* wait */;
-}
-
-
-///////////////////////////////////////////////////////////////////////////////
-
-PSyncPoint::PSyncPoint()
-{
-  PAssertWithRetry(pthread_mutex_init, &mutex, NULL);
-  PAssertWithRetry(pthread_cond_init, &condVar, NULL);
-  signalled = false;
-}
-
-PSyncPoint::PSyncPoint(const PSyncPoint &)
-{
-  PAssertWithRetry(pthread_mutex_init, &mutex, NULL);
-  PAssertWithRetry(pthread_cond_init, &condVar, NULL);
-  signalled = false;
-}
-
-PSyncPoint::~PSyncPoint()
-{
-  PAssertWithRetry(pthread_mutex_destroy, &mutex);
-  PAssertWithRetry(pthread_cond_destroy, &condVar);
-}
-
-void PSyncPoint::Wait()
-{
-  PPROFILE_PRE_SYSTEM();
-  PAssertWithRetry(pthread_mutex_lock, &mutex);
-  while (!signalled)
-    pthread_cond_wait(&condVar, &mutex);
-  signalled = false;
-  PAssertWithRetry(pthread_mutex_unlock, &mutex);
-  PPROFILE_POST_SYSTEM();
-}
-
-
-PBoolean PSyncPoint::Wait(const PTimeInterval & waitTime)
-{
-  PPROFILE_PRE_SYSTEM();
-
-  PAssertWithRetry(pthread_mutex_lock, &mutex);
-
-  PTime finishTime;
-  finishTime += waitTime;
-  struct timespec absTime;
-  absTime.tv_sec  = finishTime.GetTimeInSeconds();
-  absTime.tv_nsec = finishTime.GetMicrosecond() * 1000;
-
-  int err = 0;
-  while (!signalled) {
-    err = pthread_cond_timedwait(&condVar, &mutex, &absTime);
-    if (err == 0 || err == ETIMEDOUT)
-      break;
-
-    /* PAssertOS reports errno, so set it before */
-    errno = err;
-    PAssertOS(err == EINTR);
-  }
-
-  if (err == 0)
-    signalled = false;
-
-  PAssertWithRetry(pthread_mutex_unlock, &mutex);
-
-  PPROFILE_POST_SYSTEM();
-
-  return err == 0;
-}
-
-
-void PSyncPoint::Signal()
-{
-  PAssertWithRetry(pthread_mutex_lock, &mutex);
-  signalled = true;
-  PAssertWithRetry(pthread_cond_signal, &condVar);
-  PAssertWithRetry(pthread_mutex_unlock, &mutex);
-}

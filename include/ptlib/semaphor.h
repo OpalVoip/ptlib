@@ -37,6 +37,8 @@
 #include <ptlib/psync.h>
 #include <limits.h>
 #include <ptlib/atomic.h>
+#include <mutex>
+#include <condition_variable>
 
 /**This class defines a thread synchronisation object. This is in the form of a
    integer semaphore. The semaphore has a count and a maximum value. The
@@ -70,6 +72,9 @@
     The first thread will pass through the Wait() function, a second
     thread will block on that function until the first calls the
     Signal() function, releasing the second thread.
+
+   Note: the optional name is retained for API compatibility. Synchronisation
+   is always process-local via standard C++ primitives.
  */
 class PSemaphore : public PSync
 {
@@ -87,9 +92,8 @@ class PSemaphore : public PSync
       unsigned maximum = UINT_MAX   ///< Maximum value for semaphore count.
     ) { Reset(initial, maximum); }
 
-    /**Create a new system global semaphore with maximum count and initial value specified.
-       If the initial value is larger than the maximum value then is is set to
-       the maximum value.
+    /**Create a new semaphore with maximum count and initial value specified.
+       The name is retained for compatibility; the semaphore is process-local.
      */
     PSemaphore(
       const PString & name,
@@ -98,15 +102,13 @@ class PSemaphore : public PSync
     ) : m_name(name) { Reset(initial, maximum); }
 
     /** Create a new semaphore with the same initial and maximum values as the original.
-        The name is not copied. On platforms that implement every semaphore as a
-        named semaphore, reusing the name makes creation fail with EEXIST.
+        The name is not copied.
      */
     PSemaphore(const PSemaphore & sem)
       : PSync()
     { Reset(sem.m_initial, sem.m_maximum); }
 
-    /**Destroy the semaphore. This will assert if there are still waiting
-       threads on the semaphore.
+    /**Destroy the semaphore.
      */
     ~PSemaphore();
   //@}
@@ -158,15 +160,9 @@ class PSemaphore : public PSync
     unsigned m_maximum;
     unsigned m_initial;
 
-
-#ifdef _WIN32
-  public:
-    HANDLE GetHandle() const { return m_handle; }
-  protected:
-    PWin32Handle m_handle;
-#else
-#include "unix/ptlib/semaphor.h"
-#endif
+    std::mutex              m_mutex;
+    std::condition_variable m_condition;
+    unsigned                m_currentCount = 0;
 };
 
 

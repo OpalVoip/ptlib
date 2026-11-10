@@ -90,38 +90,4 @@ PINLINE PThreadIdentifier PThread::GetCurrentThreadId()
 PINLINE PUniqueThreadIdentifier PThread::GetCurrentUniqueIdentifier()
   { return ::GetCurrentThreadId(); }
 
-///////////////////////////////////////////////////////////////////////////////
-// PCriticalSection
-
-PINLINE PCriticalSection::PCriticalSection()
-{
-  ::InitializeCriticalSection(&criticalSection);
-}
-
-PINLINE PCriticalSection::PCriticalSection(const PCriticalSection &)
-{
-  ::InitializeCriticalSection(&criticalSection);
-}
-
-PINLINE PCriticalSection::~PCriticalSection()
-{
-  ::DeleteCriticalSection(&criticalSection);
-}
-
-PINLINE void PCriticalSection::Wait()
-{
-  ::EnterCriticalSection(&criticalSection);
-}
-
-PINLINE void PCriticalSection::Signal()
-{
-  ::LeaveCriticalSection(&criticalSection);
-}
-
-PINLINE bool PCriticalSection::Try()
-{
-  return TryEnterCriticalSection(&criticalSection) != 0;
-}
-
-
 // End Of File ///////////////////////////////////////////////////////////////

@@ -34,6 +34,8 @@
 #pragma interface
 #endif
 
+#include <mutex>
+
 ///////////////////////////////////////////////////////////////////////////////
 // Memory management
 
@@ -296,11 +298,7 @@ class PMemoryHeap {
 
     void Lock();
     void Unlock();
-#if defined(_WIN32)
-    CRITICAL_SECTION m_mutex;
-#elif defined(P_PTHREADS)
-    pthread_mutex_t m_mutex;
-#endif
+    std::recursive_mutex m_mutex;
 
 #else
 

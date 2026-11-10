@@ -39,6 +39,8 @@
 #include <ptlib/syncpoint.h>
 #include <map>
 #include <queue>
+#include <shared_mutex>
+#include <condition_variable>
 
 
 /** This class defines a thread synchronisation object.
@@ -127,7 +129,7 @@ class PCondMutex : public PMutex
     virtual void OnWait();
 
   protected:
-    PSyncPoint syncPoint;
+    std::condition_variable_any m_condition;
 };
 
 
@@ -322,23 +324,7 @@ class PReadWriteMutex : public PObject, public PMutexExcessiveLockInfo, PProfili
     void InternalStartWrite(const PDebugLocation * location);
     void InternalEndWrite(const PDebugLocation * location);
 
-#if P_READ_WRITE_ALGO2
-    PSemaphore  m_inSemaphore;
-    unsigned    m_inCount;
-    PSemaphore  m_outSemaphore;
-    unsigned    m_outCount;
-    PSemaphore  m_writeSemaphore;
-    bool        m_wait;
-#else
-    PSemaphore  m_readerSemaphore;
-    PTimedMutex m_readerMutex;
-    unsigned    m_readerCount;
-    PTimedMutex m_starvationPreventer;
-
-    PSemaphore  m_writerSemaphore;
-    PTimedMutex m_writerMutex;
-    unsigned    m_writerCount;
-#endif
+    mutable std::shared_timed_mutex m_mutex;
     struct Nest
     {
       atomic<unsigned> m_readerCount;
@@ -362,7 +348,7 @@ class PReadWriteMutex : public PObject, public PMutexExcessiveLockInfo, PProfili
     void InternalEndReadWithNest(Nest & nest, const PDebugLocation & location);
     void InternalStartWriteWithNest(Nest & nest, const PDebugLocation & location);
     void InternalEndWriteWithNest(Nest & nest, const PDebugLocation & location);
-    void InternalWait(Nest & nest, PSync & sync, const PDebugLocation & location) const;
+    void InternalWait(Nest & nest, bool shared, const PDebugLocation & location) const;
 
   friend class PSafeObject;
   friend class PReadWaitAndSignal;
@@ -373,10 +359,10 @@ class PReadWriteMutex : public PObject, public PMutexExcessiveLockInfo, PProfili
 
 /// Declare a PReadWriteMutex with compiled file/line for deadlock debugging
 #define PDECLARE_READ_WRITE_MUTEX_ARG_1(var)              struct PReadWriteMutex_##var : PReadWriteMutex { PReadWriteMutex_##var() : PReadWriteMutex(P_DEBUG_LOCATION) { } } var
-#define PDECLARE_READ_WRITE_MUTEX_ARG_2(var,nam)          struct PReadWriteMutex_##var : PReadWriteMutex { PReadWriteMutex_##var() : PReadWriteMutex(#nam,           ) { } } var
+#define PDECLARE_READ_WRITE_MUTEX_ARG_2(var,nam)          struct PReadWriteMutex_##var : PReadWriteMutex { PReadWriteMutex_##var() : PReadWriteMutex(#nam            ) { } } var
 #define PDECLARE_READ_WRITE_MUTEX_ARG_3(var,nam,to)       struct PReadWriteMutex_##var : PReadWriteMutex { PReadWriteMutex_##var() : PReadWriteMutex(#nam,to         ) { } } var
-#define PDECLARE_READ_WRITE_MUTEX_ARG_4(var,nam,to,tw)    struct PReadWriteMutex_##var : PReadWriteMutex { PReadWriteMutex_##var() : PReadWriteMutex(#nam,to,tw      ) { } } var
-#define PDECLARE_READ_WRITE_MUTEX_ARG_5(var,nam,to,tw,th) struct PReadWriteMutex_##var : PReadWriteMutex { PReadWriteMutex_##var() : PReadWriteMutex(#nam,to,tw,th   ) { } } var
+#define PDECLARE_READ_WRITE_MUTEX_ARG_4(var,nam,to,tw)    struct PReadWriteMutex_##var : PReadWriteMutex { PReadWriteMutex_##var() : PReadWriteMutex(#nam,to         ) { } } var
+#define PDECLARE_READ_WRITE_MUTEX_ARG_5(var,nam,to,tw,th) struct PReadWriteMutex_##var : PReadWriteMutex { PReadWriteMutex_##var() : PReadWriteMutex(#nam,to         ) { } } var
 
 #define PDECLARE_READ_WRITE_MUTEX_PART1(narg, args) PDECLARE_READ_WRITE_MUTEX_PART2(narg, args)
 #define PDECLARE_READ_WRITE_MUTEX_PART2(narg, args) PDECLARE_READ_WRITE_MUTEX_ARG_##narg args

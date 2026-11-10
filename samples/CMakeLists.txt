@@ -13,6 +13,7 @@ ptlib_sample(netif netif/netif.cxx)
 ptlib_sample(sockbundle sockbundle/sockbundle.cxx)
 ptlib_sample(timing timing/timing.cxx)
 ptlib_sample(thread thread/thread.cxx)
+ptlib_sample(synctest synctest/main.cxx)
 ptlib_sample(jsontest json/jsontest.cxx)
 
 if(PTLIB_IPV6)

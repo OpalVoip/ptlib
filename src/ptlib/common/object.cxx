@@ -509,18 +509,9 @@ PMemoryHeap::PMemoryHeap()
   memset(&GuardedPtr, '\xFD', sizeof(GuardedPtr));
 
 #if defined(_WIN32)
-  InitializeCriticalSection(&m_mutex);
   static PDebugStream debug;
   m_leakDumpStream = &debug;
 #else
-#if defined(P_PTHREADS)
-#ifdef PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP
-  pthread_mutex_t recursiveMutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
-  m_mutex = recursiveMutex;
-#else
- pthread_mutex_init(&m_mutex, NULL);
-#endif
-#endif
   m_leakDumpStream = &cerr;
 #endif
 }
@@ -537,31 +528,20 @@ PMemoryHeap::~PMemoryHeap()
   }
 
 #if defined(_WIN32)
-  DeleteCriticalSection(&m_mutex);
   PProcess::Current().WaitOnExitConsoleWindow();
-#elif defined(P_PTHREADS)
-  pthread_mutex_destroy(&m_mutex);
 #endif
 }
 
 
 void PMemoryHeap::Lock()
 {
-#if defined(_WIN32)
-  EnterCriticalSection(&m_mutex);
-#elif defined(P_PTHREADS)
-  pthread_mutex_lock(&m_mutex);
-#endif
+  m_mutex.lock();
 }
 
 
 void PMemoryHeap::Unlock()
 {
-#if defined(_WIN32)
-  LeaveCriticalSection(&m_mutex);
-#elif defined(P_PTHREADS)
-  pthread_mutex_unlock(&m_mutex);
-#endif
+  m_mutex.unlock();
 }
 
 

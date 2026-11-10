@@ -92,42 +92,4 @@ PINLINE PThreadIdentifier PThread::GetCurrentThreadId() { return 0; }
 #endif
 
 
-///////////////////////////////////////////////////////////////////////////////
-// PCriticalSection
-
-#if defined(P_PTHREADS)
-
-PINLINE PCriticalSection::PCriticalSection()
-{
-  PMutex::InitialiseRecursiveMutex(&m_mutex);
-}
-
-PINLINE PCriticalSection::PCriticalSection(const PCriticalSection &)
-{
-  PMutex::InitialiseRecursiveMutex(&m_mutex);
-}
-
-PINLINE PCriticalSection::~PCriticalSection()
-{
-  ::pthread_mutex_destroy(&m_mutex);
-}
-
-PINLINE void PCriticalSection::Wait()
-{
-  ::pthread_mutex_lock(&m_mutex);
-}
-
-PINLINE void PCriticalSection::Signal()
-{
-  ::pthread_mutex_unlock(&m_mutex);
-}
-
-PINLINE bool PCriticalSection::Try()
-{
-  return ::pthread_mutex_trylock(&m_mutex) != 0;
-}
-
-#endif
-
-
 // End Of File ///////////////////////////////////////////////////////////////

@@ -727,42 +727,6 @@ MY_COMPILE_IFELSE(
    
 
 dnl ########################################################################
-dnl check for XPG6 compliant pthreads (timed spinlocks)
-
-MY_COMPILE_IFELSE(
-   [if has pthread_mutex_timedlock],
-   [],
-   [#include <pthread.h>],
-   [pthread_mutex_timedlock(NULL, NULL)],
-   [AC_DEFINE(P_PTHREADS_XPG6, 1, "XPG6 compliant pthreads found")]
-)
-
-
-dnl ########################################################################
-dnl check for recursive mutexes
-MY_COMPILE_IFELSE(
-   [if has NP recursive mutexes],
-   [],
-   [#include <pthread.h>],
-   [
-      pthread_mutexattr_t attr;
-      pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE_NP);
-   ],
-   [AC_DEFINE(P_HAS_RECURSIVE_MUTEX, 1)],
-   [MY_COMPILE_IFELSE(
-      [if has recursive mutexes],
-      [],
-      [#include <pthread.h>],
-      [
-         pthread_mutexattr_t attr;
-         pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
-      ],
-      [AC_DEFINE(P_HAS_RECURSIVE_MUTEX, 2)]
-   )]
-)
-
-
-dnl ########################################################################
 dnl check for gethostbyaddr_r
 
 MY_COMPILE_IFELSE(

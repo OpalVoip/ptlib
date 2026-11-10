@@ -37,9 +37,9 @@
 
 
 #ifdef P_PTHREADS
-static pthread_mutex_t g_DLLMutex = PTHREAD_MUTEX_INITIALIZER;
-#define LOCK_DLFCN() pthread_mutex_lock(&g_DLLMutex)
-#define UNLOCK_DLFCN() pthread_mutex_unlock(&g_DLLMutex)
+static std::mutex g_DLLMutex;
+#define LOCK_DLFCN() g_DLLMutex.lock()
+#define UNLOCK_DLFCN() g_DLLMutex.unlock()
 #else
 #define LOCK_DLFCN()
 #define UNLOCK_DLFCN()
