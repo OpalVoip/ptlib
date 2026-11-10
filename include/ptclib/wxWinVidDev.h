@@ -330,7 +330,6 @@ PBoolean P_WXWINDOWS_DEVICE_CLASS::GetPosition(int & x, int & y) const
   return true;
 }
 
-
 void P_WXWINDOWS_DEVICE_CLASS::OnPaint(wxPaintEvent &)
 {
   PWaitAndSignal lock(m_mutex);
