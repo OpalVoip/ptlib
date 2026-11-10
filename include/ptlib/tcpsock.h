@@ -177,11 +177,9 @@ class PTCPSocket : public PIPSocket
     virtual const char * GetProtocolName() const override;
 
 
-// Include platform dependent part of class
-#ifdef _WIN32
-#include "msos/ptlib/tcpsock.h"
-#else
-#include "unix/ptlib/tcpsock.h"
+#ifndef _WIN32
+  public:
+    virtual PBoolean Read(void * buf, PINDEX len) override;
 #endif
 };
 

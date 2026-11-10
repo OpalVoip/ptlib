@@ -329,11 +329,11 @@ class PMail : public PObject
     PBoolean loggedOn;
 
 
-// Include platform dependent part of class
 #ifdef _WIN32
 #include "msos/ptlib/mail.h"
 #else
-#include "unix/ptlib/mail.h"
+  protected:
+    PString m_mailProgram;
 #endif
 };
 

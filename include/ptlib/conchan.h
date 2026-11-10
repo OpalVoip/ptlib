@@ -175,11 +175,17 @@ class PConsoleChannel : public PChannel
   //@}
 
 
-// Include platform dependent part of class
 #ifdef _WIN32
-#include "msos/ptlib/conchan.h"
+  public:
+    virtual PBoolean Read(void * buf, PINDEX len);
+    virtual PBoolean Write(const void * buf, PINDEX len);
+  protected:
+    bool InternalSetConsoleMode(DWORD bit, bool on);
+    PWin32Handle m_hConsole;
+    DWORD m_lastMouseState;
 #else
-#include "unix/ptlib/conchan.h"
+#ifdef P_USE_PRAGMA
+#endif
 #endif
 
 };

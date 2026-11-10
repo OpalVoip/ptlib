@@ -178,11 +178,18 @@ class PTimedMutex : public PSync, public PMutexExcessiveLockInfo, PProfiling::Hi
     void InternalWaitComplete(uint64_t startWaitCycle, const PDebugLocation * location);
     bool InternalSignal(const PDebugLocation * location);
 
-// Include platform dependent part of class
 #ifdef _WIN32
-#include "msos/ptlib/mutex.h"
+  public:
+    HANDLE GetHandle() const { return m_handle; }
+  protected:
+    PWin32Handle m_handle;
 #else
-#include "unix/ptlib/mutex.h"
+#if defined(P_PTHREADS)
+  public:
+    static void InitialiseRecursiveMutex(pthread_mutex_t *mutex);
+  protected:
+    mutable pthread_mutex_t m_mutex;
+#endif
 #endif
 };
 

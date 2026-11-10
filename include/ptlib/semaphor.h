@@ -159,9 +159,11 @@ class PSemaphore : public PSync
     unsigned m_initial;
 
 
-// Include platform dependent part of class
 #ifdef _WIN32
-#include "msos/ptlib/semaphor.h"
+  public:
+    HANDLE GetHandle() const { return m_handle; }
+  protected:
+    PWin32Handle m_handle;
 #else
 #include "unix/ptlib/semaphor.h"
 #endif

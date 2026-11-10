@@ -760,9 +760,12 @@ class PChannel : public PObject, public std::iostream
       // Flag to abort the transmission of a command in SendCommandString().
 
 
-// Include platform dependent part of class
 #ifdef _WIN32
-#include "msos/ptlib/channel.h"
+  protected:
+    virtual HANDLE GetAsyncReadHandle() const;
+    virtual HANDLE GetAsyncWriteHandle() const;
+   public:
+     int GetOSHandleAsInt() const { return PtrToLong((void*)os_handle.load()); }
 #else
 #include "unix/ptlib/channel.h"
 #endif

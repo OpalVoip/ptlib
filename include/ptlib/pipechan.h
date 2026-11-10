@@ -419,11 +419,21 @@ class PPipeChannel : public PChannel
                       const PStringToString * environment);
 
 
-// Include platform dependent part of class
 #ifdef _WIN32
-#include "msos/ptlib/pipechan.h"
+  public:
+    virtual PBoolean IsOpen() const;
+  protected:
+    PROCESS_INFORMATION info;
+    PWin32Handle m_hToChild;
+    PWin32Handle m_hFromChild;
+    PWin32Handle m_hStandardError;
 #else
-#include "unix/ptlib/pipechan.h"
+  protected:
+    int m_toChildPipe[2];
+    int m_fromChildPipe[2];
+    int m_stderrChildPipe[2];
+    int m_childPID;
+    int m_returnCode;
 #endif
 };
 

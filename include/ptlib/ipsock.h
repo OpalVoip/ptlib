@@ -908,11 +908,13 @@ class PIPSocket : public PSocket
     virtual bool InternalGetPeerAddress(AddressAndPort & addrAndPort);
     virtual bool InternalListen(const Address & bind, unsigned queueSize, WORD port, Reusability reuse);
 
-// Include platform dependent part of class
 #ifdef _WIN32
-#include "msos/ptlib/ipsock.h"
-#else
-#include "unix/ptlib/ipsock.h"
+#if P_QWAVE
+  public:
+    virtual PBoolean Close();
+  protected:
+    ULONG m_qosFlowId;
+#endif // P_QWAVE
 #endif
 
   protected:

@@ -157,11 +157,16 @@ class PServiceProcess : public PProcess
     /// Flag to indicate service is run in simulation mode.
     bool m_debugMode;
 
-// Include platform dependent part of class
 #ifdef _WIN32
 #include "msos/ptlib/svcproc.h"
 #else
-#include "unix/ptlib/svcproc.h"
+  public:
+    ~PServiceProcess();
+    virtual void HandleRunTimeSignal(int signal) override;
+  protected:
+    int  InitialiseService();
+    PString pidFileToRemove;
+    PBoolean isTerminating;
 #endif
 };
 

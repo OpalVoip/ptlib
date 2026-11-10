@@ -617,11 +617,11 @@ class PTime : public PObject
     atomic<int64_t> m_microSecondsSinceEpoch;
     static int64_t const Micro = 1000000;
 
-// Include platform dependent part of class
 #ifdef _WIN32
-#include "msos/ptlib/ptime.h"
-#else
-#include "unix/ptlib/ptime.h"
+  public:
+    PTime(const FILETIME & timestamp);
+    void SetFromFileTime(const FILETIME & timestamp);
+    void SetToFileTime(FILETIME & timestamp) const;
 #endif
 };
 
