@@ -305,7 +305,8 @@ vcxproj files. Visual Studio 2026 writes build\PTLib.slnx instead:
 
 If VCPKG_ROOT is set, the script passes that vcpkg toolchain to CMake.
 Otherwise CMake looks for a checkout itself. See the vcpkg section.
-The same configure for Visual Studio 2022 from a command prompt:
+The same configure for Visual Studio 2022 from a command prompt. Pass
+-A x64 so vcpkg does not guess x86-windows when the platform is omitted:
 
   cmake -S . -B build -G "Visual Studio 17 2022" -A x64
   cmake --build build --config Release
