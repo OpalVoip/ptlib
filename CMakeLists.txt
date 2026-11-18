@@ -512,6 +512,7 @@ add_custom_target(uninstall
   COMMAND "${CMAKE_COMMAND}" -P "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
   COMMENT "Removing the files installed from this build"
   VERBATIM)
+set_target_properties(uninstall PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
 include(cmake/PTLibBuildVariants.cmake)
 include(cmake/PTLibVisualStudio.cmake)

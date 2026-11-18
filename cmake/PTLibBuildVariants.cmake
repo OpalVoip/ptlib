@@ -32,6 +32,10 @@ if(_ptlib_multi_config)
     USES_TERMINAL
     VERBATIM
     COMMENT "Building Release and Debug PTLib")
+  # Visual Studio builds every project that is not excluded. Leaving these in
+  # the solution build starts a second compile of this tree and the two
+  # compilers lock the same .obj files.
+  set_target_properties(debug both PROPERTIES EXCLUDE_FROM_ALL TRUE)
   return()
 endif()
 
@@ -149,6 +153,7 @@ endforeach()
 add_custom_target(both
   DEPENDS ${_ptlib_release_targets} debug
   COMMENT "Building Release and Debug PTLib")
+set_target_properties(debug both PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
 set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_CLEAN_FILES "${_ptlib_debug_dir}")
 

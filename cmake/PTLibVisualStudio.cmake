@@ -31,8 +31,11 @@ function(ptlib_attach_vs_props dir)
     endif()
     get_target_property(_type "${_target}" TYPE)
     if(_type MATCHES "^(EXECUTABLE|SHARED_LIBRARY|STATIC_LIBRARY|MODULE_LIBRARY|OBJECT_LIBRARY)$")
+      # Release and Debug must not share .obj or compiler pdb files. A
+      # combined build locks the file and the other configuration fails.
       set_target_properties("${_target}" PROPERTIES
-        VS_USER_PROPS "${_ptlib_vs_user_props}")
+        VS_USER_PROPS "${_ptlib_vs_user_props}"
+        VS_GLOBAL_IntDir "${CMAKE_BINARY_DIR}/obj/$(Platform)/$(Configuration)/$(ProjectName)/")
     endif()
   endforeach()
   get_property(_subdirs DIRECTORY "${dir}" PROPERTY SUBDIRECTORIES)
