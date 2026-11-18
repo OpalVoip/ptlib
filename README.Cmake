@@ -218,8 +218,13 @@ other dependencies the build probes when the port supports the Visual
 Studio triplet: Cyrus SASL, libpcap, Lua, and GStreamer. The toolchain
 is loaded automatically unless one was already given or
 -DPTLIB_USE_VCPKG=OFF is set. CMake looks at VCPKG_ROOT, then vcpkg on
-PATH, then the Visual Studio vcpkg component, then a checkout under the
-user profile, %LOCALAPPDATA%\vcpkg, C:\vcpkg, or C:\src\vcpkg.
+PATH, then each Visual Studio's VC\vcpkg (newest first), then a checkout
+under the user profile, %LOCALAPPDATA%\vcpkg, C:\vcpkg, or C:\src\vcpkg.
+A checkout whose scripts do not implement REMOVE_DUPLICATES is skipped.
+Visual Studio 2022's bundled vcpkg is one of those: with the current
+manifest baseline, building expat stops with "Operation REMOVE_DUPLICATES
+not recognized." Use the vcpkg from Visual Studio 2026, or clone
+https://github.com/microsoft/vcpkg and set VCPKG_ROOT to that directory.
 
 An explicit -DVCPKG_MANIFEST_FEATURES list replaces that automatic set.
 The default features above are still installed. An empty list keeps only
