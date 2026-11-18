@@ -221,10 +221,8 @@ is loaded automatically unless one was already given or
 PATH, then each Visual Studio's VC\vcpkg (newest first), then a checkout
 under the user profile, %LOCALAPPDATA%\vcpkg, C:\vcpkg, or C:\src\vcpkg.
 A checkout whose scripts do not implement REMOVE_DUPLICATES is skipped.
-Visual Studio 2022's bundled vcpkg is one of those: with the current
-manifest baseline, building expat stops with "Operation REMOVE_DUPLICATES
-not recognized." Use the vcpkg from Visual Studio 2026, or clone
-https://github.com/microsoft/vcpkg and set VCPKG_ROOT to that directory.
+Visual Studio 2022's bundled vcpkg is one of those. vs_2022.bat obtains
+a current vcpkg and configures that generator. See the Windows section.
 
 An explicit -DVCPKG_MANIFEST_FEATURES list replaces that automatic set.
 The default features above are still installed. An empty list keeps only
@@ -310,13 +308,11 @@ vcxproj files. Visual Studio 2026 writes build\PTLib.slnx instead:
 
 If VCPKG_ROOT is set, the script passes that vcpkg toolchain to CMake.
 Otherwise CMake looks for a checkout itself. See the vcpkg section.
-To configure a specific Visual Studio, name the generator and use a
-separate build directory. This one is Visual Studio 2022, in build_2022.
--A x64 and -DVCPKG_TARGET_TRIPLET=x64-windows keep vcpkg on the 64-bit
-triplet. Remove a previous build directory first:
+Visual Studio 2022 is configured with vs_2022.bat. It writes
+build_2022\PTLib.sln. The script uses a current vcpkg, cloning one into
+C:\src\vcpkg when VCPKG_ROOT is unset or too old to build the ports.
 
-  rmdir /s /q build
-  cmake -S . -B build_2022 -G "Visual Studio 17 2022" -A x64 -DVCPKG_TARGET_TRIPLET=x64-windows
+  vs_2022.bat
   cmake --build build_2022 --config Release
   cmake --install build_2022 --config Release --prefix C:\ptlib
 
