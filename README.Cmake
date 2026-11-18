@@ -412,8 +412,9 @@ directory. "cpack -G DEB" from that directory does the same thing. The
 Debian version uses ~alpha or ~beta in place of the hyphen in the PTLib
 version, so 4.0.0-alpha is packaged as 4.0.0~alpha.
 
-Depends lists the shared libraries this build actually linked. Install
-the package with:
+Depends lists the shared libraries this build actually linked, plus cmake,
+pkg-config and the -dev package of each library the build enabled, because
+the package carries the headers and CMake files. Install the package with:
 
   sudo dpkg -i build/ptlib_*.deb
 
