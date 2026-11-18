@@ -150,6 +150,39 @@ so those SONAMEs map to package names. Configure with
 The .deb is written in the build directory.
 
 
+Creating a new application
+--------------------------
+
+cmake/PTLibNewApp.cmake writes a CMakeLists.txt for a program that uses
+PTLib and not OPAL. A program that also uses OPAL should run
+opal/cmake/OPALNewApp.cmake instead. Run this script from the application
+directory, which is where the file is written. CMake is the only
+requirement. The script does not prompt. The project name is that
+directory's name. With no source list, the .c, .cxx, .cpp, and header
+files beside the new CMakeLists.txt are used. PTLIB_NEW_APP_SOURCES names
+subdirectories to search recursively, separated by semicolons, such as
+src or src;include. PTLib is the tree that contains the script.
+
+  cmake -P /path/to/ptlib/cmake/PTLibNewApp.cmake
+
+  cmake -DPTLIB_NEW_APP_SOURCES=src \
+    -P /path/to/ptlib/cmake/PTLibNewApp.cmake
+
+The generated file accepts a PTLib source tree, a build directory, or an
+install prefix. Build PTLib first, then from the new program's directory:
+
+  cmake -S . -B build
+  cmake --build build
+
+An existing CMakeLists.txt is left unchanged. Replace it by passing
+-DPTLIB_NEW_APP_FORCE=ON before -P. The project name override, also
+before -P:
+
+  cmake -DPTLIB_NEW_APP_NAME=<project> \
+    -DPTLIB_NEW_APP_SOURCES=<dir>[;<dir>...] \
+    -P /path/to/ptlib/cmake/PTLibNewApp.cmake
+
+
 pkg-config
 ----------
 
@@ -241,6 +274,10 @@ PKG_CONFIG_PATH. For OpenLDAP and SASL, point pkg-config at the kegs
 before configure (Apple silicon paths shown; on Intel use /usr/local):
 
   export PKG_CONFIG_PATH="/opt/homebrew/opt/openldap/lib/pkgconfig:/opt/homebrew/opt/cyrus-sasl/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+
+That export is needed when configuring PTLib. PTLibConfig.cmake records
+those .pc directories and adds them to PKG_CONFIG_PATH for a program that
+uses find_package(PTLib). The program does not need the export.
 
 libpcap and V8 are also found without pkg-config when the libraries are
 present. Pass -DCMAKE_PREFIX_PATH=/opt/homebrew (or /usr/local on Intel)

@@ -225,7 +225,56 @@ function(ptlib_require feature found)
   set(PTLIB_${feature}_ENABLED ${enabled} PARENT_SCOPE)
 endfunction()
 
+# Remember the directory of each .pc file this build uses. Homebrew kegs such
+# as OpenLDAP are not on the default PKG_CONFIG_PATH, and a later
+# find_package(PTLib) runs pkg-config again.
+function(ptlib_remember_pkgconfig_modules)
+  if(NOT PKG_CONFIG_EXECUTABLE)
+    return()
+  endif()
+  get_property(_dirs GLOBAL PROPERTY PTLIB_PKGCONFIG_DIRS)
+  foreach(_mod IN LISTS ARGN)
+    execute_process(
+      COMMAND "${PKG_CONFIG_EXECUTABLE}" --variable=pcfiledir "${_mod}"
+      OUTPUT_VARIABLE _pcdir
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      ERROR_QUIET
+      RESULT_VARIABLE _rc)
+    if(_rc EQUAL 0 AND _pcdir)
+      get_filename_component(_pcdir "${_pcdir}" ABSOLUTE)
+      file(TO_CMAKE_PATH "${_pcdir}" _pcdir)
+      if(NOT _pcdir IN_LIST _dirs)
+        list(APPEND _dirs "${_pcdir}")
+      endif()
+    endif()
+  endforeach()
+  set_property(GLOBAL PROPERTY PTLIB_PKGCONFIG_DIRS "${_dirs}")
+endfunction()
+
+function(ptlib_use_saved_pkgconfig_dirs)
+  if(NOT PTLIB_PKGCONFIG_DIRS)
+    return()
+  endif()
+  set(_env "$ENV{PKG_CONFIG_PATH}")
+  if(WIN32)
+    set(_sep ";")
+  else()
+    set(_sep ":")
+  endif()
+  foreach(_dir IN LISTS PTLIB_PKGCONFIG_DIRS)
+    if(EXISTS "${_dir}")
+      if(_env)
+        set(_env "${_dir}${_sep}${_env}")
+      else()
+        set(_env "${_dir}")
+      endif()
+    endif()
+  endforeach()
+  set(ENV{PKG_CONFIG_PATH} "${_env}")
+endfunction()
+
 find_package(PkgConfig QUIET)
+ptlib_use_saved_pkgconfig_dirs()
 
 # CMake package names recorded here are emitted as find_dependency() calls
 # for consumers. vcpkg and Homebrew config packages use this path; pkg-config
@@ -366,6 +415,7 @@ macro(ptlib_pkg_probe feature)
       set(PTLIB_${feature}_FOUND TRUE)
       set(PTLIB_${feature}_LINK PkgConfig::PTLIB_PC_${feature})
       ptlib_note_snippet("pkg_check_modules(PTLIB_PC_${feature} REQUIRED IMPORTED_TARGET ${ARGN})")
+      ptlib_remember_pkgconfig_modules(${ARGN})
     endif()
   endif()
   ptlib_require(${feature} PTLIB_${feature}_FOUND)
@@ -428,6 +478,7 @@ if(_want_pcap AND PKG_CONFIG_FOUND)
     set(PTLIB_PCAP_LINK PkgConfig::PTLIB_PC_PCAP)
     ptlib_note_snippet(
       "pkg_check_modules(PTLIB_PC_PCAP REQUIRED IMPORTED_TARGET libpcap)")
+    ptlib_remember_pkgconfig_modules(libpcap)
   endif()
 endif()
 if(_want_pcap AND NOT PTLIB_PCAP_FOUND)
@@ -614,6 +665,7 @@ if(_want_lua AND NOT PTLIB_LUA_FOUND AND PKG_CONFIG_FOUND)
       # Consumers loading PTLibTargets need the same IMPORTED_TARGET name.
       ptlib_note_snippet(
         "pkg_check_modules(PTLIB_PC_LUA${_lua_i} REQUIRED IMPORTED_TARGET ${_lua_pkg})")
+      ptlib_remember_pkgconfig_modules(${_lua_pkg})
       break()
     endif()
   endforeach()
@@ -776,6 +828,7 @@ else()
       set(PTLIB_V8_LINK PkgConfig::PTLIB_PC_V8)
       ptlib_note_snippet(
         "pkg_check_modules(PTLIB_PC_V8 REQUIRED IMPORTED_TARGET v8)")
+      ptlib_remember_pkgconfig_modules(v8)
     endif()
   endif()
   if(_want_v8 AND NOT PTLIB_V8_FOUND)
