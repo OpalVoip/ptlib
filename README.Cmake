@@ -310,12 +310,15 @@ vcxproj files. Visual Studio 2026 writes build\PTLib.slnx instead:
 
 If VCPKG_ROOT is set, the script passes that vcpkg toolchain to CMake.
 Otherwise CMake looks for a checkout itself. See the vcpkg section.
-The same configure for Visual Studio 2022 from a command prompt. Pass
--A x64 so vcpkg does not guess x86-windows when the platform is omitted:
+To configure a specific Visual Studio, name the generator and use a
+separate build directory. This one is Visual Studio 2022, in build_2022.
+-A x64 and -DVCPKG_TARGET_TRIPLET=x64-windows keep vcpkg on the 64-bit
+triplet. Remove a previous build directory first:
 
-  cmake -S . -B build -G "Visual Studio 17 2022" -A x64
-  cmake --build build --config Release
-  cmake --install build --config Release --prefix C:\ptlib
+  rmdir /s /q build
+  cmake -S . -B build_2022 -G "Visual Studio 17 2022" -A x64 -DVCPKG_TARGET_TRIPLET=x64-windows
+  cmake --build build_2022 --config Release
+  cmake --install build_2022 --config Release --prefix C:\ptlib
 
 "cmake --help" lists the generator name for a newer Visual Studio. This
 selects the Windows sources. The library links ws2_32 and iphlpapi.
