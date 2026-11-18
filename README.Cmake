@@ -314,6 +314,12 @@ C:\src\vcpkg when VCPKG_ROOT is unset or too old to build the ports.
 
   vs_2022.bat
   cmake --build build_2022 --config Release
+
+Visual Studio 2026 is configured with vs_2026.bat. It writes
+build_2026\PTLib.slnx.
+
+  vs_2026.bat
+  cmake --build build_2026 --config Release
   cmake --install build_2022 --config Release --prefix C:\ptlib
 
 "cmake --help" lists the generator name for a newer Visual Studio. This
