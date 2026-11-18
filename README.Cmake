@@ -299,7 +299,7 @@ Windows
 Use Visual Studio 2022 or later, with the C++ desktop workload, and CMake.
 From this directory, configure_vs.bat selects the newest installed Visual
 Studio that has the C++ workload and writes build\PTLib.sln plus the
-vcxproj files:
+vcxproj files. Visual Studio 2026 writes build\PTLib.slnx instead:
 
   configure_vs.bat
 

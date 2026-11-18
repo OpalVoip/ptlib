@@ -21,7 +21,15 @@ cmake -S . -B build -G "%GENERATOR%" -A x64 %TOOLCHAIN%
 if errorlevel 1 exit /b 1
 
 echo.
-echo Created %CD%\build\PTLib.sln
+if exist "%CD%\build\PTLib.slnx" (
+  echo Created %CD%\build\PTLib.slnx
+  echo Visual Studio 2026 opens this .slnx file. Visual Studio 2022 does not.
+) else if exist "%CD%\build\PTLib.sln" (
+  echo Created %CD%\build\PTLib.sln
+) else (
+  echo CMake finished but did not write build\PTLib.sln or build\PTLib.slnx.
+  exit /b 1
+)
 exit /b 0
 
 :generator
