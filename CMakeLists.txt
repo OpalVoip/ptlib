@@ -555,8 +555,18 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     endif()
   endforeach()
   if(PTLIB_FFMPEG_FOUND)
-    list(APPEND _ptlib_deb_depends libavcodec-dev libavformat-dev libavutil-dev
-      libswscale-dev libswresample-dev)
+    # A custom FFmpeg build is packaged differently, so its packages can be
+    # named here, e.g. -DPTLIB_FFMPEG_DEPENDENCIES="custom-ffmpeg (>= 8.1)".
+    # An empty value adds none, leaving FFmpeg to dpkg-shlibdeps.
+    set(PTLIB_FFMPEG_DEPENDENCIES "libavcodec-dev;libavformat-dev;libavutil-dev;libswscale-dev;libswresample-dev"
+    CACHE STRING "Packages the .deb depends on for FFmpeg, separated by ; or ,")
+    string(REPLACE "," ";" _ffmpeg_depends "${PTLIB_FFMPEG_DEPENDENCIES}")
+    foreach(_package IN LISTS _ffmpeg_depends)
+      string(STRIP "${_package}" _package)
+      if(_package)
+        list(APPEND _ptlib_deb_depends "${_package}")
+      endif()
+    endforeach()
   endif()
   if(PTLIB_GSTREAMER_FOUND)
     list(APPEND _ptlib_deb_depends libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev)

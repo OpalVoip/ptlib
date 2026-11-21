@@ -414,7 +414,17 @@ version, so 4.0.0-alpha is packaged as 4.0.0~alpha.
 
 Depends lists the shared libraries this build actually linked, plus cmake,
 pkg-config and the -dev package of each library the build enabled, because
-the package carries the headers and CMake files. Install the package with:
+the package carries the headers and CMake files.
+
+PTLIB_FFMPEG_DEPENDENCIES names the FFmpeg packages, separated by ; or ,.
+The default is the Debian -dev packages for libavcodec, libavformat,
+libavutil, libswscale and libswresample. Name the package of a custom
+FFmpeg build instead, or set it empty to add none:
+
+  cmake -S . -B build -DCMAKE_INSTALL_PREFIX=/usr \
+    -DPTLIB_FFMPEG_DEPENDENCIES="custom-ffmpeg (>= 8.1)"
+
+Install the package with:
 
   sudo dpkg -i build/ptlib_*.deb
 
