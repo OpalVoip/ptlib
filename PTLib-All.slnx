@@ -1,0 +1,137 @@
+<Solution>
+  <Configurations>
+    <BuildType Name="Debug" />
+    <BuildType Name="Release" />
+    <BuildType Name="MinSizeRel" />
+    <BuildType Name="RelWithDebInfo" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/PTLib/">
+    <Project Path="build/ALL_BUILD.vcxproj" Id="c98d9209-193e-3cd6-b271-eb0e119fa787">
+      <BuildDependency Project="build/ptlib.vcxproj" />
+      <BuildDependency Project="build/samples/asntest.vcxproj" />
+      <BuildDependency Project="build/samples/audio.vcxproj" />
+      <BuildDependency Project="build/samples/dnstest.vcxproj" />
+      <BuildDependency Project="build/samples/find_ip.vcxproj" />
+      <BuildDependency Project="build/samples/hello.vcxproj" />
+      <BuildDependency Project="build/samples/httptest.vcxproj" />
+      <BuildDependency Project="build/samples/ipv6test.vcxproj" />
+      <BuildDependency Project="build/samples/jsontest.vcxproj" />
+      <BuildDependency Project="build/samples/map_dict.vcxproj" />
+      <BuildDependency Project="build/samples/netif.vcxproj" />
+      <BuildDependency Project="build/samples/odbc.vcxproj" />
+      <BuildDependency Project="build/samples/sockbundle.vcxproj" />
+      <BuildDependency Project="build/samples/strtest.vcxproj" />
+      <BuildDependency Project="build/samples/stunclient.vcxproj" />
+      <BuildDependency Project="build/samples/thread.vcxproj" />
+      <BuildDependency Project="build/samples/timing.vcxproj" />
+      <BuildDependency Project="build/samples/url.vcxproj" />
+      <BuildDependency Project="build/samples/vcard.vcxproj" />
+      <BuildDependency Project="build/samples/vidtest.vcxproj" />
+      <BuildDependency Project="build/ZERO_CHECK.vcxproj" />
+    </Project>
+    <Project Path="build/both.vcxproj" Id="440d0897-f2e0-3981-bc9d-9967df20a6a9">
+      <BuildDependency Project="build/ZERO_CHECK.vcxproj" />
+      <Build Project="false" />
+    </Project>
+    <Project Path="build/debug.vcxproj" Id="f5062520-ab3a-378a-9df5-4ca963d230ea">
+      <BuildDependency Project="build/ZERO_CHECK.vcxproj" />
+      <Build Project="false" />
+    </Project>
+    <Project Path="build/INSTALL.vcxproj" Id="22af6e06-932e-3b3a-8473-7d9303999e07">
+      <BuildDependency Project="build/ALL_BUILD.vcxproj" />
+      <BuildDependency Project="build/ZERO_CHECK.vcxproj" />
+      <Build Project="false" />
+    </Project>
+    <Project Path="build/ptlib.vcxproj" Id="9a664fa9-e672-3998-a0db-37ac8b83eff1">
+      <BuildDependency Project="build/ZERO_CHECK.vcxproj" />
+    </Project>
+    <Project Path="build/uninstall.vcxproj" Id="6a743992-0727-39bb-b7ec-b40448cf6fe9">
+      <BuildDependency Project="build/ZERO_CHECK.vcxproj" />
+      <Build Project="false" />
+    </Project>
+    <Project Path="build/ZERO_CHECK.vcxproj" Id="582fa35b-351c-33f7-990c-98042b50be1b" />
+  </Folder>
+  <Folder Name="/Samples/">
+    <Project Path="build/samples/asntest.vcxproj" Id="8e0febd4-1225-36ab-ae6e-9bf0a5edf828">
+      <BuildDependency Project="build/ptlib.vcxproj" />
+      <BuildDependency Project="build/ZERO_CHECK.vcxproj" />
+    </Project>
+    <Project Path="build/samples/audio.vcxproj" Id="59854f8d-9be8-3a9a-accd-362bd83442a3">
+      <BuildDependency Project="build/ptlib.vcxproj" />
+      <BuildDependency Project="build/ZERO_CHECK.vcxproj" />
+    </Project>
+    <Project Path="build/samples/dnstest.vcxproj" Id="4ef0f4bf-d5f1-3de1-914c-12b277a96446">
+      <BuildDependency Project="build/ptlib.vcxproj" />
+      <BuildDependency Project="build/ZERO_CHECK.vcxproj" />
+    </Project>
+    <Project Path="build/samples/find_ip.vcxproj" Id="11aa54d1-1bcd-3128-9f00-fa3a8119c0b9">
+      <BuildDependency Project="build/ptlib.vcxproj" />
+      <BuildDependency Project="build/ZERO_CHECK.vcxproj" />
+    </Project>
+    <Project Path="build/samples/hello.vcxproj" Id="08fcfcb3-3132-32f1-bbe6-a17ba5886614">
+      <BuildDependency Project="build/ptlib.vcxproj" />
+      <BuildDependency Project="build/ZERO_CHECK.vcxproj" />
+    </Project>
+    <Project Path="build/samples/httptest.vcxproj" Id="6ca34bf1-a5c1-328e-b49e-90d08dd3b228">
+      <BuildDependency Project="build/ptlib.vcxproj" />
+      <BuildDependency Project="build/ZERO_CHECK.vcxproj" />
+    </Project>
+    <Project Path="build/samples/ipv6test.vcxproj" Id="5b290f9d-87f6-3d8e-abc8-dcd2b85f88c9">
+      <BuildDependency Project="build/ptlib.vcxproj" />
+      <BuildDependency Project="build/ZERO_CHECK.vcxproj" />
+    </Project>
+    <Project Path="build/samples/jsontest.vcxproj" Id="87fc2624-c878-308b-85d9-3ca1f32ee53a">
+      <BuildDependency Project="build/ptlib.vcxproj" />
+      <BuildDependency Project="build/ZERO_CHECK.vcxproj" />
+    </Project>
+    <Project Path="build/samples/map_dict.vcxproj" Id="d32c4141-c55d-3475-9254-1bd8f24e3df2">
+      <BuildDependency Project="build/ptlib.vcxproj" />
+      <BuildDependency Project="build/ZERO_CHECK.vcxproj" />
+    </Project>
+    <Project Path="build/samples/netif.vcxproj" Id="6f648981-7de5-32e9-a1b4-a5eabaeba484">
+      <BuildDependency Project="build/ptlib.vcxproj" />
+      <BuildDependency Project="build/ZERO_CHECK.vcxproj" />
+    </Project>
+    <Project Path="build/samples/odbc.vcxproj" Id="f226942b-e583-3a8a-b585-44a12f3f2c6b">
+      <BuildDependency Project="build/ptlib.vcxproj" />
+      <BuildDependency Project="build/ZERO_CHECK.vcxproj" />
+    </Project>
+    <Project Path="build/samples/sockbundle.vcxproj" Id="14c48db4-2858-314a-a319-de98eb475b63">
+      <BuildDependency Project="build/ptlib.vcxproj" />
+      <BuildDependency Project="build/ZERO_CHECK.vcxproj" />
+    </Project>
+    <Project Path="build/samples/strtest.vcxproj" Id="9b408664-2bbc-304b-b2fa-5b40038a4281">
+      <BuildDependency Project="build/ptlib.vcxproj" />
+      <BuildDependency Project="build/ZERO_CHECK.vcxproj" />
+    </Project>
+    <Project Path="build/samples/stunclient.vcxproj" Id="d36f36a4-91a5-3a78-99da-8ac6d709091a">
+      <BuildDependency Project="build/ptlib.vcxproj" />
+      <BuildDependency Project="build/ZERO_CHECK.vcxproj" />
+    </Project>
+    <Project Path="build/samples/thread.vcxproj" Id="d05ff1be-ae2c-3def-823b-dbe06e4f48da">
+      <BuildDependency Project="build/ptlib.vcxproj" />
+      <BuildDependency Project="build/ZERO_CHECK.vcxproj" />
+    </Project>
+    <Project Path="build/samples/timing.vcxproj" Id="b4178467-346e-32d9-a571-e8d8e748d858">
+      <BuildDependency Project="build/ptlib.vcxproj" />
+      <BuildDependency Project="build/ZERO_CHECK.vcxproj" />
+    </Project>
+    <Project Path="build/samples/url.vcxproj" Id="726fe050-045e-3143-94bd-3aea89a824a1">
+      <BuildDependency Project="build/ptlib.vcxproj" />
+      <BuildDependency Project="build/ZERO_CHECK.vcxproj" />
+    </Project>
+    <Project Path="build/samples/vcard.vcxproj" Id="8d059019-f19e-3aa1-b4f9-5e611ee391eb">
+      <BuildDependency Project="build/ptlib.vcxproj" />
+      <BuildDependency Project="build/ZERO_CHECK.vcxproj" />
+    </Project>
+    <Project Path="build/samples/vidtest.vcxproj" Id="45618c6a-ff05-35bc-91c3-c1dfd2f63bd6">
+      <BuildDependency Project="build/ptlib.vcxproj" />
+      <BuildDependency Project="build/ZERO_CHECK.vcxproj" />
+    </Project>
+  </Folder>
+  <Project Path="Configure.vcxproj" Id="642ce41d-be3f-8f67-0eba-5b76893a7ff7">
+    <Build Solution="Debug|x64" Project="false" />
+  </Project>
+</Solution>

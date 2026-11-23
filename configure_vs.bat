@@ -12,7 +12,7 @@ call :generator "%~1"
 
 rem Prefer a current vcpkg. Visual Studio 2022's bundled scripts do not
 rem implement REMOVE_DUPLICATES and fail while building expat.
-set "VCPKG_DIR=C:\src\vcpkg"
+set "VCPKG_DIR=..\vcpkg"
 if defined VCPKG_ROOT if exist "%VCPKG_ROOT%\scripts\cmake\vcpkg_host_path_list.cmake" (
   findstr /C:"REMOVE_DUPLICATES" "%VCPKG_ROOT%\scripts\cmake\vcpkg_host_path_list.cmake" >nul
   if not errorlevel 1 set "VCPKG_DIR=%VCPKG_ROOT%"
@@ -44,13 +44,13 @@ if exist "build\CMakeCache.txt" (
   findstr /I /C:"%VCPKG_DIR:\=/%/scripts/buildsystems/vcpkg.cmake" "build\CMakeCache.txt" >nul
   if errorlevel 1 (
     echo Removing build because it was configured with a different vcpkg.
-    rmdir /s /q build
+    rmdir /s /q .\build
   )
 )
 
 echo Configuring PTLib with "%GENERATOR%"
 echo vcpkg: %VCPKG_DIR%
-cmake -S . -B build -G "%GENERATOR%" -A x64 -DVCPKG_TARGET_TRIPLET=x64-windows -DCMAKE_TOOLCHAIN_FILE="%VCPKG_DIR%\scripts\buildsystems\vcpkg.cmake"
+cmake -S . -B .\build -G "%GENERATOR%" -A x64 -DVCPKG_TARGET_TRIPLET=x64-windows -DCMAKE_TOOLCHAIN_FILE="%VCPKG_DIR%\scripts\buildsystems\vcpkg.cmake" -DPTLIB_BUILD_SAMPLES=ON
 if errorlevel 1 exit /b 1
 
 echo.

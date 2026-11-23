@@ -33,3 +33,4 @@ private/
 /tools/configure/Release
 .vscode/*.log
 build_deb
+/Configure.log
