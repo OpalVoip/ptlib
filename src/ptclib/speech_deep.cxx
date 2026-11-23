@@ -46,6 +46,7 @@ static const PConstCaselessString ShortInputMaxLenTag("shortinput-maxlen");
 static const PConstCaselessString ShortInputTimeoutTag("shortinput-timeout");
 static const PConstCaselessString FinalHeuristicTag("Deepgram-IsFinal-Heuristic");
 static const PConstCaselessString LanguageHintTag("LanguageHint");
+static const PConstCaselessString LanguageHintListTag("LanguageHintList");
 
 static const PConstCaselessString SampleRateHeader("sample_rate");
 static const PConstCaselessString ChannelsHeader("channels");
@@ -74,6 +75,7 @@ static PStringSet MakeSkipParameters()
   set += DeepgramFluxPrefix + ChannelsHeader;
   set += DeepgramFluxPrefix + LanguageHeader;
   set += DeepgramFluxPrefix + LanguageHintTag;
+  set += DeepgramFluxPrefix + LanguageHintListTag;
   set += DeepgramFluxPrefix + LanguageHintHeader;
   set += DeepgramFluxPrefix + EncodingHeader;
   set += DeepgramFluxPrefix + ShortInputMaxLenTag;
@@ -96,6 +98,7 @@ class PSpeechRecognition_Deepgram : public PSpeechRecognition
   unsigned m_channels;
   PString m_language;
   bool m_languageHint = false;
+  PString m_languageHintList;
   PString m_endpoint;
   PString m_apiKey;
   unsigned m_shortInputMaxLen;
@@ -134,7 +137,7 @@ class PSpeechRecognition_Deepgram : public PSpeechRecognition
         url.SetQueryVar(LanguageHeader, m_language);
       }
       if (m_languageHint)
-        url.SetQueryVar(LanguageHintHeader, m_language);
+        url.SetQueryVar(LanguageHintHeader, m_languageHintList.empty() ? m_language : m_languageHintList);
 
       m_webSocket.SetAuthorization("token " + m_apiKey);
       m_webSocket.SetProxies(m_httpProxies);
@@ -304,7 +307,8 @@ public:
         m_options.SetAt(opt->first.Mid(m_prefix.length()), opt->second);
     }
 
-    m_languageHint = options.GetBoolean(m_prefix + LanguageHintTag, m_flux && m_options(ModelHeader) != DefaultModel);
+    m_languageHint = m_flux && options.GetBoolean(m_prefix + LanguageHintTag, m_options(ModelHeader) != DefaultModel);
+    m_languageHintList = options.GetString(m_prefix + LanguageHintListTag, m_languageHintList).Replace(",", "\n", true);
 
     // Get buffer size in milliseconds before the sample rate changes
     unsigned bufferMilliseconds = options.GetVar(m_prefix + BufferDurationTag, m_bufferSize * 1000 / m_sampleRate);
