@@ -533,6 +533,45 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/mpl-1.0.htm")
   set(CPACK_DEBIAN_PACKAGE_SECTION "libs")
   set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
+  # The package ships headers, ptlib.pc and PTLibConfig.cmake, so consumers
+  # also need the build tools and the -dev package of each library enabled.
+  # These are added to the dpkg-shlibdeps runtime dependencies.
+  set(_ptlib_deb_depends "cmake" "pkg-config")
+  foreach(_dep IN ITEMS
+      SSL:libssl-dev
+      EXPAT:libexpat1-dev
+      OPENLDAP:libldap-dev
+      SASL:libsasl2-dev
+      PCAP:libpcap-dev
+      SDL:libsdl2-dev
+      ODBC:unixodbc-dev
+      CURSES:libncurses-dev
+      PULSE:libpulse-dev)
+    string(REPLACE ":" ";" _dep "${_dep}")
+    list(GET _dep 0 _feature)
+    list(GET _dep 1 _package)
+    if(PTLIB_${_feature}_FOUND)
+      list(APPEND _ptlib_deb_depends "${_package}")
+    endif()
+  endforeach()
+  if(PTLIB_FFMPEG_FOUND)
+    # A custom FFmpeg build is packaged differently, so its packages can be
+    # named here, e.g. -DPTLIB_FFMPEG_DEPENDENCIES="custom-ffmpeg (>= 8.1)".
+    # An empty value adds none, leaving FFmpeg to dpkg-shlibdeps.
+    set(PTLIB_FFMPEG_DEPENDENCIES "libavcodec-dev;libavformat-dev;libavutil-dev;libswscale-dev;libswresample-dev"
+    CACHE STRING "Packages the .deb depends on for FFmpeg, separated by ; or ,")
+    string(REPLACE "," ";" _ffmpeg_depends "${PTLIB_FFMPEG_DEPENDENCIES}")
+    foreach(_package IN LISTS _ffmpeg_depends)
+      string(STRIP "${_package}" _package)
+      if(_package)
+        list(APPEND _ptlib_deb_depends "${_package}")
+      endif()
+    endforeach()
+  endif()
+  if(PTLIB_GSTREAMER_FOUND)
+    list(APPEND _ptlib_deb_depends libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev)
+  endif()
+  list(JOIN _ptlib_deb_depends ", " CPACK_DEBIAN_PACKAGE_DEPENDS)
   set(CPACK_DEBIAN_FILE_NAME "DEB-DEFAULT")
   include(CPack)
 endif()
