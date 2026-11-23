@@ -765,10 +765,12 @@ bool PHTTPListener::ListenForHTTP(const std::set<PIPAddress> & interfaces, WORD 
     }
   }
 
+#if P_SSL
   if (HasSSLCertificates()) {
     m_sslContext.reset(new PSSLContext());
     ApplySSLCredentials(*m_sslContext);
   }
+#endif
 
   if (atLeastOne)
     m_listenerThread = new PThreadObj<PHTTPListener>(*this, &PHTTPListener::ListenMain, false, "HTTP-Listen");

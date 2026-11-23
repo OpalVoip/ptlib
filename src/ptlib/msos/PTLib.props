@@ -33,13 +33,13 @@
     <AWS32RELDIR Condition="'$(AWS32RELDIR)' == ''">$(AWSDIR)\install\x32-Release\bin</AWS32RELDIR>
     <AWS64RELDIR Condition="'$(AWS64RELDIR)' == ''">$(AWSDIR)\install\x64-Release\bin</AWS64RELDIR>
     <WXDIR Condition="'$(WXDIR)' == ''">$(EXTERNALDIR)\wxWidgets</WXDIR>
-    <LIB32PATH>$(AWS32DBGDIR);$(FFMPEG32DIR)\bin;$(VCPKG32DIR)\bin;$(PTLIBDIR)\Lib</LIB32PATH>
-    <LIB64PATH>$(AWS64DBGDIR);$(FFMPEG64DIR)\bin;$(VCPKG64DIR)\bin;$(PTLIBDIR)\Lib</LIB64PATH>
+    <LIB32PATH>$(AWS32DBGDIR);$(FFMPEG32DIR)\bin;$(VCPKG32DIR)\bin;$(PTLIBDIR)\build\$(Configuration)</LIB32PATH>
+    <LIB64PATH>$(AWS64DBGDIR);$(FFMPEG64DIR)\bin;$(VCPKG64DIR)\bin;$(PTLIBDIR)\build\$(Configuration)</LIB64PATH>
     <LocalDebuggerEnvironment>PATH=$(WXDIR)\lib\vc14x_x64_dll;$(LIB64PATH);$(PATH)</LocalDebuggerEnvironment>
   </PropertyGroup>
   <PropertyGroup>
-    <IncludePath>$(PTLIBDIR)\lib\$(Platform)\include;$(PTLIBDIR)\include;$(VC_IncludePath);$(WindowsSDK_IncludePath)</IncludePath>
-    <LibraryPath>$(PTLIBDIR)\lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(PTLIBDIR)\build\include;$(PTLIBDIR)\include;$(VC_IncludePath);$(WindowsSDK_IncludePath)</IncludePath>
+    <LibraryPath>$(PTLIBDIR)\build;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>

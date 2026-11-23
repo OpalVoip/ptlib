@@ -39,8 +39,6 @@
 
 #include <ptlib/videoio.h>
 
-struct jdec_private;
-
 
 /**This class contains a pair of colour formats for conversion.
 */

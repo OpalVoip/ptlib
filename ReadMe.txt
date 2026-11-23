@@ -140,13 +140,12 @@ license:
 
 ================================================================================
 
-4. SVN Access
--------------
+4. Git access
+------------
 
-There is a public Git archive available at Sourceforge. To extract the
-latest version, use a command line like the following:
+The source is on GitHub. To extract the latest version:
 
-    git clone git://git.code.sf.net/p/opalvoip/ptlib opalvoip-ptlib
+    git clone https://github.com/OpalVoip/ptlib.git
 
 More information on git access is available at:
 

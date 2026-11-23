@@ -104,8 +104,8 @@ Even though the XPM format is used for any internal icons used by wxWidgets,
 the application itself will need platform specific formats. Here are some
 utilities needed to convert between the various icon formats.
 
-It is recommended to use ImageMagick, there are Linux (yum/apt-get),
-Windows (http://www.imagemagick.org/) and Mac (via "mac ports") versions
+Still-image files (BMP, JPEG, PNG, …) are decoded with FFmpeg when PTLib
+is built with FFmpeg enabled.
 and the commands are as simple as:
 
   convert app.ico app.xpm

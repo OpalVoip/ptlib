@@ -675,11 +675,14 @@ class PFile : public PChannel
     bool      m_removeOnClose; ///< File is to be removed when closed.
 
 
-// Include platform dependent part of class
 #ifdef _WIN32
 #include "msos/ptlib/file.h"
 #else
-#include "unix/ptlib/file.h"
+#define _read(fd,vp,st)         ::read(fd, vp, (size_t)st)
+#define _write(fd,vp,st)        ::write(fd, vp, (size_t)st)
+#define _fdopen                 ::fdopen
+#define _lseek(fd,off,w)        ::lseek(fd, (off_t)off, w)
+#define _close(fd)              ::close(fd)
 #endif
 };
 

@@ -42,11 +42,19 @@
   #include <gst/gst.h>
   #pragma warning(default:4127)
 
-  #pragma comment(lib, P_GSTREAMER_LIBRARY)
-  #pragma comment(lib, P_GST_APP_LIBRARY)
-  #pragma comment(lib, P_GOBJECT_LIBRARY)
-  #pragma comment(lib, P_GLIB_LIBRARY)
-  #if GST_CHECK_VERSION(1,0,0)
+  #ifdef P_GSTREAMER_LIBRARY
+    #pragma comment(lib, P_GSTREAMER_LIBRARY)
+  #endif
+  #ifdef P_GST_APP_LIBRARY
+    #pragma comment(lib, P_GST_APP_LIBRARY)
+  #endif
+  #ifdef P_GOBJECT_LIBRARY
+    #pragma comment(lib, P_GOBJECT_LIBRARY)
+  #endif
+  #ifdef P_GLIB_LIBRARY
+    #pragma comment(lib, P_GLIB_LIBRARY)
+  #endif
+  #if defined(P_GIO_LIBRARY) && GST_CHECK_VERSION(1,0,0)
     #pragma comment(lib, P_GIO_LIBRARY)
   #endif
 #else

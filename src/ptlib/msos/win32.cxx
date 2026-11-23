@@ -1164,7 +1164,7 @@ static bool RealGetVersion(POSVERSIONINFOW info)
   }
   return false;
 #else
-  return GetVersionEx(&info);
+  return GetVersionExW(info);
 #endif
 }
 

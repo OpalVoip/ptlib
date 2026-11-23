@@ -4228,6 +4228,11 @@ PBoolean PVXMLSession::VideoReceiverDevice::Close()
 
 PBoolean PVXMLSession::VideoReceiverDevice::SetColourFormat(const PString & colourFormat)
 {
+  // No sign language analyser is loaded, so there is no required format.
+  // Accept the stream format and discard the pictures in SetFrameData.
+  if (m_colourFormat.IsEmpty())
+    return PVideoOutputDevice::SetColourFormat(colourFormat);
+
   return colourFormat == m_colourFormat;
 }
 

@@ -526,11 +526,16 @@ class PDirectory : public PFilePathString
     /// Mask of file types that the directory scan will return.
     PFileInfo::FileTypes m_scanMask;
 
-// Include platform dependent part of class
 #ifdef _WIN32
-#include "msos/ptlib/pdirect.h"
+  protected:
+    HANDLE hFindFile;
+    WIN32_FIND_DATA fileinfo;
+    bool InternalEntryCheck();
 #else
-#include "unix/ptlib/pdirect.h"
+  protected:
+    DIR           * directory;
+    PFileInfo     * entryInfo;
+    struct dirent * entryBuffer;
 #endif
 
 };

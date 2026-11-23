@@ -133,11 +133,21 @@ class PICMPSocket : public PIPDatagramSocket
     virtual PBoolean OpenSocket(int ipAdressFamily) override;
 
 
-// Include platform dependent part of class
 #ifdef _WIN32
-#include "msos/ptlib/icmpsock.h"
+  public:
+    PBoolean Close();
+    PBoolean IsOpen() const;
+  protected:
+    HANDLE icmpHandle;
 #else
-#include "unix/ptlib/icmpsock.h"
+  protected:
+    PBoolean WritePing(
+      const PString & host,   // Host to send ping.
+      PingInfo & info         // Information on the ping and reply.
+    );
+    PBoolean ReadPing(
+      PingInfo & info         // Information on the ping and reply.
+    );
 #endif
 };
 

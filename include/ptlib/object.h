@@ -144,7 +144,14 @@ using std::cin, std::cout, std::cerr,
   #define P_PUSH_MSVC_WARNINGS(warnings)
   #define P_POP_MSVC_WARNINGS()
   #define P_GCC_PRAGMA(token) _Pragma(#token)
-  #define P_PUSH_GCC_WARNING(warning) _Pragma("GCC diagnostic push") P_GCC_PRAGMA(GCC diagnostic ignored warning)
+  /* Some groups (for example -Wclass-memaccess) exist only on certain GCC
+     versions. Ignore the "unknown warning" diagnostic first so Clang, and
+     GCC builds that lack the group, do not warn about the pragma itself. */
+  #if defined(__clang__)
+    #define P_PUSH_GCC_WARNING(warning) _Pragma("GCC diagnostic push") P_GCC_PRAGMA(GCC diagnostic ignored "-Wunknown-warning-option") P_GCC_PRAGMA(GCC diagnostic ignored warning)
+  #else
+    #define P_PUSH_GCC_WARNING(warning) _Pragma("GCC diagnostic push") P_GCC_PRAGMA(GCC diagnostic ignored "-Wpragmas") P_GCC_PRAGMA(GCC diagnostic ignored warning)
+  #endif
   #define P_POP_GCC_WARNING()         _Pragma("GCC diagnostic pop")
   //#pragma clang diagnostic ignored "-Winconsistent-missing-override"
 #endif // _MSC_VER

@@ -75,7 +75,7 @@ struct PCookedFrameHeader {
 #endif
 
 
-#if _MSC_VER
+#ifdef P_PCAP_LIBRARY1
   #pragma comment(lib, P_PCAP_LIBRARY1)
   #pragma comment(lib, P_PCAP_LIBRARY2)
 #endif
@@ -184,8 +184,14 @@ bool PEthSocket::SetFilter(const PString & filter)
 
   char * filterStr = (char *)(const char *)filter;
 
-  if (m_internal->m_pcap == NULL)
-    return pcap_compile_nopcap(m_snapLength, DLT_EN10MB, &m_internal->m_program, filterStr, true, 0) >= 0;
+  if (m_internal->m_pcap == NULL) {
+    pcap_t * dead = pcap_open_dead(DLT_EN10MB, m_snapLength);
+    if (dead == NULL)
+      return false;
+    bool ok = pcap_compile(dead, &m_internal->m_program, filterStr, true, 0) >= 0;
+    pcap_close(dead);
+    return ok;
+  }
 
   if (pcap_compile(m_internal->m_pcap, &m_internal->m_program, filterStr, true, 0) < 0)
     return false;
@@ -754,7 +760,7 @@ PEthSocket::Address & PEthSocket::Address::operator=(const PString & str)
       else if (isxdigit(c))
         b[byte] |= (toupper(c) - 'A' + 10) << shift;
       else {
-        memset(this, 0, sizeof(*this));
+        memset(b, 0, sizeof(b));
         return *this;
       }
       if (shift == 0)

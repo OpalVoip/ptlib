@@ -172,11 +172,13 @@ class PDynaLink : public PObject
   protected:
     PString m_lastError;
 
-// Include platform dependent part of class
 #ifdef _WIN32
-#include "msos/ptlib/dynalink.h"
+  protected:
+    HINSTANCE m_hDLL;
 #else
-#include "unix/ptlib/dynalink.h"
+  protected:
+    void *  m_dll;
+    PString m_name;
 #endif
 };
 

@@ -88,11 +88,18 @@ class PSyncPoint : public PSync
     virtual void Signal() override;
 
 
-// Include platform dependent part of class
 #ifdef _WIN32
-#include "msos/ptlib/syncpoint.h"
+  public:
+    HANDLE GetHandle() const { return m_handle; }
+  protected:
+    PWin32Handle m_handle;
 #else
-#include "unix/ptlib/syncpoint.h"
+  public:
+    virtual ~PSyncPoint();
+  private:
+    mutable pthread_mutex_t mutex;
+    mutable pthread_cond_t  condVar;
+    bool signalled;
 #endif
 };
 

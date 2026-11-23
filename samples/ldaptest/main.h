@@ -29,7 +29,6 @@
 #include <ptlib/pprocess.h>
 
 class PLDAPSession;
-class PILSSession;
 
 
 class LDAPTest : public PProcess
@@ -43,10 +42,6 @@ class LDAPTest : public PProcess
     void Add(PArgList & args, PLDAPSession & ldap);
     void Delete(PArgList & args, PLDAPSession & ldap);
     void Search(PArgList & args, PLDAPSession & ldap);
-
-    void AddILS(PArgList & args, PILSSession & ils);
-    void DeleteILS(PArgList & args, PILSSession & ils);
-    void SearchILS(PArgList & args, PILSSession & ils);
 };
 
 

@@ -143,7 +143,7 @@
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////
-#elif defined(P_GNU)
+#elif defined(P_FREEBSD) || defined(P_OPENBSD) || defined(P_NETBSD)
 
 #define HAS_IFREQ
 

@@ -44,8 +44,6 @@
 
 #define PTraceModule() "MediaFile"
 
-//#undef P_FFMPEG_FULL
-
 
 const PString & PMediaFile::Audio() { static PConstString s("audio"); return s; }
 const PString & PMediaFile::Video() { static PConstString s("video"); return s; }
@@ -631,7 +629,7 @@ public:
 PFACTORY_CREATE(PMediaFile::Factory, PMediaFile_WAV, ".wav");
 
 
-#if P_FFMPEG_FULL
+#if P_FFMPEG
 
 extern "C" {
   P_PUSH_MSVC_WARNINGS(4244)
@@ -876,7 +874,7 @@ public:
           m_type = Audio();
           m_rate = m_codecContext->sample_rate;
           m_frames = m_stream->nb_frames;
-        #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(60, 0, 0)
+        #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59, 0, 0)
           m_channels = m_codecContext->channels;
         #else
           m_channels = m_codecContext->ch_layout.nb_channels;
@@ -1232,7 +1230,7 @@ public:
       bool CreateResampler(AVSampleFormat  inFormat, int  inRate, int  inChannels,
                            AVSampleFormat outFormat, int outRate, int outChannels)
       {
-      #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(60, 0, 0)
+      #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59, 0, 0)
         m_swrContext = swr_alloc_set_opts(NULL,
                                           av_get_default_channel_layout(outChannels),
                                           outFormat,
@@ -1293,7 +1291,7 @@ public:
 
           if (!CreateResampler(m_codecContext->sample_fmt,
                                m_codecContext->sample_rate,
-                             #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(60, 0, 0)
+                             #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59, 0, 0)
                                m_codecContext->channels,
                              #else
                                m_codecContext->ch_layout.nb_channels,
@@ -1377,7 +1375,7 @@ public:
         if (!m_owner->CheckModeAndTrackType(false, Audio(), m_type))
           return false;
 
-      #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(60, 0, 0)
+      #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59, 0, 0)
         int channels = m_codecContext->channels;
       #else
         int channels = m_codecContext->ch_layout.nb_channels;
@@ -1415,7 +1413,7 @@ public:
             }
             m_swrFrame->format = m_codecContext->sample_fmt;
             m_swrFrame->sample_rate = m_codecContext->sample_rate;
-#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(60, 0, 0)
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59, 0, 0)
             m_swrFrame->channels = channels;
             m_swrFrame->channel_layout = m_codecContext->channel_layout;
 #else
@@ -2714,7 +2712,7 @@ PStringSet PMediaFile::GetAllFileTypes()
   return PStringSet(PARRAYSIZE(SuperBasic), SuperBasic, true);
 }
 
-#else // P_FFMPEG_FULL - WIN32
+#else // P_FFMPEG - WIN32
 
 PStringSet PMediaFile::GetAllFileTypes()
 {
@@ -2722,7 +2720,7 @@ PStringSet PMediaFile::GetAllFileTypes()
   return ".wav";
 }
 
-#endif // P_FFMPEG_FULL
+#endif // P_FFMPEG
 
 
 #if P_VIDEO
@@ -2875,18 +2873,20 @@ PStringArray PVideoOutputDevice_MediaFile::GetOutputDeviceNames()
 {
   PStringArray names;
 
+  // Still-image extensions are handled by PVideoFileFactory (FFmpeg or BMP).
+  static const char * const stillImageExt[] = {
+    ".bmp", ".dib", ".jpg", ".jpeg", ".gif", ".png", ".tif", ".tiff", NULL
+  };
+
   PMediaFile::Factory::KeyList_T keyList = PMediaFile::Factory::GetKeyList();
   for (PMediaFile::Factory::KeyList_T::iterator it = keyList.begin(); it != keyList.end(); ++it) {
-#if P_IMAGEMAGICK
-    extern const char * PImageMagickExtensions[];
     const char * const * ext;
-    for (ext = PImageMagickExtensions; *ext != NULL; ++ext) {
+    for (ext = stillImageExt; *ext != NULL; ++ext) {
       if (*it == *ext)
         break;
     }
     if (*ext != NULL)
       continue;
-#endif
     names.AppendString("*" + *it);
   }
 

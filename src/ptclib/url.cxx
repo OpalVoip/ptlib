@@ -260,7 +260,7 @@ PString PURL::TranslateString(const PString & str, TranslationType type)
   
   for (PINDEX pos = 0; (pos = xlat.FindSpan(safeChars, pos)) != P_MAX_INDEX; ++pos) {
     char buf[10];
-    sprintf(buf, "%%%02X", (BYTE)xlat[pos]);
+    snprintf(buf, sizeof(buf), "%%%02X", (BYTE)xlat[pos]);
     xlat.Splice(buf, pos++, 1);
   }
 

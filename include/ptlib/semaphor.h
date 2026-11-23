@@ -98,10 +98,11 @@ class PSemaphore : public PSync
     ) : m_name(name) { Reset(initial, maximum); }
 
     /** Create a new semaphore with the same initial and maximum values as the original.
+        The name is not copied. On platforms that implement every semaphore as a
+        named semaphore, reusing the name makes creation fail with EEXIST.
      */
     PSemaphore(const PSemaphore & sem)
       : PSync()
-      , m_name(sem.m_name)
     { Reset(sem.m_initial, sem.m_maximum); }
 
     /**Destroy the semaphore. This will assert if there are still waiting
@@ -158,9 +159,11 @@ class PSemaphore : public PSync
     unsigned m_initial;
 
 
-// Include platform dependent part of class
 #ifdef _WIN32
-#include "msos/ptlib/semaphor.h"
+  public:
+    HANDLE GetHandle() const { return m_handle; }
+  protected:
+    PWin32Handle m_handle;
 #else
 #include "unix/ptlib/semaphor.h"
 #endif

@@ -32,11 +32,7 @@
 
 #include <errno.h>
 
-#ifndef _WIN32_WCE
 #include <winsock2.h>
-#else
-#include <winsock.h>
-#endif
 
 #include <io.h>
 
@@ -92,10 +88,6 @@ static const int SOCKET_ERROR = -1;
 
 
 int closesocket( Socket fd );
-
-#ifdef P_RTEMS
-typedef int socklen_t;
-#endif
 
 #endif
 

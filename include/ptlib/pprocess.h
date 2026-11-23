@@ -602,6 +602,14 @@ class PProcess : public PThread
 
     /// Get the name of the signal
     static const char * GetRunTimeSignalName(int signal);
+
+    /** Discard ptlib-crash.log, which is written beside the executable.
+        OpenPhone has no console, so the signal handler's stderr line is lost.
+     */
+    static void ResetCrashLog();
+
+    /** Append one flushed line to ptlib-crash.log. */
+    static void CrashMark(const char * where);
   //@}
 
     /**@name Operating System URL manager functions */

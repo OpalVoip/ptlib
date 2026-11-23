@@ -35,10 +35,6 @@
 #pragma interface
 #endif
 
-#ifdef __NUCLEUS_PLUS__
-#include "nucpp.h"
-#endif
-
 #include <ptlib_config.h>
 
 #include <ptlib/object.h>

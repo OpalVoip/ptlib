@@ -107,12 +107,6 @@ class PIPDatagramSocket : public PIPSocket
     );
 
 
-// Include platform dependent part of class
-#ifdef _WIN32
-#include "msos/ptlib/ipdsock.h"
-#else
-#include "unix/ptlib/ipdsock.h"
-#endif
 
   public:
   

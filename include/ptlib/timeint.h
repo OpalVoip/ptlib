@@ -493,12 +493,7 @@ class PTimeInterval : public PObject
     atomic<int64_t> m_nanoseconds;
 
 
-// Include platform dependent part of class
-#ifdef _WIN32
-#include "msos/ptlib/timeint.h"
-#else
-#include "unix/ptlib/timeint.h"
-#endif
+#define PMaxTimeInterval PTimeInterval((long)0x7fffffff)
 };
 
 

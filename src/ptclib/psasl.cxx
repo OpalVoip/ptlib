@@ -46,7 +46,7 @@ extern "C" {
 };
 
 
-#ifdef _MSC_VER
+#ifdef P_SASL_LIBRARY
   #pragma comment(lib, P_SASL_LIBRARY)
 #endif
 

@@ -370,6 +370,7 @@ std::string PObject::GetClassName(const std::type_info & t)
 ///////////////////////////////////////////////////////////////////////////////
 // General reference counting support
 
+P_PUSH_GCC_WARNING("-Wdeprecated-declarations")
 P_PUSH_MSVC_WARNINGS(4996)
 
 #include <ptlib/smartptr.h>
@@ -417,6 +418,7 @@ PObject::Comparison PSmartPointer::Compare(const PObject & obj) const
 }
 
 P_POP_MSVC_WARNINGS()
+P_POP_GCC_WARNING()
 
 
 //////////////////////////////////////////////////////////////////////////////////////////

@@ -38,6 +38,7 @@
 #include <mach/thread_policy.h>
 #include <sys/param.h>
 #include <sys/sysctl.h>
+#include <dispatch/dispatch.h>
 #elif defined(P_LINUX)
 #include <sys/syscall.h>
 #elif defined(P_ANDROID)
@@ -1021,12 +1022,34 @@ PSemaphore::~PSemaphore()
 {
 #if defined(P_HAS_SEMAPHORES)
   #if defined(P_HAS_NAMED_SEMAPHORES)
-    if (m_namedSemaphore.ptr != NULL) {
-      PAssertWithRetry(sem_close, m_namedSemaphore.ptr);
+    #if defined(P_MACOSX)
+    // Unnamed semaphores are process-local. The dispatch object is stored in
+    // the named-semaphore slot so PSemaphore's layout does not change.
+    if (m_name.IsEmpty()) {
+      if (m_namedSemaphore.ptr != NULL) {
+        dispatch_release(reinterpret_cast<dispatch_semaphore_t>(m_namedSemaphore.ptr));
+        m_namedSemaphore.ptr = NULL;
+      }
     }
-    else if (m_name.IsEmpty())
+    else
+    #endif
+    {
+      if (m_namedSemaphore.ptr != NULL) {
+        PAssertWithRetry(sem_close, m_namedSemaphore.ptr);
+        m_namedSemaphore.ptr = NULL;
+      }
+      // Names we generated are not shared. Unlink them or the next open of the
+      // same name fails with EEXIST. macOS keeps the name until sem_unlink.
+      if (m_name.Find("/pt-") == 0)
+        sem_unlink(m_name);
+      #if !defined(P_MACOSX)
+      else if (m_name.IsEmpty())
+        PAssertWithRetry(sem_destroy, &m_semaphore);
+      #endif
+    }
+  #elif !defined(P_MACOSX)
+    PAssertWithRetry(sem_destroy, &m_semaphore);
   #endif
-      PAssertWithRetry(sem_destroy, &m_semaphore);
 #else
   PAssert(queuedLocks == 0, "Semaphore destroyed with queued locks");
   PAssertWithRetry(pthread_mutex_destroy, &mutex);
@@ -1041,13 +1064,33 @@ void PSemaphore::Reset(unsigned initial, unsigned maximum)
   m_initial = std::min(initial, m_maximum);
 
 #if defined(P_HAS_SEMAPHORES)
-  /* Due to bug in some Linux/Kernel versions, need to clear structure manually, sem_init does not do the job.
-     See http://stackoverflow.com/questions/1832395/sem-timedwait-not-supported-properly-on-redhat-enterprise-linux-5-3-onwards
-     While the above link was for RHEL, seems to happen on some Fedoras as well. */
-  memset(&m_semaphore, 0, sizeof(sem_t));
-
   #if defined(P_HAS_NAMED_SEMAPHORES)
-    if (m_name.IsEmpty() && sem_init(&m_semaphore, 0, m_initial) == 0)
+    #if defined(P_MACOSX)
+    // sem_init() returns ENOSYS. An unnamed semaphore stays inside this process.
+    if (m_name.IsEmpty()) {
+      if (m_namedSemaphore.ptr != NULL) {
+        dispatch_release(reinterpret_cast<dispatch_semaphore_t>(m_namedSemaphore.ptr));
+        m_namedSemaphore.ptr = NULL;
+      }
+      dispatch_semaphore_t created = dispatch_semaphore_create((long)m_initial);
+      if (!PAssert(created != NULL, "Couldn't create dispatch semaphore"))
+        return;
+      m_namedSemaphore.ptr = reinterpret_cast<sem_t *>(created);
+      return;
+    }
+    #endif
+    // Explicitly named semaphores are process-wide and use sem_open.
+    // sem_init() is the unnamed POSIX call; on macOS it returns ENOSYS, so
+    // unnamed semaphores are created above with dispatch_semaphore_create.
+    bool useUnnamed = false;
+    #if !defined(P_MACOSX)
+    /* Due to bug in some Linux/Kernel versions, need to clear structure manually, sem_init does not do the job.
+       See http://stackoverflow.com/questions/1832395/sem-timedwait-not-supported-properly-on-redhat-enterprise-linux-5-3-onwards
+       While the above link was for RHEL, seems to happen on some Fedoras as well. */
+    memset(&m_semaphore, 0, sizeof(sem_t));
+    useUnnamed = m_name.IsEmpty() && sem_init(&m_semaphore, 0, m_initial) == 0;
+    #endif
+    if (useUnnamed)
       m_namedSemaphore.ptr = NULL;
     else {
       // Since sem_open and sem_unlink are two operations, there is a small
@@ -1057,21 +1100,33 @@ void PSemaphore::Reset(unsigned initial, unsigned maximum)
       static pthread_mutex_t semCreationMutex = PTHREAD_MUTEX_INITIALIZER;
       PAssertWithRetry(pthread_mutex_lock, &semCreationMutex);
 
-      if (m_name.IsEmpty()) {
-        // sem_init didn't work, so try a named sem
-        std::stringstream generatedName;
-        generatedName << "/ptlib/" << getpid() << '/' << this;
-        m_name = generatedName.str();
-        sem_unlink(m_name);
+      if (m_namedSemaphore.ptr != NULL) {
+        sem_close(m_namedSemaphore.ptr);
+        m_namedSemaphore.ptr = NULL;
       }
-  
+
+      if (m_name.IsEmpty()) {
+        // sem_init didn't work, so try a named sem.
+        // macOS requires a single leading slash, no other slashes, and a short name.
+        char generatedName[32];
+        snprintf(generatedName, sizeof(generatedName), "/pt-%05x%016llx",
+                 (unsigned)getpid() & 0xfffff,
+                 (unsigned long long)(uintptr_t)this);
+        m_name = generatedName;
+      }
+
+      // Reset() is called again on a live semaphore (the jitter buffer does
+      // this). O_EXCL then fails with EEXIST unless the previous name is removed.
+      if (m_name.Find("/pt-") == 0)
+        sem_unlink(m_name);
+
       PAssertWithRetry(pthread_mutex_unlock, &semCreationMutex);
   
       m_namedSemaphore.ptr = sem_open(m_name, (O_CREAT | O_EXCL), 700, m_initial);
       if (!PAssert(m_namedSemaphore.ptr != SEM_FAILED, "Couldn't create named semaphore"))
         m_namedSemaphore.ptr = NULL;
     }
-  #else
+  #elif !defined(P_MACOSX)
     if (m_name.IsEmpty())
       PAssertWithRetry(sem_init, &m_semaphore, 0, m_initial);
   #endif
@@ -1091,6 +1146,14 @@ void PSemaphore::Reset(unsigned initial, unsigned maximum)
 void PSemaphore::Wait() 
 {
 #if defined(P_HAS_SEMAPHORES)
+  #if defined(P_MACOSX)
+  if (m_name.IsEmpty()) {
+    dispatch_semaphore_t dispatchSem = reinterpret_cast<dispatch_semaphore_t>(m_namedSemaphore.ptr);
+    if (PAssert(dispatchSem != NULL, "Wait on uninitialised semaphore"))
+      dispatch_semaphore_wait(dispatchSem, DISPATCH_TIME_FOREVER);
+    return;
+  }
+  #endif
   PAssertWithRetry(sem_wait, GetSemPtr());
 #else
   if (currentCount == INT_MAX)
@@ -1130,6 +1193,22 @@ PBoolean PSemaphore::Wait(const PTimeInterval & waitTime)
   finishTime += waitTime;
 
 #if defined(P_HAS_SEMAPHORES)
+  #if defined(P_MACOSX)
+  if (m_name.IsEmpty()) {
+    dispatch_semaphore_t dispatchSem = reinterpret_cast<dispatch_semaphore_t>(m_namedSemaphore.ptr);
+    if (!PAssert(dispatchSem != NULL, "Wait on uninitialised semaphore"))
+      return false;
+    int64_t nanoseconds = waitTime.GetNanoSeconds();
+    if (nanoseconds < 0)
+      nanoseconds = 0;
+    dispatch_time_t when = nanoseconds == 0 ? DISPATCH_TIME_NOW
+                           : dispatch_time(DISPATCH_TIME_NOW, nanoseconds);
+    PPROFILE_PRE_SYSTEM();
+    long result = dispatch_semaphore_wait(dispatchSem, when);
+    PPROFILE_POST_SYSTEM();
+    return result == 0;
+  }
+  #endif
   #ifdef P_HAS_SEMAPHORES_XPG6
     // use proper timed spinlocks if supported.
     // http://www.opengroup.org/onlinepubs/007904975/functions/sem_timedwait.html
@@ -1214,6 +1293,14 @@ PBoolean PSemaphore::Wait(const PTimeInterval & waitTime)
 void PSemaphore::Signal()
 {
 #if defined(P_HAS_SEMAPHORES)
+  #if defined(P_MACOSX)
+  if (m_name.IsEmpty()) {
+    dispatch_semaphore_t dispatchSem = reinterpret_cast<dispatch_semaphore_t>(m_namedSemaphore.ptr);
+    if (PAssert(dispatchSem != NULL, "Signal on uninitialised semaphore"))
+      dispatch_semaphore_signal(dispatchSem);
+    return;
+  }
+  #endif
   PAssertWithRetry(sem_post, GetSemPtr());
 #else
   PAssertWithRetry(pthread_mutex_lock, &mutex);

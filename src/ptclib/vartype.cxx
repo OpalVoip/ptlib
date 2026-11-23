@@ -650,7 +650,7 @@ int PVarType::AsInteger() const
     case VarFloatSingle :
       if (m_.floatSingle < std::numeric_limits<int>::min())
         return std::numeric_limits<int>::min();
-      if (m_.floatSingle > std::numeric_limits<int>::max())
+      if ((double)m_.floatSingle > std::numeric_limits<int>::max())
         return std::numeric_limits<int>::max();
       return (int)m_.floatSingle;
     case VarFloatDouble :
@@ -726,7 +726,7 @@ unsigned PVarType::AsUnsigned() const
     case VarFloatSingle :
       if (m_.floatSingle < 0)
         return 0;
-      if (m_.floatSingle > std::numeric_limits<unsigned>::max())
+      if ((double)m_.floatSingle > std::numeric_limits<unsigned>::max())
         return std::numeric_limits<unsigned>::max();
       return (unsigned)m_.floatSingle;
     case VarFloatDouble :

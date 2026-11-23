@@ -385,11 +385,27 @@ class PSerialChannel : public PChannel
 
     PString m_portName;
 
-// Include platform dependent part of class
 #ifdef _WIN32
-#include "msos/ptlib/serchan.h"
+  public:
+    virtual PBoolean Read(void * buf, PINDEX len);
+    virtual PBoolean Write(const void * buf, PINDEX len);
+    virtual PBoolean Close();
+  private:
+    PBoolean SetCommsParam(DWORD speed, BYTE data, Parity parity,
+                     BYTE stop, FlowControl inputFlow, FlowControl outputFlow);
+    HANDLE  commsResource;
+    enum { InputQueueSize = 2048, OutputQueueSize = 1024 };
+    DCB deviceControlBlock;
 #else
-#include "unix/ptlib/serchan.h"
+  public:
+    PBoolean Close() override;
+  private:
+    struct termios oldTermio;
+    struct termios Termio;
+    DWORD  baudRate;
+    BYTE   dataBits;
+    Parity parityBits;
+    BYTE   stopBits;
 #endif
 };
 

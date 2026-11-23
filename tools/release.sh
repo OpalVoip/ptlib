@@ -1,13 +1,12 @@
 #!/bin/bash
 
-# Script for making releases to Source Forge and web site
+# Script for making releases of the GitHub repositories and the web site
 #   automatically edits version files
 #   automatically manages tags/branches
 #   generates change logs
 #   generates documentation packs
 #   generate tarballs/archives
-#   uploads to Source Forge
-#   uploads to opalvoip web site
+#   uploads to the opalvoip web site
 
 if [ "$1" = "-x" ]; then
   shift
@@ -38,7 +37,6 @@ COMMAND_NAMES=(show \
                log \
                docs \
                arch \
-               upsf \
                web \
                all \
               )
@@ -49,7 +47,6 @@ FUNCTIONS=(    show_tags \
                create_changelog \
                create_docs \
                create_archive \
-               upload_to_sourceforge \
                update_website \
                do_all_for_release \
               )
@@ -79,7 +76,7 @@ fi
 
 case "$base" in
   ptlib | opal)
-    repository=ssh://$SOURCEFORGE_USERNAME@git.code.sf.net/p/opalvoip/$base
+    repository=git@github.com:OpalVoip/$base.git
   ;;
   ipp-codecs)
     repository=ssh://$SOURCEFORGE_USERNAME@git.code.sf.net/p/ippcodecs
@@ -161,8 +158,6 @@ SRC_ARCHIVE_ZIP=${SNAPSHOTS}/${base}-${release_verstr}-src.zip
 DOC_ARCHIVE_ZIP=${SNAPSHOTS}/${base}-${release_verstr}-htmldoc.zip
 BASE_ZIP=${base}
 
-SOURCE_FORGE_FILES=( $SRC_ARCHIVE_TBZ2 $DOC_ARCHIVE_TBZ2 $SRC_ARCHIVE_ZIP $DOC_ARCHIVE_ZIP )
-
 CHANGELOG_BASE=ChangeLog-${base}-${release_tag}.txt
 CHANGELOG_FILE="${base}/$CHANGELOG_BASE"
 VERSION_FILE="${base}/version.h"
@@ -207,7 +202,6 @@ function clean_copy () {
       $GIT clone --branch ${release_branch} ${repository} "$base"
     fi
     pushd $base > /dev/null
-    $GIT config user.email "$SOURCEFORGE_USERNAME@sf.net"
     $GIT config user.name "PTLib/OPAL Maintainer"
     popd > /dev/null
   fi
@@ -439,42 +433,6 @@ function create_docs () {
 }
 
 #
-#  upload files to SourceForge
-#
-
-function upload_to_sourceforge () {
-  files=
-  for f in ${SOURCE_FORGE_FILES[*]}; do
-    if [ -e $f ]; then
-      files="$files $f"
-    fi
-  done
-  if [ -z "$files" ]; then
-    echo "Cannot find any of ${SOURCE_FORGE_FILES[*]}"
-  else
-    saved_dir="./source_forge_dir"
-    if [ -e "${saved_dir}" ]; then
-      upload_dir=`cat ${saved_dir}`
-      read -rep "Source Forge sub-directory [${upload_dir}]: "
-    else
-      read -rep "Source Forge sub-directory: "
-    fi
-    if [ -n "${REPLY}" ]; then
-      upload_dir="${REPLY}"
-    fi
-    if [ -z "${upload_dir}" ]; then
-      echo Not uploading.
-    else
-      echo "${upload_dir}" > "${saved_dir}"
-      upload_path=${SOURCEFORGE_USERNAME},opalvoip@frs.sf.net:/home/frs/project/o/op/opalvoip/`echo ${upload_dir} | sed 's/ /\\\\ /g'`
-      echo "Uploading files to Source Forge directory \"${upload_path}\""
-      rsync -avP -e ssh $files "${upload_path}"
-    fi
-  fi
-}
-
-
-#
 # Update the web site
 #
 
@@ -536,7 +494,6 @@ function do_all_for_release () {
   create_changelog
   create_archive
   create_docs
-  upload_to_sourceforge
   update_website
 }
 

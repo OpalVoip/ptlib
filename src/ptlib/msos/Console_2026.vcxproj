@@ -154,18 +154,6 @@
       <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Using default getdate bison file.</Message>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(RootDir)%(Directory)getdate.c;%(Outputs)</Outputs>
     </CustomBuild>
-    <ClCompile Include="..\common\jidctflt.cxx">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4324</DisableSpecificWarnings>
-      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4324</DisableSpecificWarnings>
-    </ClCompile>
-    <ClCompile Include="..\common\tinyjpeg.cxx">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4324</DisableSpecificWarnings>
-      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4324</DisableSpecificWarnings>
-    </ClCompile>
     <ClCompile Include="..\unix\assert.cxx">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
@@ -251,7 +239,6 @@
     <ClCompile Include="..\common\pluginmgr.cxx" />
     <ClCompile Include="..\common\ptime.cxx" />
     <ClCompile Include="ptlib.cxx" />
-    <ClCompile Include="remconn.cxx" />
     <ClCompile Include="..\common\safecoll.cxx" />
     <ClCompile Include="..\Common\serial.cxx" />
     <ClCompile Include="..\common\sockets.cxx" />
@@ -312,10 +299,8 @@
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(LUA64DIR)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <ClCompile Include="..\..\ptclib\memfile.cxx" />
-    <ClCompile Include="..\..\ptclib\modem.cxx" />
     <ClCompile Include="..\..\ptclib\pasn.cxx" />
     <ClCompile Include="..\..\ptclib\pdns.cxx" />
-    <ClCompile Include="..\..\ptclib\pils.cxx" />
     <ClCompile Include="..\..\ptclib\pldap.cxx">
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)..\..\..\..\external\openldap\include</AdditionalIncludeDirectories>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)..\..\..\..\external\openldap\include</AdditionalIncludeDirectories>
@@ -450,10 +435,10 @@ configure "-Dac_top_build_prefix=$(ProjectDir)../../../Lib/$(Platform)/" --no-se
 )
 cd "%(RootDir)%(Directory)"
 PATH=$(PATH);"$(DevEnvDir)\CommonExtensions\Microsoft\TeamFoundation\Team Explorer\Git\usr/bin";"$(DevEnvDir)\CommonExtensions\Microsoft\TeamFoundation\Team Explorer\Git\cmd";"C:\Program Files\git\bin"
-sh -c './tools/get_revision.sh %(FileName)'
-if errorlevel 1 copy "%(FullPath)"+nul "%(RootDir)%(Directory)%(FileName)"</Command>
+sh -c './tools/get_revision.sh "%(FullPath)" "%(RootDir)%(Directory)include\%(FileName)"'
+if errorlevel 1 copy "%(FullPath)"+nul "%(RootDir)%(Directory)include\%(FileName)"</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Updating revision include file.</Message>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(RootDir)%(Directory)%(Filename)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(RootDir)%(Directory)include\%(Filename)</Outputs>
       <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">if not exist "$(PTLibGitRootDir)" (
   rem we do this so it doesn't rebuild every time in non GIT tree
   mkdir "$(PTLibGitRootDir)"
@@ -462,10 +447,10 @@ if errorlevel 1 copy "%(FullPath)"+nul "%(RootDir)%(Directory)%(FileName)"</Comm
 )
 cd "%(RootDir)%(Directory)"
 PATH=$(PATH);"$(DevEnvDir)\CommonExtensions\Microsoft\TeamFoundation\Team Explorer\Git\usr/bin";"$(DevEnvDir)\CommonExtensions\Microsoft\TeamFoundation\Team Explorer\Git\cmd";"C:\Program Files\git\bin"
-sh -c './tools/get_revision.sh %(FileName)'
-if errorlevel 1 copy "%(FullPath)"+nul "%(RootDir)%(Directory)%(FileName)"</Command>
+sh -c './tools/get_revision.sh "%(FullPath)" "%(RootDir)%(Directory)include\%(FileName)"'
+if errorlevel 1 copy "%(FullPath)"+nul "%(RootDir)%(Directory)include\%(FileName)"</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Updating revision include file.</Message>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(RootDir)%(Directory)%(Filename)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(RootDir)%(Directory)include\%(Filename)</Outputs>
       <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(PTLibGitRootDir)\index</AdditionalInputs>
       <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(PTLibGitRootDir)\index</AdditionalInputs>
     </CustomBuild>
@@ -509,8 +494,6 @@ if errorlevel 1 copy "%(FullPath)"+nul "%(RootDir)%(Directory)%(FileName)"</Comm
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\platform.h" />
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\pprocess.h" />
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\ptime.h" />
-    <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\remconn.h" />
-    <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\resampler.h" />
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\semaphor.h" />
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\serchan.h" />
     <ClInclude Include="..\..\..\include\ptlib\unix\ptlib\socket.h" />
@@ -599,7 +582,6 @@ if errorlevel 1 copy "%(FullPath)"+nul "%(RootDir)%(Directory)%(FileName)"</Comm
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\pipechan.h" />
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\pprocess.h" />
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\ptime.h" />
-    <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\remconn.h" />
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\semaphor.h" />
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\serchan.h" />
     <ClInclude Include="..\..\..\include\ptlib\msos\ptlib\sfile.h" />
@@ -635,10 +617,8 @@ if errorlevel 1 copy "%(FullPath)"+nul "%(RootDir)%(Directory)%(FileName)"</Comm
     <ClInclude Include="..\..\..\include\ptclib\lua.h" />
     <ClInclude Include="..\..\..\include\ptclib\memfile.h" />
     <ClInclude Include="..\..\..\include\ptclib\mime.h" />
-    <ClInclude Include="..\..\..\include\ptclib\modem.h" />
     <ClInclude Include="..\..\..\include\ptclib\pasn.h" />
     <ClInclude Include="..\..\..\include\ptclib\pdns.h" />
-    <ClInclude Include="..\..\..\include\ptclib\pils.h" />
     <ClInclude Include="..\..\..\include\ptclib\pldap.h" />
     <ClInclude Include="..\..\..\include\ptclib\podbc.h" />
     <ClInclude Include="..\..\..\include\ptclib\psasl.h" />

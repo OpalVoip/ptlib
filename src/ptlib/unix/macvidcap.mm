@@ -45,6 +45,30 @@
 #define PTraceModule() "MacVideo"
 #define PTRACE_DETAILED(...) PTRACE(5, __VA_ARGS__)
 
+// devicesWithMediaType: was deprecated in macOS 10.15. Discovery sessions
+// return only the device types listed, so include built-in, external, and
+// Continuity cameras. ExternalUnknown was renamed in the macOS 14 SDK.
+static NSArray * VideoCaptureDevices()
+{
+#if !defined(MAC_OS_X_VERSION_10_15) || MAC_OS_X_VERSION_MAX_ALLOWED < MAC_OS_X_VERSION_10_15
+  return [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo];
+#else
+  NSArray * types = @[
+    AVCaptureDeviceTypeBuiltInWideAngleCamera,
+#if defined(MAC_OS_VERSION_14_0) && MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_VERSION_14_0
+    AVCaptureDeviceTypeExternal,
+    AVCaptureDeviceTypeContinuityCamera
+#else
+    AVCaptureDeviceTypeExternalUnknown
+#endif
+  ];
+  return [[AVCaptureDeviceDiscoverySession
+            discoverySessionWithDeviceTypes:types
+                                  mediaType:AVMediaTypeVideo
+                                   position:AVCaptureDevicePositionUnspecified] devices];
+#endif
+}
+
 
 class PLocalMemoryPool
 {
@@ -261,6 +285,101 @@ PVideoInputDevice_Mac::~PVideoInputDevice_Mac()
 }
 
 
+static bool FormatSupportsRate(AVCaptureDeviceFormat * format, unsigned rate)
+{
+  double requested = rate;
+  for (AVFrameRateRange * range in format.videoSupportedFrameRateRanges) {
+    if (requested >= range.minFrameRate && requested <= range.maxFrameRate)
+      return true;
+  }
+  return false;
+}
+
+
+static unsigned ClosestFrameRate(AVCaptureDeviceFormat * format, unsigned desired)
+{
+  if (desired < 1)
+    desired = 1;
+
+  double best = 0;
+  double bestDistance = 1e9;
+  for (AVFrameRateRange * range in format.videoSupportedFrameRateRanges) {
+    double high = range.maxFrameRate;
+    if (high < 1)
+      continue;
+
+    double candidate = desired;
+    if (candidate < range.minFrameRate)
+      candidate = range.minFrameRate;
+    else if (candidate > high)
+      candidate = high;
+
+    double distance = candidate > desired ? candidate - desired : desired - candidate;
+    if (distance < bestDistance) {
+      best = candidate;
+      bestDistance = distance;
+    }
+  }
+
+  if (best < 1)
+    return desired;
+  return (unsigned)(best + 0.5);
+}
+
+
+static int FormatScore(AVCaptureDeviceFormat * format, unsigned width, unsigned height, unsigned rate)
+{
+  CMVideoDimensions dims = CMVideoFormatDescriptionGetDimensions(format.formatDescription);
+  int dw = (int)width - (int)dims.width;
+  int dh = (int)height - (int)dims.height;
+  if (dw < 0)
+    dw = -dw;
+  if (dh < 0)
+    dh = -dh;
+
+  int score = 1000 - (dw + dh > 1000 ? 1000 : dw + dh);
+  if (FormatSupportsRate(format, rate))
+    score += 100;
+  return score;
+}
+
+
+static bool ApplyFrameRate(AVCaptureDevice * device, AVCaptureDeviceFormat * format, unsigned & rate)
+{
+  unsigned chosen = ClosestFrameRate(format, rate);
+  @try {
+    device.activeVideoMinFrameDuration = CMTimeMake(1, (int32_t)chosen);
+    device.activeVideoMaxFrameDuration = CMTimeMake(1, (int32_t)chosen);
+    rate = chosen;
+    return true;
+  }
+  @catch (NSException * exception) {
+    PTRACE(3, "Capture device rejected " << chosen << "fps: " << [[exception reason] UTF8String]);
+  }
+
+  AVFrameRateRange * fallback = nil;
+  for (AVFrameRateRange * range in format.videoSupportedFrameRateRanges) {
+    if (fallback == nil || range.maxFrameRate > fallback.maxFrameRate)
+      fallback = range;
+  }
+  if (fallback == nil)
+    return false;
+
+  @try {
+    device.activeVideoMinFrameDuration = fallback.minFrameDuration;
+    device.activeVideoMaxFrameDuration = fallback.minFrameDuration;
+    rate = (unsigned)(fallback.maxFrameRate + 0.5);
+    if (rate < 1)
+      rate = 1;
+    return true;
+  }
+  @catch (NSException * exception) {
+    PTRACE(2, "Capture device rejected " << fallback.maxFrameRate << "fps: " << [[exception reason] UTF8String]);
+    return false;
+  }
+}
+
+
 PBoolean PVideoInputDevice_Mac::Open(const PString & devName, PBoolean startImmediate)
 {
   Close();
@@ -278,7 +397,7 @@ PBoolean PVideoInputDevice_Mac::Open(const PString & devName, PBoolean startImme
     m_device = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeVideo];
   else {
     NSString * name = [NSString stringWithUTF8String:devName];
-    NSArray * devices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo];
+    NSArray * devices = VideoCaptureDevices();
     for (AVCaptureDevice * device in devices) {
       if ([[device localizedName] caseInsensitiveCompare:name] == 0) {
         m_device = [AVCaptureDevice deviceWithUniqueID:[device uniqueID]];
@@ -297,12 +416,19 @@ PBoolean PVideoInputDevice_Mac::Open(const PString & devName, PBoolean startImme
   PString oldColourFormat = m_colourFormat;
   
   m_availableFormats.clear();
+  std::map<PString, int> formatScores;
   for (AVCaptureDeviceFormat * format in m_device.formats) {
     FourCharCode subType = CMFormatDescriptionGetMediaSubType(format.formatDescription);
     char subTypeStr[5] = {(char)(subType >> 24), (char)(subType >> 16), (char)(subType >> 8), (char)subType, 0};
     // Do the SetColourFormat to get the PTLib synonym name for known FourCharCode.
-    if (PVideoInputDevice::SetColourFormat(subTypeStr) && CalculateFrameBytes(m_frameWidth, m_frameHeight, m_colourFormat))
-      m_availableFormats[m_colourFormat] = format;
+    if (PVideoInputDevice::SetColourFormat(subTypeStr) && CalculateFrameBytes(m_frameWidth, m_frameHeight, m_colourFormat)) {
+      int score = FormatScore(format, m_frameWidth, m_frameHeight, m_frameRate);
+      std::map<PString, int>::iterator existing = formatScores.find(m_colourFormat);
+      if (existing == formatScores.end() || score > existing->second) {
+        m_availableFormats[m_colourFormat] = format;
+        formatScores[m_colourFormat] = score;
+      }
+    }
   }
   
   if (m_availableFormats.empty()) {
@@ -318,6 +444,11 @@ PBoolean PVideoInputDevice_Mac::Open(const PString & devName, PBoolean startImme
   // Must be OK, or above would have failed
   AVCaptureDeviceFormat * selectedFormat = m_availableFormats[m_colourFormat];
   OSType pixelFormat = CMFormatDescriptionGetMediaSubType(selectedFormat.formatDescription);
+  CMVideoDimensions dims = CMVideoFormatDescriptionGetDimensions(selectedFormat.formatDescription);
+  if (dims.width > 0 && dims.height > 0) {
+    m_frameWidth = (unsigned)dims.width;
+    m_frameHeight = (unsigned)dims.height;
+  }
   
   if ([m_device lockForConfiguration:NULL] != YES) {
     PTRACE(2, "Capture device configuration could not be locked");
@@ -327,15 +458,14 @@ PBoolean PVideoInputDevice_Mac::Open(const PString & devName, PBoolean startImme
   PTRACE(5, "Capture device configuration locked for \"" << devName << '"');
 
   m_device.activeFormat = selectedFormat;
-  try {
-    m_device.activeVideoMinFrameDuration = CMTimeMake(1, m_frameRate);
-    m_device.activeVideoMaxFrameDuration = CMTimeMake(1, m_frameRate);
-  }
-  catch (...) {
+  unsigned requestedRate = m_frameRate;
+  if (!ApplyFrameRate(m_device, selectedFormat, m_frameRate)) {
     [m_device unlockForConfiguration];
-    PTRACE(2, "Capture device \"" << devName << "\" could not be set to " << m_frameRate << "fps");
+    PTRACE(2, "Capture device \"" << devName << "\" could not be set to " << requestedRate << "fps");
     return false;
   }
+  if (m_frameRate != requestedRate)
+    PTRACE(3, "Capture device \"" << devName << "\" does not support " << requestedRate << "fps, using " << m_frameRate << "fps");
   [m_device unlockForConfiguration];
 
   PTRACE(5, "Capture device configuration unlocked for \"" << devName << '"');
@@ -518,7 +648,7 @@ PStringArray PVideoInputDevice_Mac::GetDeviceNames() const
   
   PStringArray names;
 
-  NSArray * devices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo];
+  NSArray * devices = VideoCaptureDevices();
   for (AVCaptureDevice * device in devices)
     names += [[device localizedName] cStringUsingEncoding:NSUTF8StringEncoding];
 

@@ -7,20 +7,8 @@
 //#include <ptlib/contain.inl>
 //#endif
 
-#ifdef P_SOLARIS
+#if defined(P_LINUX) || defined(P_FREEBSD)
 #include <sys/soundcard.h>
-#endif
-
-#ifdef P_LINUX
-#include <sys/soundcard.h>
-#endif
-
-#ifdef P_FREEBSD
-#if P_FREEBSD >= 500000
-#include <sys/soundcard.h>
-#else
-#include <machine/soundcard.h>
-#endif
 #endif
 
 #if defined(P_OPENBSD) || defined(P_NETBSD)

@@ -310,12 +310,6 @@ class PFilePath : public PFilePathString
     static PFilePathString Canonicalise(const PFilePathString & path, bool isDirectory);
 
 
-// Include platform dependent part of class
-#ifdef _WIN32
-#include "msos/ptlib/filepath.h"
-#else
-#include "unix/ptlib/filepath.h"
-#endif
 };
 
 

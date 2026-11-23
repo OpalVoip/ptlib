@@ -26,6 +26,8 @@
 
 #include <ptlib.h>
 
+#if P_SPEECH_RECOGNITION && P_SSL
+
 #include <ptclib/speech.h>
 #include <ptclib/pwavfile.h>
 #include <ptclib/random.h>
@@ -443,3 +445,5 @@ public:
 };
 
 PFACTORY_CREATE(PFactory<PSpeechRecognition>, PSpeechRecognition_DeepgramFlux, P_SPEECH_RECOGNITION_DEEPGRAM "Flux", false);
+
+#endif //P_SPEECH_RECOGNITION && P_SSL

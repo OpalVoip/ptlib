@@ -40,17 +40,15 @@
 #include <ptlib/videoio.h>
 #include <ptlib/vconvert.h>
 
-#if P_IMAGEMAGICK==7
-  #ifndef MAGICKCORE_HDRI_ENABLE
-    #define MAGICKCORE_HDRI_ENABLE 1
-  #endif
-  #include <MagickWand/MagickWand.h>
-#elif P_IMAGEMAGICK
-  #include <wand/MagickWand.h>
-#endif
-
-#ifdef P_IMAGEMAGICK_LIB
-  #pragma comment(lib, P_IMAGEMAGICK_LIB)
+#if P_FFMPEG
+  extern "C" {
+    P_PUSH_MSVC_WARNINGS(4244)
+    #include <libavformat/avformat.h>
+    #include <libavcodec/avcodec.h>
+    #include <libavutil/imgutils.h>
+    #include <libswscale/swscale.h>
+    P_POP_MSVC_WARNINGS()
+  };
 #endif
 
 
@@ -329,6 +327,11 @@ class PStillImageVideoFile : public PVideoFile
     {
       m_fixedFrameSize = true;
     }
+
+    virtual bool IsStillImage() const override
+    {
+      return true;
+    }
     
     ~PStillImageVideoFile()
     {
@@ -342,8 +345,11 @@ class PStillImageVideoFile : public PVideoFile
     }
 
     virtual PBoolean IsOpen() const override
-    { 
-      return !m_pixelData.IsEmpty();
+    {
+      // Pixel data is what later reads return. The file handle has to count
+      // as open too, or header parsing fails with EBADF before the picture
+      // has been decoded.
+      return !m_pixelData.IsEmpty() || PFile::IsOpen();
     }
 
     virtual off_t GetLength() const override
@@ -382,28 +388,15 @@ class PStillImageVideoFile : public PVideoFile
 
 ///////////////////////////////////////////////////////////////////////////////
 
-#if P_IMAGEMAGICK
+#if P_FFMPEG
 
-class PImageMagickFile : public PStillImageVideoFile
+/**A still image decoded with FFmpeg (BMP, JPEG, PNG, GIF, TIFF, …).
+  */
+class PFfmpegImageFile : public PStillImageVideoFile
 {
-    PCLASSINFO(PImageMagickFile, PStillImageVideoFile);
+    PCLASSINFO(PFfmpegImageFile, PStillImageVideoFile);
 
   protected:
-    struct Initialiser
-    {
-      Initialiser() { MagickWandGenesis(); }
-      ~Initialiser() { MagickWandTerminus(); }
-    };
-
-    struct Wand
-    {
-      MagickWand * m_wand;
-      Wand() : m_wand(NewMagickWand()) { }
-      ~Wand() { DestroyMagickWand(m_wand); }
-      operator MagickWand *() const { return m_wand; }
-      MagickWand * operator->() const { return m_wand; }
-    };
-
     virtual bool InternalOpen(OpenMode mode, OpenOptions, PFileInfo::Permissions) override
     {
       if (mode != PFile::ReadOnly) {
@@ -411,24 +404,97 @@ class PImageMagickFile : public PStillImageVideoFile
         return false;
       }
 
-      static Initialiser initialised;
-
-      Wand wand;
-      if (!MagickReadImage(wand, m_path)) {
-        ExceptionType severity;
-        char * description = MagickGetException(wand, &severity);
-        PTRACE(2, "ImageMagick error: " << description);
-        MagickRelinquishMemory(description);
+      AVFormatContext * format = NULL;
+      if (avformat_open_input(&format, m_path, NULL, NULL) < 0) {
+        PTRACE(2, "FFmpeg could not open image " << m_path);
+        SetErrorValues(Miscellaneous, EINVAL);
         return false;
       }
 
-      unsigned width = MagickGetImageWidth(wand);
-      unsigned height = MagickGetImageHeight(wand);
+      if (avformat_find_stream_info(format, NULL) < 0) {
+        PTRACE(2, "FFmpeg could not find stream info in " << m_path);
+        avformat_close_input(&format);
+        SetErrorValues(Miscellaneous, EINVAL);
+        return false;
+      }
+
+      int streamIndex = av_find_best_stream(format, AVMEDIA_TYPE_VIDEO, -1, -1, NULL, 0);
+      if (streamIndex < 0) {
+        PTRACE(2, "FFmpeg found no video stream in " << m_path);
+        avformat_close_input(&format);
+        SetErrorValues(Miscellaneous, EINVAL);
+        return false;
+      }
+
+      AVStream * stream = format->streams[streamIndex];
+      const AVCodec * codec = avcodec_find_decoder(stream->codecpar->codec_id);
+      AVCodecContext * codecCtx = codec != NULL ? avcodec_alloc_context3(codec) : NULL;
+      if (codecCtx == NULL ||
+          avcodec_parameters_to_context(codecCtx, stream->codecpar) < 0 ||
+          avcodec_open2(codecCtx, codec, NULL) < 0) {
+        PTRACE(2, "FFmpeg could not open decoder for " << m_path);
+        avcodec_free_context(&codecCtx);
+        avformat_close_input(&format);
+        SetErrorValues(Miscellaneous, EINVAL);
+        return false;
+      }
+
+      AVPacket * packet = av_packet_alloc();
+      AVFrame * frame = av_frame_alloc();
+      bool gotFrame = false;
+      while (packet != NULL && frame != NULL && av_read_frame(format, packet) >= 0) {
+        if (packet->stream_index == streamIndex &&
+            avcodec_send_packet(codecCtx, packet) >= 0 &&
+            avcodec_receive_frame(codecCtx, frame) >= 0) {
+          gotFrame = true;
+          break;
+        }
+        av_packet_unref(packet);
+      }
+
+      if (!gotFrame) {
+        PTRACE(2, "FFmpeg could not decode a frame from " << m_path);
+        av_frame_free(&frame);
+        av_packet_free(&packet);
+        avcodec_free_context(&codecCtx);
+        avformat_close_input(&format);
+        SetErrorValues(Miscellaneous, EINVAL);
+        return false;
+      }
+
+      unsigned width = (unsigned)frame->width;
+      unsigned height = (unsigned)frame->height;
       m_videoInfo.SetFrameSize(width, height);
       m_frameBytes = m_videoInfo.CalculateFrameBytes();
 
-      PBYTEArray rgb(width*height*4);
-      MagickExportImagePixels(wand, 0, 0, width, height, "RGBA", CharPixel, rgb.GetPointer());
+      PBYTEArray rgb;
+      if (!rgb.SetSize(width * height * 4)) {
+        av_frame_free(&frame);
+        av_packet_free(&packet);
+        avcodec_free_context(&codecCtx);
+        avformat_close_input(&format);
+        return false;
+      }
+
+      SwsContext * sws = sws_getContext(width, height, (AVPixelFormat)frame->format,
+                                       width, height, AV_PIX_FMT_RGBA,
+                                       SWS_BILINEAR, NULL, NULL, NULL);
+      uint8_t * dstSlice[4] = { rgb.GetPointer(), NULL, NULL, NULL };
+      int dstStride[4] = { (int)(width * 4), 0, 0, 0 };
+      bool scaled = sws != NULL &&
+                    sws_scale(sws, frame->data, frame->linesize, 0, (int)height,
+                              dstSlice, dstStride) > 0;
+      sws_freeContext(sws);
+      av_frame_free(&frame);
+      av_packet_free(&packet);
+      avcodec_free_context(&codecCtx);
+      avformat_close_input(&format);
+
+      if (!scaled) {
+        PTRACE(2, "FFmpeg could not convert pixels from " << m_path);
+        SetErrorValues(Miscellaneous, EINVAL);
+        return false;
+      }
 
       PColourConverter * converter = PColourConverter::Create(PVideoFrameInfo(width, height, "RGB32"), m_videoInfo);
       if (converter == NULL) {
@@ -444,7 +510,7 @@ class PImageMagickFile : public PStillImageVideoFile
     }
 };
 
-const char * PImageMagickExtensions[] = {
+static const char * PFfmpegImageExtensions[] = {
   ".bmp",
   ".dib",
   ".jpg",
@@ -456,16 +522,16 @@ const char * PImageMagickExtensions[] = {
   NULL
 };
 
-PFACTORY_CREATE(PVideoFileFactory, PImageMagickFile,        PImageMagickExtensions[0]);
-PFACTORY_SYNONYM(PVideoFileFactory, PImageMagickFile, dib,  PImageMagickExtensions[1]);
-PFACTORY_SYNONYM(PVideoFileFactory, PImageMagickFile, jpg,  PImageMagickExtensions[2]);
-PFACTORY_SYNONYM(PVideoFileFactory, PImageMagickFile, jpeg, PImageMagickExtensions[3]);
-PFACTORY_SYNONYM(PVideoFileFactory, PImageMagickFile, gif,  PImageMagickExtensions[4]);
-PFACTORY_SYNONYM(PVideoFileFactory, PImageMagickFile, png,  PImageMagickExtensions[5]);
-PFACTORY_SYNONYM(PVideoFileFactory, PImageMagickFile, tif,  PImageMagickExtensions[6]);
-PFACTORY_SYNONYM(PVideoFileFactory, PImageMagickFile, tiff, PImageMagickExtensions[7]);
+PFACTORY_CREATE(PVideoFileFactory, PFfmpegImageFile,        PFfmpegImageExtensions[0]);
+PFACTORY_SYNONYM(PVideoFileFactory, PFfmpegImageFile, dib,  PFfmpegImageExtensions[1]);
+PFACTORY_SYNONYM(PVideoFileFactory, PFfmpegImageFile, jpg,  PFfmpegImageExtensions[2]);
+PFACTORY_SYNONYM(PVideoFileFactory, PFfmpegImageFile, jpeg, PFfmpegImageExtensions[3]);
+PFACTORY_SYNONYM(PVideoFileFactory, PFfmpegImageFile, gif,  PFfmpegImageExtensions[4]);
+PFACTORY_SYNONYM(PVideoFileFactory, PFfmpegImageFile, png,  PFfmpegImageExtensions[5]);
+PFACTORY_SYNONYM(PVideoFileFactory, PFfmpegImageFile, tif,  PFfmpegImageExtensions[6]);
+PFACTORY_SYNONYM(PVideoFileFactory, PFfmpegImageFile, tiff, PFfmpegImageExtensions[7]);
 
-#else // P_IMAGEMAGICK
+#else // P_FFMPEG
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -585,16 +651,22 @@ class PJPEGFile : public PStillImageVideoFile
       if (!PVideoFile::InternalOpen(mode, opts, permissions))
         return false;
 
+      // Load from a plain file. This object's GetLength() is a frame count,
+      // and IsOpen() stays false until the picture has been decoded.
+      PFile raw;
+      if (!raw.Open(GetFilePath(), PFile::ReadOnly, PFile::MustExist)) {
+        SetErrorValues(raw.GetErrorCode(), raw.GetErrorNumber());
+        return false;
+      }
+
       PJPEGConverter decoder(PVideoFrameInfo(0, 0, "JPEG"), m_videoInfo);
-      if (!decoder.Load(*this, m_pixelData))
+      if (!decoder.Load(raw, m_pixelData))
         return false;
 
       decoder.GetDstFrameInfo(m_videoInfo);
       m_frameBytes = m_videoInfo.CalculateFrameBytes();
       return true;
     }
-
-    PBYTEArray m_pixelData;
 };
 
 PFACTORY_CREATE(PVideoFileFactory, PJPEGFile, ".jpg");
@@ -602,6 +674,6 @@ PFACTORY_SYNONYM(PVideoFileFactory, PJPEGFile, jpeg, ".jpeg");
 
 
 #endif  // P_JPEG_DECODER
-#endif  // P_IMAGEMAGICK
+#endif  // P_FFMPEG
 #endif  // P_VIDFILE
 #endif  // P_VIDEO

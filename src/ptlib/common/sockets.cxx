@@ -1668,8 +1668,10 @@ PINDEX PIPSocket::Address::HashFunction() const
   switch (GetVersion()) {
     case 4 :
       return ntohl(*this);
+#if P_HAS_IPV6
     case 6 :
       return *(PINDEX *)&m_v.m_six ^ (((PINDEX *)&m_v.m_six)[1] << 1);
+#endif
   }
   return 0;
 }

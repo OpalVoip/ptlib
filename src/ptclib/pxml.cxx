@@ -213,8 +213,13 @@ void PXMLParserBase::EndNamespaceDeclHandler(const char *)
 
 void PXMLParserBase::GetFilePosition(unsigned & col, unsigned & line) const
 {
+#if P_EXPAT_POSITION64
+  col = static_cast<unsigned>(XML_GetCurrentColumnNumber64(MY_CONTEXT));
+  line = static_cast<unsigned>(XML_GetCurrentLineNumber64(MY_CONTEXT));
+#else
   col = XML_GetCurrentColumnNumber(MY_CONTEXT);
   line = XML_GetCurrentLineNumber(MY_CONTEXT);
+#endif
 }
 
 

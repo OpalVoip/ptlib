@@ -25,7 +25,11 @@ private/
 /bin/
 /make/ptlib_config.mak
 /include/ptlib_config.h
+/build/
+/build-*/
+/vcpkg_installed/
 /src/ptlib/common/getdate.c
 /samples/vxmltest/cache/
 /tools/configure/Release
 .vscode/*.log
+build_deb

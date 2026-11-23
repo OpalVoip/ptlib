@@ -513,11 +513,14 @@ class PSocket : public PChannel
     /// Port to be used by the socket when opening the channel.
     WORD m_port;
 
-// Include platform dependent part of class
 #ifdef _WIN32
 #include "msos/ptlib/socket.h"
 #else
-#include "unix/ptlib/socket.h"
+  public:
+    virtual bool Read(void * ptr, PINDEX len) override;
+    virtual bool Write(const void * buf, PINDEX len) override;
+    ~PSocket();
+    static unsigned NoBufferRetryCount;
 #endif
 };
 

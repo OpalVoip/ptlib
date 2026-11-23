@@ -804,7 +804,7 @@ class PTURNClient : public PSTUNClient
     /**Get the NAT Method Name
      */
     static const char * MethodName();
-    virtual PCaselessString GetMethodName() const;
+    virtual PCaselessString GetMethodName() const override;
 
     enum { DefaultPriority = 30 };
     PTURNClient(unsigned priority = DefaultPriority);
@@ -816,24 +816,24 @@ class PTURNClient : public PSTUNClient
       WORD localPort = 0,
       PObject * context = NULL,
       Component component = eComponent_Unknown
-    );
+    ) override;
 
     bool CreateSocketPair(
       PUDPSocket * & socket1,
       PUDPSocket * & socket2,
       const PIPSocket::Address & binding = PIPSocket::GetDefaultIpAny(),
       PObject * context = NULL
-    );
+    ) override;
 
     /**Return an indication if the current STUN type supports RTP
       Use the force variable to guarantee an up to date test
       */
     virtual RTPSupportTypes GetRTPSupport(
       bool force = false    ///< Force a new check
-    );
+    ) override;
 
   protected:
-    virtual PNATUDPSocket * InternalCreateSocket(Component component, PObject * context);
+    virtual PNATUDPSocket * InternalCreateSocket(Component component, PObject * context) override;
     // New functions
     virtual bool RefreshAllocation(DWORD lifetime = 600);
 };

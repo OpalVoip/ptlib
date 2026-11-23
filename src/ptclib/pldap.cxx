@@ -42,7 +42,7 @@
 #include <ldap.h>
 
 
-#if defined(_MSC_VER)
+#ifdef P_LDAP_LIBRARY
   #pragma comment(lib, P_LDAP_LIBRARY)
 #endif
 

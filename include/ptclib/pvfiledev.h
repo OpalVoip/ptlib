@@ -81,6 +81,10 @@ class PVideoInputDevice_VideoFile : public PVideoInputEmulatedDevice
       */
     PBoolean Close() override;
 
+    /**A still image has no native rate, so any requested rate is accepted.
+      */
+    virtual PBoolean SetFrameRate(unsigned rate) override;
+
    
 protected:
   virtual bool InternalReadFrameData(BYTE * frame) override;
