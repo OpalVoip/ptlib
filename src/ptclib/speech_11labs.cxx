@@ -37,6 +37,7 @@
 
 #define PTraceModule() "SR-11Labs"
 
+static const PConstCaselessString EndpointKey("11Labs-Endpoint");
 static const PConstCaselessString ApiKeyTag("11Labs-API-Key");
 static const PConstCaselessString ModelIdTag("11Labs-Model-Id");
 static const PConstCaselessString SettingsTag("11Labs-Settings");
@@ -141,6 +142,8 @@ bool PTextToSpeech_11Labs::SetOptions(const PStringOptions & options)
   PWaitAndSignal lock(m_mutex);
   if (IsOpen())
     return false;
+
+  m_baseUrl = options.GetString(EndpointKey, m_baseUrl);
 
 // Configure API key
   m_apiKey = options.GetString(ApiKeyTag, m_apiKey);
