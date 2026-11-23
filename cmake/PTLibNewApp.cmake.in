@@ -109,4 +109,23 @@ if(_app_ptlib_libdir)
   set_target_properties(@APP_NAME@ PROPERTIES BUILD_RPATH "${_app_ptlib_libdir}")
 endif()
 
+# Visual Studio loads DLLs from PATH when debugging. BUILD_RPATH does not
+# apply on Windows, so put the PTLib output directory (and the vcpkg bins
+# that library needs) into LocalDebuggerEnvironment.
+if(WIN32)
+  set(_app_dbg_path "$<TARGET_FILE_DIR:PTLib::ptlib>")
+  if(VCPKG_INSTALLED_DIR)
+    set(_app_vcpkg_triplet "${VCPKG_TARGET_TRIPLET}")
+    if(NOT _app_vcpkg_triplet)
+      set(_app_vcpkg_triplet "x64-windows")
+    endif()
+    set(_app_vcpkg_root "${VCPKG_INSTALLED_DIR}/${_app_vcpkg_triplet}")
+    file(TO_CMAKE_PATH "${_app_vcpkg_root}" _app_vcpkg_root)
+    string(APPEND _app_dbg_path
+      ";${_app_vcpkg_root}/bin;${_app_vcpkg_root}/debug/bin")
+  endif()
+  set_target_properties(@APP_NAME@ PROPERTIES
+    VS_DEBUGGER_ENVIRONMENT "PATH=${_app_dbg_path};%PATH%")
+endif()
+
 message(STATUS "@APP_NAME@ PTLib: ${_app_ptlib_dir}")
