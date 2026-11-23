@@ -110,15 +110,40 @@ function(ptlib_find_vcpkg out)
   set(${out} "${_found}" PARENT_SCOPE)
 endfunction()
 
-if(CMAKE_HOST_WIN32 AND PTLIB_USE_VCPKG AND NOT DEFINED CACHE{CMAKE_TOOLCHAIN_FILE} AND NOT CMAKE_TOOLCHAIN_FILE)
-  ptlib_find_vcpkg(_ptlib_vcpkg)
-  if(_ptlib_vcpkg)
-    set(CMAKE_TOOLCHAIN_FILE "${_ptlib_vcpkg}" CACHE FILEPATH "vcpkg toolchain")
-    message(STATUS "PTLib: using vcpkg toolchain ${_ptlib_vcpkg}")
-  else()
-    message(STATUS "PTLib: vcpkg was not found; Windows dependencies are not taken from vcpkg")
+# Prefer a current checkout. A cached or VCPKG_ROOT path that points at the
+# Visual Studio 2022 bundled scripts still fails on expat, so replace it.
+if(CMAKE_HOST_WIN32 AND PTLIB_USE_VCPKG)
+  set(_ptlib_toolchain_ok FALSE)
+  if(CMAKE_TOOLCHAIN_FILE MATCHES "vcpkg\\.cmake$")
+    get_filename_component(_ptlib_vcpkg_root "${CMAKE_TOOLCHAIN_FILE}" DIRECTORY)
+    get_filename_component(_ptlib_vcpkg_root "${_ptlib_vcpkg_root}" DIRECTORY)
+    get_filename_component(_ptlib_vcpkg_root "${_ptlib_vcpkg_root}" DIRECTORY)
+    ptlib_vcpkg_root_current("${_ptlib_vcpkg_root}" _ptlib_toolchain_ok)
+    if(NOT _ptlib_toolchain_ok)
+      message(STATUS
+        "PTLib: vcpkg at ${_ptlib_vcpkg_root} is older than the manifest baseline; looking for a newer checkout")
+    endif()
   endif()
-  unset(_ptlib_vcpkg)
+  if(NOT _ptlib_toolchain_ok)
+    ptlib_find_vcpkg(_ptlib_vcpkg)
+    if(_ptlib_vcpkg)
+      set(CMAKE_TOOLCHAIN_FILE "${_ptlib_vcpkg}" CACHE FILEPATH "vcpkg toolchain" FORCE)
+      message(STATUS "PTLib: using vcpkg toolchain ${_ptlib_vcpkg}")
+    elseif(CMAKE_TOOLCHAIN_FILE MATCHES "vcpkg\\.cmake$")
+      message(FATAL_ERROR
+        "vcpkg at ${_ptlib_vcpkg_root} is older than the manifest baseline in vcpkg.json.\n"
+        "Its scripts do not implement REMOVE_DUPLICATES, so building expat stops with "
+        "\"Operation REMOVE_DUPLICATES not recognized.\"\n"
+        "Clone https://github.com/microsoft/vcpkg into C:\\src\\vcpkg (or set VCPKG_ROOT), "
+        "run bootstrap-vcpkg.bat, delete the build directory, and configure again. "
+        "Or run vs_2022.bat, which does those steps.")
+    else()
+      message(STATUS "PTLib: vcpkg was not found; Windows dependencies are not taken from vcpkg")
+    endif()
+    unset(_ptlib_vcpkg)
+  endif()
+  unset(_ptlib_toolchain_ok)
+  unset(_ptlib_vcpkg_root)
 endif()
 
 # Called after the minsize switch and before project(). An explicit
