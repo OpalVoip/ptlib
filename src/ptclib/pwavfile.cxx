@@ -180,7 +180,9 @@ bool PWAVFile::InternalOpen(OpenMode mode, OpenOptions opts, PFileInfo::Permissi
 
 PBoolean PWAVFile::Close()
 {
-  if (m_status == e_Writing)
+  /* A file opened for writing also gets its lengths when no sample was written,
+     otherwise it keeps the RIFF length 0 written by GenerateHeader(). */
+  if (m_status == e_Writing || (m_status == e_PreWrite && m_headerLength > 0 && IsOpen()))
     UpdateHeader();
 
   return PFile::Close();
@@ -625,6 +627,8 @@ PBoolean PWAVFile::ProcessHeader()
 
 bool PWAVFile::GenerateHeader()
 {
+  m_headerLength = 0; // Set again below once the whole header is written, see Close()
+
   if (m_formatHandler == NULL) {
     PTRACE(1,"GenerateHeader: format handler is null!");
     return false;
