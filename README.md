@@ -484,15 +484,22 @@ files as `cmake --install`: the shared library, plugins, headers, `ptlib.pc`,
 and the CMake package files. There is no separate development package and
 no source package.
 
-Install `dpkg-dev` so cpack can run `dpkg-shlibdeps`. Configure with a `/usr`
-prefix so the package installs libraries where Debian's ldconfig trigger
-sees them. A normal `/usr/local` install does not need this.
+Install `dpkg-dev` so cpack can run `dpkg-shlibdeps`. The package installs
+under `CMAKE_INSTALL_PREFIX`, the same prefix that is compiled into the plugin
+directory, `ptlib.pc` and the CMake package files. The default is
+`/usr/local`; configure with `-DCMAKE_INSTALL_PREFIX=/usr` for a package that
+installs under `/usr`:
 
 ```sh
 cmake -S . -B build -DCMAKE_INSTALL_PREFIX=/usr
 cmake --build build
 cmake --build build --target package
 ```
+
+Installing or removing the package runs `ldconfig` through dpkg's trigger. The
+library directory must be one `ldconfig` searches: `/usr/lib`,
+`/usr/local/lib` and the multiarch directories are; a prefix such as
+`/opt/ptlib` also needs an `/etc/ld.so.conf.d` entry.
 
 The `package` target writes `ptlib_<version>_<arch>.deb` in the build
 directory. `cpack -G DEB` from that directory does the same thing. The
